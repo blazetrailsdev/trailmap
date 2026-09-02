@@ -1,0 +1,14 @@
+export default {
+  development: {
+    adapter: "sqlite3",
+    database: "storage/development.sqlite3",
+  },
+  test: {
+    adapter: "sqlite3",
+    database: "storage/test.sqlite3",
+  },
+  production: {
+    adapter: "sqlite3",
+    database: "storage/production.sqlite3",
+  },
+};

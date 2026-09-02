@@ -1,0 +1,41 @@
+{
+  "name": "trailmap",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*.tse": {
+      "types": "./.trails/views/*.tse.d.ts",
+      "default": "./.trails/views/*.tse.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "trails": "tsx node_modules/@blazetrails/trailties/bin/trails.js",
+    "dev": "tsx node_modules/@blazetrails/trailties/bin/trails.js server",
+    "db:create": "tsx node_modules/@blazetrails/trailties/bin/trails.js db create",
+    "db:migrate": "tsx node_modules/@blazetrails/trailties/bin/trails.js db migrate",
+    "db:seed": "tsx node_modules/@blazetrails/trailties/bin/trails.js db seed",
+    "db:setup": "tsx node_modules/@blazetrails/trailties/bin/trails.js db create && tsx node_modules/@blazetrails/trailties/bin/trails.js db migrate && tsx node_modules/@blazetrails/trailties/bin/trails.js db seed",
+    "db:reset": "tsx node_modules/@blazetrails/trailties/bin/trails.js db drop && tsx node_modules/@blazetrails/trailties/bin/trails.js db create && tsx node_modules/@blazetrails/trailties/bin/trails.js db migrate && tsx node_modules/@blazetrails/trailties/bin/trails.js db seed",
+    "prepare": "trails-tsc-views build --views app/views"
+  },
+  "dependencies": {
+    "@blazetrails/activerecord": "file:vendor/blazetrails-activerecord-0.1.0.tgz",
+    "@blazetrails/activemodel": "file:vendor/blazetrails-activemodel-0.1.0.tgz",
+    "@blazetrails/activesupport": "file:vendor/blazetrails-activesupport-0.1.0.tgz",
+    "@blazetrails/rack": "file:vendor/blazetrails-rack-0.1.0.tgz",
+    "@blazetrails/actionpack": "file:vendor/blazetrails-actionpack-0.1.0.tgz",
+    "@blazetrails/actionview": "file:vendor/blazetrails-actionview-0.1.0.tgz",
+    "@blazetrails/trailties": "file:vendor/blazetrails-trailties-0.1.0.tgz",
+    "better-sqlite3": "^12.6.2"
+  },
+  "devDependencies": {
+    "@blazetrails/trails-tsc": "file:vendor/blazetrails-trails-tsc-0.1.0.tgz",
+    "tsx": "^4.20.0",
+    "typescript": "^5.7.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.0.0"
+  }
+}

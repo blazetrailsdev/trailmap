@@ -1,0 +1,4 @@
+# Mark the database schema as having been generated.
+db/schema.ts linguist-generated
+
+*.ts diff=typescript
