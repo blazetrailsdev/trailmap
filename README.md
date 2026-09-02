@@ -8,7 +8,8 @@ hand-written Go read model in ringo that "must reproduce `readmodel.ts`
 exactly". trailmap gives it one home: an app that owns `tasks.db` and serves
 both the dashboard HTML and a JSON API, with the CLI and ringo as clients.
 
-Design and rollout live in the RFC (`blazetrailsdev/tasks`, RFC `trailmap`).
+Design and rollout live in [RFC 0136](https://ringo.deanoftech.com/rfc/0136-trailmap)
+(`blazetrailsdev/tasks`, `rfcs/0136-trailmap/`).
 
 ## Status
 
