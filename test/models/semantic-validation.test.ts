@@ -14,7 +14,11 @@ import { effectiveStoryStatus } from "../../app/models/concerns/effective-status
 import {
   MAX_EST_LOC,
   checkDepGraph,
+  closedRfcErrors,
   depGraphMessages,
+  estLocErrors,
+  isTerminalStatus,
+  lifecycleErrors,
 } from "../../app/models/concerns/semantic-validation.js";
 
 // The RFC auto-close rule reports on stdout; the assertions read rows.
@@ -38,6 +42,46 @@ describe("effectiveStoryStatus", () => {
     expect(effectiveStoryStatus(null, "ready")).toBe("draft");
     expect(effectiveStoryStatus("active", "ready")).toBe("ready");
     expect(effectiveStoryStatus("closed", "done")).toBe("done");
+  });
+});
+
+describe("the pure rule functions", () => {
+  /** A story-shaped record, without a save: these read fields, not rows. */
+  const story = (attrs: object): Story => ({ status: "draft", ...attrs }) as unknown as Story;
+
+  it("treats done and closed — and nothing else — as terminal", () => {
+    expect(isTerminalStatus("done")).toBe(true);
+    expect(isTerminalStatus("closed")).toBe(true);
+    expect(isTerminalStatus("blocked")).toBe(false);
+    expect(isTerminalStatus(null)).toBe(false);
+  });
+
+  it("reports every lifecycle violation on one story, not just the first", () => {
+    expect(lifecycleErrors(story({ status: "in-progress", closed_reason: "oops" }))).toEqual([
+      `status: in-progress requires a claim timestamp`,
+      `status: in-progress requires an assignee`,
+      `status: in-progress requires a pr`,
+      `closed-reason is set but status is "in-progress" — only closed stories carry closed-reason`,
+    ]);
+  });
+
+  it("shape-constrains neither done nor a story that satisfies its status", () => {
+    expect(lifecycleErrors(story({ status: "done" }))).toEqual([]);
+    expect(lifecycleErrors(story({ status: "blocked", blocked_by: "waiting on #1" }))).toEqual([]);
+  });
+
+  it("checks the est-loc ceiling only while the story still has to ship", () => {
+    expect(estLocErrors(story({ status: "ready", est_loc: MAX_EST_LOC }))).toEqual([]);
+    expect(estLocErrors(story({ status: "ready", est_loc: null }))).toEqual([]);
+    expect(estLocErrors(story({ status: "closed", est_loc: 9000 }))).toEqual([]);
+    expect(estLocErrors(story({ status: "ready", est_loc: 9000 }))).toEqual([
+      `est-loc 9000 exceeds the ${MAX_EST_LOC} LOC per-PR ceiling`,
+    ]);
+  });
+
+  it("says nothing about an RFC that is not closed", () => {
+    const rfc = { id: "0136-trailmap", status: "active" } as unknown as Rfc;
+    expect(closedRfcErrors(rfc, [story({ id: "open", status: "ready" })])).toEqual([]);
   });
 });
 
