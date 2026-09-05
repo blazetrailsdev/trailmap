@@ -1,5 +1,17 @@
 import type { AbstractController } from "@blazetrails/actionpack";
 
+interface LoopbackRequest {
+  host: string;
+  headers: { get(key: string): unknown };
+}
+
+interface LoopbackGuarded {
+  request: LoopbackRequest;
+  render(options: { json: unknown; status: number }): void;
+}
+
+const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "::1", "[::1]"];
+
 /**
  * Requests that reach trailmap arrive over one of two paths:
  *
@@ -13,18 +25,6 @@ import type { AbstractController } from "@blazetrails/actionpack";
  * cannot stand in for this: docker's userland proxy rewrites the source
  * address, so even a loopback request arrives from the bridge gateway.
  */
-interface LoopbackRequest {
-  host: string;
-  headers: { get(key: string): unknown };
-}
-
-interface LoopbackGuarded {
-  request: LoopbackRequest;
-  render(options: { json: unknown; status: number }): void;
-}
-
-const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "::1", "[::1]"];
-
 export function isLoopbackRequest(request: LoopbackRequest): boolean {
   const forwarded = request.headers.get("X-Forwarded-For");
   if (forwarded != null && String(forwarded) !== "") return false;

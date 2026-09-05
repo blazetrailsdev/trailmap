@@ -1,8 +1,8 @@
 import { ApplicationController } from "./application-controller.js";
 
 /**
- * `/up` — the liveness probe dokku's `CHECKS` file polls after a deploy and
- * the restart policy leans on. Deliberately public and dependency-free: it
+ * `/up` — the liveness probe. `app.json` polls it after a deploy and the
+ * restart policy leans on it. Deliberately public and dependency-free: it
  * answers as soon as the application has booted, so "the process is up" is
  * never confused with "the database is reachable".
  */

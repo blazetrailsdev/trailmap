@@ -19,3 +19,6 @@
 /public/assets/
 
 *.tsbuildinfo
+
+# The tasks checkout a worker pane links in beside this one.
+/tasks
