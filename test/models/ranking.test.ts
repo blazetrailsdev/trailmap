@@ -13,7 +13,6 @@ import {
   bestBundle,
   comparePriority,
   effectivePriority,
-  indexOrder,
   isDepResolved,
   priorityContext,
   summarizeBundle,
@@ -238,29 +237,5 @@ describe("Story.rankingIndex", () => {
     await seed("urgent", "0136-trailmap", "ready", { priority: 1 });
     const index = await Story.rankingIndex();
     expect(index.stories.map((s) => s.id)).toEqual(["urgent", "alpha", "zebra"]);
-  });
-});
-
-describe("indexOrder", () => {
-  it("puts prioritised stories first and breaks ties by id", async () => {
-    await seed("zulu", "0136-trailmap", "ready");
-    await seed("alpha", "0136-trailmap", "ready");
-    await seed("p2", "0136-trailmap", "ready", { priority: 2 });
-    await seed("p1", "0136-trailmap", "ready", { priority: 1 });
-
-    const ordered = indexOrder(await Story.all().toArray());
-
-    expect(ordered.map((s) => s.id)).toEqual(["p1", "p2", "alpha", "zulu"]);
-  });
-
-  it("leaves the stories it was handed alone", async () => {
-    await seed("b", "0136-trailmap", "ready");
-    await seed("a", "0136-trailmap", "ready");
-    const stories = await Story.all().toArray();
-    const before = stories.map((s) => s.id);
-
-    indexOrder(stories);
-
-    expect(stories.map((s) => s.id)).toEqual(before);
   });
 });

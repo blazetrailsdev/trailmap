@@ -168,6 +168,17 @@ withLiveDatabase("the published index.json", () => {
   it("matches the serialized stories field for field", async () => {
     const serialized = await serializeStories(await Story.listFiltered());
 
-    expect(serialized).toEqual(published);
+    // Report the differing STORIES rather than dumping 7k rows: a real
+    // regression is a field, and naming the ids that carry it is the
+    // difference between a readable failure and an unreadable one. (The CLI
+    // republishes index.json on every mutation, so a mismatch on a live
+    // checkout can also just be a claim landing mid-run — the ids tell the two
+    // apart at a glance.)
+    const differing = serialized.filter(
+      (story, i) => JSON.stringify(story) !== JSON.stringify(published[i]),
+    );
+
+    expect(differing).toEqual([]);
+    expect(serialized).toHaveLength(published.length);
   });
 });
