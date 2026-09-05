@@ -237,13 +237,10 @@ export function storiesTouchingIn(
 ): Story[] {
   const q = query.replace(/^\.\//, "");
   const dir = q.endsWith("/") ? q : `${q}/`;
-  const scoped = index.stories.filter(
-    (s) =>
-      opts.all ||
-      OPEN_STORY_STATUSES.includes(
-        String(effectiveStoryStatus(index.rfcStatus.get(s.rfc_id), s.status)),
-      ),
-  );
+  const scoped = index.stories.filter((s) => {
+    const status = effectiveStoryStatus(index.rfcStatus.get(s.rfc_id), s.status);
+    return opts.all || (status != null && OPEN_STORY_STATUSES.includes(status));
+  });
   const tier = (match: (p: string) => boolean): Story[] =>
     scoped.filter((s) => (index.paths.get(s.id) ?? []).some(match));
   const exact = tier((p) => p === q);

@@ -14,12 +14,14 @@
  * loop consumes the queue in order.
  *
  *     TASKS_DATABASE=<tasks checkout>/.git/tasks.db pnpm gate  # TASKS_CLI=./tasks
- */import { Base } from "@blazetrails/activerecord";
+ */
+import { Base } from "@blazetrails/activerecord";
 import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
 import { getChildProcessAsync } from "@blazetrails/activesupport/child-process-adapter";
 import { cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
 import { tasksDatabaseConfig } from "../config/database.js";
 import { Rfc, Story, StoryPath, loadModelSchemas } from "../app/models/index.js";
+import { claimableIn } from "../app/models/concerns/ranking.js";
 
 /** The `--max-loc` budgets the spawn loop actually asks for. */
 const BUDGETS = [100, 250, 500, 700];
@@ -65,10 +67,6 @@ async function main(): Promise<number> {
   await Base.establishConnection({ adapter: "sqlite3", database: snapshot, pool: 1 });
   await loadModelSchemas();
 
-  // Scope the per-RFC `ready` cases to the RFCs that HAVE a claimable story,
-  // plus one that does not. Those are the only RFCs where the `--rfc` filter
-  // can disagree, and spawning the CLI once per RFC in the whole corpus would
-  // put minutes into a gate that has to run on every PR.
   const queue = await Story.claimable();
   const rfcsWithQueue = [...new Set(queue.map((s) => s.rfc_id))].sort();
   const clusters = [...new Set(queue.map((s) => s.cluster))]
@@ -84,6 +82,13 @@ async function main(): Promise<number> {
     .sort()
     .slice(0, 1);
 
+  // SPAWNED per-RFC cases are sampled — the RFCs that hold claimable work, plus
+  // one that does not — because spawning the CLI 135 times would put minutes
+  // into a gate that runs on every PR. Coverage of EVERY RFC is not sacrificed
+  // to that: `readyByRfc` below derives the CLI's answer for all of them from
+  // the one unscoped `ready` run, and these sampled spawns are what prove the
+  // derivation is legitimate (that `--rfc` really is a filter over the same
+  // queue, not a separate query).
   const cases: Case[] = [
     { label: "ready", args: ["ready"], run: () => Story.claimable() },
     ...[...rfcsWithQueue, ...quiet].map((rfc) => ({
@@ -129,19 +134,29 @@ async function main(): Promise<number> {
   // 1MB buffer silently truncates it — which surfaced as a JSON syntax error
   // mid-object, not as "your output was cut off".
   const captured = path.join(cwd(), "tmp", "equivalence-cli-output.json");
-  const problems: string[] = [];
-  for (const c of cases) {
-    const result = child.spawnSync(path.join(tasksDir, "bin", "tasks"), [...c.args, "--json"], {
+
+  /** Ask the CLI, and hand back its raw stdout (or the failure to report). */
+  const runCli = async (args: string[]): Promise<{ out?: string; failed?: string }> => {
+    const result = child.spawnSync(path.join(tasksDir, "bin", "tasks"), [...args, "--json"], {
       cwd: tasksDir,
       encoding: "utf8",
       env: { ...env, TASKS_DB: snapshot },
       out: captured,
     });
     if (result.status !== 0) {
-      problems.push(`${c.label}: CLI exited ${result.status}: ${result.stderr.trim()}`);
+      return { failed: `CLI exited ${result.status}: ${result.stderr.trim()}` };
+    }
+    return { out: await fs.readFile!(captured, "utf8") };
+  };
+
+  const problems: string[] = [];
+  for (const c of cases) {
+    const { out, failed } = await runCli(c.args);
+    if (failed !== undefined) {
+      problems.push(`${c.label}: ${failed}`);
       continue;
     }
-    const cli = cliIds(await fs.readFile!(captured, "utf8")).join("\n");
+    const cli = cliIds(out!).join("\n");
     const models = (await c.run()).map((s) => s.id).join("\n");
     if (cli === models) {
       console.log(`ok  ${c.label} (${cli === "" ? 0 : cli.split("\n").length})`);
@@ -150,6 +165,13 @@ async function main(): Promise<number> {
     problems.push(`${c.label}: ${describe(cli, models)}`);
   }
 
+  // "Coverage includes every RFC" (RFC 0136), for all of them and not just the
+  // sampled ones: the CLI's unscoped `ready` output carries each story's `rfc`,
+  // so grouping it by that field IS the CLI's per-RFC queue for every RFC it
+  // knows — including the ones whose queue is empty, where a spurious story on
+  // our side is exactly the bug worth catching.
+  problems.push(...(await everyRfcReady(runCli)));
+
   if (problems.length === 0) {
     console.log(`\nEQUIVALENT: ${cases.length} cases, byte for byte.`);
     return 0;
@@ -157,6 +179,33 @@ async function main(): Promise<number> {
   console.error(`\nNOT EQUIVALENT — ${problems.length} of ${cases.length} cases differ:`);
   for (const p of problems) console.error(`  ${p}`);
   return 1;
+}
+
+/** Every RFC's `ready` queue, CLI against models, from one CLI invocation. */
+async function everyRfcReady(
+  runCli: (args: string[]) => Promise<{ out?: string; failed?: string }>,
+): Promise<string[]> {
+  const { out, failed } = await runCli(["ready"]);
+  if (failed !== undefined) return [`ready --rfc <every RFC>: ${failed}`];
+
+  const rows = JSON.parse(out!) as { id: string; rfc: string }[];
+  const byRfc = new Map<string, string[]>();
+  for (const r of rows) byRfc.set(r.rfc, [...(byRfc.get(r.rfc) ?? []), r.id]);
+
+  // ONE index load for all of them. `Story.claimable()` reloads the whole
+  // snapshot per call, which is right for a request and quadratic here.
+  const index = await Story.rankingIndex();
+  const problems: string[] = [];
+  const rfcs = (await Rfc.all().toArray()).map((r) => r.id).sort();
+  for (const rfc of rfcs) {
+    const cli = (byRfc.get(rfc) ?? []).join("\n");
+    const models = claimableIn(index, { rfc })
+      .map((s) => s.id)
+      .join("\n");
+    if (cli !== models) problems.push(`ready --rfc ${rfc}: ${describe(cli, models)}`);
+  }
+  console.log(`ok  ready --rfc <each of ${rfcs.length} RFCs>`);
+  return problems;
 }
 
 /**
