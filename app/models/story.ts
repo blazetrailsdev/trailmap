@@ -2,7 +2,7 @@ import { Base } from "@blazetrails/activerecord";
 import { pinTimestampColumns } from "./timestamps.js";
 import { Event } from "./event.js";
 import { Rfc } from "./rfc.js";
-import { StoryDep, StoryPath, StoryRfcDep } from "./joins.js";
+import { StoryDep, StoryPackage, StoryPath, StoryRfcDep } from "./joins.js";
 import { VerbExit } from "./verb-exit.js";
 import {
   bestBundle,
@@ -18,7 +18,6 @@ import {
   type RankingIndex,
 } from "./concerns/ranking.js";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
-import type { StoryPackage } from "./joins.js";
 import {
   checkDepGraph,
   depGraphMessages,
@@ -191,15 +190,18 @@ export class Story extends Base {
   /**
    * Everything the queue reads, one pass per table. The CLI ranked an
    * in-memory index.json; these tables are the index now. Association rows
-   * become maps here, so ranking a backlog is five queries, not one per dep.
+   * become maps here, so ranking a backlog is six queries, not one per dep —
+   * and ONE snapshot answers a whole request, because every read verb and the
+   * serializer behind it read this same index (pass it back in as `index`).
    */
   static async rankingIndex(): Promise<RankingIndex> {
-    const [stories, rfcs, deps, rfcDeps, paths] = await Promise.all([
+    const [stories, rfcs, deps, rfcDeps, paths, packages] = await Promise.all([
       Story.all().toArray(),
       Rfc.all().toArray(),
       StoryDep.all().toArray(),
       StoryRfcDep.all().toArray(),
       StoryPath.all().toArray(),
+      StoryPackage.all().toArray(),
     ]);
     const group = <T>(rows: T[], key: (row: T) => string, value: (row: T) => string) => {
       const m = new Map<string, string[]>();
@@ -230,6 +232,7 @@ export class Story extends Base {
       deps: group(deps, (d) => d.story_id, (d) => d.depends_on_id),
       rfcDeps: group(rfcDeps, (d) => d.story_id, (d) => d.rfc_id),
       paths: group(paths, (p) => p.story_id, (p) => p.path),
+      packages: group(packages, (p) => p.story_id, (p) => p.package),
     };
   }
 
@@ -239,35 +242,36 @@ export class Story extends Base {
    * enum-generated and means only `status = 'ready'`, a much weaker condition;
    * conflating the two would hand agents unclaimable stories.
    */
-  static async claimable(opts: { rfc?: string } = {}): Promise<Story[]> {
-    return claimableIn(await Story.rankingIndex(), opts);
+  static async claimable(opts: ScopedOpts & { rfc?: string } = {}): Promise<Story[]> {
+    return claimableIn(await indexFor(opts), opts);
   }
 
   /** Pack the highest-value bundle of claimable stories within `maxLoc`. */
-  static async nextBundle(opts: {
-    maxLoc: number;
-    cluster?: string;
-    rfc?: string;
-  }): Promise<Story[]> {
-    return nextBundleIn(await Story.rankingIndex(), opts);
+  static async nextBundle(
+    opts: ScopedOpts & { maxLoc: number; cluster?: string; rfc?: string },
+  ): Promise<Story[]> {
+    return nextBundleIn(await indexFor(opts), opts);
   }
 
   /** Why `nextBundle` came back empty: nothing matched, or nothing fit. */
   static async emptyBundleReason(
-    opts: { cluster?: string; rfc?: string } = {},
+    opts: ScopedOpts & { cluster?: string; rfc?: string } = {},
   ): Promise<EmptyBundleReason> {
-    return emptyBundleReasonIn(await Story.rankingIndex(), opts);
+    return emptyBundleReasonIn(await indexFor(opts), opts);
   }
 
   static async listFiltered(
-    opts: { rfc?: string; status?: string; cluster?: string } = {},
+    opts: ScopedOpts & { rfc?: string; status?: string; cluster?: string } = {},
   ): Promise<Story[]> {
-    return listFilteredIn(await Story.rankingIndex(), opts);
+    return listFilteredIn(await indexFor(opts), opts);
   }
 
   /** Stories whose body cites `query`, matched exact → directory → substring. */
-  static async touching(query: string, opts: { all?: boolean } = {}): Promise<Story[]> {
-    return storiesTouchingIn(await Story.rankingIndex(), query, opts);
+  static async touching(
+    query: string,
+    opts: ScopedOpts & { all?: boolean } = {},
+  ): Promise<Story[]> {
+    return storiesTouchingIn(await indexFor(opts), query, opts);
   }
 
   // ──────────────────── mutations (ported from src/verbs.ts) ────────────────────
@@ -485,6 +489,21 @@ export class Story extends Base {
       detail: extra.detail == null ? null : JSON.stringify(extra.detail),
     });
   }
+}
+
+/**
+ * Every read verb loads the same snapshot, so a caller answering ONE request
+ * from several of them — the JSON API asks for a queue and then serializes it
+ * — can load `rankingIndex()` once and hand it back rather than making each
+ * call rescan six tables. Omit it and each call loads its own, which is what
+ * the CLI did.
+ */
+interface ScopedOpts {
+  index?: RankingIndex;
+}
+
+async function indexFor(opts: ScopedOpts): Promise<RankingIndex> {
+  return opts.index ?? (await Story.rankingIndex());
 }
 
 /** ISO seconds, matching the `claim:` format the CLI writes. */

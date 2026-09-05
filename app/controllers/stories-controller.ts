@@ -1,0 +1,154 @@
+import { respondTo } from "@blazetrails/actionpack";
+import { ApplicationController } from "./application-controller.js";
+import { requireLoopback } from "./concerns/loopback-only.js";
+import { Story } from "../models/index.js";
+import { summarizeBundle, type RankingIndex } from "../models/concerns/ranking.js";
+import { serializeStories } from "../serializers/story-json.js";
+
+/** `next-bundle`'s default budget, matching the CLI's `--max-loc` default. */
+const DEFAULT_MAX_LOC = 250;
+
+/**
+ * The read verbs — `ready`, `next-bundle`, `list` (index), `show`, `touching`
+ * — served as JSON.
+ *
+ * One listener, two audiences, per the RFC: the dashboard answers HTML on the
+ * public hostname behind SSO, and the API answers JSON on loopback only. The
+ * split is `respondTo` plus `requireLoopback`, not a second server — so when
+ * the HTML halves of these actions land they share this controller, this
+ * query, and this ordering rather than reimplementing them.
+ *
+ * `requireLoopback` runs BEFORE the negotiation, so a proxied request is a 404
+ * whatever it asked for: the API must not be reachable from the public
+ * hostname, and a 404 (rather than a 403) declines to confirm it exists.
+ *
+ * Responses are `readmodel.ts`'s shapes verbatim — see story-json.ts. The two
+ * consumers being replaced (the CLI's `--json` and webhook/tasksdb.go) parse
+ * these today, so the shapes are a contract, not a choice.
+ */
+export class StoriesController extends ApplicationController {
+  static {
+    this.beforeAction(requireLoopback);
+  }
+
+  /** `tasks list [--status S] [--rfc R] [--cluster C]` */
+  async index(): Promise<void> {
+    const index = await Story.rankingIndex();
+    const rows = await Story.listFiltered({
+      index,
+      rfc: this.param("rfc"),
+      status: this.param("status"),
+      cluster: this.param("cluster"),
+    });
+    this.renderStories(rows, index);
+  }
+
+  /** `tasks ready [--rfc R]` — the ready queue, in ready-queue order. */
+  async ready(): Promise<void> {
+    const index = await Story.rankingIndex();
+    this.renderStories(await Story.claimable({ index, rfc: this.param("rfc") }), index);
+  }
+
+  /**
+   * `tasks next-bundle [--max-loc N] [--cluster C] [--rfc R]`.
+   *
+   * The OBJECT shape is a contract with btwhooks, which unmarshals it into
+   * `bundleResult` (spawnloop.go). Emitting a bare array made every spawn
+   * attempt fail with "cannot unmarshal array into Go value of type
+   * webhook.bundleResult" — the loop stayed enabled, tried, and silently never
+   * spawned. Keep the CLI's keys exactly.
+   */
+  async nextBundle(): Promise<void> {
+    const index = await Story.rankingIndex();
+    const maxLoc = this.intParam("max-loc") ?? DEFAULT_MAX_LOC;
+    const opts = { index, maxLoc, cluster: this.param("cluster"), rfc: this.param("rfc") };
+    const rows = await Story.nextBundle(opts);
+    const summary = summarizeBundle(rows, maxLoc);
+    const stories = serializeStories(rows, index);
+    this.respondWith({
+      stories,
+      bundle_total_loc: summary.total,
+      max_loc: maxLoc,
+      lead_exceeds_budget: summary.leadExceedsBudget,
+      empty_reason: rows.length === 0 ? await Story.emptyBundleReason(opts) : null,
+    });
+  }
+
+  /**
+   * `tasks show <id>` — one story, or 404.
+   *
+   * Found in the snapshot rather than by its own `findBy`, exactly as the CLI
+   * does (`index.stories.find`): the story still has to be serialized, and the
+   * serialization needs the snapshot anyway.
+   */
+  async show(): Promise<void> {
+    const id = this.param("id") ?? "";
+    const index = await Story.rankingIndex();
+    const story = index.stories.find((s) => s.id === id);
+    if (!story) {
+      this.render({ json: { error: `story "${id}" not found` }, status: 404 });
+      return;
+    }
+    this.renderStories([story], index);
+  }
+
+  /**
+   * `tasks touching <path> [--all]`.
+   *
+   * A missing `path` is refused, matching the CLI's `if (!pos[0]) return
+   * usage()`. It cannot be allowed to default to the empty string: the
+   * substring tier is `p.includes(query)`, which every path satisfies, so the
+   * whole open backlog would come back dressed as a search result.
+   */
+  async touching(): Promise<void> {
+    const path = this.param("path");
+    if (path === undefined) {
+      this.render({ json: { error: "touching requires a path" }, status: 400 });
+      return;
+    }
+    const index = await Story.rankingIndex();
+    const rows = await Story.touching(path, { index, all: this.param("all") !== undefined });
+    this.renderStories(rows, index);
+  }
+
+  /**
+   * `show` renders the bare object the CLI's `show` prints; every other verb
+   * renders the array its `--json` prints.
+   */
+  private renderStories(rows: Story[], index: RankingIndex): void {
+    const stories = serializeStories(rows, index);
+    this.respondWith(this.actionName === "show" ? stories[0] : stories);
+  }
+
+  /**
+   * The HTML half of these actions does not exist yet — the dashboard pages
+   * are a later story — so anything that is not asking for JSON is declined
+   * here rather than falling through to a missing template.
+   */
+  private respondWith(payload: unknown): void {
+    // Negotiated on the `Accept` header ALONE, deliberately not through
+    // `Base#respondTo`: that consults `request.format`, which answers "html"
+    // when a client sends no `Accept` at all — and ringo's Go client sends
+    // none. Registering `json` first also makes `*/*` (curl's default) resolve
+    // to JSON, so both non-browser callers get JSON without asking for it.
+    respondTo(
+      (format) => {
+        format.json(() => this.render({ json: payload }));
+        format.any(() => this.render({ json: { error: "not_acceptable" }, status: 406 }));
+      },
+      { accept: (this.request.getHeader("accept") as string | undefined) ?? undefined },
+    );
+  }
+
+  private param(name: string): string | undefined {
+    const value = this.params.get(name);
+    return value == null || value === "" ? undefined : String(value);
+  }
+
+  private intParam(name: string): number | undefined {
+    const value = this.param(name);
+    if (value === undefined) return undefined;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+}
