@@ -137,7 +137,7 @@ export function bundleScope(
 
 export type EmptyBundleReason = "no-matching-stories" | "none-within-budget";
 
-export function emptyBundleReason(
+export function emptyBundleReasonIn(
   index: RankingIndex,
   opts: { cluster?: string; rfc?: string },
 ): EmptyBundleReason {

@@ -8,7 +8,7 @@ import {
   bestBundle,
   claimableIn,
   comparePriority,
-  emptyBundleReason,
+  emptyBundleReasonIn,
   listFilteredIn,
   nextBundleIn,
   priorityContext,
@@ -181,7 +181,7 @@ export class Story extends Base {
   static async emptyBundleReason(
     opts: { cluster?: string; rfc?: string } = {},
   ): Promise<EmptyBundleReason> {
-    return emptyBundleReason(await Story.rankingIndex(), opts);
+    return emptyBundleReasonIn(await Story.rankingIndex(), opts);
   }
 
   static async listFiltered(
