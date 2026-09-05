@@ -1,7 +1,7 @@
 import { Application } from "@blazetrails/trailties";
 
 interface LoadsDefaults {
-  loadDefaults(targetVersion: string): void;
+  loadDefaults(targetVersion: string | number): void;
 }
 
 export class Trailmap extends Application {
