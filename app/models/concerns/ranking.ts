@@ -14,6 +14,7 @@
  * `ready()` — the `enum` already generates a `Story.ready()` meaning only
  * `status = 'ready'`. Conflating them would hand agents unclaimable stories.
  */
+import { effectiveStoryStatus } from "./effective-status.js";
 import type { Story } from "../story.js";
 
 /** A snapshot of everything the queue reads, loaded once per query. */
@@ -78,13 +79,13 @@ export function claimableIn(index: RankingIndex, opts: { rfc?: string } = {}): S
   return (
     index.stories
       .filter((s) => {
-        if (s.status !== "ready") return false;
-        // A story is only claimable if its OWN RFC is active: a `ready` story
-        // under a draft RFC violates the lifecycle invariant, and one under a
-        // closed RFC is almost certainly stale. An RFC absent from the
-        // snapshot fails this too — don't surface a story whose RFC can't be
-        // confirmed active.
-        if (index.rfcStatus.get(s.rfc_id) !== "active") return false;
+        // Both claimability gates in one call: `effectiveStoryStatus` folds
+        // the story's authored status together with its parent RFC's, so a
+        // `ready` story under a draft RFC (or under an RFC absent from the
+        // snapshot) comes back as `draft` and is filtered out here. Asking the
+        // shared rule rather than re-testing `rfcStatus === "active"` is what
+        // keeps the queue and the published index from disagreeing.
+        if (effectiveStoryStatus(index.rfcStatus.get(s.rfc_id), s.status) !== "ready") return false;
         if (opts.rfc && s.rfc_id !== opts.rfc) return false;
         if ((index.deps.get(s.id) ?? []).some((d) => !isDepResolved(storyStatus.get(d)))) {
           return false;
@@ -214,7 +215,13 @@ export function listFilteredIn(
 ): Story[] {
   return index.stories.filter((s) => {
     if (opts.rfc && s.rfc_id !== opts.rfc) return false;
-    if (opts.status && s.status !== opts.status) return false;
+    // EFFECTIVE status, not the authored one: the CLI filters the published
+    // index, where a `ready` story under a non-active RFC is already a `draft`.
+    // Filtering the raw column instead put 267 such stories under
+    // `--status ready` that the CLI reports as `draft` — a caller trusting
+    // `list --status ready` would be reading a queue nobody can claim.
+    if (opts.status && effectiveStoryStatus(index.rfcStatus.get(s.rfc_id), s.status) !== opts.status)
+      return false;
     if (opts.cluster && s.cluster !== opts.cluster) return false;
     return true;
   });
@@ -231,7 +238,11 @@ export function storiesTouchingIn(
   const q = query.replace(/^\.\//, "");
   const dir = q.endsWith("/") ? q : `${q}/`;
   const scoped = index.stories.filter(
-    (s) => opts.all || OPEN_STORY_STATUSES.includes(s.status),
+    (s) =>
+      opts.all ||
+      OPEN_STORY_STATUSES.includes(
+        String(effectiveStoryStatus(index.rfcStatus.get(s.rfc_id), s.status)),
+      ),
   );
   const tier = (match: (p: string) => boolean): Story[] =>
     scoped.filter((s) => (index.paths.get(s.id) ?? []).some(match));

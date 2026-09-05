@@ -206,6 +206,14 @@ describe("the pure ranking helpers", () => {
   });
 });
 
+describe("the parent-RFC status override in list", () => {
+  it("filters on the effective status, so an unclaimable ready story lists as draft", async () => {
+    await seed("stale", "0002-draft", "ready");
+    expect((await Story.listFiltered({ status: "ready" })).map((s) => s.id)).toEqual([]);
+    expect((await Story.listFiltered({ status: "draft" })).map((s) => s.id)).toEqual(["stale"]);
+  });
+});
+
 describe("Story.rankingIndex", () => {
   it("collects the association rows the queue reads into maps", async () => {
     await seed("dependent", "0136-trailmap", "ready");
@@ -218,6 +226,16 @@ describe("Story.rankingIndex", () => {
     expect(index.rfcDeps.get("dependent")).toEqual(["0002-draft"]);
     expect(index.paths.get("dependent")).toEqual(["app/models/story.ts"]);
     expect(index.rfcStatus.get("0002-draft")).toBe("draft");
-    expect(index.stories.map((s) => s.id)).toEqual(["dependent", "base"]);
+    // (priority, id), matching the order the CLI's index.json is sorted into —
+    // not insertion order.
+    expect(index.stories.map((s) => s.id)).toEqual(["base", "dependent"]);
+  });
+
+  it("sorts stories by priority then id, the way the CLI's index is sorted", async () => {
+    await seed("zebra", "0136-trailmap", "ready");
+    await seed("alpha", "0136-trailmap", "ready");
+    await seed("urgent", "0136-trailmap", "ready", { priority: 1 });
+    const index = await Story.rankingIndex();
+    expect(index.stories.map((s) => s.id)).toEqual(["urgent", "alpha", "zebra"]);
   });
 });

@@ -59,3 +59,14 @@ port needs and the post-deploy SSO check — is in [docs/deploy.md](docs/deploy.
 Every PR runs typecheck, the test suite, and a cold-start boot smoke test
 (`scripts/smoke-boot.sh`): a clean `git archive` checkout, installed from the
 vendored tarballs with no registry access, booted, and asked for a page.
+
+It also runs **the gate** (`pnpm gate`, `scripts/equivalence.ts`): trailmap's
+ready queue is a rewrite of the CLI's ranking functions, so every PR proves the
+two produce the same `ready`, `next-bundle` and `list` output — byte for byte,
+over one snapshot of one database. Run it against the live database with:
+
+```sh
+TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db pnpm gate
+```
+
+A difference is a defect in the port, not a variance to tolerate.

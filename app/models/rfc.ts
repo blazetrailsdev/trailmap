@@ -1,6 +1,7 @@
 import { Base } from "@blazetrails/activerecord";
 import { pinTimestampColumns } from "./timestamps.js";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
+import { closedRfcErrors } from "./concerns/semantic-validation.js";
 import type { Story } from "./story.js";
 
 export const RFC_STATUSES = ["draft", "active", "closed", "postponed", "superseded"] as const;
@@ -44,5 +45,19 @@ export class Rfc extends Base {
       postponed: "postponed",
       superseded: "superseded",
     });
+
+    // The RFC-lifecycle half of the semantic rules: a closed RFC may not hold
+    // an unfinished story. Like Story's, it runs in the `ingest` context only —
+    // the rule is about what the CONTENT asserts, and the auto-close rule
+    // (rfc-close.ts) already maintains it on the mutation path.
+    this.validate(
+      async (record) => {
+        const rfc = record as unknown as Rfc;
+        if (rfc.status !== "closed") return;
+        const stories = await rfc.stories.toArray();
+        for (const message of closedRfcErrors(rfc, stories)) rfc.errors.add("base", message);
+      },
+      { on: "ingest" },
+    );
   }
 }
