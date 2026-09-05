@@ -7,7 +7,7 @@ describe("tasksDatabaseConfig", () => {
     expect(hasTasksDatabase()).toBe(Boolean(env.TASKS_DATABASE));
   });
 
-  it("describes a read-only connection to the file TASKS_DATABASE names", () => {
+  it("describes a single-connection pool to the file TASKS_DATABASE names", () => {
     if (!hasTasksDatabase()) {
       // No live database here — the only claim left to make is that asking for
       // one says so, rather than handing back something unusable.
@@ -18,7 +18,6 @@ describe("tasksDatabaseConfig", () => {
       adapter: "sqlite3",
       database: env.TASKS_DATABASE,
       pool: 1,
-      readonly: true,
     });
   });
 });

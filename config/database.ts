@@ -16,20 +16,24 @@ export default {
 };
 
 /**
- * The live CLI database, read-only.
+ * The live CLI database, read-write.
  *
- * trailmap does not own `tasks.db` yet — the CLI in `blazetrailsdev/tasks`
- * still writes it — so this is deliberately NOT one of the environment keys
- * above: those are the databases `trails db migrate` fans out over, and
- * migrating or dropping the CLI's live file is exactly what must not happen.
- * It is a connection you opt into by pointing `TASKS_DATABASE` at the file
- * (`<tasks checkout>/.git/tasks.db`).
+ * This is deliberately NOT one of the environment keys above: those are the
+ * databases `trails db migrate` fans out over, and migrating or dropping the
+ * CLI's live file is exactly what must not happen. It is a connection you opt
+ * into by pointing `TASKS_DATABASE` at the file (`<tasks checkout>/.git/tasks.db`).
  *
- * `readonly` is the enforcement, not a convention: the models moved here
- * unchanged, callbacks and all, and a stray save against the live database
- * would be a cross-repo write from an application that is only supposed to
- * read. Read via the process adapter rather than `process.env` — nothing in
- * trailmap touches `process` directly.
+ * `readonly` came off here when the mutation endpoints landed: trailmap is now
+ * the SOLE WRITER of `tasks.db` (app/controllers/mutations-controller.ts), and
+ * a read-only connection would refuse the writes it exists to perform. The
+ * guard it used to provide — nothing else may write this file — moved from the
+ * connection flag to the deployment: one process, one writer, and the CLI
+ * posting to the API instead of opening the file.
+ *
+ * `pool: 1` is load-bearing now rather than incidental. SQLite takes one
+ * writer at a time, and a single connection serializes the mutation verbs in
+ * the process rather than letting concurrent requests race into
+ * `SQLITE_BUSY`.
  *
  * Ask `hasTasksDatabase()` first. This throws rather than returning null when
  * `TASKS_DATABASE` is unset, so a caller that forgot the check fails at the
@@ -44,7 +48,7 @@ export function tasksDatabaseConfig(): Record<string, unknown> {
         "(<tasks checkout>/.git/tasks.db) to read the live database.",
     );
   }
-  return { adapter: "sqlite3", database, pool: 1, readonly: true };
+  return { adapter: "sqlite3", database, pool: 1 };
 }
 
 /** Whether `TASKS_DATABASE` names a database to read. */
