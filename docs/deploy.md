@@ -48,6 +48,10 @@ dokku ps:stop trailmap                          # release 127.0.0.1:8080
 git push dokku main:trunk
 ```
 
+The push exits non-zero even on a successful deploy: the uptime-monitor plugin
+runs last and cannot reach Uptime Kuma on this box. Judge the deploy by the
+`Healthcheck succeeded name='boot'` and `Renaming container` lines above it.
+
 `ps:stop` is not optional. The container holds a fixed host port, so a rolling
 deploy fails with `Bind for 127.0.0.1:8080 failed: port is already allocated`
 and the new container never starts.
