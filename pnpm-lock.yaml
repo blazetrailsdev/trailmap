@@ -42,6 +42,9 @@ importers:
       '@blazetrails/activesupport':
         specifier: file:vendor/blazetrails-activesupport-0.1.0.tgz
         version: file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
+      '@blazetrails/date':
+        specifier: file:vendor/blazetrails-date-0.1.0.tgz
+        version: file:vendor/blazetrails-date-0.1.0.tgz
       '@blazetrails/rack':
         specifier: file:vendor/blazetrails-rack-0.1.0.tgz
         version: file:vendor/blazetrails-rack-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
