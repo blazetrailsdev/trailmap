@@ -19,6 +19,12 @@ import {
 } from "./concerns/ranking.js";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 import type { StoryPackage } from "./joins.js";
+import {
+  checkDepGraph,
+  depGraphMessages,
+  estLocErrors,
+  lifecycleErrors,
+} from "./concerns/semantic-validation.js";
 import type { Temporal } from "@blazetrails/date";
 
 export const STORY_STATUSES = [
@@ -120,6 +126,64 @@ export class Story extends Base {
       blocked: "blocked",
       closed: "closed",
     });
+
+    // The semantic half of validation (see concerns/semantic-validation.ts).
+    // Scoped to the `ingest` context ON PURPOSE: ingest is the write that
+    // publishes authored content, so it is where bad content must be refused,
+    // while the mutation verbs move one field at a time and would otherwise be
+    // made to re-prove — and get stuck behind — a row they did not author.
+    this.validate(
+      (record) => {
+        const story = record as unknown as Story;
+        for (const message of [...lifecycleErrors(story), ...estLocErrors(story)]) {
+          story.errors.add("base", message);
+        }
+      },
+      { on: "ingest" },
+    );
+  }
+
+  /**
+   * Every semantic error in the whole content set, in validate-lib.mjs's voice.
+   *
+   * The dep graph is why this is a CLASS method rather than more per-record
+   * validations: a reference resolves against the other stories and a cycle is
+   * a property of the graph, so neither can be judged from one row. Ingest
+   * calls this after loading and refuses the batch if it comes back non-empty.
+   */
+  static async semanticErrors(): Promise<string[]> {
+    const [stories, rfcs, deps, rfcDeps] = await Promise.all([
+      Story.all().toArray(),
+      Rfc.all().toArray(),
+      StoryDep.all().toArray(),
+      StoryRfcDep.all().toArray(),
+    ]);
+    const edges = new Map<string, string[]>();
+    const rfcEdges = new Map<string, string[]>();
+    for (const d of deps) edges.set(d.story_id, [...(edges.get(d.story_id) ?? []), d.depends_on_id]);
+    for (const d of rfcDeps) {
+      rfcEdges.set(d.story_id, [...(rfcEdges.get(d.story_id) ?? []), d.rfc_id]);
+    }
+
+    const messages: string[] = [];
+    for (const story of stories) {
+      if (!(await story.validate("ingest"))) messages.push(...story.errors.fullMessages);
+    }
+    messages.push(
+      ...depGraphMessages(
+        checkDepGraph({
+          storyIds: new Set(stories.map((s) => s.id)),
+          rfcIds: new Set(rfcs.map((r) => r.id)),
+          depsOf: (id) => edges.get(id) ?? [],
+          depsRfcOf: (id) => rfcEdges.get(id) ?? [],
+          seeds: stories.map((s) => s.id),
+        }),
+      ),
+    );
+    for (const rfc of rfcs) {
+      if (!(await rfc.validate("ingest"))) messages.push(...rfc.errors.fullMessages);
+    }
+    return messages;
   }
 
   // ──────────────────── ready queue (ported from src/ranking.ts) ────────────────────
@@ -148,6 +212,17 @@ export class Story extends Base {
     };
     const rfcPriority = new Map<string, number>();
     for (const r of rfcs) if (typeof r.priority === "number") rfcPriority.set(r.id, r.priority);
+    // Sorting here is NOT cosmetic. The CLI's index.json is sorted by
+    // (priority, id) before ranking ever sees it, and every downstream tie —
+    // `claimable()`'s stable sort, `list`'s output, the bundle knapsack's pick
+    // among equal-value subsets — falls back to that order. Reading rows in
+    // whatever order SQLite returns them reordered the queue without changing
+    // its membership, which is exactly the silent reordering the equivalence
+    // gate exists to catch (and did).
+    stories.sort(
+      (a, b) => (a.priority ?? PRIORITY_UNSET) - (b.priority ?? PRIORITY_UNSET) ||
+        a.id.localeCompare(b.id),
+    );
     return {
       stories,
       rfcStatus: new Map(rfcs.map((r) => [r.id, r.status as string])),
@@ -443,6 +518,9 @@ function clearedBy(status: StoryStatus): Record<string, unknown> {
   }
   return fields;
 }
+
+/** What the CLI's index sorts an unprioritized story as. Ties break on id. */
+const PRIORITY_UNSET = 1_000_000;
 
 export { bestBundle, comparePriority, priorityContext, summarizeBundle };
 export type { EmptyBundleReason, RankingIndex };

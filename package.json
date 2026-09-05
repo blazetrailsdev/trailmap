@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
+    "gate": "tsx scripts/equivalence.ts",
     "trails": "tsx node_modules/@blazetrails/trailties/bin/trails.js",
     "dev": "tsx node_modules/@blazetrails/trailties/bin/trails.js server",
     "db:create": "tsx node_modules/@blazetrails/trailties/bin/trails.js db create",

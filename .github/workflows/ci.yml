@@ -56,3 +56,47 @@ jobs:
         with:
           node-version-file: .node-version
       - run: ./scripts/smoke-boot.sh
+
+  # THE GATE (RFC 0136). trailmap's ready queue is a rewrite of the CLI's
+  # ranking functions, and the only thing that makes that safe is proving the
+  # two produce the same queue over the same database. It is the merge
+  # condition for the ranking and verb work, so it runs on every PR.
+  #
+  # CI has no copy of the live tasks.db (it lives in another repo's .git), so
+  # this builds an equivalent one: check the content repo out, ingest its
+  # markdown tree into a fresh database, then point BOTH implementations at
+  # that single file. One snapshot, by construction.
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: blazetrailsdev/tasks
+          path: tasks
+      # A version is required here; package.json deliberately carries no
+      # `packageManager` key, which is the other way to satisfy it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
+        working-directory: tasks
+      - name: Ingest the content tree into a database both sides can read
+        working-directory: tasks
+        env:
+          TASKS_DB: ${{ github.workspace }}/tmp/ci-tasks.db
+        run: |
+          mkdir -p "$(dirname "$TASKS_DB")"
+          # ingest writes rows; it does not create the schema.
+          pnpm db:migrate
+          ./bin/tasks ingest
+      - name: trailmap's ready queue == the CLI's, byte for byte
+        env:
+          TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
+          TASKS_CLI: ${{ github.workspace }}/tasks
+        run: pnpm gate
