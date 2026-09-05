@@ -29,6 +29,7 @@
     "@blazetrails/actionpack": "file:vendor/blazetrails-actionpack-0.1.0.tgz",
     "@blazetrails/actionview": "file:vendor/blazetrails-actionview-0.1.0.tgz",
     "@blazetrails/trailties": "file:vendor/blazetrails-trailties-0.1.0.tgz",
+    "@blazetrails/date": "file:vendor/blazetrails-date-0.1.0.tgz",
     "better-sqlite3": "^12.6.2"
   },
   "devDependencies": {
