@@ -47,3 +47,15 @@ pnpm install
 pnpm exec trails-tsc-views build --views app/views
 pnpm exec tsx node_modules/@blazetrails/trailties/bin/trails.js server
 ```
+
+## Deployment
+
+trailmap is a dokku app: the dashboard on `trailmap.deanoftech.com` behind SSO,
+the JSON API on loopback only. The procedure — including the `ps:stop` a fixed
+port needs and the post-deploy SSO check — is in [docs/deploy.md](docs/deploy.md).
+
+## CI
+
+Every PR runs typecheck, the test suite, and a cold-start boot smoke test
+(`scripts/smoke-boot.sh`): a clean `git archive` checkout, installed from the
+vendored tarballs with no registry access, booted, and asked for a page.
