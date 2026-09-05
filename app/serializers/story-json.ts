@@ -12,7 +12,9 @@
  * `test/serializers/story-json.test.ts` diffs the output against the published
  * `index.json` for the full RFC set, which is the real guard.
  */
-import { Rfc, Story, StoryDep, StoryPackage, StoryPath, StoryRfcDep } from "../models/index.js";
+import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
+import type { Story } from "../models/index.js";
+import type { RankingIndex } from "../models/concerns/ranking.js";
 
 export interface StoryJson {
   id: string;
@@ -37,22 +39,6 @@ export interface StoryJson {
 }
 
 /**
- * A non-active parent RFC overrides its stories' queue status: a `ready` story
- * under a draft/closed/unknown RFC must never surface as claimable to ANY
- * consumer. Only `ready` downgrades — in-flight and terminal statuses record
- * facts, not claimability. Ported from `scripts/validate-lib.mjs`'s
- * `effectiveStoryStatus`, which is what `index.json` emits today; the authored
- * value is preserved as `raw_status`.
- */
-export function effectiveStoryStatus(
-  rfcStatus: string | null,
-  storyStatus: string | null,
-): string | null {
-  if (storyStatus === "ready" && rfcStatus !== "active") return "draft";
-  return storyStatus;
-}
-
-/**
  * Frontmatter dates were parsed by js-yaml into Dates, so `index.json` carries
  * ISO midnight. Reproduce that from the stored date-only string, taking the
  * date part defensively: a value that carried a time component used to build
@@ -74,45 +60,15 @@ function integerOrNull(value: unknown): number | null {
   return Number.isInteger(value) ? (value as number) : null;
 }
 
-function groupBy<T>(rows: T[], key: (row: T) => string, value: (row: T) => string) {
-  const grouped = new Map<string, string[]>();
-  for (const row of rows) {
-    const bucket = grouped.get(key(row));
-    if (bucket) bucket.push(value(row));
-    else grouped.set(key(row), [value(row)]);
-  }
-  return grouped;
-}
-
-/** Everything the join columns and the parent RFC contribute, loaded once. */
-export interface StoryJsonContext {
-  rfcStatus: ReadonlyMap<string, string>;
-  deps: ReadonlyMap<string, string[]>;
-  rfcDeps: ReadonlyMap<string, string[]>;
-  paths: ReadonlyMap<string, string[]>;
-  packages: ReadonlyMap<string, string[]>;
-}
-
 /**
- * One query per join table rather than per-row association loads: a `list`
- * over 7k stories would otherwise be an N+1 in the request path.
+ * The snapshot a serialization reads: `Story.rankingIndex()`, which every read
+ * verb already loads. Taking it rather than querying for itself is what keeps a
+ * request at one pass per table — the queue and the serializer read the SAME
+ * six tables, and scanning them twice over a 7k-story backlog in the request
+ * path is exactly what `rankingIndex` and `buildIndex` both went out of their
+ * way to avoid.
  */
-export async function storyJsonContext(): Promise<StoryJsonContext> {
-  const [rfcs, deps, rfcDeps, paths, packages] = await Promise.all([
-    Rfc.all().toArray(),
-    StoryDep.all().toArray(),
-    StoryRfcDep.all().toArray(),
-    StoryPath.all().toArray(),
-    StoryPackage.all().toArray(),
-  ]);
-  return {
-    rfcStatus: new Map(rfcs.map((r) => [r.id, r.status as string])),
-    deps: groupBy(deps, (d) => d.story_id, (d) => d.depends_on_id),
-    rfcDeps: groupBy(rfcDeps, (d) => d.story_id, (d) => d.rfc_id),
-    paths: groupBy(paths, (p) => p.story_id, (p) => p.path),
-    packages: groupBy(packages, (p) => p.story_id, (p) => p.package),
-  };
-}
+export type StoryJsonContext = RankingIndex;
 
 export function serializeStory(story: Story, context: StoryJsonContext): StoryJson {
   const raw = asString(story.status);
@@ -139,7 +95,6 @@ export function serializeStory(story: Story, context: StoryJsonContext): StoryJs
   };
 }
 
-export async function serializeStories(stories: Story[]): Promise<StoryJson[]> {
-  const context = await storyJsonContext();
+export function serializeStories(stories: Story[], context: StoryJsonContext): StoryJson[] {
   return stories.map((story) => serializeStory(story, context));
 }

@@ -13,27 +13,7 @@ import {
   StoryRfcDep,
   loadModelSchemas,
 } from "../../app/models/index.js";
-import {
-  effectiveStoryStatus,
-  serializeStories,
-  serializeStory,
-  storyJsonContext,
-} from "../../app/serializers/story-json.js";
-
-describe("effectiveStoryStatus", () => {
-  it("downgrades a ready story whose RFC is not active", () => {
-    expect(effectiveStoryStatus("draft", "ready")).toBe("draft");
-    expect(effectiveStoryStatus("closed", "ready")).toBe("draft");
-    expect(effectiveStoryStatus(null, "ready")).toBe("draft");
-  });
-
-  it("passes every other status through as authored", () => {
-    expect(effectiveStoryStatus("active", "ready")).toBe("ready");
-    expect(effectiveStoryStatus("draft", "in-progress")).toBe("in-progress");
-    expect(effectiveStoryStatus("closed", "done")).toBe("done");
-    expect(effectiveStoryStatus("active", null)).toBeNull();
-  });
-});
+import { serializeStories, serializeStory } from "../../app/serializers/story-json.js";
 
 describe("the serializer", () => {
   beforeAll(async () => {
@@ -69,20 +49,22 @@ describe("the serializer", () => {
     await StoryPackage.create({ story_id: "full", package: "trailmap" });
   });
 
-  it("collects the join rows and RFC statuses one query per table", async () => {
-    const context = await storyJsonContext();
+  // The context IS `Story.rankingIndex()` — the snapshot the read verbs
+  // already load — so the serializer adds no queries of its own.
+  it("reads its packages, deps and paths out of the ranking index", async () => {
+    const index = await Story.rankingIndex();
 
-    expect(context.rfcStatus.get("0136-trailmap")).toBe("active");
-    expect(context.deps.get("full")).toEqual(["bare"]);
-    expect(context.rfcDeps.get("full")).toEqual(["0002-draft"]);
-    expect(context.paths.get("full")).toEqual(["app/serializers/story-json.ts"]);
-    expect(context.packages.get("full")).toEqual(["trailmap"]);
+    expect(index.rfcStatus.get("0136-trailmap")).toBe("active");
+    expect(index.deps.get("full")).toEqual(["bare"]);
+    expect(index.rfcDeps.get("full")).toEqual(["0002-draft"]);
+    expect(index.paths.get("full")).toEqual(["app/serializers/story-json.ts"]);
+    expect(index.packages.get("full")).toEqual(["trailmap"]);
   });
 
   it("renders every field readmodel.ts emits", async () => {
     const story = (await Story.findBy({ id: "full" }))!;
 
-    expect(serializeStory(story, await storyJsonContext())).toEqual({
+    expect(serializeStory(story, await Story.rankingIndex())).toEqual({
       id: "full",
       rfc: "0136-trailmap",
       title: "Serve the read verbs",
@@ -106,7 +88,10 @@ describe("the serializer", () => {
   });
 
   it("empties the list fields a story has no rows for", async () => {
-    const [bare] = await serializeStories([(await Story.findBy({ id: "bare" }))!]);
+    const [bare] = serializeStories(
+      [(await Story.findBy({ id: "bare" }))!],
+      await Story.rankingIndex(),
+    );
 
     expect(bare.packages).toEqual([]);
     expect(bare.deps).toEqual([]);
@@ -119,13 +104,17 @@ describe("the serializer", () => {
   // ONE unparseable date used to take every verb down for everyone, because
   // the index is rebuilt on every read. Drop the field, not the response.
   it("drops a date it cannot parse rather than the whole response", async () => {
-    const [bare] = await serializeStories([(await Story.findBy({ id: "bare" }))!]);
+    const [bare] = serializeStories(
+      [(await Story.findBy({ id: "bare" }))!],
+      await Story.rankingIndex(),
+    );
 
     expect(bare.updated).toBeNull();
   });
 
   it("serializes a whole list in the order it was handed", async () => {
-    const rows = await serializeStories(await Story.listFiltered());
+    const index = await Story.rankingIndex();
+    const rows = serializeStories(await Story.listFiltered({ index }), index);
 
     // `listFiltered` hands over index.json order — prioritised first — and the
     // serializer preserves it rather than imposing one of its own.
@@ -155,30 +144,41 @@ async function publishedIndexPath(): Promise<string> {
 }
 
 withLiveDatabase("the published index.json", () => {
-  let published: Record<string, unknown>[];
-
   beforeAll(async () => {
     await Base.establishConnection(tasksDatabaseConfig());
     await loadModelSchemas();
-    const fs = await getFsAsync();
-    const raw = await fs.readFile!(await publishedIndexPath(), "utf8");
-    published = JSON.parse(raw as string).stories;
   });
 
-  it("matches the serialized stories field for field", async () => {
-    const serialized = await serializeStories(await Story.listFiltered());
+  async function readPublished(): Promise<string> {
+    const fs = await getFsAsync();
+    return String(await fs.readFile!(await publishedIndexPath(), "utf8"));
+  }
 
-    // Report the differing STORIES rather than dumping 7k rows: a real
-    // regression is a field, and naming the ids that carry it is the
-    // difference between a readable failure and an unreadable one. (The CLI
-    // republishes index.json on every mutation, so a mismatch on a live
-    // checkout can also just be a claim landing mid-run — the ids tell the two
-    // apart at a glance.)
-    const differing = serialized.filter(
-      (story, i) => JSON.stringify(story) !== JSON.stringify(published[i]),
-    );
+  it("matches the serialized stories field for field", async (ctx) => {
+    // Read the file, serialize, read it AGAIN. The CLI republishes index.json
+    // on every mutation, so on a live checkout another agent's claim landing
+    // mid-run rewrites the very file under comparison — and that is a race in
+    // the fixture, not a regression in the serializer. A second read that
+    // differs proves it, and the pass is retried against the new file rather
+    // than reported as a failure.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const before = await readPublished();
+      const index = await Story.rankingIndex();
+      const serialized = serializeStories(await Story.listFiltered({ index }), index);
+      if ((await readPublished()) !== before) continue;
 
-    expect(differing).toEqual([]);
-    expect(serialized).toHaveLength(published.length);
+      const published: Record<string, unknown>[] = JSON.parse(before).stories;
+      // Report the differing STORIES rather than dumping 7k rows: a real
+      // regression is one field, and naming the ids that carry it is the
+      // difference between a readable failure and an unreadable one.
+      const differing = serialized.filter(
+        (story, i) => JSON.stringify(story) !== JSON.stringify(published[i]),
+      );
+
+      expect(differing).toEqual([]);
+      expect(serialized).toHaveLength(published.length);
+      return;
+    }
+    ctx.skip("index.json was republished under every attempt — the backlog is busy");
   });
 });

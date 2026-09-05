@@ -25,6 +25,11 @@ export interface RankingIndex {
   deps: ReadonlyMap<string, string[]>;
   rfcDeps: ReadonlyMap<string, string[]>;
   paths: ReadonlyMap<string, string[]>;
+  // Read by the serializer, not by the ranking itself: the published index
+  // carries a story's packages, and loading them here is what lets one snapshot
+  // answer a whole request instead of the queue and the serializer each
+  // scanning the join tables.
+  packages: ReadonlyMap<string, string[]>;
 }
 
 export interface PriorityContext {

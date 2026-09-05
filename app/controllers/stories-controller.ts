@@ -2,7 +2,7 @@ import { respondTo } from "@blazetrails/actionpack";
 import { ApplicationController } from "./application-controller.js";
 import { requireLoopback } from "./concerns/loopback-only.js";
 import { Story } from "../models/index.js";
-import { summarizeBundle } from "../models/concerns/ranking.js";
+import { summarizeBundle, type RankingIndex } from "../models/concerns/ranking.js";
 import { serializeStories } from "../serializers/story-json.js";
 
 /** `next-bundle`'s default budget, matching the CLI's `--max-loc` default. */
@@ -33,17 +33,20 @@ export class StoriesController extends ApplicationController {
 
   /** `tasks list [--status S] [--rfc R] [--cluster C]` */
   async index(): Promise<void> {
+    const index = await Story.rankingIndex();
     const rows = await Story.listFiltered({
+      index,
       rfc: this.param("rfc"),
       status: this.param("status"),
       cluster: this.param("cluster"),
     });
-    await this.renderStories(rows);
+    this.renderStories(rows, index);
   }
 
   /** `tasks ready [--rfc R]` — the ready queue, in ready-queue order. */
   async ready(): Promise<void> {
-    await this.renderStories(await Story.claimable({ rfc: this.param("rfc") }));
+    const index = await Story.rankingIndex();
+    this.renderStories(await Story.claimable({ index, rfc: this.param("rfc") }), index);
   }
 
   /**
@@ -56,11 +59,12 @@ export class StoriesController extends ApplicationController {
    * spawned. Keep the CLI's keys exactly.
    */
   async nextBundle(): Promise<void> {
+    const index = await Story.rankingIndex();
     const maxLoc = this.intParam("max-loc") ?? DEFAULT_MAX_LOC;
-    const opts = { maxLoc, cluster: this.param("cluster"), rfc: this.param("rfc") };
+    const opts = { index, maxLoc, cluster: this.param("cluster"), rfc: this.param("rfc") };
     const rows = await Story.nextBundle(opts);
     const summary = summarizeBundle(rows, maxLoc);
-    const stories = await serializeStories(rows);
+    const stories = serializeStories(rows, index);
     this.respondWith({
       stories,
       bundle_total_loc: summary.total,
@@ -70,30 +74,49 @@ export class StoriesController extends ApplicationController {
     });
   }
 
-  /** `tasks show <id>` — one story, or 404. */
+  /**
+   * `tasks show <id>` — one story, or 404.
+   *
+   * Found in the snapshot rather than by its own `findBy`, exactly as the CLI
+   * does (`index.stories.find`): the story still has to be serialized, and the
+   * serialization needs the snapshot anyway.
+   */
   async show(): Promise<void> {
     const id = this.param("id") ?? "";
-    const story = await Story.findBy({ id });
+    const index = await Story.rankingIndex();
+    const story = index.stories.find((s) => s.id === id);
     if (!story) {
       this.render({ json: { error: `story "${id}" not found` }, status: 404 });
       return;
     }
-    await this.renderStories([story]);
+    this.renderStories([story], index);
   }
 
-  /** `tasks touching <path> [--all]` */
+  /**
+   * `tasks touching <path> [--all]`.
+   *
+   * A missing `path` is refused, matching the CLI's `if (!pos[0]) return
+   * usage()`. It cannot be allowed to default to the empty string: the
+   * substring tier is `p.includes(query)`, which every path satisfies, so the
+   * whole open backlog would come back dressed as a search result.
+   */
   async touching(): Promise<void> {
-    const path = this.param("path") ?? "";
-    const rows = await Story.touching(path, { all: this.param("all") !== undefined });
-    await this.renderStories(rows);
+    const path = this.param("path");
+    if (path === undefined) {
+      this.render({ json: { error: "touching requires a path" }, status: 400 });
+      return;
+    }
+    const index = await Story.rankingIndex();
+    const rows = await Story.touching(path, { index, all: this.param("all") !== undefined });
+    this.renderStories(rows, index);
   }
 
   /**
    * `show` renders the bare object the CLI's `show` prints; every other verb
    * renders the array its `--json` prints.
    */
-  private async renderStories(rows: Story[]): Promise<void> {
-    const stories = await serializeStories(rows);
+  private renderStories(rows: Story[], index: RankingIndex): void {
+    const stories = serializeStories(rows, index);
     this.respondWith(this.actionName === "show" ? stories[0] : stories);
   }
 

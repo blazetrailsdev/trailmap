@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { migrateScratchDatabase } from "../models/schema.js";
 import { Rfc, Story, StoryDep, StoryPath, loadModelSchemas } from "../../app/models/index.js";
@@ -139,6 +139,33 @@ describe("StoriesController", () => {
     });
 
     expect(body.map((s: any) => s.id)).toEqual(["dependent"]);
+  });
+
+  // The CLI refuses this outright (`if (!pos[0]) return usage()`), and the
+  // substring tier matches every path against "", so defaulting would hand
+  // back the whole open backlog dressed as a search result.
+  it("refuses a touching request with no path", async () => {
+    const { status, body } = await getJson("touching");
+
+    expect(status).toBe(400);
+    expect(body).toEqual({ error: "touching requires a path" });
+  });
+
+  // The queue and the serializer read the SAME snapshot: scanning the join
+  // tables twice per request is what `rankingIndex` exists to avoid.
+  it("loads one ranking index per request", async () => {
+    const rankingIndex = vi.spyOn(Story, "rankingIndex");
+
+    await getJson("ready");
+    expect(rankingIndex).toHaveBeenCalledTimes(1);
+
+    // next-bundle is the one that asks the models twice — for the bundle and
+    // then for why it was empty — and both reads share the one snapshot.
+    rankingIndex.mockClear();
+    await getJson("nextBundle", { params: { "max-loc": "5" } });
+    expect(rankingIndex).toHaveBeenCalledTimes(1);
+
+    rankingIndex.mockRestore();
   });
 
   it("answers JSON to a client that sends no Accept header", async () => {
