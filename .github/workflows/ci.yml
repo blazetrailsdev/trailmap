@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Node 24: @blazetrails/rack throws a regex SyntaxError at import time on 20
+# and 22, so the LTS default would turn every job red for the wrong reason.
+# .node-version is the single source of truth, shared with the Dockerfile.
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # A version is required here; package.json deliberately carries no
+      # `packageManager` key, which is the other way to satisfy it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec trails-tsc-views build --views app/views
+      - run: pnpm exec tsc --noEmit
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # A version is required here; package.json deliberately carries no
+      # `packageManager` key, which is the other way to satisfy it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec trails-tsc-views build --views app/views
+      - run: pnpm test
+
+  boot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # A version is required here; package.json deliberately carries no
+      # `packageManager` key, which is the other way to satisfy it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: ./scripts/smoke-boot.sh
