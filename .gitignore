@@ -22,3 +22,10 @@
 
 # The tasks checkout a worker pane links in beside this one.
 /tasks
+
+# Local agent config, mirrored from the trails convention. skills/ holds a
+# symlink to the canonical post-merge-findings skill and must never be
+# committed: it points outside the repo. settings.local.json is per-machine.
+.claude/settings.local.json
+.claude/skills/
+.claude/worktrees/
