@@ -2,20 +2,11 @@
  * THE GATE. Do not merge the port past a mismatch.
  *
  * The tasks repo already owns this idea — `pnpm gate` there proves the CLI's
- * database read-model matches the markdown one — and it exists because the
- * previous rewrite had to show it did not reorder anyone's work queue.
- * trailmap's models are a rewrite of exactly those ranking functions, so the
- * same gate applies: run BOTH implementations over the SAME database and diff
- * their output. Any difference is a defect in the port, not a variance to
- * tolerate.
- *
- * ONE SNAPSHOT, both sides. The tasks database is under continuous agent
- * traffic — stories are claimed and released while this runs — so comparing a
- * live read against another live read reports differences that are just two
- * different moments. The file is COPIED first and both sides are pointed at the
- * copy, which makes "same snapshot" structural rather than a timing hope. (A
- * stale tree shows up as a queue short by a handful of stories, which looks
- * exactly like a ranking bug and is not one.)
+ * database read-model matches the markdown one — because the previous rewrite
+ * had to show it did not reorder anyone's work queue. trailmap's models are a
+ * rewrite of exactly those ranking functions, so the same gate applies: run
+ * BOTH implementations over the SAME database and diff their output. Any
+ * difference is a defect in the port, not a variance to tolerate.
  *
  * The CLI side is the real binary, spawned with `TASKS_DB` at the snapshot and
  * asked for `--json`; the trailmap side is the models. Compared as the ordered
@@ -23,13 +14,12 @@
  * loop consumes the queue in order.
  *
  *     TASKS_DATABASE=<tasks checkout>/.git/tasks.db pnpm gate  # TASKS_CLI=./tasks
- */
-import { Base } from "@blazetrails/activerecord";
+ */import { Base } from "@blazetrails/activerecord";
 import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
 import { getChildProcessAsync } from "@blazetrails/activesupport/child-process-adapter";
 import { cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
 import { tasksDatabaseConfig } from "../config/database.js";
-import { Rfc, Story, loadModelSchemas } from "../app/models/index.js";
+import { Rfc, Story, StoryPath, loadModelSchemas } from "../app/models/index.js";
 
 /** The `--max-loc` budgets the spawn loop actually asks for. */
 const BUDGETS = [100, 250, 500, 700];
@@ -54,12 +44,13 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  // `VACUUM INTO` rather than a file copy: it is SQLite's own consistent-
-  // snapshot statement, taken under a read transaction, so it captures the
-  // WAL's committed frames and nothing half-written. Copying the files by hand
-  // instead is what a live database punishes — a stale `-shm` alongside a
-  // freshly-written main file reads back SQLITE_CORRUPT, and skipping the WAL
-  // reads back a queue quietly short by whatever committed last.
+  // ONE SNAPSHOT, both sides. This database is under continuous agent traffic,
+  // so two live reads differ by timing alone — and a queue short by a handful
+  // of stories looks exactly like a ranking bug and is not one. `VACUUM INTO`
+  // is SQLite's own consistent-snapshot statement, taken under a read
+  // transaction. Copying the files by hand instead is what a live database
+  // punishes: a stale `-shm` reads back SQLITE_CORRUPT, and skipping the WAL
+  // reads back a queue missing whatever committed last.
   const live = String(tasksDatabaseConfig().database);
   const snapshot = path.join(cwd(), "tmp", "equivalence-snapshot.sqlite3");
   await fs.mkdir!(path.dirname(snapshot), { recursive: true });
@@ -80,6 +71,13 @@ async function main(): Promise<number> {
   // put minutes into a gate that has to run on every PR.
   const queue = await Story.claimable();
   const rfcsWithQueue = [...new Set(queue.map((s) => s.rfc_id))].sort();
+  const clusters = [...new Set(queue.map((s) => s.cluster))]
+    .filter((c): c is string => c !== null)
+    .sort()
+    .slice(0, 3);
+  // A directory and an exact file, taken from paths stories actually cite.
+  const cited = (await StoryPath.all().toArray()).map((p) => p.path).sort();
+  const paths = [...new Set([cited[0] ?? "app", dirOf(cited[cited.length - 1] ?? "app/")])];
   const quiet = (await Rfc.all().toArray())
     .map((r) => r.id)
     .filter((id) => !rfcsWithQueue.includes(id))
@@ -98,6 +96,26 @@ async function main(): Promise<number> {
       args: ["next-bundle", "--max-loc", String(maxLoc)],
       run: () => Story.nextBundle({ maxLoc }),
     })),
+    // `--cluster` is its own code path (bundleScope's filter, and the knapsack
+    // then packing one bucket instead of picking the best of all of them), and
+    // it is the form the spawn loop asks for most. Scoped to clusters that
+    // actually hold claimable work, for the same reason the per-RFC cases are.
+    ...clusters.map((cluster) => ({
+      label: `next-bundle --max-loc 250 --cluster ${cluster}`,
+      args: ["next-bundle", "--max-loc", "250", "--cluster", cluster],
+      run: () => Story.nextBundle({ maxLoc: 250, cluster }),
+    })),
+    // `touching` reads the same statuses through a different lens (the OPEN set
+    // rather than one filter value), so it gets its own cases: a directory
+    // prefix and an exact file, which are two of its three matching tiers.
+    ...paths.flatMap((p) => [
+      { label: `touching ${p}`, args: ["touching", p], run: () => Story.touching(p) },
+      {
+        label: `touching ${p} --all`,
+        args: ["touching", p, "--all"],
+        run: () => Story.touching(p, { all: true }),
+      },
+    ]),
     { label: "list", args: ["list"], run: () => Story.listFiltered() },
     ...STATUSES.map((status) => ({
       label: `list --status ${status}`,
@@ -152,6 +170,12 @@ function cliIds(stdout: string): string[] {
     ? parsed
     : ((parsed as Record<string, unknown>).stories as unknown[]) ?? [];
   return rows.map((r) => String((r as { id: unknown }).id));
+}
+
+/** The directory a cited path sits in, for `touching`'s prefix tier. */
+function dirOf(p: string): string {
+  const at = p.lastIndexOf("/");
+  return at === -1 ? p : p.slice(0, at + 1);
 }
 
 /** The first differing position, which is the only useful thing to report. */
