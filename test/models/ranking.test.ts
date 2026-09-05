@@ -9,6 +9,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { migrateScratchDatabase } from "./schema.js";
 import { Rfc, Story, StoryDep, StoryPath, StoryRfcDep, loadModelSchemas } from "../../app/models/index.js";
+import {
+  bestBundle,
+  comparePriority,
+  effectivePriority,
+  isDepResolved,
+  priorityContext,
+  summarizeBundle,
+} from "../../app/models/concerns/ranking.js";
 
 // The RFC auto-close rule reports on stdout; the assertions read rows.
 vi.spyOn(console, "log").mockImplementation(() => {});
@@ -138,5 +146,78 @@ describe("Story.listFiltered", () => {
     expect((await Story.listFiltered({ status: "ready" })).map((s) => s.id)).toEqual(["one"]);
     expect((await Story.listFiltered({ cluster: "c1" })).length).toBe(2);
     expect(await Story.listFiltered({ rfc: "0002-draft" })).toEqual([]);
+  });
+});
+
+describe("the pure ranking helpers", () => {
+  it("treats done and closed — and nothing else — as a resolved dep", () => {
+    expect(isDepResolved("done")).toBe(true);
+    expect(isDepResolved("closed")).toBe(true);
+    expect(isDepResolved("in-progress")).toBe(false);
+    expect(isDepResolved(null)).toBe(false);
+  });
+
+  it("falls back from the story's priority to its RFC's, then to Infinity", async () => {
+    await Rfc.where({ id: "0136-trailmap" }).updateAll({ priority: 5 });
+    await seed("own", "0136-trailmap", "ready", { priority: 1 });
+    await seed("inherited", "0136-trailmap", "ready");
+    await seed("neither", "0002-draft", "ready");
+    const index = await Story.rankingIndex();
+    const by = (id: string): Story => index.stories.find((s) => s.id === id)!;
+    expect(effectivePriority(by("own"), index.rfcPriority)).toBe(1);
+    expect(effectivePriority(by("inherited"), index.rfcPriority)).toBe(5);
+    expect(effectivePriority(by("neither"), index.rfcPriority)).toBe(Infinity);
+  });
+
+  it("breaks a same-RFC-priority tie by which RFC has less left to do", async () => {
+    await Rfc.create({ id: "0137-other", status: "active", title: "Other", priority: 3 });
+    await Rfc.where({ id: "0136-trailmap" }).updateAll({ priority: 2 });
+    await seed("busy", "0136-trailmap", "ready");
+    await seed("busy-two", "0136-trailmap", "ready");
+    await seed("borrowed", "0137-other", "ready", { priority: 2 });
+    const index = await Story.rankingIndex();
+    const ctx = priorityContext(index);
+    const by = (id: string): Story => index.stories.find((s) => s.id === id)!;
+    // Equal EFFECTIVE priority but different RFC priorities: the tie-break is
+    // about how much of one prioritised RFC is left, so it must not fire here.
+    expect(comparePriority(by("busy"), by("borrowed"), ctx)).toBe(0);
+
+    // Now both RFCs are priority 2, so the one with fewer stories left wins.
+    await Rfc.where({ id: "0137-other" }).updateAll({ priority: 2 });
+    const ctx2 = priorityContext(await Story.rankingIndex());
+    expect(comparePriority(by("busy"), by("borrowed"), ctx2)).toBeGreaterThan(0);
+  });
+
+  it("packs the knapsack to the best total within the budget", async () => {
+    await seed("a", "0136-trailmap", "ready", { est_loc: 300 });
+    await seed("b", "0136-trailmap", "ready", { est_loc: 400 });
+    await seed("c", "0136-trailmap", "ready", { est_loc: 500 });
+    const items = (await Story.rankingIndex()).stories;
+    expect(bestBundle(items, 700).map((s) => s.id)).toEqual(["a", "b"]);
+    expect(bestBundle(items, 0)).toEqual([]);
+    expect(bestBundle([], 700)).toEqual([]);
+  });
+
+  it("totals a bundle and flags one that overruns its budget", async () => {
+    await seed("only", "0136-trailmap", "ready", { est_loc: 900 });
+    const rows = (await Story.rankingIndex()).stories;
+    expect(summarizeBundle(rows, 700)).toEqual({ total: 900, leadExceedsBudget: true });
+    expect(summarizeBundle(rows, 900).leadExceedsBudget).toBe(false);
+  });
+});
+
+describe("Story.rankingIndex", () => {
+  it("collects the association rows the queue reads into maps", async () => {
+    await seed("dependent", "0136-trailmap", "ready");
+    await seed("base", "0136-trailmap", "done");
+    await StoryDep.create({ story_id: "dependent", depends_on_id: "base" });
+    await StoryRfcDep.create({ story_id: "dependent", rfc_id: "0002-draft" });
+    await StoryPath.create({ story_id: "dependent", path: "app/models/story.ts" });
+    const index = await Story.rankingIndex();
+    expect(index.deps.get("dependent")).toEqual(["base"]);
+    expect(index.rfcDeps.get("dependent")).toEqual(["0002-draft"]);
+    expect(index.paths.get("dependent")).toEqual(["app/models/story.ts"]);
+    expect(index.rfcStatus.get("0002-draft")).toBe("draft");
+    expect(index.stories.map((s) => s.id)).toEqual(["dependent", "base"]);
   });
 });
