@@ -12,6 +12,7 @@ import {
   StoryDep,
   StoryPackage,
   StoryPath,
+  StoryRfcDep,
   loadModelSchemas,
 } from "../../app/models/index.js";
 
@@ -28,6 +29,7 @@ beforeAll(async () => {
   await StoryDep.create({ story_id: "dependent", depends_on_id: "base" });
   await StoryPath.create({ story_id: "dependent", path: "packages/activerecord/src/relation.ts" });
   await StoryPackage.create({ story_id: "dependent", package: "activerecord" });
+  await StoryRfcDep.create({ story_id: "dependent", rfc_id: "0002-draft-rfc" });
 });
 
 describe("models", () => {
@@ -35,6 +37,16 @@ describe("models", () => {
     const s = await Story.findBy({ id: "base" });
     expect(s!.isDone()).toBe(true);
     expect(await Story.ready().count()).toBe(2);
+  });
+
+  it("generates a scope and a predicate for every status", async () => {
+    const s = await Story.findBy({ id: "dependent" });
+    expect(s!.isReady()).toBe(true);
+    expect(s!.isDone()).toBe(false);
+    expect(await Story.done().count()).toBe(1);
+    expect(await Story.claimed().count()).toBe(0);
+    expect(await Rfc.active().count()).toBe(1);
+    expect(await Rfc.closed().count()).toBe(0);
   });
 
   it("stores the hyphenated enum value, not the camelCase label", async () => {
@@ -72,6 +84,13 @@ describe("models", () => {
     const s = await Story.findBy({ id: "dependent" });
     const packages = await s!.packages.toArray();
     expect(packages.map((p) => p.package)).toEqual(["activerecord"]);
+  });
+
+  it("walks hasMany rfcDeps through the RFC-dep join", async () => {
+    const s = await Story.findBy({ id: "dependent" });
+    const rfcDeps = await s!.rfcDeps.toArray();
+    expect(rfcDeps.map((r) => r.id)).toEqual(["0002-draft-rfc"]);
+    expect(rfcDeps[0].isActive()).toBe(false);
   });
 
   it("walks an RFC back to its stories", async () => {

@@ -30,9 +30,24 @@ export default {
  * would be a cross-repo write from an application that is only supposed to
  * read. Read via the process adapter rather than `process.env` — nothing in
  * trailmap touches `process` directly.
+ *
+ * Ask `hasTasksDatabase()` first. This throws rather than returning null when
+ * `TASKS_DATABASE` is unset, so a caller that forgot the check fails at the
+ * connection instead of handing `establishConnection` a nullish config and
+ * failing somewhere further in.
  */
-export function tasksDatabaseConfig(): Record<string, unknown> | null {
+export function tasksDatabaseConfig(): Record<string, unknown> {
   const database = env.TASKS_DATABASE;
-  if (!database) return null;
+  if (!database) {
+    throw new Error(
+      "TASKS_DATABASE is not set. Point it at the CLI's tasks.db " +
+        "(<tasks checkout>/.git/tasks.db) to read the live database.",
+    );
+  }
   return { adapter: "sqlite3", database, pool: 1, readonly: true };
+}
+
+/** Whether `TASKS_DATABASE` names a database to read. */
+export function hasTasksDatabase(): boolean {
+  return Boolean(env.TASKS_DATABASE);
 }
