@@ -1,2 +1,25 @@
 <h1>trailmap</h1>
-<p>The task domain, served by trails.</p>
+<p class="muted">The task domain, served by trails — RFCs, stories and the
+ready queue, read and written in one place.</p>
+
+<h2>Pages</h2>
+<div class="box">
+  <div class="box-row"><a href="/rfcs">RFCs</a> — every RFC and its stories.</div>
+  <div class="box-row"><a href="/backlog">Backlog</a> — the ready queue, in rank order.</div>
+</div>
+
+<h2>Status vocabulary</h2>
+<p class="muted">Story statuses, then the RFC statuses that gate them.</p>
+<p>
+  <%= render({ partial: "shared/status-badge", locals: { status: "draft" } }) %>
+  <%= render({ partial: "shared/status-badge", locals: { status: "ready" } }) %>
+  <%= render({ partial: "shared/status-badge", locals: { status: "claimed" } }) %>
+  <%= render({ partial: "shared/status-badge", locals: { status: "in-progress" } }) %>
+  <%= render({ partial: "shared/status-badge", locals: { status: "blocked" } }) %>
+  <%= render({ partial: "shared/status-badge", locals: { status: "done" } }) %>
+  <%= render({ partial: "shared/status-badge", locals: { status: "closed" } }) %>
+</p>
+<p>
+  <%= render({ partial: "shared/status-badge", locals: { status: "active" } }) %>
+  <%= render({ partial: "shared/status-badge", locals: { status: null } }) %>
+</p>
