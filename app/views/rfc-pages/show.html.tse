@@ -1,0 +1,41 @@
+<% if (rfc === null) { %>
+  <h1>RFC not found</h1>
+  <p class="muted">No RFC in the index has the id <code><%= id %></code>.</p>
+<% } else { %>
+  <h1><%= rfc.title ?? rfc.id %></h1>
+  <p class="subhead">
+    <%= render({ partial: "shared/status-badge", locals: { status: rfc.status } }) %>
+    <span class="muted"><%= rfc.id %></span>
+  </p>
+
+  <dl class="meta">
+    <% if (rfc.owner) { %><dt>Owner</dt><dd><%= rfc.owner %></dd><% } %>
+    <% if (rfc.superseded_by) { %>
+      <dt>Superseded by</dt>
+      <dd><a href="/rfc/<%= rfc.superseded_by %>"><%= rfc.superseded_by %></a></dd>
+    <% } %>
+    <% if (rfc.updated_on) { %><dt>Updated</dt><dd><%= rfc.updated_on %></dd><% } %>
+  </dl>
+
+  <h2>Stories <span class="counter"><%= counts.done %>/<%= counts.total %> done</span></h2>
+  <% if (stories.length === 0) { %>
+    <p class="muted">No stories under this RFC yet.</p>
+  <% } else { %>
+    <div class="progress" role="img" aria-label="<%= counts.donePct %>% done">
+      <span class="progress-fill" style="width:<%= counts.donePct %>%"></span>
+    </div>
+    <div class="box">
+      <% for (const story of stories) { %>
+        <div class="box-row">
+          <%= render({ partial: "shared/status-badge", locals: { status: story.status } }) %>
+          <a href="/story/<%= story.id %>"><%= story.title ?? story.id %></a>
+          <% if (story.est_loc !== null) { %><span class="muted"><%= story.est_loc %> loc</span><% } %>
+          <% if (story.cluster) { %><span class="muted"><%= story.cluster %></span><% } %>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <h2>Document</h2>
+  <%= render({ partial: "shared/document", locals: { body: body, error: error } }) %>
+<% } %>

@@ -216,3 +216,94 @@ ul { margin: 0 0 10px 20px; }
 .badge.s-active { background: var(--yellow-bg); color: var(--yellow); border-color: transparent; }
 .badge.s-closed { background: var(--surface); color: var(--purple); border-color: transparent; }
 .badge.s-unknown { background: var(--surface); color: var(--muted); }
+.badge.s-postponed { background: var(--surface); color: var(--muted); }
+.badge.s-superseded { background: var(--surface); color: var(--purple); border-color: transparent; }
+
+/* ── show pages ──────────────────────────────────────────────────────────── */
+
+.subhead { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+
+.counter {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin-bottom: 16px;
+}
+.meta dt { color: var(--muted); }
+.meta dd { display: flex; align-items: center; gap: 8px; }
+
+.progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.progress-fill { display: block; height: 100%; background: var(--green); }
+
+.box-row { display: flex; align-items: center; gap: 8px; }
+
+.note {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--yellow);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+/*
+ * The rendered document. Scoped to `.markdown` because the body is
+ * agent-authored and arbitrary — every tag the renderer can emit needs a rule
+ * here, not just the ones today's stories happen to use.
+ */
+.markdown { overflow-wrap: break-word; }
+.markdown h1 { font-size: 24px; margin: 24px 0 8px; }
+.markdown h2 { font-size: 18px; }
+.markdown h3, .markdown h4, .markdown h5, .markdown h6 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 16px 0 4px;
+}
+.markdown ul, .markdown ol { margin: 0 0 10px 24px; }
+.markdown li { margin-bottom: 2px; }
+.markdown hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+.markdown blockquote {
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+  padding-left: 12px;
+  margin-bottom: 10px;
+}
+.markdown pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+}
+.markdown pre code { font-size: 12px; }
+.markdown p > code, .markdown li > code, .markdown td > code {
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.markdown table {
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  display: block;
+  overflow-x: auto;
+}
+.markdown th, .markdown td {
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  text-align: left;
+}
+.markdown th { background: var(--surface); }

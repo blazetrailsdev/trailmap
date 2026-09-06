@@ -1,0 +1,22 @@
+<%#
+  A rendered markdown document, or the reason there isn't one.
+
+  `body` arrives already rendered, as a SafeBuffer: `renderMarkdown` lives in
+  `app/helpers`, which is inert in the vendored trails — a controller's
+  `_helpers` never reaches the view's scope chain (see shared/_status-badge
+  for the same note and the upstream fix). The controller therefore renders
+  and the view places, which is also why the escaping decision is made once,
+  in the helper, over untrusted agent-authored prose.
+
+  The read error is shown rather than swallowed: a story whose file has been
+  renamed or rehomed is exactly when someone opens its page, and "no document"
+  and "could not read the document" are different answers. Matches ringo's
+  `MarkdownErr` block.
+%>
+<% if (error !== "") { %>
+  <p class="note">Could not read the document: <%= error %></p>
+<% } else if (body !== null) { %>
+  <article class="markdown"><%= body %></article>
+<% } else { %>
+  <p class="muted">No document.</p>
+<% } %>

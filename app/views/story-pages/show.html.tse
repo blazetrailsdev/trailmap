@@ -1,0 +1,53 @@
+<% if (story === null) { %>
+  <h1>Story not found</h1>
+  <p class="muted">No story in the index has the id <code><%= id %></code>.</p>
+<% } else { %>
+  <h1><%= story.title ?? story.id %></h1>
+  <p class="subhead">
+    <%= render({ partial: "shared/status-badge", locals: { status: story.status } }) %>
+    <span class="muted"><%= story.id %></span>
+  </p>
+
+  <dl class="meta">
+    <dt>RFC</dt>
+    <dd>
+      <a href="/rfc/<%= story.rfc_id %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a>
+      <% if (rfc !== null) { %>
+        <%= render({ partial: "shared/status-badge", locals: { status: rfc.status } }) %>
+      <% } %>
+    </dd>
+    <% if (story.cluster) { %><dt>Cluster</dt><dd><%= story.cluster %></dd><% } %>
+    <% if (story.est_loc !== null) { %><dt>Est LOC</dt><dd><%= story.est_loc %></dd><% } %>
+    <% if (story.priority !== null) { %><dt>Priority</dt><dd>p<%= story.priority %></dd><% } %>
+    <% if (story.assignee) { %><dt>Assignee</dt><dd><%= story.assignee %></dd><% } %>
+    <% if (story.pr !== null) { %><dt>PR</dt><dd>#<%= story.pr %></dd><% } %>
+    <% if (story.blocked_by) { %><dt>Blocked by</dt><dd><%= story.blocked_by %></dd><% } %>
+    <% if (story.closed_reason) { %><dt>Closed</dt><dd><%= story.closed_reason %></dd><% } %>
+    <% if (packages.length > 0) { %>
+      <dt>Packages<%= inherited ? " (from RFC)" : "" %></dt>
+      <dd><%= packages.join(", ") %></dd>
+    <% } %>
+  </dl>
+
+  <% if (deps.length > 0 || rfcDeps.length > 0) { %>
+    <h2>Depends on</h2>
+    <div class="box">
+      <% for (const dep of deps) { %>
+        <div class="box-row">
+          <%= render({ partial: "shared/status-badge", locals: { status: dep.status } }) %>
+          <a href="/story/<%= dep.id %>"><%= dep.id %></a>
+        </div>
+      <% } %>
+      <% for (const dep of rfcDeps) { %>
+        <div class="box-row">
+          <%= render({ partial: "shared/status-badge", locals: { status: dep.status } }) %>
+          <a href="/rfc/<%= dep.id %>"><%= dep.id %></a>
+          <span class="muted">RFC</span>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <h2>Document</h2>
+  <%= render({ partial: "shared/document", locals: { body: body, error: error } }) %>
+<% } %>
