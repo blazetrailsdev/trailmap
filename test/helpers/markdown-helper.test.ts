@@ -9,7 +9,7 @@
  * thing standing between an injected `<script>` and the show page.
  */
 import { describe, expect, it } from "vitest";
-import { renderMarkdown } from "../../app/helpers/markdown-helper.js";
+import { MarkdownHelper, renderMarkdown } from "../../app/helpers/markdown-helper.js";
 
 const render = (src: string): string => renderMarkdown(src).toString();
 
@@ -149,5 +149,13 @@ describe("renderMarkdown with a hostile body", () => {
   it("escapes a hostile table cell", () => {
     const got = render("| a |\n| --- |\n| <b>x</b> |");
     expect(got).toContain("<td>&lt;b&gt;x&lt;/b&gt;</td>");
+  });
+});
+
+describe("MarkdownHelper", () => {
+  it("exposes renderMarkdown to views as a SafeBuffer", () => {
+    const html = MarkdownHelper.renderMarkdown("# hi");
+    expect(html.htmlSafe).toBe(true);
+    expect(html.toString()).toBe("<h1>hi</h1>");
   });
 });
