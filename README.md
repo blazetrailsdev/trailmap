@@ -107,3 +107,12 @@ TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db pnpm gate
 ```
 
 A difference is a defect in the port, not a variance to tolerate.
+
+Preflight scans the PR body and every commit message on the PR for Claude
+attribution — the `Co-Authored-By: Claude` trailer, a "Generated with Claude
+Code" line, an `@anthropic.com` address — and fails on a hit, because
+squash-merge folds branch-commit trailers into `main` where the body check
+cannot see them. It is scoped to `deanmarano`-authored PRs and ported from
+trails' job of the same name, `scripts/ci/gh-api-retry.sh` included: without
+that retry a GitHub 5xx reds a step whose name is the only thing the checks UI
+shows, so an API blip reads as an attribution violation.
