@@ -7,6 +7,24 @@
   <link rel="stylesheet" href="/assets/stylesheets/application.css">
 </head>
 <body>
-  <%= yield %>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/">trailmap</a>
+      <nav class="site-nav">
+        <a href="/rfcs">RFCs</a>
+        <a href="/backlog">Backlog</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="site-main">
+    <div class="wrap">
+      <%= yield %>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">The task domain, served by trails.</div>
+  </footer>
 </body>
 </html>

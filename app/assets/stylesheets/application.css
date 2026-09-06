@@ -1,7 +1,98 @@
 /*
- * This is a manifest file that'll be compiled into application.css,
- * which will include all the files listed below.
+ * The one place trailmap defines its colour vocabulary and status badges.
  *
- * Any CSS (and SCSS, if configured) file within app/assets/stylesheets
- * or any plugin's vendor/assets/stylesheets directory can be referenced here.
+ * The tokens and the `.badge` block are ported from ringo, where the same
+ * rules are pasted into every handler that renders a page
+ * (`webhook/story.go:439-446`, repeated verbatim at `webhook/rfcs.go:649`).
+ * A page ported into trailmap links this stylesheet through the application
+ * layout and renders `shared/_status-badge` — it never copies the block.
  */
+
+:root {
+  --bg: #0d1117;
+  --fg: #c9d1d9;
+  --muted: #8b949e;
+  --border: #30363d;
+  --surface: #161b22;
+  --hover: #161b22;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --green-bg: #1f2d1f;
+  --red: #f85149;
+  --red-bg: #2d1f1f;
+  --yellow: #d29922;
+  --yellow-bg: #2d2a1f;
+  --purple: #8957e5;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #656d76;
+    --border: #d0d7de;
+    --surface: #f6f8fa;
+    --hover: #f6f8fa;
+    --accent: #0969da;
+    --green: #1a7f37;
+    --green-bg: #dafbe1;
+    --red: #cf222e;
+    --red-bg: #ffebe9;
+    --yellow: #9a6700;
+    --yellow-bg: #fff8c5;
+    --purple: #8250df;
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.muted { color: var(--muted); }
+.wrap { max-width: 1012px; margin: 0 auto; padding: 0 24px; }
+
+/* page chrome */
+.site-header { border-bottom: 1px solid var(--border); background: var(--surface); }
+.site-header .wrap { display: flex; align-items: center; gap: 20px; height: 56px; }
+.site-header .brand { font-size: 16px; font-weight: 600; color: var(--fg); }
+.site-header .brand:hover { text-decoration: none; }
+.site-nav { display: flex; align-items: center; gap: 16px; }
+.site-nav a { color: var(--muted); font-size: 13px; }
+.site-nav a:hover { color: var(--accent); text-decoration: none; }
+.site-main { padding: 24px 0; }
+.site-footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+.site-footer .wrap { padding-top: 16px; padding-bottom: 24px; }
+
+h1 { font-size: 26px; font-weight: 400; line-height: 1.25; margin-bottom: 10px; }
+h2 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; }
+p { margin-bottom: 10px; }
+
+/* status vocabulary — ringo's `.badge` block, defined once */
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.badge.s-draft { background: var(--surface); color: var(--muted); }
+.badge.s-ready { background: var(--green-bg); color: var(--green); border-color: transparent; }
+.badge.s-claimed { background: var(--yellow-bg); color: var(--yellow); border-color: transparent; }
+.badge.s-in-progress { background: var(--yellow-bg); color: var(--yellow); border-color: transparent; }
+.badge.s-blocked { background: var(--yellow-bg); color: var(--yellow); border-color: transparent; }
+.badge.s-done { background: var(--surface); color: var(--purple); border-color: transparent; }
+.badge.s-active { background: var(--yellow-bg); color: var(--yellow); border-color: transparent; }
+.badge.s-closed { background: var(--surface); color: var(--purple); border-color: transparent; }
+.badge.s-unknown { background: var(--surface); color: var(--muted); }

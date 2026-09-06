@@ -1,0 +1,18 @@
+<%#
+  The status badge, in one place: `render({ partial: "shared/status-badge",
+  locals: { status } })`. Every page that shows a story or RFC status calls
+  this rather than writing `<span class="badge s-...">` itself — which is the
+  duplication ringo carries today (`webhook/story.go:656`, and the same markup
+  again on the RFC pages).
+
+  `status` is whatever the record holds, which is why the unknown arm exists:
+  ringo renders `s-unknown` for a dep whose RFC is missing
+  (`webhook/story.go:551,684`), and a null column reaches here the same way.
+
+  This is a partial rather than a helper because `app/helpers` never reaches a
+  view: nothing calls `ActionView::Base.withHelpers`, so a controller's
+  `_helpers` module is not in the view's scope chain. Filed as
+  `include-app-helpers-in-the-view-context` (RFC 0136).
+%>
+<% const shown = String(status ?? "").trim() || "unknown"; %>
+<span class="badge s-<%= shown %>"><%= shown %></span>
