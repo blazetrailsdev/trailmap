@@ -69,13 +69,20 @@ dokku sso:protect trailmap   # only if it answered 200
 curl -s http://127.0.0.1:8080/up   # expected: {"status":"ok"}
 ```
 
-## trailmap is the sole writer
+## trailmap as the sole writer
 
-Since the mutation endpoints landed (`POST /stories/claim` and its eight
-siblings), trailmap is the only process that opens `tasks.db` for writing —
-`config/database.ts` no longer asks for a read-only connection, and `pool: 1`
-serializes the verbs in-process so concurrent requests cannot race into
-`SQLITE_BUSY`. Every other caller posts to the API.
+The mutation endpoints (`POST /stories/claim` and its eight siblings) make
+trailmap ABLE to write: `config/database.ts` no longer asks for a read-only
+connection, and `pool: 1` serializes the verbs in-process so concurrent
+requests cannot race into `SQLITE_BUSY`.
+
+It is not yet the ONLY writer. The `tasks` CLI still opens the file directly;
+it becomes an HTTP client in `move-the-tasks-cli-into-trailmap`, which deps on
+this story precisely because the endpoints have to exist first. Until that
+lands the two writers do not actually overlap — nothing posts to these
+endpoints yet — but the guarantee is a sequencing promise, not a property of
+this change, and treating it as already true is how you end up with two live
+writers on a WAL database.
 
 The RFC accepts what that costs: with the CLI behind the API, trailmap being
 down stops the fleet. The mitigation is the restart policy and the healthcheck

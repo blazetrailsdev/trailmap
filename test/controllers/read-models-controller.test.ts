@@ -51,6 +51,9 @@ beforeAll(async () => {
   await Story.create({ id: "shadowed", rfc_id: "0002-draft", status: "ready" });
 
   await Event.create({ at: "2026-09-01T00:00:00Z", verb: "claim", story_id: "sooner" });
+  // Same `at` as the claim: `at` is only second-resolution, so a burst of
+  // verbs inside one second is ordered by `id` or not at all.
+  await Event.create({ at: "2026-09-01T00:00:00Z", verb: "in-progress", story_id: "sooner" });
   await Event.create({ at: "2026-09-02T00:00:00Z", verb: "done", story_id: "sooner", pr: 5 });
 });
 
@@ -97,8 +100,8 @@ describe("ReadModelsController", () => {
   it("serves the event stream oldest first, in events.json's shape", async () => {
     const { body } = await get("events");
 
-    expect(body.events.map((e: any) => e.verb)).toEqual(["claim", "done"]);
-    expect(body.events[1]).toMatchObject({
+    expect(body.events.map((e: any) => e.verb)).toEqual(["claim", "in-progress", "done"]);
+    expect(body.events[2]).toMatchObject({
       verb: "done",
       story: "sooner",
       rfc: null,

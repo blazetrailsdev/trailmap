@@ -23,12 +23,16 @@ export default {
  * CLI's live file is exactly what must not happen. It is a connection you opt
  * into by pointing `TASKS_DATABASE` at the file (`<tasks checkout>/.git/tasks.db`).
  *
- * `readonly` came off here when the mutation endpoints landed: trailmap is now
- * the SOLE WRITER of `tasks.db` (app/controllers/mutations-controller.ts), and
- * a read-only connection would refuse the writes it exists to perform. The
- * guard it used to provide — nothing else may write this file — moved from the
- * connection flag to the deployment: one process, one writer, and the CLI
- * posting to the API instead of opening the file.
+ * `readonly` came off here when the mutation endpoints landed
+ * (app/controllers/mutations-controller.ts): a read-only connection would
+ * refuse the writes they exist to perform.
+ *
+ * That makes trailmap ABLE to write, not yet the only writer — the CLI still
+ * opens this file until `move-the-tasks-cli-into-trailmap` turns it into an
+ * HTTP client. The guard `readonly` used to provide therefore moves from the
+ * connection flag to sequencing, which is weaker: nothing posts to the
+ * endpoints yet, so the two writers do not overlap in practice, but this
+ * comment should stop claiming a property the deployment does not have yet.
  *
  * `pool: 1` is load-bearing now rather than incidental. SQLite takes one
  * writer at a time, and a single connection serializes the mutation verbs in
