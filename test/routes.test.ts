@@ -39,6 +39,13 @@ describe("drawRoutes", () => {
     }
   });
 
+  it("routes the whole read-models to the read_models controller", () => {
+    const routes = routeSet();
+
+    expect(routes.recognize("GET", "/index")?.route.controller).toBe("read_models");
+    expect(routes.recognize("GET", "/events")?.route.action).toBe("events");
+  });
+
   it("routes each mutation verb to the mutations controller", () => {
     const routes = routeSet();
     const verbs: [string, string][] = [

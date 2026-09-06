@@ -14,6 +14,15 @@ export function drawRoutes(mapper: Mapper): void {
   mapper.get("stories", "stories#index");
   mapper.get("stories/:id", "stories#show");
 
+  // The read-models ringo consumes whole, replacing the `index.json` and
+  // `events.json` it used to unmarshal from disk.
+  // `read_models` is the controller PATH the autoloader keys
+  // `read-models-controller.ts` by (Rails' `underscore`), not a camelCase
+  // identifier — recognition looks the route's controller string up in that
+  // table verbatim, so a camelCase spelling here is a 404 at dispatch.
+  mapper.get("index", "read_models#index");
+  mapper.get("events", "read_models#events");
+
   // The mutation verbs. POST, one route per CLI verb, path segment spelled the
   // way the CLI spells it — `stories/status-set`, not a REST-shaped update —
   // so a caller reading the CLI's usage can find the endpoint, and so a verb
