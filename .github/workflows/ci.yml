@@ -43,6 +43,19 @@ jobs:
       - run: pnpm exec trails-tsc-views build --views app/views
       - run: pnpm test
 
+  # The sso plugin re-injects Authelia's auth directives into the generated
+  # nginx config on every reload, using two text matchers that a comment can
+  # trip. Both failures are silent and both end with the dashboard served
+  # unauthenticated, so they are checked here rather than left to review.
+  nginx-sigil:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/check-nginx-sigil.sh
+      # Proves the guard still detects both regressions, rather than passing
+      # because it stopped looking.
+      - run: ./scripts/check-nginx-sigil.sh --self-test
+
   boot:
     runs-on: ubuntu-latest
     steps:
