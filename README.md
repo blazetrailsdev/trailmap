@@ -91,6 +91,37 @@ trailmap is a dokku app: the dashboard on `trailmap.deanoftech.com` behind SSO,
 the JSON API on loopback only. The procedure — including the `ps:stop` a fixed
 port needs and the post-deploy SSO check — is in [docs/deploy.md](docs/deploy.md).
 
+## The loopback API and nginx
+
+The app serves two audiences from one listener (RFC 0136): the dashboard on
+`trailmap.deanoftech.com` behind Authelia, and the JSON API on
+`127.0.0.1:8080` with no SSO, for the `tasks` CLI and ringo.
+
+`nginx.conf.sigil` in this repo is how that works. It is dokku's stock template
+copied verbatim, plus one appended `server` block listening on `127.0.0.1:8080`
+that proxies to the same upstream and — deliberately — does **not** include
+`nginx.conf.d/*.conf`. That include is where the Authelia `auth_request` lives,
+so leaving it out is what makes the API unauthenticated; a port added to
+dokku's ports map instead would land in the SSO'd block and answer the CLI with
+a 302 to the login page.
+
+It replaces a `-p 127.0.0.1:8080:8080` docker option that bought the same
+bypass by skipping nginx. That option also made the app **undeployable**: dokku
+starts the new container before stopping the old, and two containers cannot
+hold one host port, so every release after the first died on
+`Bind for 127.0.0.1:8080 failed: port is already allocated` — which is why the
+box served the first deploy's image while eleven PRs sat merged. nginx has no
+such conflict; it re-points at the new container each deploy.
+
+Two consequences worth keeping in mind:
+
+- **The block has no authentication at all.** Its unreachability from off-box
+  is the whole of its security, so the `listen` address must stay `127.0.0.1`.
+- **The template is a copy**, so a dokku upgrade can change the original
+  underneath it. On upgrade, diff it against
+  `/var/lib/dokku/plugins/available/nginx-vhosts/templates/nginx.conf.sigil`
+  and re-apply the appended block.
+
 ## CI
 
 Every PR runs typecheck, the test suite, and a cold-start boot smoke test
