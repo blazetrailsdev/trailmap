@@ -100,3 +100,86 @@ jobs:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
           TASKS_CLI: ${{ github.workspace }}/tasks
         run: pnpm gate
+
+  # Ported from trails' Preflight job. CLAUDE.md forbids Claude attribution in
+  # commits and PR bodies here exactly as it does there, and trailmap is a
+  # separate repo with its own merge button — so the rule was unenforced until
+  # this job existed. Kept a job of its own rather than folded into `typecheck`:
+  # a checkout-and-install failure there must not decide whether the scan ran.
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # pull-requests: read for the `gh api repos/.../pulls` calls. Declaring
+      # `permissions:` zeroes every unlisted scope, so contents must be listed
+      # explicitly even though it is part of the default token.
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      # Single source of truth for the forbidden-attribution markers, shared by
+      # the PR-body and commit-message scans below so the two can't drift apart.
+      # Matched case-insensitively (grep -iE).
+      ATTRIBUTION_RE: 'generated with \[?claude code|co-authored-by:[[:space:]]*claude|noreply@anthropic\.com|🤖 generated with'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Scoped to deanmarano-authored PRs: the project forbids Claude
+      # attribution in *his* PR descriptions and commits (see CLAUDE.md
+      # "No `Co-Authored-By` trailer, no 'Generated with Claude Code' line").
+      # Other contributors are unaffected; push has no PR body.
+      - name: Forbid Claude attribution in PR body
+        # !cancelled() so a prior step's failure can't suppress this guard.
+        if: >-
+          ${{ !cancelled() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.user.login == 'deanmarano' }}
+        run: |
+          set -euo pipefail
+          # Fetch the *live* body rather than reading the event payload. The
+          # PR triggers don't include `edited`, so a body edit won't re-fire
+          # CI — but a manual job re-run hits the API fresh and will see the
+          # fix. Reading the payload would replay the stale original body and
+          # leave the check permanently red.
+          body=$(scripts/ci/gh-api-retry.sh "repos/$REPO/pulls/$PR_NUMBER" --jq '.body // ""')
+          if grep -qiE "$ATTRIBUTION_RE" <<<"$body"; then
+            echo "::error::PR body contains Claude attribution. Remove 'Generated with Claude Code' / 'Co-Authored-By: Claude' / Anthropic attribution lines (see CLAUDE.md), then re-run this job."
+            exit 1
+          fi
+          echo "No forbidden Claude attribution found in PR body."
+
+      - name: Forbid Claude attribution in commit messages
+        # !cancelled() so a prior step's failure can't suppress this guard.
+        if: >-
+          ${{ !cancelled() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.user.login == 'deanmarano' }}
+        run: |
+          set -euo pipefail
+          # See the body guard above: retry transient API failures so a 5xx
+          # can't masquerade as an attribution hit.
+          # Scan every commit message on the PR, not just the PR body. The body
+          # check above misses `Co-authored-by:` trailers that live in commits —
+          # and GitHub's squash-merge auto-aggregates those branch-commit
+          # trailers into the merge commit on `main`, which is exactly how a
+          # Claude attribution reached main past the body check.
+          #
+          # The pulls/{n}/commits endpoint caps at 250 commits even with
+          # --paginate, so a >250-commit PR would leave its tail unscanned. Fail
+          # closed in that case rather than passing on a partial scan — this repo
+          # squashes and PRs are small; if 250 commits ever happens, squash or
+          # rebase before re-running.
+          count=$(scripts/ci/gh-api-retry.sh "repos/$REPO/pulls/$PR_NUMBER" --jq '.commits')
+          if [ "$count" -gt 250 ]; then
+            echo "::error::PR has $count commits, exceeding the 250-commit API scan cap. Squash or rebase the branch so commit messages can be fully scanned, then re-run this job."
+            exit 1
+          fi
+          messages=$(scripts/ci/gh-api-retry.sh --paginate "repos/$REPO/pulls/$PR_NUMBER/commits" --jq '.[].commit.message')
+          if grep -qiE "$ATTRIBUTION_RE" <<<"$messages"; then
+            echo "::error::A commit message contains Claude attribution. Remove 'Generated with Claude Code' / 'Co-Authored-By: Claude' / Anthropic attribution lines from your commits (see CLAUDE.md) — note that squash-merge folds commit trailers into main — then re-run this job."
+            exit 1
+          fi
+          echo "No forbidden Claude attribution found in commit messages."
