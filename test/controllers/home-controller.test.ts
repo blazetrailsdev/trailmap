@@ -25,11 +25,11 @@ describe("HomeController", () => {
     expect(body).toContain('<link rel="stylesheet" href="/assets/stylesheets/application.css">');
   });
 
-  it("renders the header, the task-domain nav and the footer", async () => {
+  it("renders the nav bar, the task-domain links and the footer", async () => {
     const body = await renderIndex();
 
-    expect(body).toContain('<header class="site-header">');
-    expect(body).toContain('<a class="brand" href="/">trailmap</a>');
+    expect(body).toContain('<nav class="nav">');
+    expect(body).toContain('<a class="nav-brand" href="/">');
     expect(body).toContain('<a href="/rfcs">RFCs</a>');
     expect(body).toContain('<a href="/backlog">Backlog</a>');
     expect(body).toContain('<main class="site-main">');
