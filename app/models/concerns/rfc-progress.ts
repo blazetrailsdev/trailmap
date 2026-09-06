@@ -94,8 +94,8 @@ export interface StatusCount {
 /**
  * The bar's segment order: shipped, then dead, then moving, queued, stuck, and
  * finally not-started. Read left to right it is the RFC's progress and the tail
- * is what is left — ringo's `STORY_STATES` (`webhook/rfcs.go`), kept in that
- * order because the reading is the point.
+ * is what is left — ringo's `STORY_STATES` (webhook/rfcs.go:465, btwebooks
+ * `7897c57`), kept in that order because the reading is the point.
  */
 const STORY_BAR_ORDER: readonly string[] = [
   "done",
@@ -137,7 +137,11 @@ export function storyStatusCounts(stories: readonly Story[]): StatusCount[] {
 }
 
 /**
- * The RFC list's order: priority ascending, unset last.
+ * The RFC list's order: priority ascending, unset last. ringo's comparator is
+ * webhook/rfcs.go:595-611, which opens
+ * `const prio = r => (r.priority == null ? Number.MAX_SAFE_INTEGER : r.priority);`
+ * and applies the fewer-remaining tiebreak under `if (a.priority != null &&
+ * b.priority != null)`.
  *
  * The tiebreak is the interesting half and it is ringo's, which is in turn the
  * CLI's `comparePriority` one level up: among RFCs that set the SAME EXPLICIT

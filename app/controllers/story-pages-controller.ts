@@ -6,7 +6,6 @@ import { readDocument } from "../models/concerns/document.js";
 import { renderMarkdown } from "../helpers/markdown-helper.js";
 import {
   BACKLOG_FILTERS,
-  iceboxed,
   isBacklogFilter,
   matchesBacklogFilter,
   orderBacklog,
@@ -33,6 +32,15 @@ export interface BacklogRow {
   estLoc: number | null;
   cluster: string | null;
   assignee: string | null;
+  /**
+   * The PR number, shown as `#N` linking to the story page rather than out to
+   * GitHub. That is ringo's own link (webhook/backlog.go:292, btwebooks
+   * `7897c57`) and it is deliberate on both sides: the
+   * database stores a bare integer, and nothing in it names the repo — a
+   * story's PR can be against trails, trailmap or tasks, so there is no host
+   * or owner/name to build a GitHub URL from without guessing one. The story
+   * page is the page that does know, and it is one hop from here.
+   */
   pr: number | null;
   /** 0-based place in the ready queue, or null when the queue does not hold it. */
   queuePos: number | null;
@@ -145,7 +153,13 @@ export class StoryPagesController extends ApplicationController {
             priorityInherited,
             packages: packagesInherited ? (rfcPackages.get(story.rfc_id) ?? []) : own,
             packagesInherited,
-            icebox: iceboxed(story, index.rfcStatus) && story.status !== "done",
+            // The Icebox TAB's own predicate, not a copy of it. Spelling the
+            // rule out here as `iceboxed(...) && status !== "done"` was the
+            // same two clauses in a second place, and the module exists so
+            // this rule has exactly one home — the label a row wears and the
+            // tab that would collect it cannot now disagree about what iced
+            // means.
+            icebox: matchesBacklogFilter(story, "icebox", index.rfcStatus),
             staleDays: daysSince(story.updated_on),
           };
         }),

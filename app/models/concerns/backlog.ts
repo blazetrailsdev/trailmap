@@ -1,8 +1,10 @@
 /**
  * Which stories the backlog list shows under each tab, and in what order.
  *
- * Ported from ringo's backlog page (`webhook/backlog.go`), which does this in
- * the browser over `/spawnloop/backlog`. Porting it means the rules move from
+ * Ported from ringo's backlog page, which does this in the browser over
+ * `/spawnloop/backlog`. Every rule below cites the line it came from in
+ * btwebooks `7897c57`, so a reviewer without that checkout can still see WHAT
+ * is being claimed — the quoted source is reproduced in the PR body. Porting it means the rules move from
  * a script to functions the tests can hold still — the tab predicates
  * especially, because the Draft/Icebox split is the one place where two tabs
  * partition a status between them and a drifting predicate would make a tab
@@ -19,7 +21,8 @@ import type { Story } from "../story.js";
  * RFC states that put every story under them on ice. A draft RFC is an idea
  * not yet agreed; a postponed one is agreed and deliberately not now. Either
  * way nothing under it is up for picking, which is the only thing this list
- * decides. (`ICEBOX_RFC_STATUS`, webhook/backlog.go:164.)
+ * decides. (`ICEBOX_RFC_STATUS`, webhook/backlog.go:164:
+ * `const ICEBOX_RFC_STATUS = ['draft', 'postponed'];`)
  *
  * Note this is NOT `effectiveStoryStatus`'s rule, though the two rhyme: that
  * one downgrades a `ready` story under any non-active RFC and gates the queue.
@@ -49,7 +52,8 @@ export function iceboxed(story: Story, rfcStatus: ReadonlyMap<string, string>): 
 }
 
 /**
- * One tab's predicate, ported verbatim from `matchesFilter`.
+ * One tab's predicate, ported verbatim from `matchesFilter`
+ * (webhook/backlog.go:178).
  *
  * `open` is everything not done and not iced — the work that could actually be
  * picked. `icebox` is unfinished work only: a finished story does not become an
@@ -72,7 +76,9 @@ export function matchesBacklogFilter(
 }
 
 /**
- * The list's status order — actionable first, done last. Distinct from the RFC
+ * The list's status order — actionable first, done last. ringo's
+ * `STATUS_ORDER` (webhook/backlog.go:135):
+ * `['in-progress', 'claimed', 'ready', 'blocked', 'draft', 'done']`. Distinct from the RFC
  * show page's `storyStatusRank`, which is ringo's OTHER order (`closed` sits
  * just above `done` there and has no arm at all): the two pages rank
  * differently in ringo, so folding them into one rank would change a page.

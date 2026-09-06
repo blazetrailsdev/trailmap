@@ -54,6 +54,9 @@ beforeAll(async () => {
   await Story.create({ id: "drafted", rfc_id: "0136-trailmap", status: "draft" });
   await Story.create({ id: "iced", rfc_id: "0900-idea", status: "ready" });
   await Story.create({ id: "iced-draft", rfc_id: "0900-idea", status: "draft" });
+  // Finished, under a draft RFC: the row must not wear the icebox tag and the
+  // tab must not list it — a done story does not become an idea again.
+  await Story.create({ id: "iced-done", rfc_id: "0900-idea", status: "done" });
   await Story.create({ id: "shipped", rfc_id: "0136-trailmap", status: "done" });
 });
 
@@ -86,7 +89,7 @@ describe("StoryPagesController#index", () => {
     const { body } = await index();
 
     expect(body).toContain(">5 Open</a>");
-    expect(body).toContain(">1 Closed</a>");
+    expect(body).toContain(">2 Closed</a>");
     expect(body).toContain(">3 Ready</a>");
     expect(body).toContain(">1 Draft</a>");
     expect(body).toContain(">1 Blocked</a>");
@@ -104,7 +107,25 @@ describe("StoryPagesController#index", () => {
   });
 
   it("leaves a done story out of the icebox — it does not become an idea again", async () => {
-    expect(listed((await index("done")).body)).toEqual(["shipped"]);
+    expect(listed((await index("done")).body)).toEqual(["iced-done", "shipped"]);
+    expect(listed((await index("icebox")).body)).not.toContain("iced-done");
+  });
+
+  /**
+   * The invariant the module exists for, at the row level rather than the tab
+   * level: the label a row wears and the tab that would collect it are the
+   * same predicate, so a story cannot be tagged `icebox` on one tab and be
+   * absent from the Icebox tab.
+   */
+  it("tags exactly the rows the Icebox tab collects", async () => {
+    const iced = listed((await index("icebox")).body);
+    const readyRows = (await index("ready")).body.split('class="item-row"').slice(1);
+
+    for (const row of readyRows) {
+      const id = /class="row-title" href="\/story\/([^"]+)"/.exec(row)?.[1];
+      expect(row.includes('class="tag icebox"')).toBe(iced.includes(id!));
+    }
+    expect(iced).toContain("iced");
   });
 
   it("shows the effective priority and packages, flagging the inherited ones", async () => {
