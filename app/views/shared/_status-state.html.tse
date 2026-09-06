@@ -11,6 +11,19 @@
 
   The unknown arm exists for the same reason it does on the badge: a null
   column, or a dep whose record is missing, reaches here.
+
+  The normalisation line below is duplicated from `_status-badge`, and that is
+  forced rather than chosen. A `.tse` template cannot import: the compiler
+  emits a fixed preamble — one type-only import from actionview — and then
+  puts every statement from the template INSIDE `export default function
+  render(...)` (`trails-tsc/dist/plugins/tse.js:96-140`), so there is nowhere
+  for a shared `normalizeStatus` to be pulled in from. `app/helpers` is the
+  other candidate and is inert in the vendored trails, per the note in
+  `_status-badge`. Both partials collapse onto one `ApplicationHelper` call
+  with the pin bump that fixes that (`bump-vendored-trails-for-testcase-request-bodies`);
+  until then, two copies of one expression is the cost of not duplicating the
+  hue table, which is the part #7 actually cares about and which lives only in
+  the stylesheet.
 %>
 <% const shown = String(status ?? "").trim() || "unknown"; %>
 <span class="state s-<%= shown %>"><%= shown %></span>
