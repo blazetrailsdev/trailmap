@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { AbstractController, ActionController, ActionView } from "@blazetrails/actionpack";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
+import { ApplicationHelper } from "../../app/helpers/application-helper.js";
+import { MarkdownHelper } from "../../app/helpers/markdown-helper.js";
+import { helperModules } from "../../app/helpers/index.js";
 import { includeAllHelpers } from "../../config/initializers/include-all-helpers.js";
 
 /**
@@ -82,5 +85,22 @@ describe("includeAllHelpers", () => {
     const helpers = AbstractController._helpersInstance.call(new ApplicationController());
 
     expect(typeof helpers.contentSecurityPolicyNonce).toBe("function");
+  });
+});
+
+describe("helperModules", () => {
+  // The barrel is hand-written, so a helper file that is never added to it is
+  // the failure mode: the module exists, the view still cannot call it. This
+  // pins the two that exist; a third has to be listed here to be wired.
+  it("lists every module under app/helpers", () => {
+    expect(helperModules).toEqual([ApplicationHelper, MarkdownHelper]);
+  });
+
+  it("carries only method bags, which is what withHelpers can splice", () => {
+    for (const mod of helperModules) {
+      for (const value of Object.values(mod)) {
+        expect(typeof value).toBe("function");
+      }
+    }
   });
 });
