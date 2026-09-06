@@ -7,20 +7,22 @@
   <link rel="stylesheet" href="/assets/stylesheets/application.css">
 </head>
 <body>
-  <div class="wrap">
-    <nav class="nav">
-      <a class="nav-brand" href="/"><span class="dot"></span>trailmap</a>
-      <nav class="nav-links">
-        <a href="/rfcs">RFCs</a>
-        <a href="/backlog">Backlog</a>
-      </nav>
+  <nav class="nav">
+    <a class="nav-brand" href="/"><span class="dot"></span>trailmap</a>
+    <nav class="nav-links">
+      <a href="/rfcs">RFCs</a>
+      <a href="/backlog">Backlog</a>
     </nav>
+  </nav>
 
-    <main class="site-main">
+  <main class="site-main">
+    <div class="wrap">
       <%= yield %>
-    </main>
+    </div>
+  </main>
 
-    <footer class="site-footer">The task domain, served by trails.</footer>
-  </div>
+  <footer class="site-footer">
+    <div class="wrap">The task domain, served by trails.</div>
+  </footer>
 </body>
 </html>
