@@ -114,8 +114,12 @@ export class MutationsController extends ApplicationController {
    * `tasks status-set <id> <status>`.
    *
    * An unknown status is refused HERE rather than left to the model: the enum
-   * column would take the write and leave a row no read verb can classify,
-   * and the CLI never had to guard it because a human typed the argument.
+   * column would take the write and leave a row no read verb can classify.
+   *
+   * NOT PORTED — the CLI has no such guard (cli.ts case "status-set" casts the
+   * raw string to StoryStatus and writes it). This is deliberate hardening for
+   * a network-facing endpoint: the CLI's argument came from a human who could
+   * read the error, an HTTP body's does not.
    */
   async statusSet(): Promise<void> {
     const status = this.param("status");
@@ -130,6 +134,12 @@ export class MutationsController extends ApplicationController {
    * `tasks priority <id> <n|clear>`. `"clear"` and an explicit `null` both
    * clear it; a non-numeric value is refused rather than written as `NaN`,
    * which SQLite stores as NULL and so would clear the priority silently.
+   *
+   * NOT PORTED — the CLI does `Number(raw)` with no finiteness check, so
+   * `priority <id> high` silently CLEARS the priority there today. Refusing is
+   * deliberate hardening rather than a port, for the same reason as
+   * `statusSet` above; reproducing a silent data-loss bug over HTTP is not
+   * what criterion 2 is asking for.
    */
   async priority(): Promise<void> {
     const raw = this.params.get("priority");
@@ -179,7 +189,21 @@ export class MutationsController extends ApplicationController {
     }
   }
 
-  /** The CLI's `usage()` — a refusal that never reached the database. */
+  /**
+   * A refusal that never reached the database — the CLI's `usage()` (cli.ts:423).
+   *
+   * DELIBERATE DEVIATION from "the same refusals the CLI returns, with the
+   * same messages". The CLI has no per-verb usage text: every missing-argument
+   * case dumps the whole USAGE banner and exits 1. Echoing a banner listing
+   * `--flags` into a JSON error field would tell an HTTP caller to fix an
+   * argument it never passed, so each case names the thing that is actually
+   * missing instead. The exit code stays 1, which is the part callers branch
+   * on.
+   *
+   * The refusals that DO come from the database — not-found, already-claimed,
+   * lost-race, close-requires-a-reason — are the CLI's messages verbatim,
+   * because those are decided by the model and not restated here.
+   */
   private usage(message: string): void {
     this.render({ json: { ok: false, error: message, exit_code: 1 }, status: 400 });
   }
@@ -200,11 +224,24 @@ export class MutationsController extends ApplicationController {
     return value == null || value === "" ? null : String(value);
   }
 
-  /** `null` for absent OR unparseable, matching the CLI's `num()`. */
+  /**
+   * `null` for absent OR unparseable, the way the CLI's `num()` decides it
+   * (cli.ts:106 — `Number.isFinite(Number(v)) ? Number(v) : null`).
+   *
+   * `Number`, NOT `parseInt`: they disagree on exactly the inputs a typo
+   * produces. `parseInt("7abc")` is 7, so `--pr 7abc` would stamp PR 7 on a
+   * bundle instead of being refused, and `parseInt("7.9")` truncates where the
+   * CLI keeps the value and lets the column reject it. A refusal is the right
+   * answer to both, and it is also the answer the CLI already gives.
+   *
+   * The one deliberate difference: an EMPTY string reads as absent here (see
+   * `param`), where the CLI's `Number("")` is 0. `--pr ""` stamping PR 0 is
+   * not behaviour worth reproducing.
+   */
   private intParam(name: string): number | null {
     const value = this.param(name);
     if (value === null) return null;
-    const parsed = Number.parseInt(value, 10);
-    return Number.isNaN(parsed) ? null : parsed;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
   }
 }

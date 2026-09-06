@@ -142,6 +142,23 @@ describe("MutationsController", () => {
     expect(body.lines).toEqual(["done s1"]);
   });
 
+  // `num()` is `Number(v)`, not `parseInt` — they disagree on exactly the
+  // inputs a typo produces, and `--pr 7abc` stamping PR 7 on a whole bundle is
+  // the failure that matters. cli.ts:106.
+  it("refuses a PR that is not a whole number rather than truncating it", async () => {
+    const typo = await post("inProgress", { ids: ["s1"], pr: "7abc" });
+
+    expect(typo.status).toBe(400);
+    expect(typo.body.error).toBe("in-progress requires --pr");
+    expect((await find("s1")).pr).toBeNull();
+  });
+
+  it("takes a PR the JSON body carries as a number, not only as a string", async () => {
+    await post("done", { ids: ["s1"], pr: 12 });
+
+    expect((await find("s1")).pr).toBe(12);
+  });
+
   it("records an RFC-scoped spawn, which names no story", async () => {
     const { body } = await post("recordSpawn", { rfc: "0136-trailmap", source: "refine" });
 
