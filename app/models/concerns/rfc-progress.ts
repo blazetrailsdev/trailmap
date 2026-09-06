@@ -11,7 +11,24 @@
  */
 import type { Story } from "../story.js";
 
-/** Sort key: in-progress first, done last, anything unrecognised in between. */
+/**
+ * Sort key: in-progress first, done last, anything else in between.
+ *
+ * `closed` deliberately has NO arm of its own. It is a real status
+ * (`STORY_STATUSES`), so its absence reads like an oversight — but ringo's
+ * switch has no `case "closed"` either, and a closed story lands on the
+ * default 5 there exactly as it does here. Verified against the source at
+ * `webhook/rfcs.go:31` (btwebooks a49051f), which ends:
+ *
+ *     case "done":
+ *             return 6
+ *     default:
+ *             return 5
+ *
+ * Adding an explicit arm would read as tidier and would be a divergence from
+ * the thing this is a port of, so the fall-through stays and the test pins
+ * the value.
+ */
 export function storyStatusRank(status: string | null): number {
   switch (status) {
     case "in-progress":

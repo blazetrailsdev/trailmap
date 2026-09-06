@@ -12,7 +12,7 @@
     <% if (rfc.owner) { %><dt>Owner</dt><dd><%= rfc.owner %></dd><% } %>
     <% if (rfc.superseded_by) { %>
       <dt>Superseded by</dt>
-      <dd><a href="/rfc/<%= rfc.superseded_by %>"><%= rfc.superseded_by %></a></dd>
+      <dd><a href="/rfc/<%= rfc.superseded_by %>"><code><%= rfc.superseded_by %></code></a></dd>
     <% } %>
     <% if (rfc.updated_on) { %><dt>Updated</dt><dd><%= rfc.updated_on %></dd><% } %>
   </dl>

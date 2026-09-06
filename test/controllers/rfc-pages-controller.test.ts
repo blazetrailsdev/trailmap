@@ -30,6 +30,12 @@ beforeAll(async () => {
     file_path: "README.md",
   });
   await Rfc.create({ id: "0002-empty", status: "postponed", title: "Nothing here" });
+  await Rfc.create({
+    id: "0014-fixtures-adoption",
+    status: "superseded",
+    title: "Fixtures adoption",
+    superseded_by: "0019-canonical-schema-burndown",
+  });
 
   await Story.create({
     id: "queued",
@@ -93,5 +99,30 @@ describe("RfcPagesController", () => {
     expect(status).toBe(404);
     expect(body).toContain("<h1>RFC not found</h1>");
     expect(body).toContain("<code>0999-nope</code>");
+  });
+
+  /**
+   * The two branches a reviewer flagged as most likely to diverge from
+   * ringo's markup, pinned here because there is no automated diff against
+   * ringo the way `pnpm gate` diffs the ready queue against the CLI.
+   */
+  it("links the superseding RFC, wrapping the id as ringo does", async () => {
+    const { status, body } = await show("0014-fixtures-adoption");
+
+    expect(status).toBe(200);
+    expect(body).toContain("<dt>Superseded by</dt>");
+    expect(body).toContain(
+      '<a href="/rfc/0019-canonical-schema-burndown"><code>0019-canonical-schema-burndown</code></a>',
+    );
+  });
+
+  it("badges a superseded RFC through the shared vocabulary, not ringo's pill", async () => {
+    const { body } = await show("0014-fixtures-adoption");
+
+    // Deliberate divergence, established by #7: trailmap has ONE status
+    // vocabulary rendered by `shared/_status-badge`. ringo spells this
+    // `class="merged"` with the label "Superseded", pasted into each handler
+    // (`rfcState`, webhook/rfcs.go:56).
+    expect(body).toContain('<span class="badge s-superseded">superseded</span>');
   });
 });
