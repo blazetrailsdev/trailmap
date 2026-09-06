@@ -8,8 +8,8 @@ beforeAll(() => {
 
 /**
  * The partial is rendered the way a page renders it — through a controller —
- * because that is the path the framework offers today: `app/helpers` never
- * reaches a view, see the comment at the head of the partial.
+ * which is how a page will render it once the badge normalisation moves onto a
+ * helper; see the comment at the head of the partial.
  *
  * The class name is load-bearing. A controller-level `render({ partial })`
  * prefixes the name with the controller path rather than parsing a prefix out

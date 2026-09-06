@@ -9,10 +9,12 @@
   ringo renders `s-unknown` for a dep whose RFC is missing
   (`webhook/story.go:551,684`), and a null column reaches here the same way.
 
-  This is a partial rather than a helper because `app/helpers` never reaches a
-  view: nothing calls `ActionView::Base.withHelpers`, so a controller's
-  `_helpers` module is not in the view's scope chain. Filed as
-  `include-app-helpers-in-the-view-context` (RFC 0136).
+  The status normalisation below sits in the template because `app/helpers` is
+  inert in the vendored trails: a controller's `_helpers` never reached the
+  view's scope chain. That was filed from here and is fixed upstream in
+  trails#7558; trailmap still pins `7cece02d`, so it lands here with the pin
+  bump — `bump-vendored-trails-for-testcase-request-bodies` (RFC 0136), which
+  moves this line onto `ApplicationHelper`. The partial stays either way.
 %>
 <% const shown = String(status ?? "").trim() || "unknown"; %>
 <span class="badge s-<%= shown %>"><%= shown %></span>
