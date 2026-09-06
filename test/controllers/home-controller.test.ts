@@ -8,7 +8,7 @@ import { HomeController } from "../../app/controllers/home-controller.js";
  * controller test constructs the controller directly, so it has to say so.
  */
 beforeAll(() => {
-  (ApplicationController as unknown as { prependViewPath(path: string): void }).prependViewPath("app/views");
+  ApplicationController.prependViewPath("app/views");
 });
 
 async function renderIndex(): Promise<string> {
@@ -29,17 +29,26 @@ describe("HomeController", () => {
     const body = await renderIndex();
 
     expect(body).toContain('<header class="site-header">');
+    expect(body).toContain('<a class="brand" href="/">trailmap</a>');
     expect(body).toContain('<a href="/rfcs">RFCs</a>');
     expect(body).toContain('<a href="/backlog">Backlog</a>');
     expect(body).toContain('<main class="site-main">');
     expect(body).toContain('<footer class="site-footer">');
   });
 
-  it("renders more than the placeholder heading", async () => {
+  it("renders a page, not the placeholder heading", async () => {
     const body = await renderIndex();
 
     expect(body).toContain("<h1>trailmap</h1>");
-    expect(body).toContain('<a href="/backlog">Backlog</a>');
+    expect(body).toContain("<h2>Pages</h2>");
+    expect(body).toContain("<h2>Status vocabulary</h2>");
+  });
+
+  it("renders its statuses through the shared badge partial", async () => {
+    const body = await renderIndex();
+
     expect(body).toContain('<span class="badge s-ready">ready</span>');
+    expect(body).toContain('<span class="badge s-in-progress">in-progress</span>');
+    expect(body).toContain('<span class="badge s-unknown">unknown</span>');
   });
 });
