@@ -14,10 +14,18 @@
 
   The normalisation line below is duplicated from `_status-badge`, and that is
   forced rather than chosen. A `.tse` template cannot import: the compiler
-  emits a fixed preamble — one type-only import from actionview — and then
-  puts every statement from the template INSIDE `export default function
-  render(...)` (`trails-tsc/dist/plugins/tse.js:96-140`), so there is nowhere
-  for a shared `normalizeStatus` to be pulled in from. `app/helpers` is the
+  emits a fixed preamble — `buildPreamble`, one type-only import from
+  actionview — and then puts every statement from the template INSIDE the
+  `export default function render(...)` that `virtualizeTseWithDeltas` opens,
+  so there is nowhere for a shared `normalizeStatus` to be pulled in from.
+  The compiler is a committed tarball, so that is checkable from a fresh
+  clone with no extra checkout and no `node_modules`:
+
+      tar -xzOf vendor/blazetrails-trails-tsc-0.1.0.tgz \
+        package/dist/plugins/tse.js | grep -n "buildPreamble\|function render"
+
+  Anchored to the two function names rather than line numbers, which drift.
+  `app/helpers` is the
   other candidate and is inert in the vendored trails, per the note in
   `_status-badge`. Both partials collapse onto one `ApplicationHelper` call
   with the pin bump that fixes that (`bump-vendored-trails-for-testcase-request-bodies`);
