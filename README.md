@@ -40,6 +40,43 @@ Bumping the framework is deliberate and revertible:
 pnpm install
 ```
 
+## A framework bug gets fixed in trails, never patched here
+
+trailmap is the first real application built on trails, so it finds framework
+bugs — that is part of what it is for. **Every one of them gets fixed in
+trails.** Do not work around it in `app/`, `config/`, or a `lib/` shim, and do
+not edit anything under `vendor/`.
+
+The reason is not purity. A workaround here fixes it for exactly one
+application and leaves it broken for the next one, for the generator's own
+output, and for the framework's test suite — where a passing test is the only
+thing that keeps it fixed. It also silently becomes permanent: the workaround
+still works after the framework is fixed, so nothing ever prompts anyone to
+delete it, and trailmap slowly stops being an honest test of trails.
+
+The loop:
+
+1. **Reproduce it against the framework**, not against trailmap. A failing test
+   in the trails package that owns the behaviour is the artifact — it is what
+   makes the fix reviewable and what stops the bug coming back.
+2. **Fix it in trails and get that PR merged.** Deviations from Rails are cited
+   at the call site there; trails' CLAUDE.md has the rules.
+3. **Re-vendor**, with `scripts/vendor-trails.sh`, in a PR of its own so the
+   bump is revertible on its own.
+4. **Delete the workaround**, if a temporary one was ever agreed.
+
+If trailmap is blocked while the framework PR is in review, say so and stop —
+an agreed, commented, temporary workaround with a story tracking its removal is
+a decision to take deliberately, not a default. Shipping the app is not worth
+laundering a framework bug into application code.
+
+`app/helpers` was the case that set this rule: helper modules were unreachable
+from views, and the first attempt patched around it in trailmap's own
+`ApplicationController` (#9, closed). The real defects were three, all in
+trails — an ancestor link that was invisible to enumeration, a helper glob
+written in Ruby's file spelling rather than TypeScript's, and an
+`app/helpers` config path nothing ever read.
+
 ## Running it
 
 ```sh
