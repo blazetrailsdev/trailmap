@@ -52,6 +52,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: ./scripts/check-nginx-sigil.sh
+      # Proves the guard still detects both regressions, rather than passing
+      # because it stopped looking.
+      - run: ./scripts/check-nginx-sigil.sh --self-test
 
   boot:
     runs-on: ubuntu-latest
