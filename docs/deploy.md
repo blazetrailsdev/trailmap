@@ -69,6 +69,35 @@ dokku sso:protect trailmap   # only if it answered 200
 curl -s http://127.0.0.1:8080/up   # expected: {"status":"ok"}
 ```
 
+## trailmap as the sole writer
+
+The mutation endpoints (`POST /stories/claim` and its eight siblings) make
+trailmap ABLE to write: `config/database.ts` no longer asks for a read-only
+connection, and `pool: 1` serializes the verbs in-process so concurrent
+requests cannot race into `SQLITE_BUSY`.
+
+It is not yet the ONLY writer. The `tasks` CLI still opens the file directly;
+it becomes an HTTP client in `move-the-tasks-cli-into-trailmap`, which deps on
+this story precisely because the endpoints have to exist first. Until that
+lands the two writers do not actually overlap — nothing posts to these
+endpoints yet — but the guarantee is a sequencing promise, not a property of
+this change, and treating it as already true is how you end up with two live
+writers on a WAL database.
+
+The RFC accepts what that costs: with the CLI behind the API, trailmap being
+down stops the fleet. The mitigation is the restart policy and the healthcheck
+above, NOT a second write path — a fallback that opened the file directly would
+resurrect the second read model this RFC exists to delete.
+
+```sh
+# The write path, end to end. `record-spawn` is the safe probe: it appends an
+# `events` row and moves no story state.
+curl -sS -X POST http://127.0.0.1:8080/stories/record-spawn \
+  -H 'Content-Type: application/json' \
+  -d '{"rfc":"0136-trailmap","source":"deploy-probe"}'
+# expected: {"ok":true,"lines":["recorded spawn (deploy-probe) for rfc 0136-trailmap"]}
+```
+
 ## Verifying the pieces
 
 ```sh

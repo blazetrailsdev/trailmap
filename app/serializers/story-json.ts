@@ -45,7 +45,7 @@ export interface StoryJson {
  * an Invalid Date and take every verb down for everyone, so an unparseable
  * value drops the field rather than the response.
  */
-function isoMidnight(value: unknown): string | null {
+export function isoMidnight(value: unknown): string | null {
   if (value == null || value === "") return null;
   const day = String(value).slice(0, 10);
   const at = new Date(`${day}T00:00:00.000Z`);
@@ -56,7 +56,7 @@ function asString(value: unknown): string | null {
   return value == null ? null : String(value);
 }
 
-function integerOrNull(value: unknown): number | null {
+export function integerOrNull(value: unknown): number | null {
   return Number.isInteger(value) ? (value as number) : null;
 }
 

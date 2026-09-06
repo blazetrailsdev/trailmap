@@ -6,8 +6,8 @@ import { loadModelSchemas } from "../../app/models/index.js";
  * Point the models at the CLI's live `tasks.db` when `TASKS_DATABASE` names
  * one.
  *
- * trailmap is still not the writer: the connection is read-only (see
- * config/database.ts). It replaces the environment database the trailtie
+ * trailmap IS the writer now (see config/database.ts and the mutation
+ * endpoints). This connection replaces the environment database the trailtie
  * established, because `storage/<env>.sqlite3` holds an empty schema and
  * answering the read verbs from it would serve an empty backlog instead of
  * failing loudly. Initializers load in sorted order, so this file's name is

@@ -39,6 +39,44 @@ describe("drawRoutes", () => {
     }
   });
 
+  it("routes the whole read-models to the read_models controller", () => {
+    const routes = routeSet();
+
+    expect(routes.recognize("GET", "/index")?.route.controller).toBe("read_models");
+    expect(routes.recognize("GET", "/events")?.route.action).toBe("events");
+  });
+
+  it("routes each mutation verb to the mutations controller", () => {
+    const routes = routeSet();
+    const verbs: [string, string][] = [
+      ["/stories/claim", "claim"],
+      ["/stories/release", "release"],
+      ["/stories/in-progress", "inProgress"],
+      ["/stories/done", "done"],
+      ["/stories/record-spawn", "recordSpawn"],
+      ["/stories/block", "block"],
+      ["/stories/close", "close"],
+      ["/stories/status-set", "statusSet"],
+      ["/stories/priority", "priority"],
+    ];
+
+    for (const [path, action] of verbs) {
+      const match = routes.recognize("POST", path);
+      expect(match?.route.controller).toBe("mutations");
+      expect(match?.route.action).toBe(action);
+    }
+  });
+
+  // The mutation paths sit under `/stories/`, where `stories#show` also lives.
+  // A GET of one must stay a `show` lookup rather than being recognized as the
+  // verb — the method is the only thing separating them.
+  it("keeps a GET of a mutation path on stories#show", () => {
+    const match = routeSet().recognize("GET", "/stories/claim");
+
+    expect(match?.route.controller).toBe("stories");
+    expect(match?.route.action).toBe("show");
+  });
+
   // The named routes are drawn first for exactly this reason: `/stories/ready`
   // is a well-formed story id as far as `stories/:id` is concerned.
   it("routes an id to stories#show without swallowing the named routes", () => {
