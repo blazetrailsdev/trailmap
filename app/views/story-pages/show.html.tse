@@ -1,0 +1,98 @@
+<% if (story === null) { %>
+  <div class="page-header"><h1 class="page-title">Story not found</h1></div>
+  <p class="muted">No story in the index has the id <code><%= id %></code>.</p>
+<% } else { %>
+  <div class="page-header">
+    <h1 class="page-title"><%= story.title ?? story.id %></h1>
+    <div class="page-subhead">
+      <span class="id"><%= story.id %></span>
+      <%= render({ partial: "shared/status-state", locals: { status: story.status } }) %>
+      <span class="muted">
+        in <a href="/rfc/<%= story.rfc_id %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a><% if (story.pr !== null) { %>, PR #<%= story.pr %><% } %>
+      </span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <% if (story.blocked_by) { %>
+        <p class="note"><strong>Blocked:</strong> <%= story.blocked_by %></p>
+      <% } %>
+      <% if (story.closed_reason) { %>
+        <p class="note"><strong>Closed:</strong> <%= story.closed_reason %></p>
+      <% } %>
+
+      <% if (deps.length > 0 || rfcDeps.length > 0) { %>
+        <div class="box">
+          <div class="box-header"><span class="count">Depends on</span></div>
+          <% for (const dep of deps) { %>
+            <div class="item-row">
+              <%= render({ partial: "shared/status-badge", locals: { status: dep.status } }) %>
+              <span class="row-main">
+                <a class="row-title" href="/story/<%= dep.id %>"><%= dep.id %></a>
+              </span>
+            </div>
+          <% } %>
+          <% for (const dep of rfcDeps) { %>
+            <div class="item-row">
+              <%= render({ partial: "shared/status-badge", locals: { status: dep.status } }) %>
+              <span class="row-main">
+                <a class="row-title" href="/rfc/<%= dep.id %>"><%= dep.id %></a>
+                <div class="row-meta">RFC</div>
+              </span>
+            </div>
+          <% } %>
+        </div>
+      <% } %>
+
+      <h2 class="section-title">Document</h2>
+      <%= render({ partial: "shared/document", locals: { body: body, error: error } }) %>
+    </div>
+
+    <div class="side">
+      <div class="side-section">
+        <div class="side-head">RFC</div>
+        <div class="side-value">
+          <a href="/rfc/<%= story.rfc_id %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a>
+          <% if (rfc !== null) { %>
+            <%= render({ partial: "shared/status-badge", locals: { status: rfc.status } }) %>
+          <% } %>
+        </div>
+      </div>
+      <div class="side-section">
+        <div class="side-head">Assignee</div>
+        <div class="side-value"><%= story.assignee ? story.assignee : "No one assigned" %></div>
+      </div>
+      <div class="side-section">
+        <div class="side-head">Est LOC</div>
+        <div class="side-value"><%= story.est_loc === null ? "Unsized" : story.est_loc %></div>
+      </div>
+      <div class="side-section">
+        <div class="side-head">Priority</div>
+        <div class="side-value"><%= story.priority === null ? "Unset" : "p" + story.priority %></div>
+      </div>
+      <% if (story.cluster) { %>
+        <div class="side-section">
+          <div class="side-head">Cluster</div>
+          <div class="side-value"><%= story.cluster %></div>
+        </div>
+      <% } %>
+      <div class="side-section">
+        <div class="side-head">Packages<%= inherited ? " (from RFC)" : "" %></div>
+        <div class="side-value">
+          <% if (packages.length === 0) { %>None<% } else { %>
+            <span class="side-list">
+              <% for (const name of packages) { %><span class="badge"><%= name %></span><% } %>
+            </span>
+          <% } %>
+        </div>
+      </div>
+      <% if (story.pr !== null) { %>
+        <div class="side-section">
+          <div class="side-head">PR</div>
+          <div class="side-value">#<%= story.pr %></div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+<% } %>

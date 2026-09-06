@@ -116,3 +116,20 @@ cannot see them. It is scoped to `deanmarano`-authored PRs and ported from
 trails' job of the same name, `scripts/ci/gh-api-retry.sh` included: without
 that retry a GitHub 5xx reds a step whose name is the only thing the checks UI
 shows, so an API blip reads as an attribution violation.
+
+## The show pages need the markdown, not just the database
+
+`/rfc/<id>` and `/story/<id>` render the document behind the record's
+`file_path`. `ingest` stores that path and leaves the body in the tasks
+checkout, so serving the pages needs the checkout as well as the database:
+
+```sh
+TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db \
+TASKS_DIR=~/github/blazetrailsdev/tasks pnpm dev
+```
+
+`TASKS_DIR` is optional — with it unset the checkout is derived from
+`TASKS_DATABASE`, which points inside it (`<checkout>/.git/tasks.db`). Set it
+when the two are not arranged that way. When neither names a checkout the
+pages still render their metadata and say, in place of the document, why they
+could not read it.

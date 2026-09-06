@@ -4,6 +4,14 @@ export function drawRoutes(mapper: Mapper): void {
   mapper.root("home#index");
   mapper.get("up", "health#show");
 
+  // The show pages. Singular paths, matching the URLs ringo already serves and
+  // the ones the wiki-link renderer emits (`/story/<id>`) — a link that lives
+  // in a story body has to keep working when trailmap takes these over. They
+  // are distinct from the plural `stories/:id` JSON route below, which is the
+  // loopback-only read verb and not a page.
+  mapper.get("rfc/:id", "rfc_pages#show");
+  mapper.get("story/:id", "story_pages#show");
+
   // The read verbs, one route per CLI verb. The named collection routes come
   // BEFORE `stories/:id` because recognition takes the first match, and
   // `/stories/ready` is a perfectly good story id as far as the pattern is

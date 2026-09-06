@@ -1,0 +1,66 @@
+<% if (rfc === null) { %>
+  <div class="page-header"><h1 class="page-title">RFC not found</h1></div>
+  <p class="muted">No RFC in the index has the id <code><%= id %></code>.</p>
+<% } else { %>
+  <div class="page-header">
+    <h1 class="page-title"><%= rfc.title ?? rfc.id %></h1>
+    <div class="page-subhead">
+      <span class="id"><%= rfc.id %></span>
+      <%= render({ partial: "shared/status-state", locals: { status: rfc.status } }) %>
+      <span class="muted"><%= counts.total %> <%= counts.total === 1 ? "story" : "stories" %></span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <% if (counts.total > 0) { %>
+        <div class="progress-line">
+          <span class="pct"><%= counts.donePct %>% complete</span>
+          <span class="progress"><span class="progress-fill" style="width:<%= counts.donePct %>%"></span></span>
+          <span class="muted"><%= counts.done %>/<%= counts.total %> done</span>
+        </div>
+      <% } %>
+
+      <div class="box">
+        <div class="box-header">
+          <span class="count"><%= counts.open %> <span class="n">open</span></span>
+          <span class="count"><%= counts.done %> <span class="n">done</span></span>
+        </div>
+        <% if (stories.length === 0) { %>
+          <div class="empty">No stories under this RFC yet.</div>
+        <% } %>
+        <% for (const story of stories) { %>
+          <div class="item-row">
+            <%= render({ partial: "shared/status-badge", locals: { status: story.status } }) %>
+            <span class="row-main">
+              <a class="row-title" href="/story/<%= story.id %>"><%= story.title ?? story.id %></a>
+              <div class="row-meta">
+                <%= story.id %><% if (story.est_loc !== null) { %> &middot; <%= story.est_loc %> loc<% } %><% if (story.cluster) { %> &middot; <%= story.cluster %><% } %><% if (story.priority !== null) { %> &middot; p<%= story.priority %><% } %>
+              </div>
+            </span>
+          </div>
+        <% } %>
+      </div>
+
+      <h2 class="section-title">Document</h2>
+      <%= render({ partial: "shared/document", locals: { body: body, error: error } }) %>
+    </div>
+
+    <div class="side">
+      <div class="side-section">
+        <div class="side-head">Owner</div>
+        <div class="side-value"><%= rfc.owner ? rfc.owner : "Nobody" %></div>
+      </div>
+      <% if (rfc.superseded_by) { %>
+        <div class="side-section">
+          <div class="side-head">Superseded by</div>
+          <div class="side-value"><a href="/rfc/<%= rfc.superseded_by %>"><code><%= rfc.superseded_by %></code></a></div>
+        </div>
+      <% } %>
+      <div class="side-section">
+        <div class="side-head">Updated</div>
+        <div class="side-value"><%= rfc.updated_on ? rfc.updated_on : "Never" %></div>
+      </div>
+    </div>
+  </div>
+<% } %>

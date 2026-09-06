@@ -15,6 +15,7 @@ import {
   StoryRfcDep,
   loadModelSchemas,
 } from "../../app/models/index.js";
+import { jsonArrayColumn } from "../../app/models/rfc.js";
 
 beforeAll(async () => {
   await migrateScratchDatabase();
@@ -141,5 +142,27 @@ describe("models", () => {
     expect(RFC_STATUSES).toEqual(["draft", "active", "closed", "postponed", "superseded"]);
     // A closed story will never ship, but it will also never block.
     expect(RESOLVED_DEP_STATUSES).toEqual(["done", "closed"]);
+  });
+});
+
+/**
+ * One decoder for the JSON-array columns, shared by the serializer and the
+ * story page. The tolerant arms are the point: `ingest` writes text, and a
+ * reader that threw on a malformed value would take a page down over a column
+ * nothing renders.
+ */
+describe("jsonArrayColumn", () => {
+  it("decodes a stored JSON array", () => {
+    expect(jsonArrayColumn('["activerecord","trailties"]')).toEqual(["activerecord", "trailties"]);
+  });
+
+  it("reads an absent column as an empty list", () => {
+    expect(jsonArrayColumn(null)).toEqual([]);
+    expect(jsonArrayColumn("")).toEqual([]);
+  });
+
+  it("reads unparseable text, and valid JSON that is not an array, as empty", () => {
+    expect(jsonArrayColumn("not json")).toEqual([]);
+    expect(jsonArrayColumn('{"a":1}')).toEqual([]);
   });
 });

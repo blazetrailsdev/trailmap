@@ -23,6 +23,26 @@ describe("drawRoutes", () => {
     expect(match?.route.action).toBe("show");
   });
 
+  it("routes the singular show-page paths to their page controllers", () => {
+    const routes = routeSet();
+
+    const rfc = routes.recognize("GET", "/rfc/0136-trailmap");
+    expect(rfc?.route.controller).toBe("rfc_pages");
+    expect(rfc?.route.action).toBe("show");
+    expect(rfc?.params.id).toBe("0136-trailmap");
+
+    const story = routes.recognize("GET", "/story/render-the-rfc-and-story-show-pages");
+    expect(story?.route.controller).toBe("story_pages");
+    expect(story?.params.id).toBe("render-the-rfc-and-story-show-pages");
+  });
+
+  it("keeps the plural stories JSON routes distinct from the show pages", () => {
+    const routes = routeSet();
+
+    expect(routes.recognize("GET", "/stories/anything")?.route.controller).toBe("stories");
+    expect(routes.recognize("GET", "/story/anything")?.route.controller).toBe("story_pages");
+  });
+
   it("routes each read verb to the stories controller", () => {
     const routes = routeSet();
     const verbs: [string, string][] = [

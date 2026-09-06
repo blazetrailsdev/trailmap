@@ -9,6 +9,7 @@
  * `packages` expects a list, not the string `["activerecord"]`.
  */
 import type { Rfc } from "../models/index.js";
+import { jsonArrayColumn } from "../models/rfc.js";
 import { isoMidnight, integerOrNull } from "./story-json.js";
 
 export interface RfcJson {
@@ -26,17 +27,6 @@ export interface RfcJson {
   file_path: string | null;
 }
 
-/** A stored JSON array, or `[]` for null and for anything unparseable. */
-function parseJsonArray(value: string | null): string[] {
-  if (!value) return [];
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
 export function serializeRfc(rfc: Rfc): RfcJson {
   return {
     id: rfc.id,
@@ -46,10 +36,10 @@ export function serializeRfc(rfc: Rfc): RfcJson {
     owner: rfc.owner ?? null,
     created: isoMidnight(rfc.created_on),
     updated: isoMidnight(rfc.updated_on),
-    packages: parseJsonArray(rfc.packages),
-    clusters: parseJsonArray(rfc.clusters),
+    packages: jsonArrayColumn(rfc.packages),
+    clusters: jsonArrayColumn(rfc.clusters),
     superseded_by: rfc.superseded_by ?? null,
-    related_rfcs: parseJsonArray(rfc.related_rfcs),
+    related_rfcs: jsonArrayColumn(rfc.related_rfcs),
     file_path: rfc.file_path ?? null,
   };
 }
