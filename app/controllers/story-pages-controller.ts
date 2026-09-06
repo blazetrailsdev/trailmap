@@ -1,6 +1,7 @@
 import type { SafeBuffer } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.js";
 import { Rfc, Story, StoryDep, StoryPackage, StoryRfcDep } from "../models/index.js";
+import { jsonArrayColumn } from "../models/rfc.js";
 import { readDocument } from "../models/concerns/document.js";
 import { renderMarkdown } from "../helpers/markdown-helper.js";
 
@@ -47,18 +48,26 @@ export class StoryPagesController extends ApplicationController {
     let packages = packageRows.map((row) => row.package);
     let inherited = false;
     if (packages.length === 0 && rfc !== null) {
-      packages = parseJsonArray(rfc.packages);
+      packages = jsonArrayColumn(rfc.packages);
       inherited = packages.length > 0;
     }
 
-    const doc = await readDocument(story.file_path);
+    // The dep statuses and the document are independent of each other, and the
+    // document read is disk. Issued together so the page costs one round of
+    // waiting rather than three.
+    const [deps, rfcDeps, doc] = await Promise.all([
+      statusesFor(Story, depRows.map((row) => row.depends_on_id)),
+      statusesFor(Rfc, rfcDepRows.map((row) => row.rfc_id)),
+      readDocument(story.file_path),
+    ]);
+
     this.renderPage(
       {
         id,
         story,
         rfc,
-        deps: await statusesFor(Story, depRows.map((row) => row.depends_on_id)),
-        rfcDeps: await statusesFor(Rfc, rfcDepRows.map((row) => row.rfc_id)),
+        deps,
+        rfcDeps,
         packages,
         inherited,
         body: doc.markdown === "" ? null : renderMarkdown(doc.markdown),
@@ -93,15 +102,4 @@ async function statusesFor(
     found.set(record.id, String(record.status ?? ""));
   }
   return ids.map((id) => ({ id, status: found.get(id) ?? "" }));
-}
-
-/** A stored JSON array column, or `[]` for null and for anything unparseable. */
-function parseJsonArray(value: string | null): string[] {
-  if (!value) return [];
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
-  } catch {
-    return [];
-  }
 }

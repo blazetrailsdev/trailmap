@@ -4,6 +4,26 @@ import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 import { closedRfcErrors } from "./concerns/semantic-validation.js";
 import type { Story } from "./story.js";
 
+/**
+ * A stored JSON array column (`packages`, `clusters`, `related_rfcs`), or `[]`
+ * for null and for anything unparseable.
+ *
+ * `ingest` writes these as text, so every reader has to decode them, and every
+ * reader has to agree — a second copy of this that tolerated one less shape
+ * would make an RFC's packages depend on which page asked. It lives on the
+ * model rather than in a serializer because the encoding is the column's, not
+ * any one view's.
+ */
+export function jsonArrayColumn(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export const RFC_STATUSES = ["draft", "active", "closed", "postponed", "superseded"] as const;
 export type RfcStatus = (typeof RFC_STATUSES)[number];
 
