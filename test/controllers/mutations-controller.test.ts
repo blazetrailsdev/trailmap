@@ -104,6 +104,17 @@ describe("MutationsController", () => {
     expect(await Event.where({ story_id: "s1" }).count()).toBe(0);
   });
 
+  // The CLI dedupes every batch verb before dispatching (cli.ts:322 and its
+  // siblings). `WHERE id IN (...)` meant a repeat was never a double write,
+  // but the claim report is built from the ids it was handed, so a duplicate
+  // answered "claimed" twice for one claim.
+  it("dedupes repeated ids, as the CLI does, so the report matches the writes", async () => {
+    const { body } = await post("claim", { ids: ["s1", "s1"], assignee: "agent-a" });
+
+    expect(body.lines).toEqual(["claimed s1 as agent-a"]);
+    expect(await Event.where({ story_id: "s1", verb: "claim" }).count()).toBe(1);
+  });
+
   it("releases a claimed story", async () => {
     await post("claim", { ids: ["s1"], assignee: "agent-a" });
 

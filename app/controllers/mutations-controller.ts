@@ -211,12 +211,20 @@ export class MutationsController extends ApplicationController {
   /**
    * `ids` accepts the JSON array the API is meant to be called with, and a
    * lone string, so `{"ids": "one-story"}` is not silently an empty batch.
+   *
+   * DEDUPED, as every batch verb in the CLI does before dispatching
+   * (`[...new Set(pos)]`, cli.ts:322/328/335/343). `findAllOrThrow` resolves
+   * `WHERE id IN (...)`, so a repeat was never a double write — but `claimAll`
+   * builds its report by mapping the ids it was GIVEN (story.ts), so
+   * `["s1","s1"]` answered "claimed s1" twice for one claim. A caller
+   * reconciling that count against the queue would be reading a lie.
    */
   private ids(): string[] {
     const raw = this.params.get("ids");
-    if (Array.isArray(raw)) return raw.map((id) => String(id)).filter((id) => id !== "");
-    const single = this.param("ids") ?? this.param("id");
-    return single === null ? [] : [single];
+    const list = Array.isArray(raw)
+      ? raw.map((id) => String(id)).filter((id) => id !== "")
+      : ((single) => (single === null ? [] : [single]))(this.param("ids") ?? this.param("id"));
+    return [...new Set(list)];
   }
 
   private param(name: string): string | null {
