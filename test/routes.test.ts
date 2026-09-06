@@ -23,6 +23,18 @@ describe("drawRoutes", () => {
     expect(match?.route.action).toBe("show");
   });
 
+  it("routes the plural list paths to the same page controllers", () => {
+    const routes = routeSet();
+
+    const rfcs = routes.recognize("GET", "/rfcs");
+    expect(rfcs?.route.controller).toBe("rfc_pages");
+    expect(rfcs?.route.action).toBe("index");
+
+    const backlog = routes.recognize("GET", "/backlog");
+    expect(backlog?.route.controller).toBe("story_pages");
+    expect(backlog?.route.action).toBe("index");
+  });
+
   it("routes the singular show-page paths to their page controllers", () => {
     const routes = routeSet();
 

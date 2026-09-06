@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  orderRfcsForIndex,
   orderStoriesForRfc,
   rfcStoryCounts,
+  rfcTerminal,
+  storyStatusCounts,
   storyStatusRank,
 } from "../../app/models/concerns/rfc-progress.js";
 import type { Story } from "../../app/models/index.js";
@@ -66,5 +69,73 @@ describe("rfcStoryCounts", () => {
 
   it("reports 0% rather than dividing by zero for an empty RFC", () => {
     expect(rfcStoryCounts([])).toEqual({ total: 0, done: 0, open: 0, donePct: 0 });
+  });
+});
+
+describe("storyStatusCounts", () => {
+  it("orders the segments shipped, dead, moving, queued, stuck, not started", () => {
+    const counts = storyStatusCounts([
+      story("a", "draft"),
+      story("b", "ready"),
+      story("c", "done"),
+      story("d", "blocked"),
+    ]);
+
+    expect(counts.map((c) => c.status)).toEqual(["done", "ready", "blocked", "draft"]);
+    expect(counts.map((c) => c.pct)).toEqual([25, 25, 25, 25]);
+  });
+
+  it("counts the closed stories the done/total headline drops", () => {
+    // The two numbers are different questions: the bar is what the RFC is made
+    // of, `rfcStoryCounts` is how much of it has shipped.
+    const counts = storyStatusCounts([story("a", "done"), story("b", "closed")]);
+
+    expect(counts).toEqual([
+      { status: "done", count: 1, pct: 50 },
+      { status: "closed", count: 1, pct: 50 },
+    ]);
+    expect(rfcStoryCounts([story("a", "done"), story("b", "closed")]).total).toBe(1);
+  });
+
+  it("appends a status it does not know rather than under-reporting the RFC", () => {
+    const counts = storyStatusCounts([story("a", "done"), story("b", "invented")]);
+
+    expect(counts.map((c) => c.status)).toEqual(["done", "invented"]);
+  });
+});
+
+describe("orderRfcsForIndex", () => {
+  const rfc = (id: string, priority: number | null) => ({ id, priority });
+
+  it("ranks by priority, unprioritized last", () => {
+    const rows = orderRfcsForIndex([rfc("c", null), rfc("a", 5), rfc("b", 1)], new Map());
+
+    expect(rows.map((r) => r.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("breaks an equal explicit priority on fewer stories left, then on id", () => {
+    const open = new Map([["a", 9], ["b", 2], ["c", 2]]);
+    const rows = orderRfcsForIndex([rfc("a", 2), rfc("c", 2), rfc("b", 2)], open);
+
+    expect(rows.map((r) => r.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("leaves unprioritized RFCs in id order rather than reshuffling them by size", () => {
+    // ringo applies the fewer-remaining tiebreak only when BOTH sides set a
+    // priority; an RFC nobody prioritized is not reordered by how big it is.
+    const open = new Map([["a", 9], ["b", 2]]);
+    const rows = orderRfcsForIndex([rfc("b", null), rfc("a", null)], open);
+
+    expect(rows.map((r) => r.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("rfcTerminal", () => {
+  it("counts closed and superseded as not open", () => {
+    expect(rfcTerminal("closed")).toBe(true);
+    expect(rfcTerminal("superseded")).toBe(true);
+    expect(rfcTerminal("active")).toBe(false);
+    expect(rfcTerminal("postponed")).toBe(false);
+    expect(rfcTerminal(null)).toBe(false);
   });
 });

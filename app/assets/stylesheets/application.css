@@ -311,6 +311,57 @@ ul { margin: 0 0 10px 20px; }
 .row-title:hover { color: var(--accent); text-decoration: none; }
 .row-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
 
+/*
+ * The list pages' filter row. A tab is a LINK here (`/rfcs?status=draft`),
+ * not ringo's span-with-an-onclick, because the server renders the slice —
+ * see shared/_filter-tabs.
+ */
+.tabs { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.tabs .tab { color: var(--muted); font-weight: 500; font-size: 13px; }
+.tabs .tab:hover { color: var(--fg); text-decoration: none; }
+.tabs .tab.active { color: var(--fg); font-weight: 600; }
+
+/*
+ * Row tags — everything a row says about itself that is NOT its status. The
+ * status keeps `.badge` and its one hue table (#7); these are deliberately
+ * unhued so a row reads as one status marker plus neutral facts, rather than
+ * as ringo's line of competing colours.
+ */
+.titleline { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+.tag {
+  display: inline-block; padding: 0 8px; line-height: 18px; border-radius: 999px;
+  font-size: 11px; font-weight: 500; border: 1px solid var(--border);
+  color: var(--muted); white-space: nowrap;
+}
+.tag.prog, .tag.next, .tag.queue { color: var(--accent); border-color: var(--accent); }
+.tag.prio { color: var(--fg); font-variant-numeric: tabular-nums; }
+.tag.icebox { background: var(--surface); }
+.row-aside { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+/*
+ * The story-composition bar: one segment per story status, widths in per
+ * cent. ringo scales the bar's LENGTH by story count as well (sqrt, against a
+ * 95th-percentile reference, with history ticks over it); that sizing is left
+ * out here — it exists to compare RFCs against a scale ringo caches from its
+ * event stream, and the count beside the bar says the same thing without it.
+ * The segment hues come from the same variables as `.badge.s-*`, so the bar
+ * and the badges cannot disagree about what a status looks like.
+ */
+.sbarwrap { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+.sbarcap { font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 62px; }
+.sbar {
+  display: flex; height: 6px; border-radius: 999px; overflow: hidden; flex: 1;
+  max-width: 400px; background: var(--surface); border: 1px solid var(--border);
+}
+.sbar .seg { display: block; height: 100%; background: var(--muted); }
+.sbar .seg.s-done { background: var(--purple); }
+.sbar .seg.s-closed { background: color-mix(in srgb, var(--purple) 45%, var(--surface)); }
+.sbar .seg.s-in-progress { background: var(--yellow); }
+.sbar .seg.s-claimed { background: color-mix(in srgb, var(--yellow) 55%, var(--surface)); }
+.sbar .seg.s-blocked { background: color-mix(in srgb, var(--yellow) 78%, var(--red)); }
+.sbar .seg.s-ready { background: var(--green); }
+.sbar .seg.s-draft { background: color-mix(in srgb, var(--muted) 45%, transparent); }
+
 /* Milestone-style progress: a percent label beside a thin rounded bar. */
 .progress-line { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-size: 12px; }
 .progress-line .pct { font-weight: 600; white-space: nowrap; }

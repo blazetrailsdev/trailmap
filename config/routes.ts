@@ -4,6 +4,14 @@ export function drawRoutes(mapper: Mapper): void {
   mapper.root("home#index");
   mapper.get("up", "health#show");
 
+  // The list pages. Plural, and they come BEFORE the singular show routes only
+  // by convention — the patterns cannot collide. The status/filter tab is a
+  // query parameter rather than a path segment (`/rfcs?status=draft`) because
+  // it selects a slice of one list, not a different resource, and ringo's
+  // deep-link (`/tasks/done`) is the only path form it ever had.
+  mapper.get("rfcs", "rfc_pages#index");
+  mapper.get("backlog", "story_pages#index");
+
   // The show pages. Singular paths, matching the URLs ringo already serves and
   // the ones the wiki-link renderer emits (`/story/<id>`) — a link that lives
   // in a story body has to keep working when trailmap takes these over. They
