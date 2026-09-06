@@ -36,11 +36,20 @@ describe("HomeController", () => {
     expect(body).toContain('<footer class="site-footer">');
   });
 
+  it("carries the CSS-only mobile menu, so the shell needs no JavaScript", async () => {
+    const body = await renderIndex();
+
+    expect(body).toContain('<input type="checkbox" id="navToggle" class="nav-toggle">');
+    expect(body).toContain('<label for="navToggle" class="nav-burger" aria-label="Menu">');
+    expect(body).not.toContain("<script");
+  });
+
   it("renders a page, not the placeholder heading", async () => {
     const body = await renderIndex();
 
     expect(body).toContain("<h1>trailmap</h1>");
     expect(body).toContain("<h2>Pages</h2>");
+    expect(body).toContain('<div class="box">');
     expect(body).toContain("<h2>Status vocabulary</h2>");
   });
 

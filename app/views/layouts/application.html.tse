@@ -9,6 +9,8 @@
 <body>
   <nav class="nav">
     <a class="nav-brand" href="/"><span class="dot"></span>trailmap</a>
+    <input type="checkbox" id="navToggle" class="nav-toggle">
+    <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">
       <a href="/rfcs">RFCs</a>
       <a href="/backlog">Backlog</a>
