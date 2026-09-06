@@ -66,27 +66,33 @@ describe("StoryPagesController", () => {
 
     expect(status).toBe(200);
     expect(body).toContain("<!DOCTYPE html>");
-    expect(body).toContain("<h1>Serve /rfc/&lt;id&gt; and /story/&lt;id&gt; from trailmap</h1>");
-    expect(body).toContain('<span class="badge s-claimed">claimed</span>');
+    expect(body).toContain("Serve /rfc/&lt;id&gt; and /story/&lt;id&gt; from trailmap");
+    expect(body).toContain('<span class="id">render-the-rfc-and-story-show-pages</span>');
+    // Header state pill; the dep rows below use the small badge (#7).
+    expect(body).toContain('<span class="state s-claimed">claimed</span>');
   });
 
   it("shows the metadata the ready queue ranks on", async () => {
     const { body } = await show("render-the-rfc-and-story-show-pages");
 
-    expect(body).toContain("<dd>250</dd>");
-    expect(body).toContain("<dd>p7</dd>");
-    expect(body).toContain("<dd>an-agent</dd>");
+    // The sidebar, GitHub-issue style: a small heading over each value.
+    expect(body).toContain('<div class="side-head">Est LOC</div>');
+    expect(body).toContain("250");
+    expect(body).toContain('<div class="side-head">Priority</div>');
+    expect(body).toContain("p7");
+    expect(body).toContain('<div class="side-head">Assignee</div>');
+    expect(body).toContain("an-agent");
     expect(body).toContain('<a href="/rfc/0136-trailmap">trailmap</a>');
   });
 
   it("lists both kinds of dependency with the status that gates them", async () => {
     const { body } = await show("render-the-rfc-and-story-show-pages");
 
-    expect(body).toContain('<a href="/story/serve-the-read-verbs-as-json">');
+    expect(body).toContain('href="/story/serve-the-read-verbs-as-json"');
     expect(body).toContain('<span class="badge s-done">done</span>');
-    expect(body).toContain('<a href="/rfc/0061-ci">0061-ci</a>');
+    expect(body).toContain('href="/rfc/0061-ci"');
     // The missing dep reads as unknown, not as resolved.
-    expect(body).toContain('<a href="/story/vanished">');
+    expect(body).toContain('href="/story/vanished"');
     expect(body).toContain('<span class="badge s-unknown">unknown</span>');
   });
 
@@ -94,14 +100,14 @@ describe("StoryPagesController", () => {
     const { body } = await show("render-the-rfc-and-story-show-pages");
 
     expect(body).toContain("Packages (from RFC)");
-    expect(body).toContain("<dd>trailties</dd>");
+    expect(body).toContain('<span class="badge">trailties</span>');
   });
 
   it("shows a story's own packages without calling them inherited", async () => {
     const { body } = await show("declared");
 
-    expect(body).toContain("<dt>Packages</dt>");
-    expect(body).toContain("<dd>actionview</dd>");
+    expect(body).toContain('<div class="side-head">Packages</div>');
+    expect(body).toContain('<span class="badge">actionview</span>');
     expect(body).not.toContain("(from RFC)");
   });
 
@@ -123,7 +129,7 @@ describe("StoryPagesController", () => {
     const { status, body } = await show("no-such-story");
 
     expect(status).toBe(404);
-    expect(body).toContain("<h1>Story not found</h1>");
+    expect(body).toContain('<h1 class="page-title">Story not found</h1>');
     expect(body).toContain("<code>no-such-story</code>");
   });
 });

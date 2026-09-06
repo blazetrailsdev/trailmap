@@ -1,0 +1,16 @@
+<%#
+  The page-header state pill: `render({ partial: "shared/status-state",
+  locals: { status } })`.
+
+  Same status vocabulary as `shared/_status-badge` and the same normalisation
+  — this is the SOLID, page-header presentation of it, the way GitHub shows an
+  issue's own state boldly at the top while the rows beneath it use small
+  markers. #7's rule is one vocabulary in one place; two emphases of that one
+  vocabulary keep the rule, so the hue lookup stays in the stylesheet
+  (`.state.s-*`, matching `.badge.s-*`) and never in a template.
+
+  The unknown arm exists for the same reason it does on the badge: a null
+  column, or a dep whose record is missing, reaches here.
+%>
+<% const shown = String(status ?? "").trim() || "unknown"; %>
+<span class="state s-<%= shown %>"><%= shown %></span>

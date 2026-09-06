@@ -219,36 +219,105 @@ ul { margin: 0 0 10px 20px; }
 .badge.s-postponed { background: var(--surface); color: var(--muted); }
 .badge.s-superseded { background: var(--surface); color: var(--purple); border-color: transparent; }
 
-/* ── show pages ──────────────────────────────────────────────────────────── */
+/* ── show pages ──────────────────────────────────────────────────────────────
+ *
+ * Modelled on GitHub's issue, issue-list and milestone pages, which is what
+ * these two are: a document with a state, a list of child items with a done
+ * count, and a metadata sidebar. Traits taken from those pages rather than
+ * invented — a solid state pill in the header, a bordered Box with a grey
+ * count strip, list rows whose title is BOLD AND DARK (blue only on hover),
+ * a muted sub-line under it, and content/sidebar as two columns.
+ *
+ * The status HUES are untouched. #7 fixed which colour each status gets and
+ * put it in `shared/_status-badge`; what changes here is presentation only —
+ * the same token, rendered solid at page-header size (`.state`) and small in
+ * a row (`.badge`). One vocabulary, two emphases.
+ */
 
-.subhead { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+/* Header: 32px regular title, muted id, solid state pill, rule underneath. */
+.page-header { border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 16px; }
+.page-title { font-size: 32px; font-weight: 400; line-height: 1.25; margin-bottom: 12px; }
+/*
+ * GitHub can afford the id inside the 32px title because "#58677" is five
+ * characters. Ours is a slug like `render-the-rfc-and-story-show-pages`,
+ * which wraps the title onto a second line and reads as part of it. It goes
+ * on the subhead instead, at body size.
+ */
+.page-subhead .id { color: var(--muted); font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+.page-subhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-.counter {
-  font-weight: 400;
-  color: var(--muted);
+/*
+ * The solid pill. GitHub's is white-on-colour with a pill radius; ours reads
+ * the same hue the row badge does, so a status looks like itself at both
+ * sizes.
+ */
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 2em;
   font-size: 12px;
-  margin-left: 6px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
 }
+.state.s-draft, .state.s-postponed, .state.s-unknown { background: var(--muted); }
+.state.s-ready, .state.s-active { background: var(--green); }
+.state.s-claimed, .state.s-in-progress, .state.s-blocked { background: var(--yellow); }
+.state.s-done, .state.s-closed, .state.s-superseded { background: var(--purple); }
 
-.meta {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
-  margin-bottom: 16px;
-}
-.meta dt { color: var(--muted); }
-.meta dd { display: flex; align-items: center; gap: 8px; }
+/* Two columns, content then a 296px sidebar — GitHub's issue proportions. */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 296px; gap: 32px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); gap: 0; } }
 
-.progress {
-  height: 6px;
-  border-radius: 3px;
+.side-section { padding: 16px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.side-section:first-child { padding-top: 0; }
+.side-section:last-child { border-bottom: none; }
+.side-head { font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+.side-value { color: var(--fg); overflow-wrap: anywhere; }
+.side-value a { overflow-wrap: anywhere; }
+.side-list { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* The Box: bordered, rounded, with a grey count strip like the issue list. */
+.box { border: 1px solid var(--border); border-radius: 6px; background: var(--bg); overflow: hidden; }
+.box-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
   background: var(--surface);
-  overflow: hidden;
-  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
 }
+.box-header .count { font-weight: 600; }
+.box-header .count .n { color: var(--muted); font-weight: 400; }
+/*
+ * `.item-row` rather than reusing `.box-row`: the home page uses `.box-row`
+ * for prose, and turning it into a flex container there would split its text
+ * nodes into separately-spaced flex items.
+ */
+.item-row { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; align-items: flex-start; gap: 8px; }
+.item-row:first-child { border-top: none; }
+.box-header + .item-row { border-top: none; }
+.item-row:hover { background: var(--hover); }
+
+/*
+ * Row title: dark and bold, blue on hover. GitHub does this so a long list
+ * scans as titles rather than as a wall of link-blue.
+ */
+.row-main { min-width: 0; flex: 1; }
+.row-title { color: var(--fg); font-weight: 600; font-size: 16px; }
+.row-title:hover { color: var(--accent); text-decoration: none; }
+.row-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+/* Milestone-style progress: a percent label beside a thin rounded bar. */
+.progress-line { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-size: 12px; }
+.progress-line .pct { font-weight: 600; white-space: nowrap; }
+.progress { flex: 1; height: 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
 .progress-fill { display: block; height: 100%; background: var(--green); }
 
-.box-row { display: flex; align-items: center; gap: 8px; }
+.section-title { font-size: 16px; font-weight: 600; margin: 24px 0 8px; }
 
 .note {
   border: 1px solid var(--border);
@@ -258,52 +327,58 @@ ul { margin: 0 0 10px 20px; }
   padding: 8px 12px;
   margin-bottom: 12px;
 }
+.empty { padding: 32px 16px; text-align: center; color: var(--muted); }
 
 /*
- * The rendered document. Scoped to `.markdown` because the body is
- * agent-authored and arbitrary — every tag the renderer can emit needs a rule
- * here, not just the ones today's stories happen to use.
+ * The document, in a bordered box like an issue comment. Scoped to
+ * `.markdown` because the body is agent-authored and arbitrary — every tag
+ * the renderer can emit needs a rule here, not just the ones today's stories
+ * happen to use.
  */
-.markdown { overflow-wrap: break-word; }
-.markdown h1 { font-size: 24px; margin: 24px 0 8px; }
-.markdown h2 { font-size: 18px; }
-.markdown h3, .markdown h4, .markdown h5, .markdown h6 {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 16px 0 4px;
+.markdown {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  overflow-wrap: break-word;
 }
-.markdown ul, .markdown ol { margin: 0 0 10px 24px; }
-.markdown li { margin-bottom: 2px; }
+.markdown > :last-child { margin-bottom: 0; }
+.markdown h1, .markdown h2 {
+  font-weight: 600;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin: 24px 0 16px;
+}
+.markdown h1 { font-size: 24px; }
+.markdown h2 { font-size: 20px; }
+.markdown > h1:first-child, .markdown > h2:first-child { margin-top: 0; }
+.markdown h3 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; }
+.markdown h4, .markdown h5, .markdown h6 { font-size: 14px; font-weight: 600; margin: 16px 0 4px; }
+.markdown ul, .markdown ol { margin: 0 0 16px 24px; }
+.markdown li { margin-bottom: 4px; }
 .markdown hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 .markdown blockquote {
   border-left: 3px solid var(--border);
   color: var(--muted);
-  padding-left: 12px;
-  margin-bottom: 10px;
+  padding-left: 16px;
+  margin-bottom: 16px;
 }
 .markdown pre {
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
   overflow-x: auto;
+  line-height: 1.45;
 }
 .markdown pre code { font-size: 12px; }
-.markdown p > code, .markdown li > code, .markdown td > code {
+.markdown p > code, .markdown li > code, .markdown td > code, .markdown h1 > code,
+.markdown h2 > code, .markdown h3 > code, .markdown blockquote > code {
   background: var(--surface);
-  border-radius: 4px;
-  padding: 1px 4px;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 85%;
 }
-.markdown table {
-  border-collapse: collapse;
-  margin-bottom: 12px;
-  display: block;
-  overflow-x: auto;
-}
-.markdown th, .markdown td {
-  border: 1px solid var(--border);
-  padding: 6px 12px;
-  text-align: left;
-}
-.markdown th { background: var(--surface); }
+.markdown table { border-collapse: collapse; margin-bottom: 16px; display: block; overflow-x: auto; }
+.markdown th, .markdown td { border: 1px solid var(--border); padding: 6px 13px; text-align: left; }
+.markdown th { background: var(--surface); font-weight: 600; }
+.markdown tr:nth-child(2n) td { background: var(--surface); }

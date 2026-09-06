@@ -58,8 +58,11 @@ describe("RfcPagesController", () => {
     expect(status).toBe(200);
     expect(body).toContain("<!DOCTYPE html>");
     expect(body).toContain('<nav class="nav">');
-    expect(body).toContain("<h1>trailmap</h1>");
-    expect(body).toContain('<span class="badge s-active">active</span>');
+    expect(body).toContain("trailmap");
+    expect(body).toContain('<span class="id">0136-trailmap</span>');
+    // The page's OWN state is the solid header pill; the rows below use the
+    // small badge. One vocabulary (#7), two emphases.
+    expect(body).toContain('<span class="state s-active">active</span>');
   });
 
   it("lists the stories in ringo's order, actionable first, done last and closed just above it", async () => {
@@ -73,6 +76,7 @@ describe("RfcPagesController", () => {
     const { body } = await show("0136-trailmap");
 
     expect(body).toContain("1/3 done");
+    expect(body).toContain("33% complete");
     expect(body).toContain('style="width:33%"');
   });
 
@@ -88,7 +92,7 @@ describe("RfcPagesController", () => {
     const { status, body } = await show("0002-empty");
 
     expect(status).toBe(200);
-    expect(body).toContain("<h1>Nothing here</h1>");
+    expect(body).toContain("Nothing here");
     expect(body).toContain("No stories under this RFC yet.");
     expect(body).toContain("No document.");
   });
@@ -97,7 +101,7 @@ describe("RfcPagesController", () => {
     const { status, body } = await show("0999-nope");
 
     expect(status).toBe(404);
-    expect(body).toContain("<h1>RFC not found</h1>");
+    expect(body).toContain('<h1 class="page-title">RFC not found</h1>');
     expect(body).toContain("<code>0999-nope</code>");
   });
 
@@ -110,7 +114,7 @@ describe("RfcPagesController", () => {
     const { status, body } = await show("0014-fixtures-adoption");
 
     expect(status).toBe(200);
-    expect(body).toContain("<dt>Superseded by</dt>");
+    expect(body).toContain('<div class="side-head">Superseded by</div>');
     expect(body).toContain(
       '<a href="/rfc/0019-canonical-schema-burndown"><code>0019-canonical-schema-burndown</code></a>',
     );
@@ -123,6 +127,7 @@ describe("RfcPagesController", () => {
     // vocabulary rendered by `shared/_status-badge`. ringo spells this
     // `class="merged"` with the label "Superseded", pasted into each handler
     // (`rfcState`, webhook/rfcs.go:56).
-    expect(body).toContain('<span class="badge s-superseded">superseded</span>');
+    expect(body).toContain('<span class="state s-superseded">superseded</span>');
+    expect(body).not.toContain('class="merged"');
   });
 });
