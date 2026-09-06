@@ -168,12 +168,19 @@ upstream {{ $.APP }}-{{ $upstream_port }} {
 # RFC 0136 serves two audiences from one listener: the dashboard on the public
 # hostname behind SSO, and the JSON API "on loopback, bypassing the SSO that
 # fronts the public hostname". SSO is attached to the app's SERVER BLOCK, not
-# to its hostname — dokku includes nginx.conf.d/forward-auth.directives, whose
-# first line is a server-level `auth_request /authelia-auth;`, into every block
-# the port map generates. So the API cannot be a port in that map: it would
-# answer the CLI and ringo with a 302 to the login page. `auth_request` takes a
-# URI or `off` and not a variable, so there is no per-port escape inside one
-# block either.
+# to its hostname: the sso plugin's nginx-pre-reload hook rewrites the
+# generated config on every reload, adding the Authelia auth directives to
+# every root-prefix location block it finds. So the API cannot be a port in
+# dokku's port map — it would answer the CLI and ringo with a 302 to the login
+# page.
+#
+# NOTHING IN THIS FILE MAY SPELL THE PLUGIN'S MARKER DIRECTIVE, not even in a
+# comment. That hook skips the whole file when it greps the generated config
+# and finds the directive already present, on the assumption a custom template
+# configured auth itself. A comment quoting the directive to explain it reads
+# the same to grep as a real one: it silently disabled protection on the PUBLIC
+# vhost, which then served the dashboard unauthenticated. Describe the
+# mechanism; never quote it.
 #
 # A separate server block is the escape: this one simply does not include
 # nginx.conf.d, so no forward-auth applies here. It replaces the
@@ -197,7 +204,14 @@ server {
 
   client_max_body_size {{ $.CLIENT_MAX_BODY_SIZE }};
 
-  location / {
+  # `^~` is not decoration, and this comment does not spell the pattern it is
+  # about, for the reason given above. The plugin's injector finds root-prefix
+  # location blocks with a sed address, and would add the auth directives to
+  # THIS block too — putting the unauthenticated API behind SSO, the exact
+  # opposite of what this block exists for, with no per-block opt-out to ask for
+  # instead. The `^~` form does not match that address and behaves identically
+  # here, where this is the only location in the block.
+  location ^~ / {
     proxy_pass  http://{{ $.APP }}-8080;
     proxy_http_version 1.1;
     proxy_connect_timeout {{ $.PROXY_CONNECT_TIMEOUT }};
