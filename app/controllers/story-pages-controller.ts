@@ -4,6 +4,7 @@ import { Rfc, Story, StoryDep, StoryPackage, StoryRfcDep } from "../models/index
 import { jsonArrayColumn } from "../models/rfc.js";
 import { readDocument } from "../models/concerns/document.js";
 import { renderMarkdown } from "../helpers/markdown-helper.js";
+import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
 import {
   BACKLOG_FILTERS,
   isBacklogFilter,
@@ -106,6 +107,26 @@ export class StoryPagesController extends ApplicationController {
     const requested = String(this.params.get("filter") ?? "");
     const filter: BacklogFilter = isBacklogFilter(requested) ? requested : "open";
 
+    // What the list is over, decided once. Two rules ringo applies before its
+    // page ever sees a story, and neither of which the row itself carries:
+    //
+    //   closed RFCs  `allStories` (webhook/spawnloop.go:1373) drops every story
+    //                under a closed RFC — the backlog is work still in play,
+    //                and a closed RFC's stories are not.
+    //   status       the index carries the EFFECTIVE status, so a `ready` story
+    //                under a non-active RFC counts as a draft here exactly as
+    //                it does in the queue, the `list` verb and the JSON.
+    //                Reading the stored status instead put stories on the Ready
+    //                tab that nothing could ever claim.
+    const listed = index.stories
+      .filter((story) => index.rfcStatus.get(story.rfc_id) !== "closed")
+      .map((story) => ({
+        story,
+        id: story.id,
+        rfc_id: story.rfc_id,
+        status: String(effectiveStoryStatus(index.rfcStatus.get(story.rfc_id), story.status)),
+      }));
+
     // Every tab count comes from the SAME predicate that fills its list, so a
     // tab can never advertise a number its own list does not hold — ringo's
     // rule, which it applies to Open, Draft and Icebox and to which the other
@@ -113,13 +134,13 @@ export class StoryPagesController extends ApplicationController {
     const tabs = BACKLOG_FILTERS.map((key) => ({
       key,
       label: BACKLOG_TAB_LABELS[key],
-      count: index.stories.filter((s) => matchesBacklogFilter(s, key, index.rfcStatus)).length,
+      count: listed.filter((s) => matchesBacklogFilter(s, key, index.rfcStatus)).length,
       href: `/backlog?filter=${key}`,
       active: key === filter,
     }));
 
     const shown = orderBacklog(
-      index.stories.filter((s) => matchesBacklogFilter(s, filter, index.rfcStatus)),
+      listed.filter((s) => matchesBacklogFilter(s, filter, index.rfcStatus)),
       queuePos,
     );
 
@@ -130,7 +151,8 @@ export class StoryPagesController extends ApplicationController {
         tabs,
         queueSize: queue.length,
         showQueueHelp: filter === "open" || filter === "ready",
-        rows: shown.map((story): BacklogRow => {
+        rows: shown.map((listing): BacklogRow => {
+          const story = listing.story;
           const own = index.packages.get(story.id) ?? [];
           const packagesInherited = own.length === 0;
           // Effective priority and effective packages, both own-then-parent:
@@ -142,7 +164,7 @@ export class StoryPagesController extends ApplicationController {
           return {
             id: story.id,
             title: story.title ?? story.id,
-            status: story.status,
+            status: listing.status,
             rfcId: story.rfc_id,
             estLoc: story.est_loc,
             cluster: story.cluster,
@@ -159,7 +181,7 @@ export class StoryPagesController extends ApplicationController {
             // this rule has exactly one home — the label a row wears and the
             // tab that would collect it cannot now disagree about what iced
             // means.
-            icebox: matchesBacklogFilter(story, "icebox", index.rfcStatus),
+            icebox: matchesBacklogFilter(listing, "icebox", index.rfcStatus),
             staleDays: daysSince(story.updated_on),
           };
         }),

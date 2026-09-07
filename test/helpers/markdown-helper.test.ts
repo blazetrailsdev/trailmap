@@ -159,3 +159,26 @@ describe("MarkdownHelper", () => {
     expect(html.toString()).toBe("<h1>hi</h1>");
   });
 });
+
+/**
+ * Both cases below are differences `pnpm gate:markdown` found against ringo's
+ * own renderer over the 8,776 RFC and story documents in the tasks tree — the
+ * kind of thing a hand-written example set will not think to try.
+ */
+describe("differences the ringo gate found", () => {
+  it("keeps a bullet that mentions a line separator inside the list", () => {
+    // JavaScript's `.` excludes U+2028 where Go's excludes only "\n", so this
+    // bullet failed to match and closed the list one item early.
+    const html = String(renderMarkdown("- first\n- with\u2028separator\n- third"));
+
+    expect(html).toBe("<ul><li>first</li><li>with\u2028separator</li><li>third</li></ul>");
+  });
+
+  it("escapes a wiki link's story id as Go's url.PathEscape does", () => {
+    // `=` is legal unencoded in a path segment, and Go leaves it; only
+    // `encodeURIComponent` percent-escapes it.
+    const html = String(renderMarkdown("[[warning-count=0-had-warnings]]"));
+
+    expect(html).toContain('href="/story/warning-count=0-had-warnings"');
+  });
+});

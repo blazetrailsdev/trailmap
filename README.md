@@ -183,6 +183,47 @@ One divergence is expected and is counted rather than failed: ringo serves its
 story show page through the BACKLOG's query, which hides every story under a
 closed RFC, so a permalink to finished work 404s there and renders here.
 
+## The two ringo gates in CI
+
+The show-page gate above cannot run in CI. These two can, because they do not
+need ringo RUNNING — they run ringo's code.
+
+
+`pnpm gate` holds the ready queue against the CLI. Two more hold the ported
+LIST pages and the markdown renderer against ringo itself, in the same CI job:
+
+```sh
+TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db \
+  TASKS_CLI=~/github/blazetrailsdev/tasks pnpm gate:lists
+TASKS_DIR=~/github/blazetrailsdev/tasks pnpm gate:markdown
+```
+
+- **`gate:lists`** paints `/rfcs` and `/backlog` twice, per tab, over one
+  snapshot: once by ringo's own browser scripts and once by trailmap's
+  controllers, then compares membership, order and every tab count. Not the
+  markup — #7 gave trailmap its own status vocabulary and its tabs are links,
+  and neither is a defect.
+- **`gate:markdown`** renders every RFC and story body in the tasks tree
+  through `app/helpers/markdown-helper.ts` and through ringo's
+  `webhook/markdown.go`, and diffs. The one tolerated difference is `&#34;`
+  against `&quot;` — Go's spelling of the same character — which the gate
+  normalizes rather than forcing either side to change.
+
+Both take `--self-test`, which perturbs one side and expects the gate to go
+red; CI runs those too, so a gate that stopped looking cannot pass quietly.
+
+ringo (`deanmarano/btwhooks`) has no remote for CI to clone, so its code is
+**vendored** rather than checked out: `vendor/ringo/` holds the two page
+scripts and the two Go functions, verbatim, at the commit in `vendor/ringo/PIN`
+(`SHA256` records what was taken). Regenerate with
+
+```sh
+./scripts/vendor-ringo.sh ~/github/deanmarano/btwebooks HEAD
+```
+
+in a PR of its own, exactly as with the trails tarballs: a gate that goes red
+on a bump must be revertible without taking application work with it.
+
 Preflight scans the PR body and every commit message on the PR for Claude
 attribution — the `Co-Authored-By: Claude` trailer, a "Generated with Claude
 Code" line, an `@anthropic.com` address — and fails on a hit, because
