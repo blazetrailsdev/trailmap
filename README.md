@@ -188,7 +188,6 @@ closed RFC, so a permalink to finished work 404s there and renders here.
 The show-page gate above cannot run in CI. These two can, because they do not
 need ringo RUNNING — they run ringo's code.
 
-
 `pnpm gate` holds the ready queue against the CLI. Two more hold the ported
 LIST pages and the markdown renderer against ringo itself, in the same CI job:
 
