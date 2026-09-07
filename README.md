@@ -88,8 +88,10 @@ pnpm exec tsx node_modules/@blazetrails/trailties/bin/trails.js server
 ## Deployment
 
 trailmap is a dokku app: the dashboard on `trailmap.deanoftech.com` behind SSO,
-the JSON API on loopback only. The procedure — including the `ps:stop` a fixed
-port needs and the post-deploy SSO check — is in [docs/deploy.md](docs/deploy.md).
+the JSON API on loopback only. Deploy with `./scripts/deploy.sh` on the box,
+which pushes and then proves the running container was actually replaced — the
+push's own exit status cannot say so. The procedure and the post-deploy checks
+are in [docs/deploy.md](docs/deploy.md).
 
 ## The loopback API and nginx
 
@@ -115,6 +117,10 @@ such conflict; it re-points at the new container each deploy.
 
 Two consequences worth keeping in mind:
 
+- **The block sets no `X-Forwarded-*` headers**, deliberately. `requireLoopback`
+  refuses any request carrying proxy provenance, so adding one 404s the whole
+  JSON API for the CLI and ringo while the dashboard keeps working.
+  `scripts/check-nginx-sigil.sh` fails CI on it.
 - **The block has no authentication at all.** Its unreachability from off-box
   is the whole of its security, so the `listen` address must stay `127.0.0.1`.
 - **The template is a copy**, so a dokku upgrade can change the original

@@ -6,7 +6,7 @@ fleet. One container, one HTTP listener on `:8080`, two audiences:
 | Audience | Route | Auth |
 | --- | --- | --- |
 | The dashboard | `https://trailmap.deanoftech.com`, via dokku's nginx | SSO (authelia) |
-| The JSON API | `http://127.0.0.1:8080`, via the published loopback port | none — unreachable off-box |
+| The JSON API | `http://127.0.0.1:8080`, via nginx's loopback server block | none — unreachable off-box |
 
 The API is refused on the public hostname twice over: nginx puts SSO in front
 of it, and `requireLoopback`
@@ -25,9 +25,13 @@ dokku domains:set trailmap trailmap.deanoftech.com
 dokku storage:mount trailmap \
   /home/dean/github/blazetrailsdev/tasks:/home/dean/github/blazetrailsdev/tasks
 
-# The JSON API's loopback listener. This fixed port is why a redeploy needs
-# `ps:stop` first (see below).
-dokku docker-options:add trailmap deploy "-p 127.0.0.1:8080:8080"
+# The JSON API's loopback listener is nginx's, from this repo's
+# `nginx.conf.sigil` — there is no dokku port map entry and no docker publish
+# to add. (An app created before this fix carries the old
+# `-p 127.0.0.1:8080:8080` publish, which is what made it undeployable; remove
+# it once with
+#   dokku docker-options:remove trailmap deploy "-p 127.0.0.1:8080:8080"
+# and confirm with `dokku docker-options:report trailmap`.)
 
 # The RFC's availability decision rests on this: the fleet stops when trailmap
 # is down, and the mitigation is that it comes back by itself.
@@ -44,19 +48,32 @@ dokku sso:protect trailmap
 
 ```sh
 git remote add dokku dokku@localhost:trailmap   # once
-dokku ps:stop trailmap                          # release 127.0.0.1:8080
-git push dokku main:trunk
+./scripts/deploy.sh
 ```
 
-The push exits non-zero even on a successful deploy: the uptime-monitor plugin
-runs last and cannot reach Uptime Kuma on this box. Judge the deploy by the
-`Healthcheck succeeded name='boot'` and `Renaming container` lines above it.
+The app deploys while it is running — no `ps:stop`, no downtime. nginx holds
+`127.0.0.1:8080`, not the container, so dokku's zero-downtime release (new
+container up, then old one down) has nothing to collide over; nginx re-points
+at the new container's IP on reload.
 
-`ps:stop` is not optional. The container holds a fixed host port, so a rolling
-deploy fails with `Bind for 127.0.0.1:8080 failed: port is already allocated`
-and the new container never starts.
+**Use the script rather than a bare `git push dokku main:trunk`.** The push
+exits non-zero even on a successful deploy — the uptime-monitor plugin runs
+last and cannot reach Uptime Kuma on this box — so its exit status says
+nothing, and a failed RELEASE after a successful BUILD leaves the old container
+serving with no other outward sign. `scripts/deploy.sh` reads the running
+container's image id before and after and fails loudly when it did not change.
+
+**`GIT_REV` does not tell you what is running.** dokku sets it during the
+build, so `dokku config:get trailmap GIT_REV` reports the commit you pushed
+whether or not the release replaced anything. The image id is the witness:
+
+```sh
+docker inspect trailmap.web.1 --format '{{.Image}}'
+```
 
 ### After every deploy
+
+`scripts/deploy.sh` runs both of these itself and fails on either. By hand:
 
 ```sh
 # SSO protection has come off a redeploy on sibling apps. Verify, and re-apply
@@ -68,6 +85,12 @@ dokku sso:protect trailmap   # only if it answered 200
 
 curl -s http://127.0.0.1:8080/up   # expected: {"status":"ok"}
 ```
+
+A 404 from the loopback API — rather than a connection refused — means the
+request reached the app with `X-Forwarded-*` headers on it and `requireLoopback`
+refused it. nginx's loopback server block must set none: read the block in
+`nginx.conf.sigil`, whose guard (`scripts/check-nginx-sigil.sh`) fails CI on a
+reintroduced forwarding header.
 
 ## trailmap as the sole writer
 
