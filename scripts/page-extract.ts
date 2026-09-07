@@ -28,6 +28,13 @@ export interface RfcPageFacts {
   status: string;
   /** Story ids, in the order the page lists them. Order is part of the port. */
   stories: string[];
+  /**
+   * The status each of those rows wears, in the same order — the EFFECTIVE
+   * status on both sides. Compared as well as the ids because a story list is
+   * its rows: two pages that name the same stories in the same order and
+   * disagree about which of them are claimable have not agreed.
+   */
+  storyStatuses: string[];
   done: number;
   total: number;
 }
@@ -100,10 +107,16 @@ export function storyStateLabel(status: string): string {
 /** ringo's `/rfc/<id>/stories`. The stories TAB, which is where the list is. */
 export function extractRingoRfc(html: string): RfcPageFacts {
   const counts = /Stories \((\d+)\/(\d+) done\)/.exec(html);
+  // Scoped to the page's main column, as trailmap's is to its story box.
+  // Nothing else on this tab links to a story today — but the two sides are
+  // read the same way on purpose, so neither can start counting a link the
+  // other never had.
+  const main = between(html, '<div class="main">', '<div class="sidebar">');
   return {
     title: text(section(html, "pr-title")),
     status: text(section(html, "state state-[a-z]+")),
-    stories: hrefIds(html, "story"),
+    stories: hrefIds(main, "story"),
+    storyStatuses: badgeStatuses(main),
     done: counts === null ? -1 : Number(counts[1]),
     total: counts === null ? -1 : Number(counts[2]),
   };
@@ -113,15 +126,17 @@ export function extractRingoRfc(html: string): RfcPageFacts {
 export function extractTrailmapRfc(html: string): RfcPageFacts {
   const open = /<span class="count">(\d+) <span class="n">open/.exec(html);
   const done = /<span class="count">(\d+) <span class="n">done/.exec(html);
+  // Scoped to the story box. trailmap renders the RFC's markdown on this same
+  // page — ringo puts it on another tab — and a document that links to a story
+  // would otherwise arrive as an extra row in the list.
+  const box = between(html, '<div class="box-header">', '<h2 class="section-title">');
   return {
     title: text(section(html, "page-title")),
     // The pill prints the raw column; ringo's table is applied here so both
     // sides arrive in one vocabulary.
     status: rfcStateLabel(text(section(html, "state s-[a-z-]+"))),
-    // Scoped to the story box. trailmap renders the RFC's markdown on this
-    // same page — ringo puts it on another tab — and a document that links to
-    // a story would otherwise arrive as an extra row in the list.
-    stories: hrefIds(between(html, '<div class="box-header">', '<h2 class="section-title">'), "story"),
+    stories: hrefIds(box, "story"),
+    storyStatuses: badgeStatuses(box),
     // Total is derived from open+done rather than read off the progress line,
     // which an RFC with no stories does not render at all.
     done: done === null ? -1 : Number(done[1]),
@@ -206,6 +221,18 @@ export function between(html: string, from: string, to: string): string {
   return end === -1 ? html.slice(start) : html.slice(start, end);
 }
 
+/**
+ * Every status badge in `html`, in order.
+ *
+ * Both sides spell a story row's status into the badge's own class — ringo as
+ * `s-{{.Status}}` (webhook/rfcs.go), trailmap as `s-<%= shown %>`
+ * (`shared/_status-badge`) — so the class is the value, and reading it needs
+ * no assumption about which vocabulary the text beside it is in.
+ */
+export function badgeStatuses(html: string): string[] {
+  return [...html.matchAll(/<span class="badge s-([a-z-]+)"/g)].map((match) => match[1]);
+}
+
 /** Every `/<kind>/<id>` link target in `html`, in order, with repeats kept. */
 export function hrefIds(html: string, kind: "rfc" | "story"): string[] {
   const found: string[] = [];
@@ -255,12 +282,16 @@ export function decodeEntities(text: string): string {
  * The fields of `a` and `b` that differ, named — the report a mismatch turns
  * into. Ordered lists report their first differing position, in the voice of
  * `scripts/equivalence.ts`'s `describe`.
+ *
+ * Both sides are the SAME type, which is the point: the two extractors for one
+ * page return one interface, so a field added to it is compared on both sides
+ * or on neither, and never on one.
  */
-export function diffFacts(a: Record<string, unknown>, b: Record<string, unknown>): string[] {
+export function diffFacts<T extends object>(a: T, b: T): string[] {
   const problems: string[] = [];
-  for (const key of Object.keys(a)) {
-    const left = a[key];
-    const right = b[key];
+  for (const key of Object.keys(a) as (keyof T & string)[]) {
+    const left: unknown = a[key];
+    const right: unknown = b[key];
     if (Array.isArray(left) && Array.isArray(right)) {
       if (left.join("\n") === right.join("\n")) continue;
       const at = left.findIndex((value, i) => value !== right[i]);

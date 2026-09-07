@@ -82,24 +82,26 @@ export function orderStoriesForRfc(
   stories: readonly Story[],
   rfcStatus: string | null,
 ): Story[] {
-  const key = (story: Story) => ({
-    rank: storyStatusRank(effectiveStoryStatus(rfcStatus, story.status) ?? null),
-    priority: story.priority ?? PRIORITY_UNSET,
-    id: story.id,
-  });
-  return [...stories].sort((a, b) => {
-    const left = key(a);
-    const right = key(b);
-    return (
-      left.rank - right.rank ||
-      left.priority - right.priority ||
+  // Ranked once per story rather than once per comparison: the largest RFC in
+  // the database carries 1,434 stories, and a comparator that re-derives the
+  // effective status does that work O(n log n) times for an answer that cannot
+  // change.
+  const rank = new Map(
+    stories.map((story) => [
+      story,
+      storyStatusRank(effectiveStoryStatus(rfcStatus, story.status) ?? null),
+    ]),
+  );
+  return [...stories].sort(
+    (a, b) =>
+      rank.get(a)! - rank.get(b)! ||
+      (a.priority ?? PRIORITY_UNSET) - (b.priority ?? PRIORITY_UNSET) ||
       // Plain `<` rather than `localeCompare`: ringo compares Go strings, which
       // is a byte comparison, and a locale collation disagrees with that on
       // exactly the characters story ids are full of (`-` is ignorable in the
       // default collation, so `a-b` and `ab` reorder).
-      compareBytes(left.id, right.id)
-    );
-  });
+      compareBytes(a.id, b.id),
+  );
 }
 
 export interface RfcStoryCounts {

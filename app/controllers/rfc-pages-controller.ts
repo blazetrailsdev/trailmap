@@ -3,6 +3,7 @@ import { ApplicationController } from "./application-controller.js";
 import { Rfc, Story } from "../models/index.js";
 import { jsonArrayColumn } from "../models/rfc.js";
 import { readDocument } from "../models/concerns/document.js";
+import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
 import {
   orderRfcsForIndex,
   orderStoriesForRfc,
@@ -20,6 +21,27 @@ import { renderMarkdown } from "../helpers/markdown-helper.js";
  * is first because it is the default view and the only one anyone works from.
  */
 const RFC_STATUS_TABS: readonly string[] = ["active", "draft", "postponed", "closed", "superseded"];
+
+/**
+ * One story on an RFC's show page, assembled here because a `.tse` cannot
+ * compute — the same reason `RfcRow` and `BacklogRow` exist.
+ */
+export interface RfcStoryRow {
+  id: string;
+  title: string;
+  /**
+   * The EFFECTIVE status, not the authored one: a `ready` story under a
+   * non-active RFC is a `draft` (`effectiveStoryStatus`), which is what ringo
+   * shows and what `orderStoriesForRfc` ranks this row by. Showing the
+   * authored status here would have the page sort a story as a draft while
+   * labelling it ready, and would tell a reader it is claimable when the
+   * queue will not offer it.
+   */
+  status: string;
+  estLoc: number | null;
+  cluster: string | null;
+  priority: number | null;
+}
 
 /** One row of the RFC list, assembled here because a `.tse` cannot compute. */
 export interface RfcRow {
@@ -144,7 +166,19 @@ export class RfcPagesController extends ApplicationController {
       {
         id,
         rfc,
-        stories,
+        stories: stories.map(
+          (story): RfcStoryRow => ({
+            id: story.id,
+            title: story.title ?? story.id,
+            status: effectiveStoryStatus(rfc.status, story.status) ?? "",
+            estLoc: story.est_loc,
+            cluster: story.cluster,
+            priority: story.priority,
+          }),
+        ),
+        // Counted from the records, not the rows: `rfcStoryCounts` decides
+        // done/total, and the override only ever moves `ready` to `draft` —
+        // neither of which it counts.
         counts: rfcStoryCounts(stories),
         body: doc.markdown === "" ? null : renderMarkdown(doc.markdown),
         error: doc.error,

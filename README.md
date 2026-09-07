@@ -150,7 +150,8 @@ A difference is a defect in the port, not a variance to tolerate.
 `pnpm gate` covers the ready queue. The show pages have their own, and it is
 **not** a CI job: `pnpm gate:pages` (`scripts/page-equivalence.ts`) asks BOTH
 ringo and trailmap for `/rfc/<id>` and `/story/<id>` for every id in the
-database and compares the title, status, ordered story list and done count.
+database and compares the title, status, ordered story list with the status
+each row wears, the done count and the story page's ordered dep lists.
 The two render deliberately different markup — the status vocabulary, the
 GitHub restyle, ringo's action sidebar — so it compares the extracted VALUES,
 never the HTML.
@@ -168,7 +169,8 @@ RINGO_BASE=http://$(docker inspect -f \
 TRAILMAP_BASE=http://127.0.0.1:3001 pnpm gate:pages
 ```
 
-`RINGO_BASE` has to reach ringo *without* SSO — `ringo.deanoftech.com` answers
+It fetches every page on both sides and takes about ten minutes over the live
+database. `RINGO_BASE` has to reach ringo *without* SSO — `ringo.deanoftech.com` answers
 a 302 to the login page, which the gate reports as such rather than diffing a
 redirect. Every difference lands in `tmp/page-equivalence-problems.txt`; the
 terminal shows the first twenty.

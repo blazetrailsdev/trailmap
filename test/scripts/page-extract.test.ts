@@ -6,6 +6,7 @@ import {
   extractRingoStory,
   extractTrailmapRfc,
   extractTrailmapStory,
+  badgeStatuses,
   between,
   hrefIds,
   rfcStateLabel,
@@ -29,14 +30,21 @@ const ringoRfc = `<div class="pr-title">A title &amp; a half</div>
     <span class="state state-open">Active</span>
     <span><strong>dean</strong> · <code>0001-x</code></span>
   </div>
-  <div class="card">
-    <div class="card-head"><span>Stories (2/3 done)</span></div>
-    <div class="srow"><span class="badge s-ready">ready</span>
-      <span class="stitle"><a href="/story/beta">Beta</a></span></div>
-    <div class="srow"><span class="badge s-done">done</span>
-      <span class="stitle"><a href="/story/alpha">Alpha</a></span></div>
-  </div>
-  <div class="sidebar"><div class="s-row"><span class="k">Stories</span><span>2/3 done</span></div></div>`;
+  <div class="layout">
+    <div class="main">
+      <div class="card">
+        <div class="card-head"><span>Stories (2/3 done)</span></div>
+        <div class="srow"><span class="badge s-ready">ready</span>
+          <span class="stitle"><a href="/story/beta">Beta</a></span></div>
+        <div class="srow"><span class="badge s-done">done</span>
+          <span class="stitle"><a href="/story/alpha">Alpha</a></span></div>
+      </div>
+    </div>
+    <div class="sidebar"><div class="s-row"><span class="k">Stories</span><span>2/3 done</span></div>
+      <div class="s-sec"><div class="s-title">Related RFCs</div>
+        <div class="labels"><a href="/story/mentioned-in-the-sidebar">nope</a></div></div>
+    </div>
+  </div>`;
 
 const trailmapRfc = `<div class="page-header">
     <h1 class="page-title">A title &amp; a half</h1>
@@ -137,13 +145,18 @@ describe("extractRingoRfc / extractTrailmapRfc", () => {
       title: "A title & a half",
       status: "Active",
       stories: ["beta", "alpha"],
+      storyStatuses: ["ready", "done"],
       done: 2,
       total: 3,
     });
   });
 
-  it("does not count a story the RFC's own document links to", () => {
+  it("counts only the story box: not the document, and not the sidebar", () => {
+    // trailmap renders the RFC's markdown on this same page and ringo does not;
+    // ringo carries sidebar links trailmap has no equivalent for. Both are read
+    // scoped, so neither leaks a row into the list.
     expect(extractTrailmapRfc(trailmapRfc).stories).toEqual(["beta", "alpha"]);
+    expect(extractRingoRfc(ringoRfc).stories).toEqual(["beta", "alpha"]);
   });
 
   it("derives trailmap's total from open + done, which an empty RFC still renders", () => {
@@ -221,6 +234,19 @@ describe("between", () => {
 
   it("reports nothing when the opening marker never comes", () => {
     expect(between("a<b>middle</b>c", "<i>", "</i>")).toBe("");
+  });
+});
+
+describe("badgeStatuses", () => {
+  it("reads the status out of the badge's class, which is where both sides put it", () => {
+    expect(badgeStatuses(ringoRfc)).toEqual(["ready", "done"]);
+    expect(badgeStatuses(trailmapRfc)).toEqual(["ready", "done"]);
+  });
+
+  it("keeps a hyphenated status whole", () => {
+    expect(badgeStatuses('<span class="badge s-in-progress">in-progress</span>')).toEqual([
+      "in-progress",
+    ]);
   });
 });
 

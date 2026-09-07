@@ -193,7 +193,7 @@ async function compareAll(
  * about anything, while ONE of them saying it is exactly the defect worth
  * catching.
  */
-function compare<T extends Record<string, unknown>>(
+function compare<T extends { title: string }>(
   ringo: Fetched,
   trailmap: Fetched,
   fromRingo: (html: string) => T,
