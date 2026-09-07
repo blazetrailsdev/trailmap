@@ -29,3 +29,6 @@
 .claude/settings.local.json
 .claude/skills/
 .claude/worktrees/
+
+/.claude/skills
+/.claude/settings.local.json
