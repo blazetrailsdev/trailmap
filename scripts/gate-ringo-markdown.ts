@@ -30,7 +30,7 @@ import { stripFrontmatter } from "../app/models/concerns/document.js";
 /** How many differing documents to name before the report stops being useful. */
 const REPORT_LIMIT = 5;
 
-async function main(argv: readonly string[]): Promise<number> {
+async function main(args: readonly string[]): Promise<number> {
   const fs = await getFsAsync();
   const path = await getPathAsync();
   const child = await getChildProcessAsync();
@@ -38,7 +38,7 @@ async function main(argv: readonly string[]): Promise<number> {
   // The gate mutates its OWN copy of the trailmap output, never the helper: a
   // self-test that edited the file it is testing would leave the repo dirty
   // when it failed, which is when it matters most.
-  const selfTest = argv.includes("--self-test");
+  const selfTest = args.includes("--self-test");
 
   // The snapshot is the reference implementation; prove it is the one
   // scripts/vendor-ringo.sh took before diffing anything against it.

@@ -117,11 +117,27 @@ async function main(): Promise<number> {
   // trailmap's answer: a comparison that stopped comparing looks exactly like
   // a port that agrees.
   const selfTest = argv.includes("--self-test");
-  const problems: string[] = [];
-  problems.push(...compare("/rfcs", RFC_TABS, await ringoRfcs(child, path, fs, rfcs, stories),
-    await trailmapPages(RFC_TABS, RfcPagesController, "status", /class="row-title" href="\/rfc\/([^"]+)"/g, selfTest)));
-  problems.push(...compare("/backlog", BACKLOG_TABS, await ringoBacklog(fs, path, rfcs, stories, ready),
-    await trailmapPages(BACKLOG_TABS, StoryPagesController, "filter", /class="row-title" href="\/story\/([^"]+)"/g, false)));
+  // The row anchor each page hangs its title on; the id is the link a reader
+  // follows, which is the one piece of markup the two pages must agree on.
+  const rfcRow = /class="row-title" href="\/rfc\/([^"]+)"/g;
+  const storyRow = /class="row-title" href="\/story\/([^"]+)"/g;
+
+  // One perturbed page is enough to prove the comparison still bites, so the
+  // backlog side is never dropped from.
+  const problems = [
+    ...compare(
+      "/rfcs",
+      RFC_TABS,
+      await ringoRfcs(child, path, fs, rfcs, stories),
+      await trailmapPages(RFC_TABS, RfcPagesController, "status", rfcRow, { dropOne: selfTest }),
+    ),
+    ...compare(
+      "/backlog",
+      BACKLOG_TABS,
+      await ringoBacklog(fs, path, rfcs, stories, ready),
+      await trailmapPages(BACKLOG_TABS, StoryPagesController, "filter", storyRow, { dropOne: false }),
+    ),
+  ];
 
   if (selfTest) {
     if (problems.length > 0) {
@@ -303,7 +319,7 @@ async function trailmapPages(
   controller: typeof ApplicationController,
   param: string,
   rowId: RegExp,
-  dropOne: boolean,
+  { dropOne }: { dropOne: boolean },
 ): Promise<Map<string, Painted>> {
   const painted = new Map<string, Painted>();
   for (const tab of tabs) {
