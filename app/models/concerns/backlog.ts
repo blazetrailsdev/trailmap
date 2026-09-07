@@ -15,7 +15,19 @@
  * This module takes the queue as a list of ids and asks where a story sits in
  * it.
  */
-import type { Story } from "../story.js";
+/**
+ * What the list needs of a story: its id, its parent RFC, and the status the
+ * page shows. The status is not always the one stored on the row —
+ * `effectiveStoryStatus` downgrades a `ready` story under a non-active RFC —
+ * and ringo's page reads the index, which carries the effective one. So these
+ * take the decided status rather than a `Story`, and the caller decides it
+ * once.
+ */
+export interface BacklogStory {
+  id: string;
+  rfc_id: string;
+  status: string;
+}
 
 /**
  * RFC states that put every story under them on ice. A draft RFC is an idea
@@ -26,9 +38,11 @@ import type { Story } from "../story.js";
  *
  * Note this is NOT `effectiveStoryStatus`'s rule, though the two rhyme: that
  * one downgrades a `ready` story under any non-active RFC and gates the queue.
- * This one is a display bucket over draft/postponed only, and a `ready` story
- * under a draft RFC still appears on the Ready tab, where the queue itself is
- * on display.
+ * This one is a display bucket over draft/postponed only. The two compose
+ * rather than overlap: a story authored `ready` under a draft RFC reaches this
+ * predicate already downgraded to `draft`, so it lands in the Icebox and not
+ * on Ready — which is what ringo's page shows, its own comment
+ * notwithstanding, because the index it fetches carries the effective status.
  */
 export const ICEBOX_RFC_STATUSES: readonly string[] = ["draft", "postponed"];
 
@@ -47,7 +61,7 @@ export function isBacklogFilter(value: string): value is BacklogFilter {
 }
 
 /** Iced is judged by the PARENT RFC's status, never the story's own. */
-export function iceboxed(story: Story, rfcStatus: ReadonlyMap<string, string>): boolean {
+export function iceboxed(story: BacklogStory, rfcStatus: ReadonlyMap<string, string>): boolean {
   return ICEBOX_RFC_STATUSES.includes(rfcStatus.get(story.rfc_id) ?? "");
 }
 
@@ -59,11 +73,11 @@ export function iceboxed(story: Story, rfcStatus: ReadonlyMap<string, string>): 
  * picked. `icebox` is unfinished work only: a finished story does not become an
  * idea again because its RFC never got promoted. `draft` excludes the iced
  * ones, which is the partition that keeps the Draft tab workable; every other
- * tab matches its status exactly, so a READY story under a draft RFC is still
- * live work on the Ready tab rather than hidden.
+ * tab matches its status exactly. `status` here is the EFFECTIVE status, the
+ * one ringo's index carries — see `iceboxed` above.
  */
 export function matchesBacklogFilter(
-  story: Story,
+  story: BacklogStory,
   filter: BacklogFilter,
   rfcStatus: ReadonlyMap<string, string>,
 ): boolean {
@@ -100,9 +114,12 @@ const BACKLOG_STATUS_ORDER: readonly string[] = [
  * what makes "next up" and "#N" read down the page in the order an agent would
  * take them.
  */
-export function orderBacklog(stories: readonly Story[], queuePos: ReadonlyMap<string, number>): Story[] {
-  const rank = (story: Story) => {
-    const at = BACKLOG_STATUS_ORDER.indexOf(String(story.status));
+export function orderBacklog<T extends BacklogStory>(
+  stories: readonly T[],
+  queuePos: ReadonlyMap<string, number>,
+): T[] {
+  const rank = (story: T) => {
+    const at = BACKLOG_STATUS_ORDER.indexOf(story.status);
     return at < 0 ? 99 : at;
   };
   return [...stories].sort((a, b) => {

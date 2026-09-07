@@ -23,9 +23,18 @@
  */
 import { SafeBuffer, htmlEscape, htmlSafe } from "@blazetrails/activesupport";
 
-const mdHeaderRE = /^(#{1,6})\s+(.*?)\s*#*$/;
-const mdBulletRE = /^[ \t]*[-*+]\s+(.*)$/;
-const mdOrderedRE = /^[ \t]*\d+\.\s+(.*)$/;
+/**
+ * The three line regexes carry `s` (dotAll) for a reason that is invisible
+ * until a document hits it: JavaScript's `.` excludes U+2028 and U+2029 as
+ * well as the newlines, where Go's excludes only `\n`. A bullet mentioning
+ * LINE SEPARATOR therefore failed `(.*)$` here and matched in ringo, which
+ * closed the list one item early and made the rest of it a paragraph. The
+ * subject is always a single line, so letting `.` match a newline as well
+ * costs nothing.
+ */
+const mdHeaderRE = /^(#{1,6})\s+(.*?)\s*#*$/s;
+const mdBulletRE = /^[ \t]*[-*+]\s+(.*)$/s;
+const mdOrderedRE = /^[ \t]*\d+\.\s+(.*)$/s;
 const mdLinkRE = /\[([^\]]+)\]\(([^)\s]+)\)/g;
 /** mdWikiRE matches cross-story links: [[story-id]] or [[story-id|label]]. */
 const mdWikiRE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
@@ -210,6 +219,33 @@ function renderInline(input: string): string {
 }
 
 /**
+ * The characters Go's `url.PathEscape` leaves alone: the unreserved set plus
+ * the sub-delimiters that are legal unencoded in a path segment.
+ */
+const goPathUnreserved = /[A-Za-z0-9\-_.~$&+:=@]/;
+
+/**
+ * `url.PathEscape` (webhook/markdown.go:255), not `encodeURIComponent`. The
+ * two agree on nearly everything and disagree on both edges: Go leaves
+ * `$ & + : = @` unescaped where JavaScript escapes them, and escapes
+ * `! ' ( ) *` where JavaScript leaves them. A story id carrying an `=` — they
+ * exist — rendered a different href on the two dashboards, which is exactly
+ * the drift the markdown gate is there to catch.
+ */
+function pathEscape(id: string): string {
+  return [...id]
+    .map((ch) => {
+      if (goPathUnreserved.test(ch)) return ch;
+      // `encodeURIComponent` leaves `!'()*` alone, which is the other half of
+      // the disagreement: Go escapes them, so they are encoded by hand.
+      return encodeURIComponent(ch).replace(/[!'()*]/g, (c) =>
+        `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+      );
+    })
+    .join("");
+}
+
+/**
  * renderInlineText escapes text then applies links and emphasis. Markdown
  * syntax characters ([](), *) survive HTML escaping, so escaping first is safe.
  * Underscore emphasis is deliberately not supported — it would mangle
@@ -222,7 +258,7 @@ function renderInlineText(input: string): string {
   s = s.replace(mdWikiRE, (_m, rawId: string, rawLabel: string | undefined) => {
     const id = unescapeText(rawId).trim();
     const label = (rawLabel ?? "").trim() === "" ? rawId : rawLabel!;
-    return `<a href="/story/${encodeURIComponent(id)}">${label}</a>`;
+    return `<a href="/story/${pathEscape(id)}">${label}</a>`;
   });
   s = s.replace(mdLinkRE, (m, text: string, href: string) => {
     if (!mdSafeUrl(unescapeText(href))) return m;

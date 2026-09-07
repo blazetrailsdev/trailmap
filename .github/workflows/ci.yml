@@ -114,6 +114,37 @@ jobs:
           TASKS_CLI: ${{ github.workspace }}/tasks
         run: pnpm gate
 
+      # The two ringo gates. Both run ringo's OWN code — the list pages'
+      # browser scripts and the Go markdown renderer, vendored verbatim under
+      # vendor/ringo at a pinned commit — against trailmap's port over this
+      # same database. btwhooks has no remote to check out, which is why the
+      # snapshot is vendored rather than cloned here; scripts/vendor-ringo.sh
+      # regenerates it and bumping the pin is its own PR.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: vendor/ringo/go/go.mod
+          cache: false
+      - name: /rfcs and /backlog == ringo's, per tab
+        env:
+          TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
+          TASKS_CLI: ${{ github.workspace }}/tasks
+        run: pnpm gate:lists
+      # Proves the gate still detects a difference, rather than passing because
+      # it stopped looking.
+      - name: The list gate still goes red on a difference
+        env:
+          TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
+          TASKS_CLI: ${{ github.workspace }}/tasks
+        run: pnpm gate:lists --self-test
+      - name: The markdown helper == webhook/markdown.go, over every RFC and story
+        env:
+          TASKS_DIR: ${{ github.workspace }}/tasks
+        run: pnpm gate:markdown
+      - name: A one-character change to the helper turns the markdown gate red
+        env:
+          TASKS_DIR: ${{ github.workspace }}/tasks
+        run: pnpm gate:markdown --self-test
+
   # Ported from trails' Preflight job. CLAUDE.md forbids Claude attribution in
   # commits and PR bodies here exactly as it does there, and trailmap is a
   # separate repo with its own merge button — so the rule was unenforced until

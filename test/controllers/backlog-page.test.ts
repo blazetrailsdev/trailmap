@@ -58,6 +58,9 @@ beforeAll(async () => {
   // tab must not list it — a done story does not become an idea again.
   await Story.create({ id: "iced-done", rfc_id: "0900-idea", status: "done" });
   await Story.create({ id: "shipped", rfc_id: "0136-trailmap", status: "done" });
+  // Under a closed RFC: on no tab at all, not even Closed.
+  await Rfc.create({ id: "0800-abandoned", status: "closed", title: "Abandoned" });
+  await Story.create({ id: "shelved", rfc_id: "0800-abandoned", status: "done" });
 });
 
 describe("StoryPagesController#index", () => {
@@ -90,15 +93,37 @@ describe("StoryPagesController#index", () => {
 
     expect(body).toContain(">5 Open</a>");
     expect(body).toContain(">2 Closed</a>");
-    expect(body).toContain(">3 Ready</a>");
+    expect(body).toContain(">2 Ready</a>");
     expect(body).toContain(">1 Draft</a>");
     expect(body).toContain(">1 Blocked</a>");
     expect(body).toContain(">2 Icebox</a>");
   });
 
-  it("keeps an iced story off Open but on Ready, where the queue is on display", async () => {
+  /**
+   * ringo's `matchesFilter` would put this story on Ready — its own comment
+   * says a ready story under a draft RFC is still live work — but ringo's page
+   * never sees a `ready` status here: the index it fetches carries the
+   * EFFECTIVE status, and `effectiveStoryStatus` downgraded this one to draft
+   * before the tab predicate ran. Reading the stored status instead advertised
+   * work on the Ready tab that nothing could claim, which is what
+   * `pnpm gate:lists` caught.
+   */
+  it("shows an iced ready story as the draft the index calls it, on neither Open nor Ready", async () => {
     expect(listed((await index()).body)).not.toContain("iced");
-    expect(listed((await index("ready")).body)).toContain("iced");
+    expect(listed((await index("ready")).body)).not.toContain("iced");
+    expect(listed((await index("icebox")).body)).toContain("iced");
+  });
+
+  /**
+   * `allStories` (webhook/spawnloop.go:1373) drops these before ringo's page
+   * sees them: the backlog is the work still in play, and a closed RFC's is
+   * not. It is the only place a whole RFC's worth of stories leaves the list.
+   */
+  it("leaves out the stories under a closed RFC, which are no longer in play", async () => {
+    for (const filter of ["open", "done", "ready", "draft", "blocked", "icebox"]) {
+      expect(listed((await index(filter)).body)).not.toContain("shelved");
+    }
+    expect((await index("done")).body).toContain(">2 Closed</a>");
   });
 
   it("partitions the drafts: a draft under a draft RFC is iced, not waiting to be groomed", async () => {
