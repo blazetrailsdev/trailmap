@@ -6,8 +6,12 @@ import {
   extractRingoStory,
   extractTrailmapRfc,
   extractTrailmapStory,
+  between,
+  hrefIds,
   rfcStateLabel,
   ringoNotFound,
+  section,
+  sidebarSection,
   storyStateLabel,
   text,
 } from "../../scripts/page-extract.js";
@@ -175,6 +179,64 @@ describe("ringoNotFound", () => {
     expect(ringoNotFound('<div class="tl-body err">No story found with id <code>x</code>')).toBe(true);
     expect(ringoNotFound('<div class="tl-body err">No rfc found with id <code>x</code>')).toBe(true);
     expect(ringoNotFound(ringoStory)).toBe(false);
+  });
+});
+
+describe("section", () => {
+  it("takes the inner HTML of the first element whose class matches", () => {
+    expect(section(ringoRfc, "pr-title")).toBe("A title &amp; a half");
+  });
+
+  it("accepts a pattern, so a caller need not know which state arm was taken", () => {
+    expect(section(trailmapRfc, "state s-[a-z-]+")).toBe("active");
+  });
+
+  it("reports nothing rather than guessing when the class is gone", () => {
+    expect(section(ringoRfc, "renamed-away")).toBe("");
+  });
+});
+
+describe("sidebarSection", () => {
+  it("stops at the next heading, so one dep list does not swallow the other", () => {
+    expect(hrefIds(sidebarSection(ringoStory, "Depends on"), "story")).toEqual([
+      "first",
+      "second",
+    ]);
+    expect(sidebarSection(ringoStory, "Depends on")).not.toContain("0002-y");
+  });
+
+  it("reports nothing for a heading the page does not carry", () => {
+    expect(sidebarSection(ringoStory, "Clusters")).toBe("");
+  });
+});
+
+describe("between", () => {
+  it("takes what sits between the two markers", () => {
+    expect(between("a<b>middle</b>c", "<b>", "</b>")).toBe("middle");
+  });
+
+  it("runs to the end when the closing marker never comes", () => {
+    expect(between("a<b>middle", "<b>", "</b>")).toBe("middle");
+  });
+
+  it("reports nothing when the opening marker never comes", () => {
+    expect(between("a<b>middle</b>c", "<i>", "</i>")).toBe("");
+  });
+});
+
+describe("hrefIds", () => {
+  it("keeps page order and keeps repeats, both of which are compared", () => {
+    expect(hrefIds('<a href="/story/b"></a><a href="/story/a"></a><a href="/story/b"></a>', "story"))
+      .toEqual(["b", "a", "b"]);
+  });
+
+  it("takes the id off a tab link, which ringo writes as /rfc/<id>/stories", () => {
+    expect(hrefIds('<a href="/rfc/0001-x/stories">', "rfc")).toEqual(["0001-x"]);
+  });
+
+  it("does not confuse the two kinds", () => {
+    expect(hrefIds(trailmapStory, "rfc")).toContain("0001-x");
+    expect(hrefIds(trailmapStory, "story")).toEqual(["first", "second"]);
   });
 });
 
