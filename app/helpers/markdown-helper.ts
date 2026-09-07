@@ -233,7 +233,16 @@ const goPathUnreserved = /[A-Za-z0-9\-_.~$&+:=@]/;
  * the drift the markdown gate is there to catch.
  */
 function pathEscape(id: string): string {
-  return [...id].map((ch) => (goPathUnreserved.test(ch) ? ch : encodeURIComponent(ch))).join("");
+  return [...id]
+    .map((ch) => {
+      if (goPathUnreserved.test(ch)) return ch;
+      // `encodeURIComponent` leaves `!'()*` alone, which is the other half of
+      // the disagreement: Go escapes them, so they are encoded by hand.
+      return encodeURIComponent(ch).replace(/[!'()*]/g, (c) =>
+        `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+      );
+    })
+    .join("");
 }
 
 /**

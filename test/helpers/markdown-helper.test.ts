@@ -181,4 +181,12 @@ describe("differences the ringo gate found", () => {
 
     expect(html).toContain('href="/story/warning-count=0-had-warnings"');
   });
+
+  it("escapes the sub-delimiters encodeURIComponent leaves alone, as Go does", () => {
+    // The other edge of the same disagreement: Go's PathEscape writes `%21`
+    // and `%2A` where `encodeURIComponent` passes `!` and `*` through.
+    const html = String(renderMarkdown("[[wat!*(id)]]"));
+
+    expect(html).toContain('href="/story/wat%21%2A%28id%29"');
+  });
 });
