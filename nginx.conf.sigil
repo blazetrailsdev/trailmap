@@ -218,9 +218,16 @@ server {
     proxy_read_timeout {{ $.PROXY_READ_TIMEOUT }};
     proxy_send_timeout {{ $.PROXY_SEND_TIMEOUT }};
     proxy_set_header Host $http_host;
-    proxy_set_header X-Forwarded-For {{ $.PROXY_X_FORWARDED_FOR }};
-    proxy_set_header X-Forwarded-Proto http;
     proxy_set_header X-Request-Start $msec;
+
+    # NO X-Forwarded-* HEADERS HERE, deliberately. `requireLoopback`
+    # (app/controllers/concerns/loopback-only.ts) refuses any request carrying
+    # proxy provenance, because a request that was forwarded is by definition
+    # not one that originated on the box, and `X-Forwarded-Host` can otherwise
+    # spell "127.0.0.1" for a caller who is nowhere near it. Setting them here
+    # would 404 the entire JSON API — the CLI and ringo — while the public
+    # vhost, which does set them, kept working; the app would look up and the
+    # API would look deleted.
   }
 }
 {{ end }}

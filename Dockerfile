@@ -55,9 +55,11 @@ RUN git config --global --add safe.directory '*' \
  && git config --global user.name "Dean Marano" \
  && git config --global user.email "here@dean.is"
 
-# One listener, two audiences: dokku's nginx fronts it on the public hostname
-# behind SSO, and the published loopback port reaches it directly for the JSON
-# API. Binding 0.0.0.0 is the container's interface, not the box's.
+# One listener, two audiences, both fronted by dokku's nginx: the public
+# hostname behind SSO, and a 127.0.0.1:8080 server block for the JSON API. The
+# container publishes NO host port — a fixed one collides with itself on every
+# zero-downtime release. Binding 0.0.0.0 is the container's interface, not the
+# box's.
 ENV PORT=8080
 EXPOSE 8080
 CMD ["node_modules/.bin/tsx", "node_modules/@blazetrails/trailties/bin/trails.js", "server", "-b", "0.0.0.0", "-p", "8080"]
