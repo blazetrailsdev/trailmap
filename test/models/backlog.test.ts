@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ICEBOX_RFC_STATUSES,
   iceboxed,
   isBacklogFilter,
   matchesBacklogFilter,
@@ -17,6 +18,15 @@ const rfcStatus = new Map([
   ["idea", "draft"],
   ["later", "postponed"],
 ]);
+
+describe("ICEBOX_RFC_STATUSES", () => {
+  it("ices the two RFC states that mean nobody should pick this yet", () => {
+    // ringo's `ICEBOX_RFC_STATUS` (webhook/backlog.go:164). `closed` and
+    // `superseded` are deliberately absent: those RFCs' stories leave the
+    // backlog entirely rather than land in the Icebox.
+    expect([...ICEBOX_RFC_STATUSES]).toEqual(["draft", "postponed"]);
+  });
+});
 
 describe("iceboxed", () => {
   it("judges by the parent RFC's status, never the story's own", () => {
