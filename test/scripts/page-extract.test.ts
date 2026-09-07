@@ -1,0 +1,218 @@
+import { describe, expect, it } from "vitest";
+import {
+  decodeEntities,
+  diffFacts,
+  extractRingoRfc,
+  extractRingoStory,
+  extractTrailmapRfc,
+  extractTrailmapStory,
+  rfcStateLabel,
+  ringoNotFound,
+  storyStateLabel,
+  text,
+} from "../../scripts/page-extract.js";
+
+/**
+ * The markup here is COPIED from the two implementations, not invented:
+ * ringo's from `webhook/rfcs.go`'s `rfcShowHTML` and `webhook/story.go`'s
+ * `storyHTML`, trailmap's from `app/views/rfc-pages/show.html.tse` and
+ * `app/views/story-pages/show.html.tse`. That is what makes the test worth
+ * anything — an extractor is only ever right about the markup it is pointed
+ * at, and a fixture written to suit the regex proves nothing.
+ */
+const ringoRfc = `<div class="pr-title">A title &amp; a half</div>
+  <div class="pr-sub">
+    <span class="state state-open">Active</span>
+    <span><strong>dean</strong> · <code>0001-x</code></span>
+  </div>
+  <div class="card">
+    <div class="card-head"><span>Stories (2/3 done)</span></div>
+    <div class="srow"><span class="badge s-ready">ready</span>
+      <span class="stitle"><a href="/story/beta">Beta</a></span></div>
+    <div class="srow"><span class="badge s-done">done</span>
+      <span class="stitle"><a href="/story/alpha">Alpha</a></span></div>
+  </div>
+  <div class="sidebar"><div class="s-row"><span class="k">Stories</span><span>2/3 done</span></div></div>`;
+
+const trailmapRfc = `<div class="page-header">
+    <h1 class="page-title">A title &amp; a half</h1>
+    <div class="page-subhead">
+      <span class="id">0001-x</span>
+      <span class="state s-active">active</span>
+    </div>
+  </div>
+  <div class="box">
+    <div class="box-header">
+      <span class="count">1 <span class="n">open</span></span>
+      <span class="count">2 <span class="n">done</span></span>
+    </div>
+    <div class="item-row"><span class="badge s-ready">ready</span>
+      <span class="row-main"><a class="row-title" href="/story/beta">Beta</a></span></div>
+    <div class="item-row"><span class="badge s-done">done</span>
+      <span class="row-main"><a class="row-title" href="/story/alpha">Alpha</a></span></div>
+  </div>
+  <h2 class="section-title">Document</h2>
+  <article class="markdown"><a href="/story/mentioned-in-prose">see this</a></article>`;
+
+const ringoStory = `<div class="pr-title">Do the thing <span class="num">#42</span></div>
+  <div class="pr-sub">
+    <span class="state state-open">
+      <svg width="15"><path d="M1.5"/></svg>
+      Open
+    </span>
+    <span><strong>ringo</strong> opened this story for <a href="/rfc/0001-x"><code>0001-x</code></a></span>
+  </div>
+  <div class="sidebar">
+    <div class="s-sec"><div class="s-title">Depends on</div>
+      <div class="labels"><a href="/story/first"><code>first</code></a> <a href="/story/second"><code>second</code></a> </div></div>
+    <div class="s-sec"><div class="s-title">Depends on RFCs</div>
+      <div class="labels"><a href="/rfc/0002-y"><code>0002-y</code></a> <span class="badge s-closed">closed</span> </div></div>
+  </div>`;
+
+const trailmapStory = `<div class="page-header">
+    <h1 class="page-title">Do the thing</h1>
+    <div class="page-subhead">
+      <span class="id">do-the-thing</span>
+      <span class="state s-in-progress">in-progress</span>
+      <span class="muted">in <a href="/rfc/0001-x">A title</a>, PR #42</span>
+    </div>
+  </div>
+  <div class="box">
+    <div class="box-header"><span class="count">Depends on</span></div>
+    <div class="item-row"><span class="badge s-done">done</span>
+      <span class="row-main"><a class="row-title" href="/story/first">first</a></span></div>
+    <div class="item-row"><span class="badge s-done">done</span>
+      <span class="row-main"><a class="row-title" href="/story/second">second</a></span></div>
+    <div class="item-row"><span class="badge s-closed">closed</span>
+      <span class="row-main"><a class="row-title" href="/rfc/0002-y">0002-y</a>
+        <div class="row-meta">RFC</div></span></div>
+  </div>
+  <h2 class="section-title">Document</h2>
+  <article class="markdown"><a href="/rfc/0009-z">a link in the prose</a></article>`;
+
+describe("rfcStateLabel", () => {
+  it("is ringo's vocabulary, including the em dash for an unset status", () => {
+    expect(["active", "draft", "postponed", "closed", "superseded", ""].map(rfcStateLabel)).toEqual([
+      "Active",
+      "Draft",
+      "Postponed",
+      "Closed",
+      "Superseded",
+      "—",
+    ]);
+  });
+
+  it("passes an unrecognised status through, as ringo's default arm does", () => {
+    expect(rfcStateLabel("retired")).toBe("retired");
+  });
+});
+
+describe("storyStateLabel", () => {
+  it("folds every in-flight status onto Open, as ringo does", () => {
+    expect(["ready", "draft", "claimed", "in-progress"].map(storyStateLabel)).toEqual([
+      "Open",
+      "Open",
+      "Open",
+      "Open",
+    ]);
+    expect(["done", "closed", "blocked"].map(storyStateLabel)).toEqual([
+      "Merged",
+      "Closed",
+      "Blocked",
+    ]);
+  });
+});
+
+describe("extractRingoRfc / extractTrailmapRfc", () => {
+  it("reads the same facts out of two different pages", () => {
+    expect(extractRingoRfc(ringoRfc)).toEqual(extractTrailmapRfc(trailmapRfc));
+  });
+
+  it("reads them, rather than agreeing on nothing", () => {
+    expect(extractRingoRfc(ringoRfc)).toEqual({
+      title: "A title & a half",
+      status: "Active",
+      stories: ["beta", "alpha"],
+      done: 2,
+      total: 3,
+    });
+  });
+
+  it("does not count a story the RFC's own document links to", () => {
+    expect(extractTrailmapRfc(trailmapRfc).stories).toEqual(["beta", "alpha"]);
+  });
+
+  it("derives trailmap's total from open + done, which an empty RFC still renders", () => {
+    const empty = trailmapRfc
+      .replace('<span class="count">1 <span class="n">open</span></span>', '<span class="count">0 <span class="n">open</span></span>')
+      .replace('<span class="count">2 <span class="n">done</span></span>', '<span class="count">0 <span class="n">done</span></span>');
+    expect(extractTrailmapRfc(empty)).toMatchObject({ done: 0, total: 0 });
+  });
+});
+
+describe("extractRingoStory / extractTrailmapStory", () => {
+  it("reads the same facts out of two different pages", () => {
+    expect(extractRingoStory(ringoStory)).toEqual(extractTrailmapStory(trailmapStory));
+  });
+
+  it("keeps ringo's PR number out of the title, where trailmap never put it", () => {
+    expect(extractRingoStory(ringoStory)).toEqual({
+      title: "Do the thing",
+      status: "Open",
+      rfc: "0001-x",
+      deps: ["first", "second"],
+      rfcDeps: ["0002-y"],
+    });
+  });
+
+  it("does not read a dep out of the story's own document", () => {
+    expect(extractTrailmapStory(trailmapStory).rfcDeps).toEqual(["0002-y"]);
+  });
+});
+
+describe("ringoNotFound", () => {
+  it("recognises the page ringo serves with a 200 for an id it does not have", () => {
+    expect(ringoNotFound('<div class="tl-body err">No story found with id <code>x</code>')).toBe(true);
+    expect(ringoNotFound('<div class="tl-body err">No rfc found with id <code>x</code>')).toBe(true);
+    expect(ringoNotFound(ringoStory)).toBe(false);
+  });
+});
+
+describe("text", () => {
+  it("drops markup and collapses the whitespace an SVG leaves behind", () => {
+    expect(text('<span>\n  <svg><path d="M1"/></svg>\n  Open\n</span>')).toBe("Open");
+  });
+});
+
+describe("decodeEntities", () => {
+  it("decodes the forms the two templates actually emit", () => {
+    // Go escapes an apostrophe as &#39;, the .tse compiler as &#x27;. Both are
+    // an apostrophe, and neither is a difference between the pages.
+    expect(decodeEntities("ringo&#39;s")).toBe("ringo's");
+    expect(decodeEntities("ringo&#x27;s")).toBe("ringo's");
+    expect(decodeEntities("a &amp; b &middot; c")).toBe("a & b · c");
+  });
+
+  it("leaves something that is not an entity alone", () => {
+    expect(decodeEntities("Q&A; 5 &notareal; thing")).toBe("Q&A; 5 &notareal; thing");
+  });
+});
+
+describe("diffFacts", () => {
+  it("says nothing when the two agree", () => {
+    expect(diffFacts({ title: "a", ids: ["x"] }, { title: "a", ids: ["x"] })).toEqual([]);
+  });
+
+  it("names the field, and an ordered list's first differing position", () => {
+    expect(diffFacts({ done: 1 }, { done: 2 })).toEqual(["done: ringo=1 trailmap=2"]);
+    expect(diffFacts({ ids: ["a", "b"] }, { ids: ["a", "c"] })).toEqual([
+      "ids: 2 ringo vs 2 trailmap; first difference at 1 (ringo=b trailmap=c)",
+    ]);
+  });
+
+  it("reports the end of the shorter list rather than undefined", () => {
+    expect(diffFacts({ ids: ["a"] }, { ids: ["a", "b"] })).toEqual([
+      "ids: 1 ringo vs 2 trailmap; first difference at 1 (ringo=(end) trailmap=b)",
+    ]);
+  });
+});

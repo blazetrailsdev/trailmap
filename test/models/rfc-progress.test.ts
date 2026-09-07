@@ -9,9 +9,9 @@ import {
 } from "../../app/models/concerns/rfc-progress.js";
 import type { Story } from "../../app/models/index.js";
 
-/** A story is only its id and status here; nothing else is read. */
-function story(id: string, status: string): Story {
-  return { id, status } as unknown as Story;
+/** A story is its id, status and priority here; nothing else is read. */
+function story(id: string, status: string, priority: number | null = null): Story {
+  return { id, status, priority } as unknown as Story;
 }
 
 describe("storyStatusRank", () => {
@@ -29,21 +29,49 @@ describe("storyStatusRank", () => {
 });
 
 describe("orderStoriesForRfc", () => {
-  it("orders by status and keeps index order inside a group", () => {
-    const ordered = orderStoriesForRfc([
-      story("d1", "done"),
-      story("r1", "ready"),
-      story("d2", "done"),
-      story("p1", "in-progress"),
-      story("r2", "ready"),
-    ]);
+  it("orders by status and by id inside a group", () => {
+    const ordered = orderStoriesForRfc(
+      [
+        story("d1", "done"),
+        story("r1", "ready"),
+        story("d2", "done"),
+        story("p1", "in-progress"),
+        story("r2", "ready"),
+      ],
+      "active",
+    );
 
     expect(ordered.map((s) => s.id)).toEqual(["p1", "r1", "r2", "d1", "d2"]);
   });
 
+  it("breaks a status tie on priority before id, unset last", () => {
+    const ordered = orderStoriesForRfc(
+      [story("a", "ready"), story("b", "ready", 2), story("c", "ready", 0), story("d", "ready", 2)],
+      "active",
+    );
+
+    expect(ordered.map((s) => s.id)).toEqual(["c", "b", "d", "a"]);
+  });
+
+  it("does not depend on the order the rows arrive in", () => {
+    const rows = [story("b", "ready", 2), story("c", "ready", 0), story("a", "ready")];
+    const reversed = [...rows].reverse();
+
+    expect(orderStoriesForRfc(rows, "active").map((s) => s.id)).toEqual(
+      orderStoriesForRfc(reversed, "active").map((s) => s.id),
+    );
+  });
+
+  it("ranks a ready story under a non-active RFC as the draft it effectively is", () => {
+    const stories = [story("r", "ready"), story("b", "blocked")];
+
+    expect(orderStoriesForRfc(stories, "active").map((s) => s.id)).toEqual(["r", "b"]);
+    expect(orderStoriesForRfc(stories, "draft").map((s) => s.id)).toEqual(["b", "r"]);
+  });
+
   it("does not mutate its argument", () => {
     const stories = [story("d1", "done"), story("r1", "ready")];
-    orderStoriesForRfc(stories);
+    orderStoriesForRfc(stories, "active");
     expect(stories.map((s) => s.id)).toEqual(["d1", "r1"]);
   });
 });

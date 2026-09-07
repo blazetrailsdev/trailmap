@@ -138,7 +138,7 @@ export class RfcPagesController extends ApplicationController {
       return;
     }
 
-    const stories = orderStoriesForRfc(await Story.where({ rfc_id: id }).toArray());
+    const stories = orderStoriesForRfc(await Story.where({ rfc_id: id }).toArray(), rfc.status);
     const doc = await readDocument(rfc.file_path);
     this.renderPage(
       {

@@ -10,6 +10,7 @@
  * unfinished.
  */
 import type { Story } from "../story.js";
+import { effectiveStoryStatus } from "./effective-status.js";
 
 /**
  * Sort key: in-progress first, done last, anything else in between.
@@ -49,12 +50,56 @@ export function storyStatusRank(status: string | null): number {
 }
 
 /**
- * `stories`, ordered for the page. `sort` is stable in every runtime this
- * targets, so index order survives inside a status group — matching Go's
- * `sort.SliceStable`.
+ * The sort key an unprioritised story gets in ringo's index — its
+ * `priorityUnset` (webhook/tasksdb.go:161), which sinks it below every
+ * explicit priority instead of above them.
  */
-export function orderStoriesForRfc(stories: readonly Story[]): Story[] {
-  return [...stories].sort((a, b) => storyStatusRank(a.status) - storyStatusRank(b.status));
+const PRIORITY_UNSET = 1_000_000;
+
+/**
+ * `stories`, ordered for the page: status rank first, then ringo's INDEX
+ * order — priority ascending with unset last, then id.
+ *
+ * ringo stable-sorts by status rank alone (`sort.SliceStable`,
+ * webhook/rfcs.go:255), so what survives inside a status group is whatever
+ * order its index was already in — and that index is itself sorted by
+ * `(priority, id)` when it is loaded (webhook/tasksdb.go:287). A stable sort
+ * over that pre-order is the same thing as a total sort by
+ * `(rank, priority, id)`, which is what this does.
+ *
+ * Spelling the tiebreak out rather than leaning on a stable sort is not a
+ * stylistic choice: the rows arrive here from `Story.where(...)`, whose order
+ * is SQLite's rowid — the order the stories were ingested in — and stably
+ * sorting THAT preserves an order ringo never had. `pnpm gate:pages` caught
+ * exactly that, on every RFC in the database.
+ *
+ * `rfcStatus` is the parent RFC's, and it is required for the same reason the
+ * ready queue needs it: ringo ranks the effective status (a `ready` story
+ * under a non-active RFC is a `draft`, `effectiveStoryStatus`), so ordering
+ * by the authored one floats work to the top of an RFC that cannot claim it.
+ */
+export function orderStoriesForRfc(
+  stories: readonly Story[],
+  rfcStatus: string | null,
+): Story[] {
+  const key = (story: Story) => ({
+    rank: storyStatusRank(effectiveStoryStatus(rfcStatus, story.status) ?? null),
+    priority: story.priority ?? PRIORITY_UNSET,
+    id: story.id,
+  });
+  return [...stories].sort((a, b) => {
+    const left = key(a);
+    const right = key(b);
+    return (
+      left.rank - right.rank ||
+      left.priority - right.priority ||
+      // Plain `<` rather than `localeCompare`: ringo compares Go strings, which
+      // is a byte comparison, and a locale collation disagrees with that on
+      // exactly the characters story ids are full of (`-` is ignorable in the
+      // default collation, so `a-b` and `ab` reorder).
+      compareBytes(left.id, right.id)
+    );
+  });
 }
 
 export interface RfcStoryCounts {
@@ -165,6 +210,11 @@ export function orderRfcsForIndex<T extends { id: string; priority: number | nul
     }
     return a.id.localeCompare(b.id);
   });
+}
+
+/** Go's string comparison: byte order, not locale collation. */
+function compareBytes(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 /** RFC statuses that are not open, and so report no age. */
