@@ -1,0 +1,40 @@
+<div class="page-header">
+  <h1 class="page-title">Backlog</h1>
+  <div class="page-subhead">
+    <span class="muted"><%= queueSize %> in the ready queue</span>
+  </div>
+</div>
+
+<%= render({ partial: "shared/filter-tabs", locals: { tabs: tabs } }) %>
+
+<div class="box">
+  <% if (showQueueHelp) { %>
+    <div class="box-header">
+      <span class="muted">Stories tagged <strong>next up</strong> / <strong>#N</strong> are the ready queue in pick order.</span>
+    </div>
+  <% } %>
+  <% if (rows.length === 0) { %>
+    <div class="empty">
+      <% if (filter === "done") { %>No done stories yet.<% } else if (filter === "icebox") { %>No stories under draft or postponed RFCs.<% } else { %>No <%= filter %> stories.<% } %>
+    </div>
+  <% } %>
+  <% for (const row of rows) { %>
+    <div class="item-row">
+      <%= render({ partial: "shared/status-badge", locals: { status: row.status } }) %>
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title" href="/story/<%= row.id %>"><%= row.title %></a>
+          <% if (row.queuePos === 0) { %><span class="tag next">next up</span><% } else if (row.queuePos !== null) { %><span class="tag queue">#<%= row.queuePos + 1 %> in queue</span><% } %>
+          <% if (row.cluster) { %><span class="tag"><%= row.cluster %></span><% } %>
+          <% if (row.icebox) { %><span class="tag icebox" title="its RFC is a draft or postponed">icebox</span><% } %>
+          <% for (const name of row.packages) { %><span class="tag pkg" title="package<%= row.packagesInherited ? ", inherited from RFC " + row.rfcId : "" %>"><%= name %><%= row.packagesInherited ? "*" : "" %></span><% } %>
+          <% if (row.priority !== null) { %><span class="tag prio" title="ready-queue priority (lower = sooner)<%= row.priorityInherited ? ", inherited from RFC " + row.rfcId : "" %>">pri <%= row.priority %><%= row.priorityInherited ? "*" : "" %></span><% } %>
+        </span>
+        <div class="row-meta">
+          <code><%= row.id %></code> &middot; <a href="/rfc/<%= row.rfcId %>">RFC <%= row.rfcId %></a><% if (row.estLoc !== null) { %> &middot; ~<%= row.estLoc %> LOC<% } %><% if (row.staleDays !== null) { %> &middot; updated <%= row.staleDays %>d ago<% } %><% if (row.assignee) { %> &middot; by <%= row.assignee %><% } %>
+        </div>
+      </span>
+      <% if (row.pr !== null) { %><span class="row-aside"><a href="/story/<%= row.id %>">#<%= row.pr %></a></span><% } %>
+    </div>
+  <% } %>
+</div>

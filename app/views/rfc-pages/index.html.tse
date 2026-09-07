@@ -1,0 +1,39 @@
+<div class="page-header">
+  <h1 class="page-title">RFCs</h1>
+  <div class="page-subhead">
+    <span class="muted"><%= total %> <%= total === 1 ? "RFC" : "RFCs" %></span>
+  </div>
+</div>
+
+<%= render({ partial: "shared/filter-tabs", locals: { tabs: tabs } }) %>
+
+<div class="box">
+  <% if (rows.length === 0) { %>
+    <div class="empty">No <%= filter %> RFCs.</div>
+  <% } %>
+  <% for (const row of rows) { %>
+    <div class="item-row">
+      <%= render({ partial: "shared/status-badge", locals: { status: row.status } }) %>
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title" href="/rfc/<%= row.id %>"><%= row.title %></a>
+          <% if (row.priority !== null) { %><span class="tag prio" title="RFC priority (lower = sooner)">P<%= row.priority %></span><% } %>
+          <% if (row.counts.total > 0) { %><span class="tag prog" title="stories done / total"><%= row.counts.done %>/<%= row.counts.total %> done</span><% } %>
+          <% for (const cluster of row.clusters) { %><span class="tag"><%= cluster %></span><% } %>
+          <% if (row.supersededBy) { %><span class="tag">&rarr; <%= row.supersededBy %></span><% } %>
+        </span>
+        <div class="row-meta">
+          <code><%= row.id %></code><% if (row.owner) { %> &middot; by <%= row.owner %><% } %><% if (row.openDays !== null) { %> &middot; open <%= row.openDays %>d<% } %>
+        </div>
+        <% if (row.storyTotal > 0) { %>
+          <div class="sbarwrap">
+            <span class="sbarcap"><%= row.storyTotal %> <%= row.storyTotal === 1 ? "story" : "stories" %></span>
+            <span class="sbar">
+              <% for (const seg of row.bar) { %><span class="seg s-<%= seg.status %>" style="width:<%= seg.pct %>%" title="<%= seg.count %> <%= seg.status %>"></span><% } %>
+            </span>
+          </div>
+        <% } %>
+      </span>
+    </div>
+  <% } %>
+</div>

@@ -50,6 +50,14 @@ Two things follow:
 - Conventional Commits. No `Co-Authored-By` trailer, no "Generated with Claude
   Code" line.
 - Open PRs as draft.
+- **Every PR body carries screenshots of the pages it touches**, always — not
+  only when the change is a visual one. trailmap serves pages people read; CI
+  proves the code is correct, and only a picture proves the page is usable to
+  a reviewer who cannot run it against the live database. Boot against the
+  live tasks database, shoot every page and tab the PR changes, push the PNGs
+  to a `screenshots/pr-<N>` branch (as #11 and #15 do) so binaries stay out of
+  the reviewable diff, and embed them with
+  `<img src=".../blob/screenshots/pr-<N>/<file>.png?raw=1" width="100%">`.
 - Tests live in `test/`, mirroring `app/`. Run them with `pnpm test`;
   `pnpm build` is the typecheck.
 - **`pnpm gate` is a merge condition, not a formality.** trailmap's ready queue

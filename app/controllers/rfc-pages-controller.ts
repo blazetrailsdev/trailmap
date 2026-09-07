@@ -1,9 +1,41 @@
 import type { SafeBuffer } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.js";
 import { Rfc, Story } from "../models/index.js";
+import { jsonArrayColumn } from "../models/rfc.js";
 import { readDocument } from "../models/concerns/document.js";
-import { orderStoriesForRfc, rfcStoryCounts } from "../models/concerns/rfc-progress.js";
+import {
+  orderRfcsForIndex,
+  orderStoriesForRfc,
+  rfcStoryCounts,
+  rfcTerminal,
+  storyStatusCounts,
+  type RfcStoryCounts,
+  type StatusCount,
+} from "../models/concerns/rfc-progress.js";
+import { daysSince } from "../models/concerns/elapsed.js";
 import { renderMarkdown } from "../helpers/markdown-helper.js";
+
+/**
+ * The status tabs, in ringo's order (`STATUS_ORDER`, webhook/rfcs.go). Active
+ * is first because it is the default view and the only one anyone works from.
+ */
+const RFC_STATUS_TABS: readonly string[] = ["active", "draft", "postponed", "closed", "superseded"];
+
+/** One row of the RFC list, assembled here because a `.tse` cannot compute. */
+export interface RfcRow {
+  id: string;
+  title: string;
+  status: string;
+  owner: string | null;
+  priority: number | null;
+  supersededBy: string | null;
+  clusters: string[];
+  counts: RfcStoryCounts;
+  bar: StatusCount[];
+  storyTotal: number;
+  /** Days since the RFC was written, or null when it is terminal or undated. */
+  openDays: number | null;
+}
 
 /**
  * `/rfc/<id>` — the RFC show page.
@@ -22,6 +54,82 @@ import { renderMarkdown } from "../helpers/markdown-helper.js";
  * as ringo, and it is what makes a stale link say which id it was looking for.
  */
 export class RfcPagesController extends ApplicationController {
+  /**
+   * `/rfcs` — the RFC list, server-rendered.
+   *
+   * ringo prints a constant shell here and lets the browser fetch
+   * `/spawnloop/rfcs` and assemble the rows (`HandleRFCsPage`,
+   * webhook/rfcs.go:164), so this is a port of the SCRIPT rather than of a
+   * handler: the rows, the counts, the ordering and the status tabs all come
+   * out of `draw()`. The one structural change that follows from rendering on
+   * the server is the tabs — they were a client-side filter over one fetched
+   * dataset and are now links (`/rfcs?status=draft`), because a tab that
+   * needs JavaScript to change what the page shows is exactly the client-side
+   * assembly this story removes.
+   *
+   * Left behind, for the same reason the show page left ringo's action
+   * buttons: the "needs refine" flag and the bar's history ticks. Both are
+   * ringo's own local state — the stall rule belongs to the spawn trigger and
+   * the ticks are a cache over its event stream — and neither is in this
+   * database.
+   *
+   * The counts are the show page's: `rfcStoryCounts` decides done/total here
+   * and there, so an RFC cannot report 12/20 on one page and 12/21 on the
+   * other.
+   */
+  async index(): Promise<void> {
+    const [rfcs, stories] = await Promise.all([Rfc.all().toArray(), Story.all().toArray()]);
+
+    const byRfc = new Map<string, Story[]>();
+    for (const story of stories) {
+      const bucket = byRfc.get(story.rfc_id);
+      if (bucket) bucket.push(story);
+      else byRfc.set(story.rfc_id, [story]);
+    }
+
+    const tabCounts = new Map<string, number>();
+    const openCount = new Map<string, number>();
+    for (const rfc of rfcs) {
+      tabCounts.set(rfc.status, (tabCounts.get(rfc.status) ?? 0) + 1);
+      openCount.set(rfc.id, rfcStoryCounts(byRfc.get(rfc.id) ?? []).open);
+    }
+
+    const requested = String(this.params.get("status") ?? "");
+    const filter = RFC_STATUS_TABS.includes(requested) ? requested : "active";
+    const shown = orderRfcsForIndex(rfcs.filter((rfc) => rfc.status === filter), openCount);
+
+    this.render({
+      template: "rfc-pages/index",
+      locals: {
+        filter,
+        total: rfcs.length,
+        tabs: RFC_STATUS_TABS.map((status) => ({
+          key: status,
+          label: status,
+          count: tabCounts.get(status) ?? 0,
+          href: `/rfcs?status=${status}`,
+          active: status === filter,
+        })),
+        rows: shown.map((rfc): RfcRow => {
+          const own = byRfc.get(rfc.id) ?? [];
+          return {
+            id: rfc.id,
+            title: rfc.title ?? rfc.id,
+            status: rfc.status,
+            owner: rfc.owner,
+            priority: rfc.priority,
+            supersededBy: rfc.superseded_by,
+            clusters: jsonArrayColumn(rfc.clusters),
+            counts: rfcStoryCounts(own),
+            bar: storyStatusCounts(own),
+            storyTotal: own.length,
+            openDays: rfcTerminal(rfc.status) ? null : daysSince(rfc.created_on),
+          };
+        }),
+      },
+    });
+  }
+
   async show(): Promise<void> {
     const id = String(this.params.get("id") ?? "");
     const rfc = id === "" ? null : await Rfc.findBy({ id });

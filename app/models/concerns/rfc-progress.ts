@@ -78,3 +78,96 @@ export function rfcStoryCounts(stories: readonly Story[]): RfcStoryCounts {
   }
   return { total, done, open, donePct: total > 0 ? Math.floor((done * 100) / total) : 0 };
 }
+
+/** One story status and how many of an RFC's stories hold it. */
+export interface StatusCount {
+  status: string;
+  count: number;
+  /**
+   * Share of the RFC's stories, as a percentage — the bar segment's width.
+   * Rounded to two places: the exact ratio prints seventeen digits into the
+   * `style` attribute, and no display can spend them.
+   */
+  pct: number;
+}
+
+/**
+ * The bar's segment order: shipped, then dead, then moving, queued, stuck, and
+ * finally not-started. Read left to right it is the RFC's progress and the tail
+ * is what is left — ringo's `STORY_STATES` (webhook/rfcs.go:465, btwebooks
+ * `7897c57`), kept in that order because the reading is the point.
+ */
+const STORY_BAR_ORDER: readonly string[] = [
+  "done",
+  "closed",
+  "in-progress",
+  "claimed",
+  "ready",
+  "blocked",
+  "draft",
+];
+
+/**
+ * `stories` counted by status, in bar order, with anything unrecognised
+ * appended in id order rather than dropped.
+ *
+ * Unlike `rfcStoryCounts` this counts `closed` — the bar is the composition of
+ * the RFC's stories, not its progress, and a closed story is part of what is
+ * there. The two disagreeing is deliberate and is ringo's split too:
+ * `story_status` carries every status while `rfcStoryCounts` decides the
+ * done/total headline.
+ */
+export function storyStatusCounts(stories: readonly Story[]): StatusCount[] {
+  const counts = new Map<string, number>();
+  for (const story of stories) {
+    const status = String(story.status ?? "unknown");
+    counts.set(status, (counts.get(status) ?? 0) + 1);
+  }
+  const known = STORY_BAR_ORDER.filter((status) => counts.has(status));
+  const rest = [...counts.keys()].filter((status) => !STORY_BAR_ORDER.includes(status)).sort();
+  const total = stories.length;
+  return [...known, ...rest].map((status) => {
+    const count = counts.get(status) ?? 0;
+    return {
+      status,
+      count,
+      pct: total > 0 ? Math.round((10_000 * count) / total) / 100 : 0,
+    };
+  });
+}
+
+/**
+ * The RFC list's order: priority ascending, unset last. ringo's comparator is
+ * webhook/rfcs.go:595-611, which opens
+ * `const prio = r => (r.priority == null ? Number.MAX_SAFE_INTEGER : r.priority);`
+ * and applies the fewer-remaining tiebreak under `if (a.priority != null &&
+ * b.priority != null)`.
+ *
+ * The tiebreak is the interesting half and it is ringo's, which is in turn the
+ * CLI's `comparePriority` one level up: among RFCs that set the SAME EXPLICIT
+ * priority, fewer open stories sorts first, and id breaks what remains. It
+ * applies only when both priorities are explicit — an RFC with no priority is
+ * left in id order rather than reshuffled by size, matching the ranking rule
+ * `comparePriority` applies to stories (`concerns/ranking.ts`), which returns 0
+ * unless both sides inherit the same explicit RFC priority.
+ */
+export function orderRfcsForIndex<T extends { id: string; priority: number | null }>(
+  rfcs: readonly T[],
+  openCount: ReadonlyMap<string, number>,
+): T[] {
+  const rank = (rfc: T) => rfc.priority ?? Number.MAX_SAFE_INTEGER;
+  return [...rfcs].sort((a, b) => {
+    const byPriority = rank(a) - rank(b);
+    if (byPriority !== 0) return byPriority;
+    if (a.priority !== null && b.priority !== null) {
+      const byOpen = (openCount.get(a.id) ?? 0) - (openCount.get(b.id) ?? 0);
+      if (byOpen !== 0) return byOpen;
+    }
+    return a.id.localeCompare(b.id);
+  });
+}
+
+/** RFC statuses that are not open, and so report no age. */
+export function rfcTerminal(status: string | null): boolean {
+  return status === "closed" || status === "superseded";
+}

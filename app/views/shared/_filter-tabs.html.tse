@@ -1,0 +1,15 @@
+<%#
+  The list pages' filter row: `render({ partial: "shared/filter-tabs",
+  locals: { tabs } })`, where each tab is `{ href, label, count, active }`.
+
+  Links, not spans with an onclick. ringo's are the latter because its lists
+  are assembled in the browser out of one fetched dataset, and switching tabs
+  there is a repaint; here the server renders the slice, so a tab is a URL —
+  which also makes a filtered list shareable and reloadable, neither of which
+  ringo's is.
+%>
+<div class="tabs">
+  <% for (const tab of tabs) { %>
+    <a class="tab<%= tab.active ? " active" : "" %>" href="<%= tab.href %>"><%= tab.count %> <%= tab.label %></a>
+  <% } %>
+</div>
