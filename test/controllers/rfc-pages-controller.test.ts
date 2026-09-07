@@ -30,6 +30,8 @@ beforeAll(async () => {
     file_path: "README.md",
   });
   await Rfc.create({ id: "0002-empty", status: "postponed", title: "Nothing here" });
+  await Rfc.create({ id: "0003-parked", status: "draft", title: "Not started" });
+  await Rfc.create({ id: "0004-priorities", status: "active", title: "All ready" });
   await Rfc.create({
     id: "0014-fixtures-adoption",
     status: "superseded",
@@ -49,6 +51,17 @@ beforeAll(async () => {
   // Created LAST: the RFC auto-closes the moment every story it has is done,
   // so a `done` story must never be the only one on it (rfc-close.ts).
   await Story.create({ id: "shipped", rfc_id: "0136-trailmap", status: "done", est_loc: 40 });
+
+  // One status group, three priorities, created in an order none of the three
+  // sorts would leave alone.
+  await Story.create({ id: "a-late", rfc_id: "0004-priorities", status: "ready", priority: 7 });
+  await Story.create({ id: "m-unset", rfc_id: "0004-priorities", status: "ready" });
+  await Story.create({ id: "z-early", rfc_id: "0004-priorities", status: "ready", priority: 2 });
+
+  // A `ready` story under a DRAFT RFC: the parent-RFC override applies to it,
+  // and `held` sorts before it on priority alone if the override is ignored.
+  await Story.create({ id: "parked-ready", rfc_id: "0003-parked", status: "ready", priority: 9 });
+  await Story.create({ id: "held", rfc_id: "0003-parked", status: "blocked", priority: 1 });
 });
 
 describe("RfcPagesController", () => {
@@ -70,6 +83,27 @@ describe("RfcPagesController", () => {
 
     const order = [...body.matchAll(/href="\/story\/([^"]+)"/g)].map((m) => m[1]);
     expect(order).toEqual(["working", "queued", "abandoned", "shipped"]);
+  });
+
+  it("breaks a status tie on priority, unset last, as ringo's index does", async () => {
+    const { body } = await show("0004-priorities");
+
+    const order = [...body.matchAll(/href="\/story\/([^"]+)"/g)].map((m) => m[1]);
+    // Priority ahead of id, and an unset priority behind both explicit ones
+    // rather than ahead of them — neither the ingest order nor id order.
+    expect(order).toEqual(["z-early", "a-late", "m-unset"]);
+  });
+
+  it("shows and ranks the effective status under a non-active RFC", async () => {
+    const { body } = await show("0003-parked");
+
+    const order = [...body.matchAll(/href="\/story\/([^"]+)"/g)].map((m) => m[1]);
+    // `ready` under a draft RFC is a `draft`, so it sinks below `blocked`
+    // despite holding the worse priority — and it says `draft` on the row,
+    // rather than advertising work the ready queue will not offer.
+    expect(order).toEqual(["held", "parked-ready"]);
+    expect(body).toContain('<span class="badge s-draft">draft</span>');
+    expect(body).not.toContain('<span class="badge s-ready">');
   });
 
   it("counts done against the total, leaving closed stories out", async () => {

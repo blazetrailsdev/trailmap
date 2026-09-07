@@ -178,11 +178,22 @@ export class StoryPagesController extends ApplicationController {
       return;
     }
 
+    // ORDERED BY ROWID, all three. `story_deps`, `story_rfc_deps` and
+    // `story_packages` carry no ordering column: rowid IS the order the story's
+    // frontmatter listed them in, which is the order ringo shows
+    // (`tasksGroupBy`, webhook/tasksdb.go:306, whose queries say `ORDER BY
+    // rowid` for exactly this reason) and the order the author wrote.
+    //
+    // Unordered, SQLite answers a `story_id =` filter from the index and hands
+    // back the rows sorted by the indexed columns — alphabetically by dep id.
+    // That reads as a deliberate ordering and is an accident of the query plan;
+    // `pnpm gate:pages` found it on 35 stories. `Story.rankingIndex` never hit
+    // it because a full-table `all()` is already in rowid order.
     const [rfc, depRows, rfcDepRows, packageRows] = await Promise.all([
       Rfc.findBy({ id: story.rfc_id }),
-      StoryDep.where({ story_id: id }).toArray(),
-      StoryRfcDep.where({ story_id: id }).toArray(),
-      StoryPackage.where({ story_id: id }).toArray(),
+      StoryDep.where({ story_id: id }).order({ rowid: "asc" }).toArray(),
+      StoryRfcDep.where({ story_id: id }).order({ rowid: "asc" }).toArray(),
+      StoryPackage.where({ story_id: id }).order({ rowid: "asc" }).toArray(),
     ]);
 
     let packages = packageRows.map((row) => row.package);

@@ -145,6 +145,44 @@ TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db pnpm gate
 
 A difference is a defect in the port, not a variance to tolerate.
 
+## The show-page gate
+
+`pnpm gate` covers the ready queue. The show pages have their own, and it is
+**not** a CI job: `pnpm gate:pages` (`scripts/page-equivalence.ts`) asks BOTH
+ringo and trailmap for `/rfc/<id>` and `/story/<id>` for every id in the
+database and compares the title, status, ordered story list with the status
+each row wears, the done count and the story page's ordered dep lists.
+The two render deliberately different markup — the status vocabulary, the
+GitHub restyle, ringo's action sidebar — so it compares the extracted VALUES,
+never the HTML.
+
+CI cannot run it: ringo serves from a checkout and a database that exist only
+on the box. Run it there, against a trailmap booted on the same data:
+
+```sh
+TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db \
+TASKS_DIR=~/github/blazetrailsdev/tasks pnpm dev            # in one shell
+
+TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db \
+RINGO_BASE=http://$(docker inspect -f \
+  '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' btwhooks.web.1):8080 \
+TRAILMAP_BASE=http://127.0.0.1:3001 pnpm gate:pages
+```
+
+It fetches every page on both sides and takes about ten minutes over the live
+database. `RINGO_BASE` has to reach ringo *without* SSO — `ringo.deanoftech.com` answers
+a 302 to the login page, which the gate reports as such rather than diffing a
+redirect. Every difference lands in `tmp/page-equivalence-problems.txt`; the
+terminal shows the first twenty.
+
+It has a deadline. Once ringo's read model is deleted there is no reference
+implementation left and the gate cannot run at all, so it has to be run — and
+its findings fixed — before that lands.
+
+One divergence is expected and is counted rather than failed: ringo serves its
+story show page through the BACKLOG's query, which hides every story under a
+closed RFC, so a permalink to finished work 404s there and renders here.
+
 Preflight scans the PR body and every commit message on the PR for Claude
 attribution — the `Co-Authored-By: Claude` trailer, a "Generated with Claude
 Code" line, an `@anthropic.com` address — and fails on a hit, because

@@ -58,9 +58,64 @@ beforeAll(async () => {
     depends_on_id: "vanished",
   });
   await StoryRfcDep.create({ story_id: "render-the-rfc-and-story-show-pages", rfc_id: "0061-ci" });
+
+  // Deps and packages inserted in REVERSE alphabetical order, so rowid order
+  // and column order disagree and the page has to pick one. See the ordering
+  // test below for why that distinction is the whole point.
+  await Rfc.create({ id: "0002-zeta", status: "active", title: "Zeta" });
+  await Rfc.create({ id: "0001-alpha", status: "active", title: "Alpha" });
+  await Story.create({ id: "z-dep", rfc_id: "0136-trailmap", status: "done" });
+  await Story.create({ id: "a-dep", rfc_id: "0136-trailmap", status: "done" });
+  await Story.create({
+    id: "ordered-deps",
+    rfc_id: "0136-trailmap",
+    status: "ready",
+    title: "Deps in the order the file lists them",
+  });
+  await StoryDep.create({ story_id: "ordered-deps", depends_on_id: "z-dep" });
+  await StoryDep.create({ story_id: "ordered-deps", depends_on_id: "a-dep" });
+  await StoryRfcDep.create({ story_id: "ordered-deps", rfc_id: "0002-zeta" });
+  await StoryRfcDep.create({ story_id: "ordered-deps", rfc_id: "0001-alpha" });
+  await StoryPackage.create({ story_id: "ordered-deps", package: "zzz-last" });
+  await StoryPackage.create({ story_id: "ordered-deps", package: "aaa-first" });
 });
 
 describe("StoryPagesController", () => {
+  /**
+   * The rowid order the three join tables are read in, pinned.
+   *
+   * `story_deps`, `story_rfc_deps` and `story_packages` carry no ordering
+   * column: rowid IS the order the story's frontmatter listed them in, which
+   * is what ringo shows and what the author wrote. Left unordered, SQLite
+   * answers a `story_id =` filter from the index and hands the rows back
+   * sorted by the indexed columns — alphabetically — which reads as a
+   * deliberate ordering and is an accident of the query plan.
+   *
+   * `pnpm gate:pages` is what found that, and it cannot run in CI, so this is
+   * the guard that keeps it fixed: every list here is inserted in reverse
+   * alphabetical order, so an `.order({ rowid: "asc" })` that stops being
+   * applied — or is rejected by a future query builder as an undeclared
+   * column — flips all three and fails here rather than silently on the box.
+   */
+  it("lists deps, RFC deps and packages in rowid order, not alphabetically", async () => {
+    const { status, body } = await show("ordered-deps");
+
+    expect(status).toBe(200);
+    expect([...body.matchAll(/href="\/story\/([^"]+)"/g)].map((m) => m[1])).toEqual([
+      "z-dep",
+      "a-dep",
+    ]);
+    expect([...body.matchAll(/href="\/rfc\/([^"]+)"/g)].map((m) => m[1])).toEqual([
+      // The subhead and the sidebar both link the parent RFC; the dep RFCs
+      // follow, in the order the story declared them.
+      "0136-trailmap",
+      "0002-zeta",
+      "0001-alpha",
+      "0136-trailmap",
+    ]);
+    expect(body.indexOf("zzz-last")).toBeLessThan(body.indexOf("aaa-first"));
+  });
+
   it("renders the story's title and status through the app layout", async () => {
     const { status, body } = await show("render-the-rfc-and-story-show-pages");
 

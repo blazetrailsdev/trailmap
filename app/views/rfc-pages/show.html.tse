@@ -33,9 +33,9 @@
           <div class="item-row">
             <%= render({ partial: "shared/status-badge", locals: { status: story.status } }) %>
             <span class="row-main">
-              <a class="row-title" href="/story/<%= story.id %>"><%= story.title ?? story.id %></a>
+              <a class="row-title" href="/story/<%= story.id %>"><%= story.title %></a>
               <div class="row-meta">
-                <%= story.id %><% if (story.est_loc !== null) { %> &middot; <%= story.est_loc %> loc<% } %><% if (story.cluster) { %> &middot; <%= story.cluster %><% } %><% if (story.priority !== null) { %> &middot; p<%= story.priority %><% } %>
+                <%= story.id %><% if (story.estLoc !== null) { %> &middot; <%= story.estLoc %> loc<% } %><% if (story.cluster) { %> &middot; <%= story.cluster %><% } %><% if (story.priority !== null) { %> &middot; p<%= story.priority %><% } %>
               </div>
             </span>
           </div>
