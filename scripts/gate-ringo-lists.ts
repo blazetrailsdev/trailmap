@@ -35,6 +35,7 @@ import { ActionController } from "@blazetrails/actionpack";
 import { getChildProcessAsync } from "@blazetrails/activesupport/child-process-adapter";
 import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
 import { argv, cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
+import { verifyRingoPin } from "./ringo-pin.js";
 import { tasksDatabaseConfig } from "../config/database.js";
 import { loadModelSchemas } from "../app/models/index.js";
 import { ApplicationController } from "../app/controllers/application-controller.js";
@@ -58,6 +59,15 @@ async function main(): Promise<number> {
   const fs = await getFsAsync();
   const path = await getPathAsync();
   const child = await getChildProcessAsync();
+
+  // The snapshot is the reference implementation; prove it is the one
+  // scripts/vendor-ringo.sh took before diffing anything against it.
+  try {
+    console.log(`ringo pin: ${await verifyRingoPin()}`);
+  } catch (e) {
+    console.error(`error: ${(e as Error).message}`);
+    return 1;
+  }
 
   const tasksDir = env.TASKS_CLI ?? path.join(cwd(), "tasks");
   if (!(await fs.exists(path.join(tasksDir, "bin", "tasks")))) {
@@ -313,7 +323,15 @@ async function trailmapPages(
   return painted;
 }
 
-/** Every difference between the two paintings of one page. */
+/**
+ * Every difference between the two paintings of one page.
+ *
+ * The tab COUNTS are compared once, on the first tab, and then each side is
+ * asked whether its own count row is the same on every other tab. One wrong
+ * count is one defect, and reporting it once per tab it appears on buried the
+ * membership differences underneath it; the stability check is what keeps the
+ * single comparison honest.
+ */
 function compare(
   page: string,
   tabs: readonly string[],
@@ -321,19 +339,28 @@ function compare(
   trailmap: Map<string, Painted>,
 ): string[] {
   const problems: string[] = [];
-  for (const tab of tabs) {
-    const theirs = ringo.get(tab)!;
-    const ours = trailmap.get(tab)!;
-    for (const counted of tabs) {
-      const a = theirs.counts.get(counted);
-      const b = ours.counts.get(counted);
-      if (a !== b) problems.push(`${page}?${tab}: the ${counted} tab counts ${a} in ringo, ${b} here`);
+  const first = tabs[0]!;
+  for (const counted of tabs) {
+    const a = ringo.get(first)!.counts.get(counted);
+    const b = trailmap.get(first)!.counts.get(counted);
+    if (a !== b) problems.push(`${page}: the ${counted} tab counts ${a} in ringo, ${b} here`);
+  }
+  for (const [side, painted] of [["ringo", ringo], ["trailmap", trailmap]] as const) {
+    const row = (tab: string) => tabs.map((t) => painted.get(tab)!.counts.get(t)).join("/");
+    for (const tab of tabs.slice(1)) {
+      if (row(tab) !== row(first)) {
+        problems.push(`${page}?${tab}: ${side}'s tab counts differ from its own ${first} tab (${row(tab)} vs ${row(first)})`);
+      }
     }
-    if (theirs.ids.join("\n") === ours.ids.join("\n")) {
-      console.log(`ok  ${page}?${tab} (${theirs.ids.length})`);
+  }
+  for (const tab of tabs) {
+    const theirs = ringo.get(tab)!.ids;
+    const ours = trailmap.get(tab)!.ids;
+    if (theirs.join("\n") === ours.join("\n")) {
+      console.log(`ok  ${page}?${tab} (${theirs.length})`);
       continue;
     }
-    problems.push(`${page}?${tab}: ${describe(theirs.ids, ours.ids)}`);
+    problems.push(`${page}?${tab}: ${describe(theirs, ours)}`);
   }
   return problems;
 }
@@ -342,8 +369,12 @@ function compare(
 function describe(ringo: string[], trailmap: string[]): string {
   const at = ringo.findIndex((id, i) => id !== trailmap[i]);
   const first = at === -1 ? Math.min(ringo.length, trailmap.length) : at;
-  const missing = ringo.filter((id) => !trailmap.includes(id));
-  const extra = trailmap.filter((id) => !ringo.includes(id));
+  // Sets, not `Array#includes`: a differing tab can hold thousands of ids on
+  // both sides, and the quadratic scan turned a red gate into a slow one.
+  const ringoHas = new Set(ringo);
+  const trailmapHas = new Set(trailmap);
+  const missing = ringo.filter((id) => !trailmapHas.has(id));
+  const extra = trailmap.filter((id) => !ringoHas.has(id));
   return (
     `${ringo.length} in ringo vs ${trailmap.length} here; first difference at ${first} ` +
     `(ringo=${ringo[first] ?? "(end)"} trailmap=${trailmap[first] ?? "(end)"})` +

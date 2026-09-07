@@ -222,7 +222,9 @@ scripts and the two Go functions, verbatim, at the commit in `vendor/ringo/PIN`
 ```
 
 in a PR of its own, exactly as with the trails tarballs: a gate that goes red
-on a bump must be revertible without taking application work with it.
+on a bump must be revertible without taking application work with it. Both
+gates verify `SHA256` before they diff anything, so a hand-edit to the snapshot
+fails loudly instead of quietly making ringo agree with us.
 
 Preflight scans the PR body and every commit message on the PR for Claude
 attribution — the `Co-Authored-By: Claude` trailer, a "Generated with Claude

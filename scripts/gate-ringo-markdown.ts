@@ -23,6 +23,7 @@
 import { getChildProcessAsync } from "@blazetrails/activesupport/child-process-adapter";
 import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
 import { argv, cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
+import { verifyRingoPin } from "./ringo-pin.js";
 import { renderMarkdown } from "../app/helpers/markdown-helper.js";
 import { stripFrontmatter } from "../app/models/concerns/document.js";
 
@@ -38,6 +39,15 @@ async function main(argv: readonly string[]): Promise<number> {
   // self-test that edited the file it is testing would leave the repo dirty
   // when it failed, which is when it matters most.
   const selfTest = argv.includes("--self-test");
+
+  // The snapshot is the reference implementation; prove it is the one
+  // scripts/vendor-ringo.sh took before diffing anything against it.
+  try {
+    console.log(`ringo pin: ${await verifyRingoPin()}`);
+  } catch (e) {
+    console.error(`error: ${(e as Error).message}`);
+    return 1;
+  }
 
   const tasksDir = env.TASKS_DIR ?? env.TASKS_CLI ?? path.join(cwd(), "tasks");
   const rfcsDir = path.join(tasksDir, "rfcs");
@@ -115,15 +125,14 @@ async function markdownFilesIn(
   const out: string[] = [];
   for (const name of await fs.readdir!(dir)) {
     const full = path.join(dir, name);
-    let entries: string[] | null = null;
-    try {
-      entries = await fs.readdir!(full);
-    } catch {
-      entries = null;
-    }
-    if (entries === null) {
-      if (name.endsWith(".md")) out.push(full);
+    if (name.endsWith(".md")) {
+      out.push(full);
       continue;
+    }
+    try {
+      await fs.readdir!(full);
+    } catch {
+      continue; // a file that is not markdown, which is nothing to render
     }
     out.push(...(await markdownFilesIn(fs, path, full)));
   }
