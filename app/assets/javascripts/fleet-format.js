@@ -295,6 +295,31 @@ export const repoOf = (pr) => (pr.owner ? pr.owner + "/" : "") + (pr.repo || "")
 export const sectionId = (name) => "repo-" + name.replace(/[^a-zA-Z0-9]+/g, "-");
 
 /**
+ * The scaffolding for one frame's sections: a heading, a spawns box (hidden
+ * until that repo has spawns) and a PR box, per repo.
+ *
+ * Built here rather than in the wiring so it is the LAST piece of markup with
+ * no test. It is rebuilt only when the repo set changes, so an ordinary
+ * refresh does not blow away scroll position or anything open inside it —
+ * which is what `repoSectionsKey` is compared against.
+ */
+export function repoSectionScaffold(sections) {
+  return sections
+    .map(({ name }) => {
+      const id = sectionId(name);
+      return (
+        '<h2 class="repo-heading">' + esc(name) + "</h2>" +
+        '<div class="listbox" id="' + id + '-spawnsSection" style="display:none">' +
+        '<div id="' + id + '-spawns"></div></div>' +
+        '<div class="listbox"><div id="' + id + '-prs"></div></div>'
+      );
+    })
+    .join("");
+}
+
+export const repoSectionsKey = (sections) => sections.map((s) => s.name).join(" ");
+
+/**
  * Drop a spawn whose branch already has a real PR row — the PR row takes over.
  *
  * Three ways to match, because none of them holds alone: the spawn's branch

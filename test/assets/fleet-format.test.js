@@ -17,7 +17,9 @@ import {
   pullFailReason,
   pullFailTitle,
   repoOf,
+  repoSectionScaffold,
   repoSections,
+  repoSectionsKey,
   rfcSpawnRow,
   row,
   sectionId,
@@ -442,6 +444,34 @@ describe("repoSections", () => {
 
     expect(sections.find((s) => s.name === DEFAULT_REPO).spawns.map((s) => s.story_id)).toEqual(["b"]);
     expect(sections.find((s) => s.name === "blazetrailsdev/tasks").spawns.map((s) => s.story_id)).toEqual(["a"]);
+  });
+});
+
+describe("repoSectionScaffold", () => {
+  it("gives each repo a heading and the two boxes, spawns hidden until needed", () => {
+    const html = repoSectionScaffold(repoSections([], []));
+
+    expect(html).toContain('<h2 class="repo-heading">blazetrailsdev/trails</h2>');
+    expect(html).toContain('id="repo-blazetrailsdev-trails-spawnsSection" style="display:none"');
+    expect(html).toContain('id="repo-blazetrailsdev-trails-prs"');
+  });
+
+  it("escapes a repo name rather than stripping or trusting it", () => {
+    const html = repoSectionScaffold([{ name: "acme/<img onerror=x>" }]);
+
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img onerror=x&gt;");
+  });
+});
+
+describe("repoSectionsKey", () => {
+  it("changes only when the repo SET does, so a refresh reuses the nodes", () => {
+    const one = repoSections([{ owner: "blazetrailsdev", repo: "tasks", pr: 1 }], []);
+    const two = repoSections([{ owner: "blazetrailsdev", repo: "tasks", pr: 2 }], []);
+    const three = repoSections([{ owner: "blazetrailsdev", repo: "trailmap", pr: 1 }], []);
+
+    expect(repoSectionsKey(one)).toBe(repoSectionsKey(two));
+    expect(repoSectionsKey(one)).not.toBe(repoSectionsKey(three));
   });
 });
 

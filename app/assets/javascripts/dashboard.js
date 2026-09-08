@@ -19,7 +19,9 @@ import {
   prRow,
   pullFailLabel,
   pullFailTitle,
+  repoSectionScaffold,
   repoSections,
+  repoSectionsKey,
   sectionId,
   spawnRow,
   visibleSpawns,
@@ -68,19 +70,9 @@ function renderRepoSections(prs, spawns) {
 
   // Rebuild the scaffolding only when the repo SET changes, so an ordinary
   // refresh does not blow away scroll position or anything open inside it.
-  const wanted = sections.map((s) => s.name).join(" ");
+  const wanted = repoSectionsKey(sections);
   if (host.dataset.repos !== wanted) {
-    host.innerHTML = sections
-      .map(({ name }) => {
-        const id = sectionId(name);
-        return (
-          '<h2 class="repo-heading">' + name.replace(/[&<>]/g, "") + "</h2>" +
-          '<div class="listbox" id="' + id + '-spawnsSection" style="display:none">' +
-          '<div id="' + id + '-spawns"></div></div>' +
-          '<div class="listbox"><div id="' + id + '-prs"></div></div>'
-        );
-      })
-      .join("");
+    host.innerHTML = repoSectionScaffold(sections);
     host.dataset.repos = wanted;
   }
 
