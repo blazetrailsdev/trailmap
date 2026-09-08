@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { setEnv } from "../support/env.js";
+import { setEnv } from "@blazetrails/activesupport/process-adapter";
 import { fleetEventsUrl, fleetRepos } from "../../config/fleet.js";
 
 /**

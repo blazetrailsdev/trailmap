@@ -46,7 +46,7 @@ const PANE_DOTS = {
   working: ["var(--green)", "●", "working"],
   waiting: ["var(--yellow)", "●", "waiting for an answer"],
   error: ["var(--red)", "●", "API error (5xx / stuck retry)"],
-  limit: ["var(--purple)", "◑", "hit its session/usage limit"],
+  limit: ["var(--purple)", "◑", "hit its session/usage limit — stopped until the quota resets"],
 };
 
 export function paneDot(status) {
@@ -59,8 +59,9 @@ export const WORK_EMOJI = "💪";
 /** One row of the compact pane mini-table; '' when there is no pane. */
 export function paneLine(label, pane, status) {
   if (!pane) return "";
+  const role = label === WORK_EMOJI ? "worker" : "reviewer";
   return (
-    '<div class="pcell"><span class="plabel">' + label + "</span>" +
+    '<div class="pcell"><span class="plabel" title="' + role + '">' + label + "</span>" +
     '<span class="pval"><code>' + esc(pane) + "</code>" + paneDot(status) + "</span></div>"
   );
 }
@@ -165,6 +166,27 @@ export const ICONS = {
   pr: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.677-.177L9.573.677A.25.25 0 0 1 10 .854V2.5h1A2.5 2.5 0 0 1 13.5 5v5.628a2.251 2.251 0 1 1-1.5 0V5a1 1 0 0 0-1-1h-1v1.646a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"></path></svg>',
   merge: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218ZM4.25 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8.5-4a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"></path></svg>',
 };
+
+/*
+ * The CI rollup for ONE PR, shown right after its title: green check, red x,
+ * yellow dot. A different signal from the main-CI pills in the status group,
+ * which are about a repo's default branch — this one says whether the checks
+ * on this pull request are passing, and it is the only place the page says so.
+ * Fill comes from the `.ci-<status>` rules.
+ */
+const CI_ICONS = {
+  success: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 16A8 8 0 1 1 8 0a8 8 0 0 1 0 16Zm3.78-9.72a.75.75 0 0 0-1.06-1.06L6.75 9.19 5.28 7.72a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l4.5-4.5Z"></path></svg>',
+  failure: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.343 13.657A8 8 0 1 1 13.658 2.343 8 8 0 0 1 2.343 13.657ZM6.03 4.97a.751.751 0 0 0-1.042.018.751.751 0 0 0-.018 1.042L6.94 8 4.97 9.97a.749.749 0 0 0 .326 1.275.749.749 0 0 0 .734-.215L8 9.06l1.97 1.97a.749.749 0 0 0 1.275-.326.749.749 0 0 0-.215-.734L9.06 8l1.97-1.97a.749.749 0 0 0-.326-1.275.749.749 0 0 0-.734.215L8 6.94Z"></path></svg>',
+  pending: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle></svg>',
+};
+
+const CI_TITLES = { success: "CI passing", failure: "CI failing", pending: "CI running" };
+
+/** '' for a PR whose checks have not reported, rather than a neutral glyph. */
+export function ciIcon(status) {
+  if (!status || !CI_ICONS[status]) return "";
+  return '<span class="ci-icon ci-' + status + '" title="' + CI_TITLES[status] + '">' + CI_ICONS[status] + "</span>";
+}
 
 /** The one row shape every list on this page uses. */
 export function row({ icon, iconCls, title, meta, aside, panes, cls }) {
@@ -275,7 +297,8 @@ export function prRow(pr, fixers = [], now = Date.now()) {
     iconCls: merged ? "merged" : draft ? "draft" : pr.paneStatus === "waiting" ? "waiting" : "",
     title:
       '<a class="rtitle" href="' + url + '" target="_blank">' +
-      esc(pr.title || pr.owner + "/" + pr.repo + "#" + pr.pr) + "</a>" + labels,
+      esc(pr.title || pr.owner + "/" + pr.repo + "#" + pr.pr) + "</a>" +
+      ciIcon(pr.ciStatus) + labels,
     meta: meta.join(" &middot; "),
     aside: statusPill,
     panes: paneLine(WORK_EMOJI, pr.pane, pr.paneStatus),

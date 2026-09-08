@@ -550,6 +550,17 @@ ul { margin: 0 0 10px 20px; }
 .status-limit-reached { background: var(--surface); color: var(--purple); border: 1px solid var(--purple); font-weight: 600; }
 .status-refining, .status-sunsetting { background: var(--surface); color: var(--accent); }
 
+/*
+ * The per-PR CI rollup, right after the title. Distinct from the main-CI pills
+ * in the status group: those are about a repo's default branch, this is about
+ * this pull request's own checks.
+ */
+.ci-icon { display: inline-flex; align-items: center; vertical-align: middle; margin-left: 1px; }
+.ci-icon svg { width: 15px; height: 15px; }
+.ci-success svg { fill: var(--green); }
+.ci-failure svg { fill: var(--red); }
+.ci-pending svg { fill: var(--yellow); }
+
 /* Row labels: PR labels, the auto-filed fixer badge, a merge conflict. */
 .label { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 11px; font-weight: 500; background: var(--green-bg); color: var(--green); margin-right: 4px; }
 .label-fixer { background: var(--yellow-bg); color: var(--yellow); font-weight: 600; }

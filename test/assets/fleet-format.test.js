@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_REPO,
   activeFixers,
+  ciIcon,
   esc,
   fixerCards,
   fixerPhase,
@@ -74,6 +75,8 @@ describe("paneDot", () => {
   it("gives the limit state its own glyph, not just its own colour", () => {
     expect(paneDot("limit")).toContain("◑");
     expect(paneDot("limit")).toContain("var(--purple)");
+    // The whole sentence: an exhausted agent is not stuck, it is waiting.
+    expect(paneDot("limit")).toContain("stopped until the quota resets");
   });
 
   it("uses a filled dot for the states that mean something is happening", () => {
@@ -89,12 +92,37 @@ describe("paneDot", () => {
   });
 });
 
+describe("ciIcon", () => {
+  it("colours the rollup by this PR's own check state", () => {
+    expect(ciIcon("success")).toContain("ci-success");
+    expect(ciIcon("failure")).toContain("ci-failure");
+    expect(ciIcon("pending")).toContain("ci-pending");
+  });
+
+  it("titles each state in words, not just colour", () => {
+    expect(ciIcon("success")).toContain('title="CI passing"');
+    expect(ciIcon("failure")).toContain('title="CI failing"');
+    expect(ciIcon("pending")).toContain('title="CI running"');
+  });
+
+  it("renders nothing when the checks have not reported", () => {
+    expect(ciIcon(undefined)).toBe("");
+    expect(ciIcon("")).toBe("");
+    expect(ciIcon("something-new")).toBe("");
+  });
+});
+
 describe("paneLine", () => {
   it("renders the pane id and its dot", () => {
     const line = paneLine("💪", "%214", "working");
 
     expect(line).toContain("<code>%214</code>");
     expect(line).toContain("working");
+  });
+
+  it("names the role behind the emoji, for anyone who cannot read it", () => {
+    expect(paneLine("💪", "%214", "working")).toContain('title="worker"');
+    expect(paneLine("📋", "%215", "working")).toContain('title="reviewer"');
   });
 
   it("renders nothing at all when there is no pane", () => {
@@ -250,6 +278,22 @@ describe("prRow", () => {
     expect(html).toContain('href="https://github.com/blazetrailsdev/trails/pull/4021"');
     expect(html).toContain('<span class="status status-waiting-for-ci">waiting for CI</span>');
     expect(html).toContain("<code>%214</code>");
+  });
+
+  it("shows this PR's own CI rollup, next to its title", () => {
+    expect(prRow({ ...base, ciStatus: "failure" }, [], NOW)).toContain("ci-failure");
+    expect(prRow({ ...base, ciStatus: "success" }, [], NOW)).toContain("ci-success");
+  });
+
+  it("omits the rollup, rather than guessing, when CI has not reported", () => {
+    expect(prRow(base, [], NOW)).not.toContain("ci-icon");
+  });
+
+  it("puts the rollup between the title and the labels, as ringo does", () => {
+    const html = prRow({ ...base, ciStatus: "success", labels: ["actionview"] }, [], NOW);
+
+    expect(html.indexOf("</a>")).toBeLessThan(html.indexOf("ci-icon"));
+    expect(html.indexOf("ci-icon")).toBeLessThan(html.indexOf('class="label"'));
   });
 
   it("lets a limit-reached pane override the workflow status", () => {

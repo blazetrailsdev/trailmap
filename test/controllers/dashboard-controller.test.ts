@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { setEnv } from "../support/env.js";
+import { setEnv } from "@blazetrails/activesupport/process-adapter";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { DashboardController } from "../../app/controllers/dashboard-controller.js";
 
