@@ -4,6 +4,12 @@ export function drawRoutes(mapper: Mapper): void {
   mapper.root("home#index");
   mapper.get("up", "health#show");
 
+  // The fleet dashboard, ported from ringo's `/`. It is NOT trailmap's root:
+  // ringo keeps serving `/` until this is verified against the live fleet, and
+  // moving trailmap's own landing page out from under `/` before then would
+  // change two things in one step.
+  mapper.get("dashboard", "dashboard#index");
+
   // The list pages. Plural, and they come BEFORE the singular show routes only
   // by convention — the patterns cannot collide. The status/filter tab is a
   // query parameter rather than a path segment (`/rfcs?status=draft`) because

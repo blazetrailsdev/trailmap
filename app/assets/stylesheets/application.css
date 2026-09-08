@@ -433,3 +433,140 @@ ul { margin: 0 0 10px 20px; }
 .markdown th, .markdown td { border: 1px solid var(--border); padding: 6px 13px; text-align: left; }
 .markdown th { background: var(--surface); font-weight: 600; }
 .markdown tr:nth-child(2n) td { background: var(--surface); }
+
+/*
+ * The fleet dashboard (`/dashboard`).
+ *
+ * Ported from the `<style>` block inside ringo's constant dashboard HTML
+ * (`webhook/dashboard.go:19-336`) with its `:root` block dropped: the tokens
+ * there are this file's tokens, declared once above, and every rule below
+ * spends them rather than re-declaring them. ringo's few hard-coded hexes
+ * (`#3fb950`, `#f85149`) become the tokens they were copies of, which is also
+ * what gives the page a light theme it did not have.
+ */
+
+/* Connection pills: events, tmux, per-repo main CI, pull failures, agents. */
+.status-group {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 6px 8px; margin-bottom: 16px;
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 11px; color: var(--muted);
+}
+.status-group .pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 999px; background: var(--surface);
+  white-space: nowrap;
+}
+/* Failures sort ahead of the healthy pills, so what needs attention reads first. */
+.status-group .pill { order: -1; }
+.status-group .pill.ok { order: 1; }
+.status-group #mainCIPills { display: contents; }
+.connected { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+.connected.on { background: var(--green); }
+.connected.off { background: var(--red); }
+.ico { font-size: 12px; line-height: 1; display: inline-flex; align-items: center; }
+
+/* Cards: the CI-fixer panel and the manual-spawn control. */
+.card {
+  border: 1px solid var(--border); border-radius: 6px; background: var(--bg);
+  padding: 12px 16px; margin-bottom: 16px;
+}
+.card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.card-title { font-weight: 600; }
+.field-note, .field-status { color: var(--muted); font-size: 12px; }
+
+/*
+ * The CI-fixer card carries the fixer's yellow left edge — and a RED one while
+ * the spawn loop is paused on a red main, which is the state the whole card
+ * exists to make unmissable.
+ */
+.ci-fixer { border-left: 3px solid var(--yellow); }
+.ci-fixer.paused { border-left-color: var(--red); }
+.fixer-repo { padding: 10px 0; border-top: 1px solid var(--border); }
+.fixer-repo:first-child { border-top: none; padding-top: 0; }
+.fixer-repo:last-child { padding-bottom: 0; }
+.fixer-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12px; }
+.fixer-line + .fixer-line { margin-top: 6px; }
+.fixer-repo-name { font-weight: 600; color: var(--fg); }
+.fixer-checks { color: var(--red); }
+.fixer-meta { color: var(--muted); }
+.fixer-phase { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.fixer-phase.red, .fixer-phase.paused { background: var(--red-bg); color: var(--red); }
+.fixer-phase.recovering, .fixer-phase.fixing { background: var(--yellow-bg); color: var(--yellow); }
+
+/* Manual spawn. */
+.ctl {
+  background: var(--surface); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px 8px; font-size: 12px; font-family: inherit;
+}
+.btn {
+  border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
+  color: var(--fg); padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.btn:disabled { opacity: 0.6; cursor: default; }
+.btn-green { background: var(--green); border-color: transparent; color: #fff; }
+.spawn-form { display: flex; gap: 8px; align-items: stretch; }
+.spawn-form textarea.ctl { flex: 1; resize: vertical; min-height: 32px; max-height: 200px; line-height: 1.5; }
+
+/* Per-repo sections: a heading, an optional spawns box, then the PR box. */
+.repo-heading {
+  font-size: 14px; color: var(--muted); margin: 20px 0 6px;
+  font-weight: 600; text-transform: lowercase; letter-spacing: 0.3px;
+}
+.listbox { border: 1px solid var(--border); border-radius: 6px; background: var(--bg); overflow: hidden; margin-bottom: 8px; }
+.list-empty { padding: 16px; color: var(--muted); }
+
+/* One row — a PR, a pre-PR spawn, or a grooming agent. */
+.row { display: flex; align-items: flex-start; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.row:first-child { border-top: none; }
+.row:hover { background: var(--hover); }
+.row.spawn { background: var(--surface); }
+.row.spawn.failed { background: var(--red-bg); }
+.ricon { flex: none; padding-top: 2px; line-height: 0; }
+.ricon svg { fill: var(--green); }
+.ricon.waiting svg { fill: var(--yellow); }
+.ricon.failed svg { fill: var(--red); }
+.ricon.merged svg { fill: var(--purple); }
+.ricon.draft svg { fill: var(--muted); }
+.rmain { min-width: 0; flex: 1; }
+.rtitle { color: var(--fg); font-weight: 600; font-size: 16px; }
+.rtitle:hover { color: var(--accent); text-decoration: none; }
+.rmeta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.raside { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+/* The pane mini-table on a row's right edge: 💪 worker, and its status dot. */
+.panes { font-size: 12px; }
+.pcell { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.plabel { color: var(--muted); }
+
+/* Status pills. `limit-reached` is purple: blocked, but nothing is broken. */
+.status { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.status-waiting-for-ci, .status-ready-to-merge, .status-spawned { background: var(--green-bg); color: var(--green); }
+.status-waiting-for-fixes, .status-failed { background: var(--red-bg); color: var(--red); }
+.status-waiting-for-pr, .status-waiting-for-review { background: var(--yellow-bg); color: var(--yellow); }
+.status-waiting-for-answer { background: var(--yellow-bg); color: var(--yellow); font-weight: 600; }
+.status-done { background: var(--surface); color: var(--muted); }
+.status-limit-reached { background: var(--surface); color: var(--purple); border: 1px solid var(--purple); font-weight: 600; }
+.status-refining, .status-sunsetting { background: var(--surface); color: var(--accent); }
+
+/*
+ * The per-PR CI rollup, right after the title. Distinct from the main-CI pills
+ * in the status group: those are about a repo's default branch, this is about
+ * this pull request's own checks.
+ */
+.ci-icon { display: inline-flex; align-items: center; vertical-align: middle; margin-left: 1px; }
+.ci-icon svg { width: 15px; height: 15px; }
+.ci-success svg { fill: var(--green); }
+.ci-failure svg { fill: var(--red); }
+.ci-pending svg { fill: var(--yellow); }
+
+/* Row labels: PR labels, the auto-filed fixer badge, a merge conflict. */
+.label { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 11px; font-weight: 500; background: var(--green-bg); color: var(--green); margin-right: 4px; }
+.label-fixer { background: var(--yellow-bg); color: var(--yellow); font-weight: 600; }
+.conflict { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 11px; font-weight: 500; background: var(--red-bg); color: var(--red); }
+/*
+ * Inside a connection pill the label is the pill's own text, not a PR label,
+ * so it drops `.label`'s green chip styling and just sets the size.
+ */
+.status-group .pill .label { background: none; color: inherit; margin: 0; padding: 0; font-size: 11px; }
