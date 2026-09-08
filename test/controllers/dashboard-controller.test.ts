@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { env } from "@blazetrails/activesupport/process-adapter";
+import { setEnv } from "../support/env.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { DashboardController } from "../../app/controllers/dashboard-controller.js";
 
@@ -52,11 +52,11 @@ describe("DashboardController", () => {
   });
 
   it("points the stream at ringo, from configuration", async () => {
-    env.RINGO_EVENTS_URL = "https://ringo.example.com/events";
+    setEnv("RINGO_EVENTS_URL", "https://ringo.example.com/events");
     try {
       expect(await index()).toContain('data-events-url="https://ringo.example.com/events"');
     } finally {
-      delete env.RINGO_EVENTS_URL;
+      setEnv("RINGO_EVENTS_URL", undefined);
     }
   });
 
@@ -65,7 +65,7 @@ describe("DashboardController", () => {
   });
 
   it("renders the repo options from configuration, sorted by name", async () => {
-    env.FLEET_REPO_PATHS = "blazetrailsdev/trails=/srv/trails, blazetrailsdev/tasks=/srv/tasks";
+    setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails=/srv/trails, blazetrailsdev/tasks=/srv/tasks");
     try {
       const body = await index();
 
@@ -73,7 +73,7 @@ describe("DashboardController", () => {
       expect(body).toContain('<option value="/srv/trails">blazetrailsdev/trails</option>');
       expect(body.indexOf("/srv/tasks")).toBeLessThan(body.indexOf("/srv/trails"));
     } finally {
-      delete env.FLEET_REPO_PATHS;
+      setEnv("FLEET_REPO_PATHS", undefined);
     }
   });
 

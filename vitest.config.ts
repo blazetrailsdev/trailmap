@@ -5,6 +5,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     root: ".",
-    include: ["test/**/*.test.ts"],
+    // `.js` as well as `.ts`: the dashboard's formatting module is plain
+    // browser JavaScript (it is served to the page, not compiled), so its
+    // test is plain JavaScript too.
+    include: ["test/**/*.test.ts", "test/**/*.test.js"],
   },
 });

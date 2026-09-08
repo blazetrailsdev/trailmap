@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { env } from "@blazetrails/activesupport/process-adapter";
+import { setEnv } from "../support/env.js";
 import { fleetEventsUrl, fleetRepos } from "../../config/fleet.js";
 
 /**
@@ -8,20 +8,22 @@ import { fleetEventsUrl, fleetRepos } from "../../config/fleet.js";
  * the sort of input a page assertion only ever exercises the happy path of.
  */
 afterEach(() => {
-  delete env.FLEET_REPO_PATHS;
-  delete env.RINGO_EVENTS_URL;
+  setEnv("FLEET_REPO_PATHS", undefined);
+  setEnv("RINGO_EVENTS_URL", undefined);
 });
 
 describe("fleetRepos", () => {
   it("parses `owner/repo=path` pairs", () => {
-    env.FLEET_REPO_PATHS = "blazetrailsdev/trails=/srv/trails";
+    setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails=/srv/trails");
 
     expect(fleetRepos()).toEqual([{ name: "blazetrailsdev/trails", path: "/srv/trails" }]);
   });
 
   it("sorts by name, so the list does not reorder between requests", () => {
-    env.FLEET_REPO_PATHS =
-      "blazetrailsdev/trails=/srv/trails,blazetrailsdev/tasks=/srv/tasks,blazetrailsdev/trailmap=/srv/trailmap";
+    setEnv(
+      "FLEET_REPO_PATHS",
+      "blazetrailsdev/trails=/srv/trails,blazetrailsdev/tasks=/srv/tasks,blazetrailsdev/trailmap=/srv/trailmap",
+    );
 
     expect(fleetRepos().map((repo) => repo.name)).toEqual([
       "blazetrailsdev/tasks",
@@ -31,7 +33,7 @@ describe("fleetRepos", () => {
   });
 
   it("tolerates the spacing a hand-written list actually has", () => {
-    env.FLEET_REPO_PATHS = " blazetrailsdev/tasks = /srv/tasks , blazetrailsdev/trails=/srv/trails ";
+    setEnv("FLEET_REPO_PATHS", " blazetrailsdev/tasks = /srv/tasks , blazetrailsdev/trails=/srv/trails ");
 
     expect(fleetRepos()).toEqual([
       { name: "blazetrailsdev/tasks", path: "/srv/tasks" },
@@ -40,13 +42,13 @@ describe("fleetRepos", () => {
   });
 
   it("splits on the FIRST `=`, so a path containing one survives", () => {
-    env.FLEET_REPO_PATHS = "acme/app=/srv/a=b";
+    setEnv("FLEET_REPO_PATHS", "acme/app=/srv/a=b");
 
     expect(fleetRepos()).toEqual([{ name: "acme/app", path: "/srv/a=b" }]);
   });
 
   it("drops an entry with no `=`, or with either side empty", () => {
-    env.FLEET_REPO_PATHS = "blazetrailsdev/trails,=/srv/nameless,acme/app=,acme/ok=/srv/ok";
+    setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails,=/srv/nameless,acme/app=,acme/ok=/srv/ok");
 
     expect(fleetRepos()).toEqual([{ name: "acme/ok", path: "/srv/ok" }]);
   });
@@ -54,7 +56,7 @@ describe("fleetRepos", () => {
   it("is empty when the variable is unset or blank", () => {
     expect(fleetRepos()).toEqual([]);
 
-    env.FLEET_REPO_PATHS = "   ";
+    setEnv("FLEET_REPO_PATHS", "   ");
     expect(fleetRepos()).toEqual([]);
   });
 });
@@ -65,16 +67,16 @@ describe("fleetEventsUrl", () => {
   });
 
   it("takes an absolute ringo origin", () => {
-    env.RINGO_EVENTS_URL = "https://ringo.example.com/events";
+    setEnv("RINGO_EVENTS_URL", "https://ringo.example.com/events");
 
     expect(fleetEventsUrl()).toBe("https://ringo.example.com/events");
   });
 
   it("trims, and falls back rather than yielding an empty endpoint", () => {
-    env.RINGO_EVENTS_URL = "  https://ringo.example.com/events  ";
+    setEnv("RINGO_EVENTS_URL", "  https://ringo.example.com/events  ");
     expect(fleetEventsUrl()).toBe("https://ringo.example.com/events");
 
-    env.RINGO_EVENTS_URL = "   ";
+    setEnv("RINGO_EVENTS_URL", "   ");
     expect(fleetEventsUrl()).toBe("/events");
   });
 });
