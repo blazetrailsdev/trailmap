@@ -35,6 +35,18 @@ describe("drawRoutes", () => {
     expect(backlog?.route.action).toBe("index");
   });
 
+  it("routes the fleet dashboard, which is not the root", () => {
+    const routes = routeSet();
+
+    const dashboard = routes.recognize("GET", "/dashboard");
+    expect(dashboard?.route.controller).toBe("dashboard");
+    expect(dashboard?.route.action).toBe("index");
+
+    // ringo keeps serving its own `/` until this page is verified, so
+    // trailmap's root is still its landing page.
+    expect(routes.recognize("GET", "/")?.route.controller).toBe("home");
+  });
+
   it("routes the singular show-page paths to their page controllers", () => {
     const routes = routeSet();
 
