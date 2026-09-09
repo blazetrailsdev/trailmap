@@ -115,7 +115,9 @@ apiStatus=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/stories
   $apiStatus. It is past requireLoopback — a 404 would mean it was not — so the
   loopback bypass is intact, but the endpoint is not serving. A 500 here is
   \`ConnectionNotDefined\`: the release has no TASKS_DATABASE and no mount for
-  the CLI's tasks.db, so every database-backed endpoint fails." >&2
+  the CLI's tasks.db, so every database-backed endpoint fails. Story
+  \`mount-the-tasks-database-into-the-release\` closes this, and tightens this
+  check to require 200." >&2
 
 publicStatus=$(curl -s -o /dev/null -w '%{http_code}' \
   -H "Host: $HOSTNAME_PUBLIC" http://127.0.0.1/ || true)

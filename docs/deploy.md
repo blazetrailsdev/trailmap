@@ -136,6 +136,13 @@ while `/up` and the dashboard shell keep working. The script warns rather than
 fails on it, so that wiring the deployment's database stays visible instead of
 blocking every deploy.
 
+`mount-the-tasks-database-into-the-release` (RFC 0136) is that work: a
+`dokku storage:mount` of the tasks checkout plus `TASKS_DATABASE`/`TASKS_DIR`,
+and it tightens the check above to require 200. It is now urgent rather than
+latent — `config/initializers/tasks-database.ts` makes an unset
+`TASKS_DATABASE` a BOOT failure, so the next deploy from `main` will not start
+until it is done.
+
 A 404 from the loopback API — rather than a connection refused — means the
 request reached the app with `X-Forwarded-*` headers on it and `requireLoopback`
 refused it. nginx's loopback server block must set none: read the block in
