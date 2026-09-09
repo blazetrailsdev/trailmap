@@ -1,0 +1,34 @@
+/node_modules/
+/dist/
+/.trails/
+/.env*
+!/.env.example
+
+/log/*
+!/log/.gitkeep
+
+/tmp/*
+!/tmp/.gitkeep
+!/tmp/pids/
+/tmp/pids/*
+!/tmp/pids/.gitkeep
+
+/storage/*
+!/storage/.gitkeep
+
+/public/assets/
+
+*.tsbuildinfo
+
+# The tasks checkout a worker pane links in beside this one.
+/tasks
+
+# Local agent config, mirrored from the trails convention. skills/ holds a
+# symlink to the canonical post-merge-findings skill and must never be
+# committed: it points outside the repo. settings.local.json is per-machine.
+.claude/settings.local.json
+.claude/skills/
+.claude/worktrees/
+
+/.claude/skills
+/.claude/settings.local.json

@@ -1,0 +1,236 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Node 24: @blazetrails/rack throws a regex SyntaxError at import time on 20
+# and 22, so the LTS default would turn every job red for the wrong reason.
+# .node-version is the single source of truth, shared with the Dockerfile.
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # A version is required here; package.json deliberately carries no
+      # `packageManager` key, which is the other way to satisfy it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec trails-tsc-views build --views app/views
+      - run: pnpm exec tsc --noEmit
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # A version is required here; package.json deliberately carries no
+      # `packageManager` key, which is the other way to satisfy it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec trails-tsc-views build --views app/views
+      - run: pnpm test
+
+  # The sso plugin re-injects Authelia's auth directives into the generated
+  # nginx config on every reload, using two text matchers that a comment can
+  # trip. Both failures are silent and both end with the dashboard served
+  # unauthenticated, so they are checked here rather than left to review.
+  nginx-sigil:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/check-nginx-sigil.sh
+      # Proves the guard still detects both regressions, rather than passing
+      # because it stopped looking.
+      - run: ./scripts/check-nginx-sigil.sh --self-test
+
+  boot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # A version is required here; package.json deliberately carries no
+      # `packageManager` key, which is the other way to satisfy it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: ./scripts/smoke-boot.sh
+
+  # THE GATE (RFC 0136). trailmap's ready queue is a rewrite of the CLI's
+  # ranking functions, and the only thing that makes that safe is proving the
+  # two produce the same queue over the same database. It is the merge
+  # condition for the ranking and verb work, so it runs on every PR.
+  #
+  # CI has no copy of the live tasks.db (it lives in another repo's .git), so
+  # this builds an equivalent one: check the content repo out, ingest its
+  # markdown tree into a fresh database, then point BOTH implementations at
+  # that single file. One snapshot, by construction.
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: blazetrailsdev/tasks
+          path: tasks
+      # A version is required here; package.json deliberately carries no
+      # `packageManager` key, which is the other way to satisfy it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
+        working-directory: tasks
+      - name: Ingest the content tree into a database both sides can read
+        working-directory: tasks
+        env:
+          TASKS_DB: ${{ github.workspace }}/tmp/ci-tasks.db
+        run: |
+          mkdir -p "$(dirname "$TASKS_DB")"
+          # ingest writes rows; it does not create the schema.
+          pnpm db:migrate
+          ./bin/tasks ingest
+      - name: trailmap's ready queue == the CLI's, byte for byte
+        env:
+          TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
+          TASKS_CLI: ${{ github.workspace }}/tasks
+        run: pnpm gate
+
+      # The two ringo gates. Both run ringo's OWN code — the list pages'
+      # browser scripts and the Go markdown renderer, vendored verbatim under
+      # vendor/ringo at a pinned commit — against trailmap's port over this
+      # same database. btwhooks has no remote to check out, which is why the
+      # snapshot is vendored rather than cloned here; scripts/vendor-ringo.sh
+      # regenerates it and bumping the pin is its own PR.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: vendor/ringo/go/go.mod
+          cache: false
+      - name: /rfcs and /backlog == ringo's, per tab
+        env:
+          TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
+          TASKS_CLI: ${{ github.workspace }}/tasks
+        run: pnpm gate:lists
+      # Proves the gate still detects a difference, rather than passing because
+      # it stopped looking.
+      - name: The list gate still goes red on a difference
+        env:
+          TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
+          TASKS_CLI: ${{ github.workspace }}/tasks
+        run: pnpm gate:lists --self-test
+      # And that the row-VALUE half still detects one: membership and order are
+      # untouched here, only a row's inherited-priority mark changes.
+      - name: The list gate still goes red on a changed row value
+        env:
+          TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
+          TASKS_CLI: ${{ github.workspace }}/tasks
+        run: pnpm gate:lists --self-test=values
+      - name: The markdown helper == webhook/markdown.go, over every RFC and story
+        env:
+          TASKS_DIR: ${{ github.workspace }}/tasks
+        run: pnpm gate:markdown
+      - name: A one-character change to the helper turns the markdown gate red
+        env:
+          TASKS_DIR: ${{ github.workspace }}/tasks
+        run: pnpm gate:markdown --self-test
+
+  # Ported from trails' Preflight job. CLAUDE.md forbids Claude attribution in
+  # commits and PR bodies here exactly as it does there, and trailmap is a
+  # separate repo with its own merge button — so the rule was unenforced until
+  # this job existed. Kept a job of its own rather than folded into `typecheck`:
+  # a checkout-and-install failure there must not decide whether the scan ran.
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # pull-requests: read for the `gh api repos/.../pulls` calls. Declaring
+      # `permissions:` zeroes every unlisted scope, so contents must be listed
+      # explicitly even though it is part of the default token.
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      # Single source of truth for the forbidden-attribution markers, shared by
+      # the PR-body and commit-message scans below so the two can't drift apart.
+      # Matched case-insensitively (grep -iE).
+      ATTRIBUTION_RE: 'generated with \[?claude code|co-authored-by:[[:space:]]*claude|noreply@anthropic\.com|🤖 generated with'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Scoped to deanmarano-authored PRs: the project forbids Claude
+      # attribution in *his* PR descriptions and commits (see CLAUDE.md
+      # "No `Co-Authored-By` trailer, no 'Generated with Claude Code' line").
+      # Other contributors are unaffected; push has no PR body.
+      - name: Forbid Claude attribution in PR body
+        # !cancelled() so a prior step's failure can't suppress this guard.
+        if: >-
+          ${{ !cancelled() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.user.login == 'deanmarano' }}
+        run: |
+          set -euo pipefail
+          # Fetch the *live* body rather than reading the event payload. The
+          # PR triggers don't include `edited`, so a body edit won't re-fire
+          # CI — but a manual job re-run hits the API fresh and will see the
+          # fix. Reading the payload would replay the stale original body and
+          # leave the check permanently red.
+          body=$(scripts/ci/gh-api-retry.sh "repos/$REPO/pulls/$PR_NUMBER" --jq '.body // ""')
+          if grep -qiE "$ATTRIBUTION_RE" <<<"$body"; then
+            echo "::error::PR body contains Claude attribution. Remove 'Generated with Claude Code' / 'Co-Authored-By: Claude' / Anthropic attribution lines (see CLAUDE.md), then re-run this job."
+            exit 1
+          fi
+          echo "No forbidden Claude attribution found in PR body."
+
+      - name: Forbid Claude attribution in commit messages
+        # !cancelled() so a prior step's failure can't suppress this guard.
+        if: >-
+          ${{ !cancelled() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.user.login == 'deanmarano' }}
+        run: |
+          set -euo pipefail
+          # See the body guard above: retry transient API failures so a 5xx
+          # can't masquerade as an attribution hit.
+          # Scan every commit message on the PR, not just the PR body. The body
+          # check above misses `Co-authored-by:` trailers that live in commits —
+          # and GitHub's squash-merge auto-aggregates those branch-commit
+          # trailers into the merge commit on `main`, which is exactly how a
+          # Claude attribution reached main past the body check.
+          #
+          # The pulls/{n}/commits endpoint caps at 250 commits even with
+          # --paginate, so a >250-commit PR would leave its tail unscanned. Fail
+          # closed in that case rather than passing on a partial scan — this repo
+          # squashes and PRs are small; if 250 commits ever happens, squash or
+          # rebase before re-running.
+          count=$(scripts/ci/gh-api-retry.sh "repos/$REPO/pulls/$PR_NUMBER" --jq '.commits')
+          if [ "$count" -gt 250 ]; then
+            echo "::error::PR has $count commits, exceeding the 250-commit API scan cap. Squash or rebase the branch so commit messages can be fully scanned, then re-run this job."
+            exit 1
+          fi
+          messages=$(scripts/ci/gh-api-retry.sh --paginate "repos/$REPO/pulls/$PR_NUMBER/commits" --jq '.[].commit.message')
+          if grep -qiE "$ATTRIBUTION_RE" <<<"$messages"; then
+            echo "::error::A commit message contains Claude attribution. Remove 'Generated with Claude Code' / 'Co-Authored-By: Claude' / Anthropic attribution lines from your commits (see CLAUDE.md) — note that squash-merge folds commit trailers into main — then re-run this job."
+            exit 1
+          fi
+          echo "No forbidden Claude attribution found in commit messages."
