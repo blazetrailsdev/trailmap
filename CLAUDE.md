@@ -56,6 +56,12 @@ Two things follow:
   for the one that forgets. This is faithful Rails behaviour, not a framework
   bug, and `trails new`'s own generators emit snake_case view directories.
   `test/views/view-directory-names.test.ts` holds the rule.
+
+  **This exception is meant to be temporary.**
+  `derive-kebab-case-view-prefixes` (RFC 0140) proposes deriving the prefix as
+  kebab-case in the framework, so an app that is kebab-case throughout needs no
+  carve-out here. If it lands, rename these directories back and delete this
+  bullet; the test above is what will fail and point at it.
 - Conventional Commits. No `Co-Authored-By` trailer, no "Generated with Claude
   Code" line.
 - Open PRs as draft.

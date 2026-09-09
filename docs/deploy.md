@@ -91,6 +91,21 @@ docker inspect trailmap.web.1 --format '{{.Image}}'  # changes only on a new bui
 A new image behind an unreplaced container is the original port-collision
 failure, so the script prints both and says when the image is unchanged.
 
+**The stale-image check is against the tag, not against the previous read.**
+For eleven merged PRs the box served the first deploy's image while every later
+build was tagged `dokku/trailmap:latest` and thrown away. A before/after
+comparison cannot see that state — both reads return the same stale image and
+agree — so what the script asserts is that the running container's image *is*
+the one the tag points at:
+
+```sh
+docker inspect trailmap.web.1 --format '{{.Image}}'
+docker inspect dokku/trailmap:latest --format '{{.Id}}'   # must be equal
+```
+
+That holds on every deploy rather than only across the one transition off the
+PR #1 image, and it is the property that transition was evidence of.
+
 ### After every deploy
 
 `scripts/deploy.sh` runs both of these itself and fails on either. By hand:

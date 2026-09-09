@@ -75,6 +75,23 @@ if [ "$beforeImage" = "$afterImage" ]; then
   the container was still replaced ($before -> $after)."
 fi
 
+# The stale-image failure, asserted directly rather than inferred from a
+# before/after pair. For eleven merged PRs the box served the FIRST deploy's
+# image while every later build was tagged `dokku/$APP:latest` and thrown away,
+# because the release died on a port collision. What that looks like is exactly
+# this: a running container whose image is not the one `latest` points at. A
+# before/after comparison cannot see it — both reads return the same stale
+# image and agree — so the tag is the witness, and it holds on every deploy
+# rather than only across the one transition off that first image.
+latestImage="$(docker inspect "dokku/$APP:latest" --format '{{.Id}}' 2>/dev/null || true)"
+echo "==> dokku/$APP:latest is:      ${latestImage:-<no such image>}"
+if [ -n "$latestImage" ] && [ "$latestImage" != "$afterImage" ]; then
+  fail "the running container is on $afterImage, but dokku/$APP:latest is
+  $latestImage. The build produced an image the release never started — the
+  box is serving a STALE image. This is the failure that left eleven merged
+  PRs unshipped; read the push output above for the release error."
+fi
+
 # The two audiences of the one listener, checked separately, because each has
 # failed on its own: SSO has come off a redeploy on sibling apps, and the JSON
 # API has been 404ed by forwarding headers added in front of it.

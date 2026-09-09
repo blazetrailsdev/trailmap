@@ -19,6 +19,11 @@ import { StoryPagesController } from "../../app/controllers/story-pages-controll
  * #11 paid that twice. This suite is what stops a third: it fails on a
  * directory renamed back to kebab-case, which is the mistake the surrounding
  * convention invites. CLAUDE.md carries the rule in prose beside it.
+ *
+ * The exception is meant to be temporary. `derive-kebab-case-view-prefixes`
+ * (RFC 0140) proposes deriving the prefix as kebab-case in trails itself; if
+ * that lands, these directories go back to kebab-case and this suite is what
+ * fails, which is the intended way to be reminded.
  */
 const PAGE_CONTROLLERS = [
   DashboardController,
