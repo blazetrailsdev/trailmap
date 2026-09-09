@@ -16,6 +16,7 @@
     "gate:pages": "tsx scripts/page-equivalence.ts",
     "gate:lists": "tsx scripts/gate-ringo-lists.ts",
     "gate:markdown": "tsx scripts/gate-ringo-markdown.ts",
+    "ringo:pin": "tsx scripts/ringo-pin-freshness.ts",
     "trails": "tsx node_modules/@blazetrails/trailties/bin/trails.js",
     "dev": "tsx node_modules/@blazetrails/trailties/bin/trails.js server",
     "db:create": "tsx node_modules/@blazetrails/trailties/bin/trails.js db create",

@@ -73,4 +73,9 @@ case "$publicStatus" in
   \`dokku sso:protect $APP\` and find out why the injection did not run." ;;
 esac
 
+# The box is the only machine with a btwhooks checkout, so it is the only place
+# the vendored ringo snapshot can be checked for staleness (CI cannot see
+# btwhooks at all). A warning, never a failure: bumping the pin is its own PR.
+(cd "$(dirname "$0")/.." && pnpm ringo:pin) || true
+
 echo "==> deployed: $before -> $after; loopback API 200, public vhost $publicStatus."

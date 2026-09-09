@@ -113,10 +113,7 @@ async function main(args: readonly string[]): Promise<number> {
   return 1;
 }
 
-/**
- * Every `.md` under `dir`. The async filesystem adapter models no `stat`, so a
- * directory is whatever `readdir` accepts — the failure is the answer.
- */
+/** Every `.md` under `dir`. */
 async function markdownFilesIn(
   fs: Awaited<ReturnType<typeof getFsAsync>>,
   path: Awaited<ReturnType<typeof getPathAsync>>,
@@ -129,11 +126,8 @@ async function markdownFilesIn(
       out.push(full);
       continue;
     }
-    try {
-      await fs.readdir!(full);
-    } catch {
-      continue; // a file that is not markdown, which is nothing to render
-    }
+    // A file that is not markdown is nothing to render.
+    if (!(await fs.stat!(full)).isDirectory()) continue;
     out.push(...(await markdownFilesIn(fs, path, full)));
   }
   return out;

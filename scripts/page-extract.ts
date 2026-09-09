@@ -265,6 +265,9 @@ const NAMED: Record<string, string> = {
   hellip: "…",
   mdash: "—",
   ndash: "–",
+  // The list pages' superseded label, `&rarr; <id>` in the `.tse` against a
+  // literal arrow in ringo's script.
+  rarr: "→",
 };
 
 /** The entity forms these two templates actually emit, decoded. */
@@ -309,4 +312,213 @@ export function diffFacts<T extends object>(a: T, b: T): string[] {
 
 function show(value: unknown): string {
   return typeof value === "string" ? JSON.stringify(value) : String(value);
+}
+
+/**
+ * ONE ROW OF A LIST PAGE, as values rather than markup.
+ *
+ * `scripts/gate-ringo-lists.ts` compared membership, order and the tab counts
+ * — the port's skeleton — and nothing a row SAYS. A port that listed exactly
+ * the right stories in exactly the right order while inheriting the wrong
+ * RFC's priority onto a row passed it. These extractors are what closes that:
+ * the same trick as the show pages above, one interface per page, filled from
+ * both sides' markup, diffed with {@link diffFacts}.
+ *
+ * What is deliberately NOT extracted is the status label. #7 gave trailmap its
+ * own vocabulary and its own badge (`shared/_status-badge`, `class="badge
+ * s-<status>"`, against ringo's `class="label s-<status>"`), and the tabs are
+ * links rather than repaints — differences the gate exists to tolerate. So a
+ * span whose class carries an `s-` token is skipped on both sides, and so are
+ * the two labels only ringo draws: `needs refine`, which trailmap does not
+ * port, and the over-LOC flag, which is drawn from a `max_loc` this dataset
+ * never carries.
+ */
+export interface RfcListRow {
+  id: string;
+  /** The `P<n>` label's number, or "" when the row carries none. */
+  priority: string;
+  /** `<done>/<total>`, or "" when the RFC has no stories. */
+  progress: string;
+  /** Cluster labels, in the order the row draws them. */
+  clusters: string[];
+  /** The `→ <id>` label's target, or "". */
+  supersededBy: string;
+  /** The meta line's `by <owner>`, or "". */
+  owner: string;
+}
+
+/** One backlog row. The inherited flags are the fields #15 ported and nothing checked. */
+export interface StoryListRow {
+  id: string;
+  /** The ready-queue position as a number ("0" is `next up`), or "". */
+  queue: string;
+  /** The effective priority's number, or "". */
+  priority: string;
+  /** Whether that priority came from the parent RFC (ringo's `*`). */
+  priorityInherited: boolean;
+  /** The effective package names, in row order, without the inherited mark. */
+  packages: string[];
+  /** Whether those packages came from the parent RFC. */
+  packagesInherited: boolean;
+  /** The meta line's `~<n> LOC`, or "". */
+  estLoc: string;
+  /** Whether the row wears the icebox label. */
+  icebox: boolean;
+  /** The cluster label, or "". */
+  cluster: string;
+  /** The aside's PR number, or "". */
+  pr: string;
+  /** The meta line's `by <assignee>`, or "". */
+  assignee: string;
+}
+
+/** One row's markup, split off `rows`' innerHTML by the class that opens each. */
+function rowsOf(html: string, cls: string): string[] {
+  const marker = `<div class="${cls}">`;
+  return html
+    .split(marker)
+    .slice(1)
+    .map((rest) => marker + rest);
+}
+
+/** One label span of a row's title line: its class suffix and its text. */
+interface Label {
+  /** The class attribute's tokens after `label`/`tag`. */
+  classes: string[];
+  text: string;
+}
+
+/**
+ * The label spans of `titleline`, on either side.
+ *
+ * ringo spells them `<span class="label ...">` and trailmap `<span class="tag
+ * ...">` — a rename, not a difference — so one pattern reads both and the
+ * classification below never has to know which page it is looking at.
+ */
+function labelsOf(titleline: string): Label[] {
+  const found: Label[] = [];
+  for (const match of titleline.matchAll(
+    /<span class="(?:label|tag)([^"]*)"[^>]*>([\s\S]*?)<\/span>/g,
+  )) {
+    const classes = match[1].trim().split(/\s+/).filter((c) => c !== "");
+    // The status label, which the two pages deliberately spell differently.
+    if (classes.some((c) => c.startsWith("s-"))) continue;
+    // ringo-only labels trailmap does not draw: `needs refine`, and the
+    // over-LOC flag, which needs a `max_loc` this dataset does not carry.
+    if (classes.includes("stalled") || classes.includes("over")) continue;
+    found.push({ classes, text: text(match[2]) });
+  }
+  return found;
+}
+
+/** The meta line's `by <name>`, which both sides write between middots. */
+function metaBy(meta: string): string {
+  const match = /(?:^|·)\s*by\s+([^·]+)/.exec(text(meta));
+  return match === null ? "" : match[1].trim();
+}
+
+/**
+ * The two markers a row's title line sits between, per side.
+ *
+ * `section` cannot be used for it: the title line HOLDS spans, and it is a
+ * `<div>` on ringo's side and a `<span>` on trailmap's, so the first closing
+ * tag is a label's rather than its own.
+ */
+interface RowMarkup {
+  /** The tag that opens the title line, verbatim. */
+  titleline: string;
+  /** The class of the metadata sub-line, which is what the title line ends at. */
+  meta: string;
+  /** The class of the aside holding the PR link. */
+  aside: string;
+}
+
+const RINGO_ROW: RowMarkup = { titleline: '<div class="titleline">', meta: "meta", aside: "pr" };
+const TRAILMAP_ROW: RowMarkup = {
+  titleline: '<span class="titleline">',
+  meta: "row-meta",
+  aside: "row-aside",
+};
+
+/** The row's title line: from its opening tag to the metadata line below it. */
+function titlelineOf(row: string, markup: RowMarkup): string {
+  return between(row, markup.titleline, `class="${markup.meta}"`);
+}
+
+/** One RFC list row, from either side's markup. */
+function rfcRow(row: string, markup: RowMarkup): RfcListRow {
+  const titleline = titlelineOf(row, markup);
+  const facts: RfcListRow = {
+    id: decodeURIComponent(hrefIds(titleline, "rfc")[0] ?? ""),
+    priority: "",
+    progress: "",
+    clusters: [],
+    supersededBy: "",
+    owner: metaBy(section(row, markup.meta)),
+  };
+  for (const label of labelsOf(titleline)) {
+    const priority = /^P(\d+)$/.exec(label.text);
+    const progress = /^(\d+\/\d+) done$/.exec(label.text);
+    if (priority !== null) facts.priority = priority[1];
+    else if (progress !== null) facts.progress = progress[1];
+    else if (label.text.startsWith("→")) facts.supersededBy = label.text.slice(1).trim();
+    else facts.clusters.push(label.text);
+  }
+  return facts;
+}
+
+/** One backlog row, from either side's markup. */
+function storyRow(row: string, markup: RowMarkup): StoryListRow {
+  const titleline = titlelineOf(row, markup);
+  const meta = text(section(row, markup.meta));
+  const loc = /~(\d+) LOC/.exec(meta);
+  const pr = /#(\d+)/.exec(section(row, markup.aside));
+  const facts: StoryListRow = {
+    id: decodeURIComponent(hrefIds(titleline, "story")[0] ?? ""),
+    queue: "",
+    priority: "",
+    priorityInherited: false,
+    packages: [],
+    packagesInherited: false,
+    estLoc: loc === null ? "" : loc[1],
+    icebox: false,
+    cluster: "",
+    pr: pr === null ? "" : pr[1],
+    assignee: metaBy(meta),
+  };
+  for (const label of labelsOf(titleline)) {
+    const queue = /^#(\d+) in queue$/.exec(label.text);
+    const priority = /^pri (\d+)(\*?)$/.exec(label.text);
+    if (label.classes.includes("pkg")) {
+      facts.packages.push(label.text.replace(/\*$/, ""));
+      facts.packagesInherited ||= label.text.endsWith("*");
+    } else if (label.classes.includes("icebox")) facts.icebox = true;
+    else if (label.text === "next up") facts.queue = "0";
+    else if (queue !== null) facts.queue = String(Number(queue[1]) - 1);
+    else if (priority !== null) {
+      facts.priority = priority[1];
+      facts.priorityInherited = priority[2] === "*";
+    } else facts.cluster = label.text;
+  }
+  return facts;
+}
+
+/** ringo's `/rfcs` rows, in page order. */
+export function ringoRfcRows(html: string): RfcListRow[] {
+  return rowsOf(html, "row").map((row) => rfcRow(row, RINGO_ROW));
+}
+
+/** trailmap's `/rfcs` rows, in page order. */
+export function trailmapRfcRows(html: string): RfcListRow[] {
+  return rowsOf(html, "item-row").map((row) => rfcRow(row, TRAILMAP_ROW));
+}
+
+/** ringo's `/backlog` rows, in page order. */
+export function ringoStoryRows(html: string): StoryListRow[] {
+  return rowsOf(html, "row").map((row) => storyRow(row, RINGO_ROW));
+}
+
+/** trailmap's `/backlog` rows, in page order. */
+export function trailmapStoryRows(html: string): StoryListRow[] {
+  return rowsOf(html, "item-row").map((row) => storyRow(row, TRAILMAP_ROW));
 }

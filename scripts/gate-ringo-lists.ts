@@ -15,11 +15,20 @@
  * have painted; what it is compared against is the page trailmap renders, over
  * the same database, for every tab.
  *
- * Compared: MEMBERSHIP, ORDER and the TAB COUNTS. Not the markup — #7 gave
- * trailmap its own status vocabulary and its tabs are links rather than
- * client-side repaints, and neither is a defect. The ids come out of the row
- * anchors on both sides, which is the one piece of markup the two pages must
- * agree on anyway, since it is the link a reader follows.
+ * Compared: MEMBERSHIP, ORDER, the TAB COUNTS and WHAT EACH ROW SAYS — the
+ * queue position, the effective priority and whether it was inherited, the
+ * effective packages and theirs, est-loc, the icebox tag, the cluster, the PR
+ * and the assignee, and on the RFC side the priority, the done/total and the
+ * clusters. The inherited-priority and inherited-packages rules are the ones
+ * worth the extra comparison: they are own-then-parent fallbacks, they are
+ * what the ready queue ranks by, and #15 ported them from the very script this
+ * gate executes.
+ *
+ * Not the MARKUP, on either count — #7 gave trailmap its own status
+ * vocabulary and its tabs are links rather than client-side repaints, and
+ * neither is a defect. The two vocabularies are deliberate, so what is
+ * compared is the VALUES a row states, pulled out of each side's own markup by
+ * `scripts/page-extract.ts` exactly as the show-page gate does.
  *
  * Where the ringo side's DATA comes from matters as much as the logic: the
  * story rows and the ready queue are the tasks CLI's (`list`/`ready --json`,
@@ -36,6 +45,14 @@ import { getChildProcessAsync } from "@blazetrails/activesupport/child-process-a
 import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
 import { argv, cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
 import { verifyRingoPin } from "./ringo-pin.js";
+import type { RfcListRow, StoryListRow } from "./page-extract.js";
+import {
+  diffFacts,
+  ringoRfcRows,
+  ringoStoryRows,
+  trailmapRfcRows,
+  trailmapStoryRows,
+} from "./page-extract.js";
 import { tasksDatabaseConfig } from "../config/database.js";
 import { loadModelSchemas } from "../app/models/index.js";
 import { ApplicationController } from "../app/controllers/application-controller.js";
@@ -47,10 +64,15 @@ const RFC_TABS = ["active", "draft", "postponed", "closed", "superseded"] as con
 /** The backlog's tabs, ringo's `matchesFilter` values in `cnt-<filter>` order. */
 const BACKLOG_TABS = ["open", "done", "ready", "draft", "blocked", "icebox"] as const;
 
+/** What a row is compared as: an id, and the values the row states. */
+interface Row {
+  id: string;
+}
+
 /** One tab, as either side paints it. */
-interface Painted {
-  /** The ids the tab lists, in the order it lists them. */
-  ids: string[];
+interface Painted<R extends Row> {
+  /** The rows the tab lists, in the order it lists them. */
+  rows: R[];
   /** Every tab's count, keyed by tab — the whole row is shown on every tab. */
   counts: Map<string, number>;
 }
@@ -110,41 +132,55 @@ async function main(): Promise<number> {
   // trailmap's models: the RFC list's rows are ringo's `idx.RFCs`, and nothing
   // about ports or ranking stands between a row and this SELECT.
   const rfcs = (
-    await Base.connection.selectAll("SELECT id, title, status, owner, priority, superseded_by FROM rfcs")
+    await Base.connection.selectAll(
+      "SELECT id, title, status, owner, priority, superseded_by, packages, clusters FROM rfcs",
+    )
   ).toArray() as unknown as CliRfc[];
 
   // `--self-test` proves the gate can still go red, by dropping ONE row from
   // trailmap's answer: a comparison that stopped comparing looks exactly like
-  // a port that agrees.
-  const selfTest = argv.includes("--self-test");
-  // The row anchor each page hangs its title on; the id is the link a reader
-  // follows, which is the one piece of markup the two pages must agree on.
-  const rfcRow = /class="row-title" href="\/rfc\/([^"]+)"/g;
-  const storyRow = /class="row-title" href="\/story\/([^"]+)"/g;
+  // a port that agrees. `--self-test=values` perturbs a row's VALUES instead,
+  // leaving membership and order untouched — the acceptance criterion for
+  // comparing them at all is that a change to the inherited-priority rule
+  // turns this red, and dropping a row would not prove that.
+  const selfTest = argv.some((a) => a === "--self-test" || a.startsWith("--self-test="));
+  const valueTest = argv.includes("--self-test=values");
 
   // One perturbed page is enough to prove the comparison still bites, so the
-  // backlog side is never dropped from.
+  // backlog side is never dropped from — and the value perturbation is on the
+  // backlog side, because the inherited flags live there.
   const problems = [
     ...compare(
       "/rfcs",
       RFC_TABS,
       await ringoRfcs(child, path, fs, rfcs, stories),
-      await trailmapPages(RFC_TABS, RfcPagesController, "status", rfcRow, { dropOne: selfTest }),
+      await trailmapPages(RFC_TABS, RfcPagesController, "status", trailmapRfcRows, {
+        dropOne: selfTest && !valueTest,
+        disinherit: false,
+      }),
     ),
     ...compare(
       "/backlog",
       BACKLOG_TABS,
       await ringoBacklog(fs, path, rfcs, stories, ready),
-      await trailmapPages(BACKLOG_TABS, StoryPagesController, "filter", storyRow, { dropOne: false }),
+      await trailmapPages(BACKLOG_TABS, StoryPagesController, "filter", trailmapStoryRows, {
+        dropOne: false,
+        disinherit: valueTest,
+      }),
     ),
   ];
 
   if (selfTest) {
     if (problems.length > 0) {
-      console.log(`SELF-TEST OK: dropping one row turned the gate red (${problems[0]})`);
+      const what = valueTest ? "un-inheriting one row's priority" : "dropping one row";
+      console.log(`SELF-TEST OK: ${what} turned the gate red (${problems[0]})`);
       return 0;
     }
-    console.error("SELF-TEST FAILED: a dropped row did not turn the gate red");
+    console.error(
+      valueTest
+        ? "SELF-TEST FAILED: a row's inherited priority changed and the gate stayed green"
+        : "SELF-TEST FAILED: a dropped row did not turn the gate red",
+    );
     return 1;
   }
   if (problems.length === 0) {
@@ -181,6 +217,16 @@ interface CliRfc {
   owner: string | null;
   priority: number | null;
   superseded_by: string | null;
+  /** JSON arrays, as the column stores them. */
+  packages: string | null;
+  clusters: string | null;
+}
+
+/** One of the RFC table's JSON-text list columns, as a list. */
+function jsonList(column: string | null): string[] {
+  if (!column) return [];
+  const parsed: unknown = JSON.parse(column);
+  return Array.isArray(parsed) ? (parsed as string[]) : [];
 }
 
 /** ringo's `/rfcs`, painted by ringo's own script over ringo's own counts. */
@@ -190,7 +236,7 @@ async function ringoRfcs(
   fs: Awaited<ReturnType<typeof getFsAsync>>,
   rfcs: CliRfc[],
   stories: CliStory[],
-): Promise<Map<string, Painted>> {
+): Promise<Map<string, Painted<RfcListRow>>> {
   // The done/total on each row, and the story_open the equal-priority tiebreak
   // sorts on, are ringo's `rfcStoryCounts` — run as Go rather than described
   // again here, which is the whole point of vendoring it.
@@ -203,12 +249,13 @@ async function ringoRfcs(
 
   const rows = rfcs.map((r) => ({
     ...r,
+    clusters: jsonList(r.clusters),
     story_total: counts[r.id]![0],
     story_done: counts[r.id]![1],
     story_open: counts[r.id]![2],
   }));
   return runRingoScript(await fs.readFile!("vendor/ringo/rfcs-draw.js", "utf8"), { rfcs: rows },
-    RFC_TABS, /class="title" href="\/rfc\/([^"]+)"/);
+    RFC_TABS, ringoRfcRows);
 }
 
 /** ringo's `/backlog`, painted by ringo's own script. */
@@ -218,22 +265,25 @@ async function ringoBacklog(
   rfcs: CliRfc[],
   stories: CliStory[],
   ready: CliStory[],
-): Promise<Map<string, Painted>> {
+): Promise<Map<string, Painted<StoryListRow>>> {
   const rfcStatus: Record<string, string> = {};
   const rfcPriorities: Record<string, number> = {};
   const rfcPackages: Record<string, string[]> = {};
   for (const r of rfcs) {
     rfcStatus[r.id] = r.status;
     if (r.priority !== null) rfcPriorities[r.id] = r.priority;
+    // The parent side of the inherited-packages fallback. It was declared and
+    // never filled, so ringo's rows carried no packages at all and every
+    // inherited one on trailmap's side had nothing to be compared against —
+    // invisible while only ids were compared.
+    rfcPackages[r.id] = jsonList(r.packages);
   }
   // `allStories` (webhook/spawnloop.go:1373) hides stories under a CLOSED RFC:
   // the backlog only shows work under RFCs still in play.
   const all = stories.filter((s) => rfcStatus[s.rfc] !== "closed");
   return runRingoScript(await fs.readFile!("vendor/ringo/backlog-draw.js", "utf8"),
     { all, ready, rfc_status: rfcStatus, rfc_priorities: rfcPriorities, rfc_packages: rfcPackages },
-    // The TITLE anchor only. A row also links its PR number to the same story
-    // page, and counting that would double every row that has one.
-    BACKLOG_TABS, /class="title" href="\/story\/([^"]+)"/);
+    BACKLOG_TABS, ringoStoryRows);
 }
 
 /** Run the vendored Go harness over `input`, handing back its stdout. */
@@ -266,12 +316,12 @@ async function goHarness(
  * `setInterval` does nothing — the data goes in through `render` instead,
  * which is the same function the real fetch resolves into.
  */
-function runRingoScript(
+function runRingoScript<R extends Row>(
   source: string,
   payload: unknown,
   tabs: readonly string[],
-  rowId: RegExp,
-): Map<string, Painted> {
+  extract: (html: string) => R[],
+): Map<string, Painted<R>> {
   const elements = new Map<string, StubElement>();
   const byId = (id: string): StubElement => {
     const existing = elements.get(id);
@@ -289,14 +339,12 @@ function runRingoScript(
     setFilter: (f: string) => void;
   };
 
-  const painted = new Map<string, Painted>();
+  const painted = new Map<string, Painted<R>>();
   for (const tab of tabs) {
     api.setFilter(tab);
     api.render(payload);
-    const global = new RegExp(rowId.source, "g");
     painted.set(tab, {
-      ids: [...(elements.get("rows")?.innerHTML ?? "").matchAll(global)]
-        .map((m) => decodeURIComponent(m[1]!)),
+      rows: extract(elements.get("rows")?.innerHTML ?? ""),
       counts: new Map(
         tabs.map((t) => [t, Number.parseInt(String(elements.get(`cnt-${t}`)?.textContent ?? ""), 10)]),
       ),
@@ -314,20 +362,25 @@ interface StubElement {
 }
 
 /** trailmap's page, per tab, dispatched through the controller that serves it. */
-async function trailmapPages(
+async function trailmapPages<R extends Row>(
   tabs: readonly string[],
   controller: typeof ApplicationController,
   param: string,
-  rowId: RegExp,
-  { dropOne }: { dropOne: boolean },
-): Promise<Map<string, Painted>> {
-  const painted = new Map<string, Painted>();
+  extract: (html: string) => R[],
+  { dropOne, disinherit }: { dropOne: boolean; disinherit: boolean },
+): Promise<Map<string, Painted<R>>> {
+  const painted = new Map<string, Painted<R>>();
   for (const tab of tabs) {
     const tc = new ActionController.TestCase(controller);
     await tc.get("index", { params: { [param]: tab } });
-    const body: string = tc.responseBody;
+    let body: string = tc.responseBody;
+    // `--self-test=values`: the page as it would read if the inherited-priority
+    // rule had been ported wrong — the number kept, the `*` that says it came
+    // from the parent RFC dropped. Membership and order are untouched, so only
+    // the row-value comparison can catch it.
+    if (disinherit) body = body.replace(/(<span class="tag prio"[^>]*>pri \d+)\*/, "$1");
     painted.set(tab, {
-      ids: [...body.matchAll(rowId)].map((m) => decodeURIComponent(m[1]!)).slice(dropOne ? 1 : 0),
+      rows: extract(body).slice(dropOne ? 1 : 0),
       // The tab row carries every tab's count on every tab, exactly as ringo's
       // does — `<a class="tab..." href="...?filter=ready">12 Ready</a>`.
       counts: new Map(
@@ -348,11 +401,11 @@ async function trailmapPages(
  * membership differences underneath it; the stability check is what keeps the
  * single comparison honest.
  */
-function compare(
+function compare<R extends Row>(
   page: string,
   tabs: readonly string[],
-  ringo: Map<string, Painted>,
-  trailmap: Map<string, Painted>,
+  ringo: Map<string, Painted<R>>,
+  trailmap: Map<string, Painted<R>>,
 ): string[] {
   const problems: string[] = [];
   const first = tabs[0]!;
@@ -370,13 +423,55 @@ function compare(
     }
   }
   for (const tab of tabs) {
-    const theirs = ringo.get(tab)!.ids;
-    const ours = trailmap.get(tab)!.ids;
-    if (theirs.join("\n") === ours.join("\n")) {
+    const theirs = ringo.get(tab)!.rows;
+    const ours = trailmap.get(tab)!.rows;
+    const theirIds = theirs.map((r) => r.id);
+    const ourIds = ours.map((r) => r.id);
+    if (theirIds.join("\n") !== ourIds.join("\n")) {
+      // Membership or order is wrong, so the rows are not the same rows and
+      // diffing their values would report the misalignment once per row.
+      problems.push(`${page}?${tab}: ${describe(theirIds, ourIds)}`);
+      continue;
+    }
+    const rowProblems = compareValues(page, tab, theirs, ours);
+    if (rowProblems.length === 0) {
       console.log(`ok  ${page}?${tab} (${theirs.length})`);
       continue;
     }
-    problems.push(`${page}?${tab}: ${describe(theirs, ours)}`);
+    problems.push(...rowProblems);
+  }
+  return problems;
+}
+
+/** How many differing rows to name before the report stops being useful. */
+const ROW_REPORT_LIMIT = 5;
+
+/**
+ * What the rows of one tab SAY, row by row, once the two sides agree on which
+ * rows they are and in what order.
+ *
+ * Reported per row rather than per field, and capped: one wrong rule — an
+ * inherited priority read off the wrong RFC, say — is wrong on hundreds of
+ * rows, and printing every one of them buries the next difference.
+ */
+function compareValues<R extends Row>(
+  page: string,
+  tab: string,
+  ringo: R[],
+  trailmap: R[],
+): string[] {
+  const problems: string[] = [];
+  let differing = 0;
+  for (const [i, theirs] of ringo.entries()) {
+    const fields = diffFacts(theirs, trailmap[i]!);
+    if (fields.length === 0) continue;
+    differing++;
+    if (problems.length < ROW_REPORT_LIMIT) {
+      problems.push(`${page}?${tab}: ${theirs.id}: ${fields.join("; ")}`);
+    }
+  }
+  if (differing > problems.length) {
+    problems.push(`${page}?${tab}: ... and ${differing - problems.length} more rows differ`);
   }
   return problems;
 }

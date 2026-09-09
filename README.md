@@ -199,9 +199,12 @@ TASKS_DIR=~/github/blazetrailsdev/tasks pnpm gate:markdown
 
 - **`gate:lists`** paints `/rfcs` and `/backlog` twice, per tab, over one
   snapshot: once by ringo's own browser scripts and once by trailmap's
-  controllers, then compares membership, order and every tab count. Not the
+  controllers, then compares membership, order, every tab count and what each
+  row SAYS — the queue position, the effective priority and packages with
+  their inherited marks, est-loc, icebox, cluster, PR and assignee. Not the
   markup — #7 gave trailmap its own status vocabulary and its tabs are links,
-  and neither is a defect.
+  and neither is a defect — so the row values come out of each side's own
+  markup through `scripts/page-extract.ts`, as on the show pages.
 - **`gate:markdown`** renders every RFC and story body in the tasks tree
   through `app/helpers/markdown-helper.ts` and through ringo's
   `webhook/markdown.go`, and diffs. The one tolerated difference is `&#34;`
@@ -210,6 +213,9 @@ TASKS_DIR=~/github/blazetrailsdev/tasks pnpm gate:markdown
 
 Both take `--self-test`, which perturbs one side and expects the gate to go
 red; CI runs those too, so a gate that stopped looking cannot pass quietly.
+`gate:lists --self-test=values` perturbs a row's inherited-priority mark
+instead of dropping a row, which is what proves the value comparison — and not
+just the membership one — still bites.
 
 ringo (`deanmarano/btwhooks`) has no remote for CI to clone, so its code is
 **vendored** rather than checked out: `vendor/ringo/` holds the two page
@@ -224,6 +230,20 @@ in a PR of its own, exactly as with the trails tarballs: a gate that goes red
 on a bump must be revertible without taking application work with it. Both
 gates verify `SHA256` before they diff anything, so a hand-edit to the snapshot
 fails loudly instead of quietly making ringo agree with us.
+
+`SHA256` catches an edited snapshot; it cannot catch a STALE one, where the
+files are untouched and ringo has moved on — both gates then pass, green,
+against a copy of the old ringo. **The alarm for that lives on the box**:
+`pnpm ringo:pin` compares `vendor/ringo/PIN` against btwhooks' HEAD and names
+both, and `scripts/deploy.sh` runs it on every deploy. It cannot be a CI job —
+CI has no btwhooks checkout, which is why the snapshot is vendored — and it
+warns rather than failing, because a bump is its own PR and a stale pin is a
+prompt.
+
+```sh
+pnpm ringo:pin                       # ~/github/deanmarano/btwebooks
+pnpm ringo:pin --src /path/to/btwebooks
+```
 
 Preflight scans the PR body and every commit message on the PR for Claude
 attribution — the `Co-Authored-By: Claude` trailer, a "Generated with Claude

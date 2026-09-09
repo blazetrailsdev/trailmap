@@ -37,7 +37,15 @@ dokku storage:mount trailmap \
 # is down, and the mitigation is that it comes back by itself.
 dokku ps:set trailmap restart-policy on-failure:10
 
-dokku config:set --no-restart trailmap NODE_ENV=production
+# The database and the checkout, at the identical host path the mount uses.
+# NOT optional: nothing else in the boot path establishes a connection, so a
+# container without TASKS_DATABASE comes up, answers /up green, and 500s with
+# `ConnectionNotDefined` on every page that reads a row. Since
+# `config/initializers/tasks-database.ts` began refusing that boot, the missing
+# variable is a container that will not start instead.
+dokku config:set --no-restart trailmap NODE_ENV=production \
+  TASKS_DATABASE=/home/dean/github/blazetrailsdev/tasks/.git/tasks.db \
+  TASKS_DIR=/home/dean/github/blazetrailsdev/tasks
 dokku sso:protect trailmap
 ```
 
