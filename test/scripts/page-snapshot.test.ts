@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  SNAPSHOT_TABLES,
   decodeRows,
   decodeSnapshot,
   encodeRows,
@@ -8,6 +9,7 @@ import {
   isExempt,
   type PageRecord,
   type RowRecord,
+  type StoryRecord,
 } from "../../scripts/page-snapshot.js";
 
 /**
@@ -72,7 +74,7 @@ describe("the show-page snapshot format", () => {
 
   it("keeps an exempt story exempt", () => {
     const [decoded] = decodeSnapshot(encodeSnapshot([EXEMPT]));
-    expect(isExempt(decoded as { kind: "story"; id: string; exempt: true })).toBe(true);
+    expect(isExempt(decoded as StoryRecord)).toBe(true);
   });
 
   it("strips the record's own keys off the facts the replay diffs", () => {
@@ -84,6 +86,24 @@ describe("the show-page snapshot format", () => {
       done: 1,
       total: 2,
     });
+  });
+
+  it("is not fooled into calling a recorded story exempt", () => {
+    expect(isExempt(STORY as StoryRecord)).toBe(false);
+  });
+
+  it("strips the record's own keys off a story's facts too", () => {
+    expect(factsOf(STORY as never)).toEqual({
+      title: "Render the show pages",
+      status: "Merged",
+      rfc: "0136-trailmap",
+      deps: ["port-the-models"],
+      rfcDeps: [],
+    });
+  });
+
+  it("names every table the show pages read, parents before children", () => {
+    expect([...SNAPSHOT_TABLES]).toEqual(["rfcs", "stories", "story_deps", "story_rfc_deps"]);
   });
 
   it("round-trips rows in the order they were read", () => {
