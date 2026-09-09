@@ -7,23 +7,23 @@ import { StoryPagesController } from "../../app/controllers/story-pages-controll
 
 /**
  * Every page controller's view directory is the path the implicit lookup
- * derives, so no render has to name its template.
+ * derives, so no render has to name its template — and both are kebab-case,
+ * like every other filename here.
  *
- * trails derives the view prefix with Rails' `underscore`, exactly as Rails
- * does: `RfcPagesController` looks under `app/views/rfc_pages/`. trailmap is
- * kebab-case everywhere else and `app/views/rfc-pages/` was originally named
- * to match — which meant every render carried `template: "rfc-pages/show"`,
- * and a controller that forgot it did not fall back but 500'd with a missing
- * template at request time.
+ * They agree because `ApplicationController.controllerPath` respells the
+ * separator. trails derives the prefix with Rails' `underscore`, so the raw
+ * derivation is `rfc_pages`; without the override every render would have to
+ * carry `template: "rfc-pages/show"`, and a controller that forgot it did not
+ * fall back but 500'd with a missing template at request time. #11 paid that
+ * twice.
  *
- * #11 paid that twice. This suite is what stops a third: it fails on a
- * directory renamed back to kebab-case, which is the mistake the surrounding
- * convention invites. CLAUDE.md carries the rule in prose beside it.
- *
- * The exception is meant to be temporary. `derive-kebab-case-view-prefixes`
- * (RFC 0140) proposes deriving the prefix as kebab-case in trails itself; if
- * that lands, these directories go back to kebab-case and this suite is what
- * fails, which is the intended way to be reminded.
+ * So this suite checks the two halves that have to stay in step: the override
+ * still produces kebab-case, and every directory on disk is one a controller
+ * actually asks for. It fails on a directory renamed to snake_case, on a
+ * controller added without a directory, and on the override being deleted
+ * while the directories stay — which is what would happen if
+ * `derive-kebab-case-view-prefixes` (RFC 0140) landed and the cleanup were
+ * done by halves.
  */
 const PAGE_CONTROLLERS = [
   DashboardController,
@@ -50,6 +50,14 @@ async function viewDirectories(): Promise<string[]> {
 }
 
 describe("app/views", () => {
+  it("derives a kebab-case prefix, the spelling every other filename uses", () => {
+    expect(RfcPagesController.controllerPath()).toBe("rfc-pages");
+    expect(StoryPagesController.controllerPath()).toBe("story-pages");
+    // A single-word controller has no separator to respell; it must be
+    // untouched rather than incidentally correct.
+    expect(HomeController.controllerPath()).toBe("home");
+  });
+
   it("names each page controller's directory the way the implicit lookup does", async () => {
     const present = new Set(await viewDirectories());
     const missing = PAGE_CONTROLLERS.map((controller) => controller.controllerPath()).filter(

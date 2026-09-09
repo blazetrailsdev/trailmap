@@ -47,21 +47,17 @@ Two things follow:
 ## Conventions
 
 - camelCase, everywhere. No `snake_case` identifiers.
-- **`app/views/` directories are snake_case — the one exception, and it is
-  not ours to make.** trails derives a controller's view prefix with Rails'
-  `underscore`, so `RfcPagesController` looks under `app/views/rfc_pages/`.
-  Name the directory that and the implicit lookup finds the template; name it
-  `rfc-pages/` to match the rest of the repo and every render has to carry
-  `template: "rfc-pages/show"`, with a missing-template 500 at request time
-  for the one that forgets. This is faithful Rails behaviour, not a framework
-  bug, and `trails new`'s own generators emit snake_case view directories.
-  `test/views/view-directory-names.test.ts` holds the rule.
-
-  **This exception is meant to be temporary.**
-  `derive-kebab-case-view-prefixes` (RFC 0140) proposes deriving the prefix as
-  kebab-case in the framework, so an app that is kebab-case throughout needs no
-  carve-out here. If it lands, rename these directories back and delete this
-  bullet; the test above is what will fail and point at it.
+- **`app/views/` directories are kebab-case, like everything else**, and
+  implicit rendering still works: `ApplicationController.controllerPath`
+  respells the separator, so `RfcPagesController` finds
+  `app/views/rfc-pages/show` with no `template:` argument. Never add one — a
+  render that names its template is a sign the override was broken rather
+  than a style choice. trails derives the prefix with Rails' `underscore`
+  (`rfc_pages`); overriding `controllerPath` is the public extension point
+  Rails itself documents, not a reach into internals.
+  `test/views/view-directory-names.test.ts` holds both halves of the rule, and
+  `derive-kebab-case-view-prefixes` (RFC 0140) would move the spelling into the
+  framework and let the override go.
 - Conventional Commits. No `Co-Authored-By` trailer, no "Generated with Claude
   Code" line.
 - Open PRs as draft.
