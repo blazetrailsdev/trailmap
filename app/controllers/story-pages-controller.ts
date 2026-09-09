@@ -229,8 +229,8 @@ export class StoryPagesController extends ApplicationController {
     // document read is disk. Issued together so the page costs one round of
     // waiting rather than three.
     const [deps, rfcDeps, doc] = await Promise.all([
-      statusesFor(Story, depRows.map((row) => row.depends_on_id)),
-      statusesFor(Rfc, rfcDepRows.map((row) => row.rfc_id)),
+      storyStatusesFor(depRows.map((row) => row.depends_on_id)),
+      rfcStatusesFor(rfcDepRows.map((row) => row.rfc_id)),
       readDocument(story.file_path),
     ]);
 
@@ -239,6 +239,11 @@ export class StoryPagesController extends ApplicationController {
         id,
         story,
         rfc,
+        // The status the page's own header pill shows: the EFFECTIVE one, the
+        // rule written out in `app/views/shared/_status-badge`. The pill was
+        // the last page still showing the authored status, which had a story
+        // read `ready` here and `draft` on its own RFC's page.
+        shownStatus: effectiveStoryStatus(rfc?.status ?? null, story.status) ?? "",
         deps,
         rfcDeps,
         packages,
@@ -254,7 +259,7 @@ export class StoryPagesController extends ApplicationController {
   private renderPage(locals: Record<string, unknown>, status: number): void {
     this.render({
       template: "story-pages/show",
-      locals: { body: null as SafeBuffer | null, error: "", ...locals },
+      locals: { body: null as SafeBuffer | null, error: "", shownStatus: "", ...locals },
       status,
     });
   }
@@ -264,15 +269,50 @@ export class StoryPagesController extends ApplicationController {
  * `ids` paired with their statuses, in the order given. One query for the
  * batch: a dep list is short, but the page has two of them and a per-id find
  * turns a link list into a query loop.
+ *
+ * This one is for RFC deps. An RFC's status has no override — nothing sits
+ * above an RFC to downgrade it — so what is stored is what is shown; see the
+ * rule in `app/views/shared/_status-badge`.
  */
-async function statusesFor(
-  model: typeof Story | typeof Rfc,
-  ids: string[],
-): Promise<DepRow[]> {
+async function rfcStatusesFor(ids: string[]): Promise<DepRow[]> {
   if (ids.length === 0) return [];
   const found = new Map<string, string>();
-  for (const record of await model.where({ id: ids }).toArray()) {
-    found.set(record.id, String(record.status ?? ""));
+  for (const rfc of await Rfc.where({ id: ids }).toArray()) {
+    found.set(rfc.id, String(rfc.status ?? ""));
+  }
+  return ids.map((id) => ({ id, status: found.get(id) ?? "" }));
+}
+
+/**
+ * The same, for STORY deps, and therefore through `effectiveStoryStatus`.
+ *
+ * A dep badge is read as "does this still gate me?", which is the question the
+ * ready queue answers, so it has to be the effective status the queue ranks —
+ * a dep sitting `ready` under a draft RFC gates for as long as that RFC stays
+ * a draft, and a badge saying `ready` claims the opposite. The one rule, in
+ * `app/views/shared/_status-badge`.
+ *
+ * That costs a second query, for the deps' parent RFCs. It is issued only when
+ * there are deps whose RFCs are not already loaded, and both are `where({ id:
+ * [...] })` over a handful of ids.
+ */
+async function storyStatusesFor(ids: string[]): Promise<DepRow[]> {
+  if (ids.length === 0) return [];
+  const stories = await Story.where({ id: ids }).toArray();
+  const rfcIds = [...new Set(stories.map((story) => story.rfc_id))];
+  const rfcStatus = new Map<string, string | null>();
+  for (const rfc of await Rfc.where({ id: rfcIds }).toArray()) {
+    rfcStatus.set(rfc.id, rfc.status);
+  }
+  const found = new Map<string, string>();
+  for (const story of stories) {
+    // `?? null` rather than `?? ""`: an unknown parent RFC is not active, so
+    // the override applies to it exactly as a draft one — which is also what
+    // the ready queue does with an orphan.
+    found.set(
+      story.id,
+      String(effectiveStoryStatus(rfcStatus.get(story.rfc_id) ?? null, story.status) ?? ""),
+    );
   }
   return ids.map((id) => ({ id, status: found.get(id) ?? "" }));
 }
