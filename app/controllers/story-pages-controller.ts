@@ -145,7 +145,6 @@ export class StoryPagesController extends ApplicationController {
     );
 
     this.render({
-      template: "story-pages/index",
       locals: {
         filter,
         tabs,
@@ -258,7 +257,6 @@ export class StoryPagesController extends ApplicationController {
   /** Named for the same reason as the RFC page's — see `renderPage` there. */
   private renderPage(locals: Record<string, unknown>, status: number): void {
     this.render({
-      template: "story-pages/show",
       locals: { body: null as SafeBuffer | null, error: "", shownStatus: "", ...locals },
       status,
     });

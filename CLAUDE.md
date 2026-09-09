@@ -47,6 +47,15 @@ Two things follow:
 ## Conventions
 
 - camelCase, everywhere. No `snake_case` identifiers.
+- **`app/views/` directories are snake_case — the one exception, and it is
+  not ours to make.** trails derives a controller's view prefix with Rails'
+  `underscore`, so `RfcPagesController` looks under `app/views/rfc_pages/`.
+  Name the directory that and the implicit lookup finds the template; name it
+  `rfc-pages/` to match the rest of the repo and every render has to carry
+  `template: "rfc-pages/show"`, with a missing-template 500 at request time
+  for the one that forgets. This is faithful Rails behaviour, not a framework
+  bug, and `trails new`'s own generators emit snake_case view directories.
+  `test/views/view-directory-names.test.ts` holds the rule.
 - Conventional Commits. No `Co-Authored-By` trailer, no "Generated with Claude
   Code" line.
 - Open PRs as draft.

@@ -17,7 +17,6 @@ import { fleetEventsUrl, fleetRepos } from "../../config/fleet.js";
 export class DashboardController extends ApplicationController {
   index(): void {
     this.render({
-      template: "dashboard/index",
       locals: { repos: fleetRepos(), eventsUrl: fleetEventsUrl() },
     });
   }

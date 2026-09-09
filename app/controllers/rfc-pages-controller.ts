@@ -121,7 +121,6 @@ export class RfcPagesController extends ApplicationController {
     const shown = orderRfcsForIndex(rfcs.filter((rfc) => rfc.status === filter), openCount);
 
     this.render({
-      template: "rfc-pages/index",
       locals: {
         filter,
         total: rfcs.length,
@@ -187,14 +186,9 @@ export class RfcPagesController extends ApplicationController {
     );
   }
 
-  /**
-   * The template is named rather than inferred. The view directory is
-   * kebab-case here, as every other one in `app/views` is, while the
-   * controller path the implicit lookup derives is `rfc_pages`.
-   */
+  /** `/rfc/<id>`, or the same page carrying a not-found or error message. */
   private renderPage(locals: Record<string, unknown>, status: number): void {
     this.render({
-      template: "rfc-pages/show",
       locals: { body: null as SafeBuffer | null, error: "", ...locals },
       status,
     });
