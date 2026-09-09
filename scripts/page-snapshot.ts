@@ -72,13 +72,35 @@ export function encodeRows(rows: readonly RowRecord[]): string {
   return `${rows.map((entry) => JSON.stringify(entry)).join("\n")}\n`;
 }
 
-/** The rows in a fixture's text, in file order. */
+/**
+ * The rows in a fixture's text, in file order.
+ *
+ * Table and column names out of this file are interpolated into INSERT
+ * statements by the replay — they cannot be bound as parameters — so they are
+ * checked here rather than trusted. The fixture is committed and machine-
+ * written, which makes a bad name a corrupted or hand-edited file; failing on
+ * the name beats letting it reach the database as SQL.
+ */
 export function decodeRows(text: string): RowRecord[] {
   return text
     .split("\n")
     .filter((line) => line.trim() !== "")
-    .map((line) => JSON.parse(line) as RowRecord);
+    .map((line, at) => {
+      const record = JSON.parse(line) as RowRecord;
+      if (!SNAPSHOT_TABLES.includes(record.table)) {
+        throw new Error(`${ROWS_FILE}:${at + 1}: unknown table ${JSON.stringify(record.table)}`);
+      }
+      for (const column of Object.keys(record.row)) {
+        if (!COLUMN_NAME.test(column)) {
+          throw new Error(`${ROWS_FILE}:${at + 1}: unusable column name ${JSON.stringify(column)}`);
+        }
+      }
+      return record;
+    });
 }
+
+/** A column name this schema can actually have, and that is safe to quote. */
+const COLUMN_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** An RFC page, as ringo stated it. */
 export interface RfcRecord extends RfcPageFacts {
@@ -130,16 +152,27 @@ export function decodeSnapshot(text: string): PageRecord[] {
     .map((line) => JSON.parse(line) as PageRecord);
 }
 
-/** The facts half of a record, which is what the replay diffs. */
+/**
+ * The facts half of a record, which is what the replay diffs.
+ *
+ * `kind`, `id` and `exempt` address the record; everything else is what the
+ * page said. Dropping exactly those three is what lets `diffFacts` compare a
+ * recording against a freshly extracted page without either side carrying a
+ * field the other cannot have.
+ */
 export function factsOf(record: RfcRecord): RfcPageFacts;
 export function factsOf(record: StoryRecord & { exempt?: false }): StoryPageFacts;
 export function factsOf(record: PageRecord): RfcPageFacts | StoryPageFacts {
-  const { kind, id, exempt, ...facts } = record as PageRecord & { exempt?: boolean };
-  void kind;
-  void id;
-  void exempt;
-  return facts as RfcPageFacts | StoryPageFacts;
+  const source = record as unknown as Record<string, unknown>;
+  const facts: Record<string, unknown> = {};
+  for (const key of Object.keys(source)) {
+    if (!ADDRESSING_KEYS.includes(key)) facts[key] = source[key];
+  }
+  return facts as unknown as RfcPageFacts | StoryPageFacts;
 }
+
+/** The keys that address a record rather than state what its page said. */
+const ADDRESSING_KEYS = ["kind", "id", "exempt"];
 
 const RFC_KEYS = ["kind", "id", "title", "status", "done", "total", "stories", "storyStatuses"];
 const STORY_KEYS = ["kind", "id", "exempt", "title", "status", "rfc", "deps", "rfcDeps"];

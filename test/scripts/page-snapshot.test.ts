@@ -113,4 +113,17 @@ describe("the show-page snapshot format", () => {
     ];
     expect(decodeRows(encodeRows(rows))).toEqual(rows);
   });
+
+  // The replay interpolates these two names into an INSERT, because SQL cannot
+  // bind an identifier. A corrupted or hand-edited fixture must therefore fail
+  // on the name rather than reach the database as SQL.
+  it("refuses a row naming a table the show pages do not read", () => {
+    const line = `${JSON.stringify({ table: "sqlite_master", row: { name: "x" } })}\n`;
+    expect(() => decodeRows(line)).toThrow(/unknown table "sqlite_master"/);
+  });
+
+  it("refuses a column name it would have to quote into SQL", () => {
+    const line = `${JSON.stringify({ table: "rfcs", row: { 'id" from rfcs; --': "x" } })}\n`;
+    expect(() => decodeRows(line)).toThrow(/unusable column name/);
+  });
 });
