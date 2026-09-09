@@ -69,15 +69,42 @@ exits non-zero even on a successful deploy — the uptime-monitor plugin runs
 last and cannot reach Uptime Kuma on this box — so its exit status says
 nothing, and a failed RELEASE after a successful BUILD leaves the old container
 serving with no other outward sign. `scripts/deploy.sh` reads the running
-container's image id before and after and fails loudly when it did not change.
+container's id before and after and fails loudly when it did not change.
 
 **`GIT_REV` does not tell you what is running.** dokku sets it during the
 build, so `dokku config:get trailmap GIT_REV` reports the commit you pushed
-whether or not the release replaced anything. The image id is the witness:
+whether or not the release replaced anything.
+
+**The CONTAINER id is the witness, not the image id.** A redeploy of an
+unchanged commit builds a byte-identical image, so an image-id comparison calls
+a perfectly good release a failure. That is not hypothetical: the first real
+redeploy this script was written for printed `DEPLOY FAILED` seconds after
+dokku had renamed the new container into place. Replacing the container is the
+property being checked, and only the container id changes every time that
+happens:
+
+```sh
+docker inspect trailmap.web.1 --format '{{.Id}}'     # changes on every release
+docker inspect trailmap.web.1 --format '{{.Image}}'  # changes only on a new build
+```
+
+A new image behind an unreplaced container is the original port-collision
+failure, so the script prints both and says when the image is unchanged.
+
+**The stale-image check is against the tag, not against the previous read.**
+For eleven merged PRs the box served the first deploy's image while every later
+build was tagged `dokku/trailmap:latest` and thrown away. A before/after
+comparison cannot see that state — both reads return the same stale image and
+agree — so what the script asserts is that the running container's image *is*
+the one the tag points at:
 
 ```sh
 docker inspect trailmap.web.1 --format '{{.Image}}'
+docker inspect dokku/trailmap:latest --format '{{.Id}}'   # must be equal
 ```
+
+That holds on every deploy rather than only across the one transition off the
+PR #1 image, and it is the property that transition was evidence of.
 
 ### After every deploy
 
@@ -91,8 +118,30 @@ curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' \
 # expected: 302 https://auth.deanoftech.com/?rd=https://trailmap.deanoftech.com/
 dokku sso:protect trailmap   # only if it answered 200
 
-curl -s http://127.0.0.1:8080/up   # expected: {"status":"ok"}
+curl -s http://127.0.0.1:8080/up             # expected: {"status":"ok"}
+curl -s http://127.0.0.1:8080/stories/ready  # a guarded endpoint, see below
 ```
+
+`/up` is UNGUARDED, so a 200 from it proves only that the listener is up. The
+thing that has broken twice is `requireLoopback` refusing a request that
+arrived carrying proxy provenance, and only a guarded endpoint can show that —
+which is why the script asks for `/stories/ready` by name and fails on a 404
+from it.
+
+**Known gap: the release has no database.** `/stories/ready` currently answers
+500 `ConnectionNotDefined`. That is not the loopback regression — a 404 would
+be — it is that no `TASKS_DATABASE` is set on the app and no mount puts the
+CLI's `tasks.db` inside the container, so every database-backed endpoint fails
+while `/up` and the dashboard shell keep working. The script warns rather than
+fails on it, so that wiring the deployment's database stays visible instead of
+blocking every deploy.
+
+`mount-the-tasks-database-into-the-release` (RFC 0136) is that work: a
+`dokku storage:mount` of the tasks checkout plus `TASKS_DATABASE`/`TASKS_DIR`,
+and it tightens the check above to require 200. It is now urgent rather than
+latent — `config/initializers/tasks-database.ts` makes an unset
+`TASKS_DATABASE` a BOOT failure, so the next deploy from `main` will not start
+until it is done.
 
 A 404 from the loopback API — rather than a connection refused — means the
 request reached the app with `X-Forwarded-*` headers on it and `requireLoopback`

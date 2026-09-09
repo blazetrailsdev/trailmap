@@ -24,7 +24,8 @@
     "db:seed": "tsx node_modules/@blazetrails/trailties/bin/trails.js db seed",
     "db:setup": "tsx node_modules/@blazetrails/trailties/bin/trails.js db create && tsx node_modules/@blazetrails/trailties/bin/trails.js db migrate && tsx node_modules/@blazetrails/trailties/bin/trails.js db seed",
     "db:reset": "tsx node_modules/@blazetrails/trailties/bin/trails.js db drop && tsx node_modules/@blazetrails/trailties/bin/trails.js db create && tsx node_modules/@blazetrails/trailties/bin/trails.js db migrate && tsx node_modules/@blazetrails/trailties/bin/trails.js db seed",
-    "prepare": "trails-tsc-views build --views app/views"
+    "prepare": "trails-tsc-views build --views app/views",
+    "gate:snapshot": "tsx scripts/gate-page-snapshot.ts"
   },
   "dependencies": {
     "@blazetrails/activerecord": "file:vendor/blazetrails-activerecord-0.1.0.tgz",

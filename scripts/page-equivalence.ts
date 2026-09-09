@@ -19,7 +19,15 @@
  * checkout and a database that exist only on the box, and CI has neither. It
  * has to be run — and to keep working, it has to be run BEFORE ringo's read
  * model is deleted (`land-the-ringo-read-model-deletion`), after which there
- * is no reference implementation left to diff against.
+ * is no reference implementation left to diff against. Worse than that: after
+ * that story lands this gate still RUNS, comparing trailmap against pages
+ * ringo now renders from trailmap's own API. It goes circular, not red.
+ *
+ * `--record` is the answer to that deadline. It rides along with an ordinary
+ * run and, if the run is equivalent, writes what ringo said for every page —
+ * and the database rows it said it over — to the two fixtures `pnpm
+ * gate:snapshot` replays in CI with no ringo present. See README,
+ * "The recorded show-page snapshot, and when to re-record it".
  *
  *     TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db \
  *     RINGO_BASE=http://10.200.0.60:8080 \
@@ -39,9 +47,18 @@
  */
 import { Base } from "@blazetrails/activerecord";
 import { getFsAsync } from "@blazetrails/activesupport";
-import { cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
+import { argv, cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
 import { tasksDatabaseConfig } from "../config/database.js";
 import { Rfc, Story, loadModelSchemas } from "../app/models/index.js";
+import {
+  ROWS_FILE,
+  SNAPSHOT_FILE,
+  SNAPSHOT_TABLES,
+  encodeRows,
+  encodeSnapshot,
+  type PageRecord,
+  type RowRecord,
+} from "./page-snapshot.js";
 import {
   diffFacts,
   extractRingoRfc,
@@ -67,6 +84,18 @@ const REPORTED = 20;
 
 /** Every difference, whether or not it fits on the terminal. */
 const REPORT_FILE = "tmp/page-equivalence-problems.txt";
+
+/**
+ * `--record` writes ringo's extracted facts for every id to
+ * `test/fixtures/ringo-show-pages.ndjson`, which `pnpm gate:snapshot` replays
+ * in CI with no ringo present.
+ *
+ * Recording does not skip the comparison: the fixture is written by the same
+ * pass that proves it equivalent, so a recording that reports a difference is
+ * a recording nobody should commit. Re-recording is a deliberate step — see
+ * README, "Re-recording the show-page snapshot".
+ */
+const RECORD = argv.includes("--record");
 
 interface Fetched {
   html: string;
@@ -106,6 +135,7 @@ async function main(): Promise<number> {
   console.log(`${rfcIds.length} RFCs, ${storyIds.length} stories\n`);
 
   const problems: string[] = [];
+  const records: PageRecord[] = [];
   problems.push(
     ...(await compareAll("rfc", rfcIds, async (id) => {
       // ringo's story list lives on its stories TAB; its default tab is the
@@ -115,7 +145,16 @@ async function main(): Promise<number> {
         get(`${ringoBase}/rfc/${encodeURIComponent(id)}/stories`),
         get(`${trailmapBase}/rfc/${encodeURIComponent(id)}`),
       ]);
-      return compare<RfcPageFacts>(ringo, trailmap, extractRingoRfc, extractTrailmapRfc);
+      const differences = compare<RfcPageFacts>(
+        ringo,
+        trailmap,
+        extractRingoRfc,
+        extractTrailmapRfc,
+      );
+      if (RECORD && differences.length === 0 && !ringoNotFound(ringo.html)) {
+        records.push({ kind: "rfc", id, ...extractRingoRfc(ringo.html) });
+      }
+      return differences;
     })),
   );
   problems.push(
@@ -126,13 +165,37 @@ async function main(): Promise<number> {
       ]);
       if (underClosedRfc.has(id) && ringoNotFound(ringo.html) && trailmap.status === 200) {
         exempt++;
+        if (RECORD) records.push({ kind: "story", id, exempt: true });
         return [];
       }
-      return compare<StoryPageFacts>(ringo, trailmap, extractRingoStory, extractTrailmapStory);
+      const differences = compare<StoryPageFacts>(
+        ringo,
+        trailmap,
+        extractRingoStory,
+        extractTrailmapStory,
+      );
+      if (RECORD && differences.length === 0 && !ringoNotFound(ringo.html)) {
+        records.push({ kind: "story", id, ...extractRingoStory(ringo.html) });
+      }
+      return differences;
     })),
   );
 
-  await Base.connection.disconnectBang();
+  // Rows come out in rowid order, and the replay inserts them in that order.
+  // `story_deps` carries no ordering column, so a story's dependency list IS
+  // its insertion order — and "deps returned alphabetically" was one of the
+  // four defects this gate found. Dumping in primary-key order would have
+  // re-introduced it inside the fixture.
+  const snapshotRows = async (): Promise<RowRecord[]> => {
+    const rows: RowRecord[] = [];
+    for (const table of SNAPSHOT_TABLES) {
+      const selected = (
+        await Base.connection.selectAll(`SELECT * FROM ${table} ORDER BY rowid`)
+      ).toArray() as unknown as Record<string, unknown>[];
+      for (const row of selected) rows.push({ table, row });
+    }
+    return rows;
+  };
 
   console.log(
     `\n${exempt} story pages ringo hides under a closed RFC and trailmap serves ` +
@@ -149,8 +212,24 @@ async function main(): Promise<number> {
 
   if (problems.length === 0) {
     console.log(`\nEQUIVALENT: ${rfcIds.length + storyIds.length} pages agree, value for value.`);
+    if (RECORD) {
+      const fixture = `${cwd()}/${SNAPSHOT_FILE}`;
+      await fs.mkdir!(fixture.slice(0, fixture.lastIndexOf("/")), { recursive: true });
+      await fs.writeFile!(fixture, encodeSnapshot(records));
+      console.log(`recorded ${records.length} pages to ${SNAPSHOT_FILE}`);
+      const rows = await snapshotRows();
+      await fs.writeFile!(`${cwd()}/${ROWS_FILE}`, encodeRows(rows));
+      console.log(`recorded ${rows.length} rows to ${ROWS_FILE}`);
+    }
+    await Base.connection.disconnectBang();
     return 0;
   }
+  // A fixture is written only by an equivalent run. Recording a difference
+  // would freeze the defect into the thing CI replays, which is the one state
+  // worse than not having a snapshot at all.
+  if (RECORD) console.error("\nNOT RECORDED — the run was not equivalent.");
+  await Base.connection.disconnectBang();
+
   console.error(`\nNOT EQUIVALENT — ${problems.length} differences:`);
   for (const problem of problems.slice(0, REPORTED)) console.error(`  ${problem}`);
   if (problems.length > REPORTED) {

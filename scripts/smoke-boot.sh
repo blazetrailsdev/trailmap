@@ -46,7 +46,12 @@ export TASKS_DIR="$work"
 port=8123
 pnpm exec tsx "$trails" server -b 127.0.0.1 -p "$port" &
 server=$!
-trap 'kill "$server" 2>/dev/null || true; rm -rf "$work"' EXIT
+# Wait for the server to actually exit before removing its tree. The Vite dev
+# server writes into node_modules/.vite as it shuts down, so a `kill` followed
+# straight by `rm -rf` loses the race and the script dies on "Directory not
+# empty" AFTER every check has already passed — a green smoke test reported as
+# a red job.
+trap 'kill "$server" 2>/dev/null || true; wait "$server" 2>/dev/null || true; rm -rf "$work"' EXIT
 
 for _ in $(seq 1 60); do
   if curl -fsS "http://127.0.0.1:$port/up" >/dev/null 2>&1; then

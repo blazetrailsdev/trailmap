@@ -130,7 +130,8 @@ Two consequences worth keeping in mind:
 
 ## CI
 
-Every PR runs typecheck, the test suite, and a cold-start boot smoke test
+Every PR runs typecheck, the test suite, the recorded show-page snapshot
+(`pnpm gate:snapshot`, below), and a cold-start boot smoke test
 (`scripts/smoke-boot.sh`): a clean `git archive` checkout, installed from the
 vendored tarballs with no registry access, booted, and asked for a page.
 
@@ -175,13 +176,64 @@ a 302 to the login page, which the gate reports as such rather than diffing a
 redirect. Every difference lands in `tmp/page-equivalence-problems.txt`; the
 terminal shows the first twenty.
 
-It has a deadline. Once ringo's read model is deleted there is no reference
-implementation left and the gate cannot run at all, so it has to be run — and
-its findings fixed — before that lands.
+It has a deadline, and a quieter one than "cannot run". Once
+`land-the-ringo-read-model-deletion` moves ringo's `loadIndex` onto trailmap's
+own API, ringo's show pages render from data trailmap produced — and this gate
+keeps running and keeps reporting EQUIVALENT while comparing trailmap against
+itself. It goes circular, not red. A green check that proves nothing looks
+exactly like one that proves something, so the window in which it is an
+independent check closes the moment that story lands.
 
 One divergence is expected and is counted rather than failed: ringo serves its
 story show page through the BACKLOG's query, which hides every story under a
 closed RFC, so a permalink to finished work 404s there and renders here.
+
+## The recorded show-page snapshot, and when to re-record it
+
+`pnpm gate:snapshot` (`scripts/gate-page-snapshot.ts`) is the CI half, and it
+exists because of that deadline. `pnpm gate:pages --record` captured what
+ringo's pages SAY — extracted facts, never HTML — for all 8,953 pages while
+ringo still had its own read model, and this replays them:
+
+```sh
+pnpm gate:snapshot              # no ringo, no database, no tasks checkout
+pnpm gate:snapshot --self-test  # proves it still goes red on a difference
+```
+
+Two files are written by one pass and belong together:
+
+| file | what it holds |
+| --- | --- |
+| `test/fixtures/ringo-show-pages.ndjson` | ringo's facts, one page per line |
+| `test/fixtures/ringo-show-pages-rows.ndjson` | the database rows they were rendered from |
+
+The rows travel with the facts because this database never stands still. It is
+under continuous agent traffic — a story moved `claimed` to `in-progress`
+between the first recording and the first replay — and ingesting the tasks
+content tree does not close the gap either: a tree ingested at the recording's
+own commit still got 47 RFC-page facts wrong, because `status`, `assignee` and
+`pr` are database-owned and reach git only when `tasks export` runs, and
+because a first ingest closes an RFC whose stories are all done while an
+incremental one never did. With the rows pinned, what CI proves is what the
+four defects the live gate found were all about: how trailmap ORDERS, RANKS and
+LABELS a fixed set of rows.
+
+**Re-recording is deliberate, and a diff to either file is reviewed as a change
+to what the pages say.** It is legitimate in exactly two cases:
+
+- **A show page's markup changed on trailmap's side** in a way the extractors
+  in `scripts/page-extract.ts` read — a class rename, a moved badge. Fix the
+  extractor first; re-record only if the page now states something new.
+- **A deliberate change to what a show page says** — a new fact on the page, a
+  status vocabulary change. Say in the PR body which pages changed and why,
+  and expect the diff to be read.
+
+It is NOT legitimate to re-record because the gate went red and the fixture is
+what stands between you and a green check. That is the defect the gate exists
+to find. Re-recording also needs ringo's own read model still standing: the
+recorder refuses to write anything unless the run it rides along with is
+equivalent, and after `land-the-ringo-read-model-deletion` an equivalent run no
+longer proves anything, so the fixture cannot honestly be regenerated at all.
 
 ## The two ringo gates in CI
 

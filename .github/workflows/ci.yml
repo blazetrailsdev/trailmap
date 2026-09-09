@@ -70,6 +70,45 @@ jobs:
           node-version-file: .node-version
       - run: ./scripts/smoke-boot.sh
 
+  # THE SHOW-PAGE SNAPSHOT. `pnpm gate:pages` diffs trailmap's /rfc/<id> and
+  # /story/<id> against ringo's over the whole database; it found four port
+  # defects that hand-verification had missed, and it cannot run here, because
+  # ringo serves from a checkout and a database that exist only on the box.
+  #
+  # It is also about to stop proving anything. `land-the-ringo-read-model-
+  # deletion` moves ringo's loadIndex onto trailmap's own API, after which
+  # ringo's show pages render from data trailmap produced and the gate compares
+  # trailmap against itself — reporting EQUIVALENT forever. It goes circular,
+  # not red, which is worse than losing it: the green check keeps being cited.
+  #
+  # So ringo's answers were recorded while ringo still had its own read model,
+  # and this replays them. Both fixtures were captured in one pass — the facts
+  # ringo stated, and the database rows they were rendered from — so the replay
+  # needs no ringo, no database and no tasks checkout, and what it proves is
+  # what the four defects were about: how trailmap orders, ranks and labels a
+  # fixed set of rows. Re-recording is deliberate; README says when.
+  page-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # A version is required here; package.json deliberately carries no
+      # `packageManager` key, which is the other way to satisfy it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec trails-tsc-views build --views app/views
+      - name: The show pages still say what ringo said
+        run: pnpm gate:snapshot
+      # Proves the gate still detects a difference, rather than passing because
+      # it stopped looking.
+      - name: The snapshot gate still goes red on a difference
+        run: pnpm gate:snapshot --self-test
+
   # THE GATE (RFC 0136). trailmap's ready queue is a rewrite of the CLI's
   # ranking functions, and the only thing that makes that safe is proving the
   # two produce the same queue over the same database. It is the merge
