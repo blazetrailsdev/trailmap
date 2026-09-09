@@ -2,6 +2,10 @@
   The page-header state pill: `render({ partial: "shared/status-state",
   locals: { status } })`.
 
+  WHICH status reaches here — authored or effective — is the rule written out
+  in `shared/_status-badge`, and it is the effective one. This partial is the
+  page-header emphasis of that same decision, not a second one.
+
   Same status vocabulary as `shared/_status-badge` and the same normalisation
   — this is the SOLID, page-header presentation of it, the way GitHub shows an
   issue's own state boldly at the top while the rows beneath it use small

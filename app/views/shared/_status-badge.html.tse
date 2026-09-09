@@ -5,6 +5,49 @@
   duplication ringo carries today (`webhook/story.go:656`, and the same markup
   again on the RFC pages).
 
+  ── THE RULE: a story status shown is an EFFECTIVE status ──────────────────
+
+  There are two statuses a story could be described by. The AUTHORED one is
+  the `status` column, what the story's markdown says. The EFFECTIVE one is
+  `effectiveStoryStatus(rfcStatus, story.status)`
+  (`app/models/concerns/effective-status.ts`): the same value, except that a
+  `ready` story under a non-active RFC reads `draft`, because the ready queue
+  will not offer it.
+
+  Every page in this application shows the EFFECTIVE one. `/rfc/<id>`,
+  `/backlog`, `/story/<id>` and the `/rfcs` progress bar all pass a status
+  through `effectiveStoryStatus` before it reaches this partial or
+  `shared/_status-state`.
+
+  Why that one and not the authored one: a status badge is read as a claim
+  about what will happen to the story next, and the thing that decides what
+  happens next is `Story.claimable()`, which ranks the effective status. A row
+  labelled `ready` that the queue will never hand out is the badge lying, and
+  259 rows were doing exactly that before trailmap#17. The authored status is
+  not lost — it is in the story's markdown, which `/story/<id>` renders below
+  the pill — and it is not a second vocabulary to display, because
+  reactivating the RFC restores it with no edit anywhere.
+
+  This is one rule rather than four page-local decisions on purpose. Each page
+  was individually a faithful port — ringo's RFC page reads its index
+  (effective) while its backlog page reads story rows (authored) — and porting
+  the seam faithfully still ships a database that answers one question four
+  ways. trailmap is meant to be the one home for this domain, so the seam is
+  closed here. It is the same argument `app/models/concerns/backlog.ts` makes
+  for the Icebox label: the badge a row wears and the tab that would collect
+  it must not be able to disagree.
+
+  Where it does NOT apply, and why: an RFC's own status (`/rfcs` rows, the RFC
+  show page's pill, an RFC dependency) has no override — nothing above an RFC
+  overrides it — so it reaches here as stored. And `rfcStoryCounts`, the
+  done/total headline, counts the authored status; that is not an exception,
+  because the only status the override rewrites is `ready`→`draft` and both
+  sides of that are `open` there. The bar is different: it has a `ready`
+  segment and a `draft` segment, so the override moves a story between them
+  and it must.
+
+  ── ──────────────────────────────────────────────────────────────────────
+
   `status` is whatever the record holds, which is why the unknown arm exists:
   ringo renders `s-unknown` for a dep whose RFC is missing
   (`webhook/story.go:551,684`), and a null column reaches here the same way.

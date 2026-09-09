@@ -143,7 +143,7 @@ export class RfcPagesController extends ApplicationController {
             supersededBy: rfc.superseded_by,
             clusters: jsonArrayColumn(rfc.clusters),
             counts: rfcStoryCounts(own),
-            bar: storyStatusCounts(own),
+            bar: storyStatusCounts(own, rfc.status),
             storyTotal: own.length,
             openDays: rfcTerminal(rfc.status) ? null : daysSince(rfc.created_on),
           };

@@ -163,11 +163,23 @@ const STORY_BAR_ORDER: readonly string[] = [
  * there. The two disagreeing is deliberate and is ringo's split too:
  * `story_status` carries every status while `rfcStoryCounts` decides the
  * done/total headline.
+ *
+ * `rfcStatus` is required for the same reason `orderStoriesForRfc` requires
+ * it: the bar is a row of status BADGES with a width, so the one status rule
+ * (`app/views/shared/_status-badge`) applies to it — a `ready` story under a
+ * draft RFC belongs in the draft segment, not the ready one, or the bar
+ * advertises claimable work on an RFC whose stories nothing can claim. It is
+ * the only place in `rfc-progress` where the override changes an answer:
+ * `rfcStoryCounts` is invariant under it, because `ready` and `draft` are both
+ * `open` there.
  */
-export function storyStatusCounts(stories: readonly Story[]): StatusCount[] {
+export function storyStatusCounts(
+  stories: readonly Story[],
+  rfcStatus: string | null,
+): StatusCount[] {
   const counts = new Map<string, number>();
   for (const story of stories) {
-    const status = String(story.status ?? "unknown");
+    const status = String(effectiveStoryStatus(rfcStatus, story.status) ?? "unknown");
     counts.set(status, (counts.get(status) ?? 0) + 1);
   }
   const known = STORY_BAR_ORDER.filter((status) => counts.has(status));

@@ -107,7 +107,7 @@ describe("storyStatusCounts", () => {
       story("b", "ready"),
       story("c", "done"),
       story("d", "blocked"),
-    ]);
+    ], "active");
 
     expect(counts.map((c) => c.status)).toEqual(["done", "ready", "blocked", "draft"]);
     expect(counts.map((c) => c.pct)).toEqual([25, 25, 25, 25]);
@@ -116,7 +116,7 @@ describe("storyStatusCounts", () => {
   it("counts the closed stories the done/total headline drops", () => {
     // The two numbers are different questions: the bar is what the RFC is made
     // of, `rfcStoryCounts` is how much of it has shipped.
-    const counts = storyStatusCounts([story("a", "done"), story("b", "closed")]);
+    const counts = storyStatusCounts([story("a", "done"), story("b", "closed")], "active");
 
     expect(counts).toEqual([
       { status: "done", count: 1, pct: 50 },
@@ -125,8 +125,18 @@ describe("storyStatusCounts", () => {
     expect(rfcStoryCounts([story("a", "done"), story("b", "closed")]).total).toBe(1);
   });
 
+  it("segments a ready story under a draft RFC as the draft the queue sees", () => {
+    // The one status rule (`app/views/shared/_status-badge`): the bar has a
+    // ready segment and a draft segment, so the override has to move the story
+    // between them or the bar advertises work nothing can claim.
+    const stories = [story("a", "ready"), story("b", "draft")];
+
+    expect(storyStatusCounts(stories, "active").map((c) => c.status)).toEqual(["ready", "draft"]);
+    expect(storyStatusCounts(stories, "draft")).toEqual([{ status: "draft", count: 2, pct: 100 }]);
+  });
+
   it("appends a status it does not know rather than under-reporting the RFC", () => {
-    const counts = storyStatusCounts([story("a", "done"), story("b", "invented")]);
+    const counts = storyStatusCounts([story("a", "done"), story("b", "invented")], "active");
 
     expect(counts.map((c) => c.status)).toEqual(["done", "invented"]);
   });
