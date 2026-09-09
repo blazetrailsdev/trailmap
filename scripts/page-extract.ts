@@ -324,14 +324,58 @@ function show(value: unknown): string {
  * the same trick as the show pages above, one interface per page, filled from
  * both sides' markup, diffed with {@link diffFacts}.
  *
- * What is deliberately NOT extracted is the status label. #7 gave trailmap its
- * own vocabulary and its own badge (`shared/_status-badge`, `class="badge
+ * What is deliberately NOT extracted is the status label, and there are now
+ * TWO reasons rather than one.
+ *
+ * The first is presentational and was always here: #7 gave trailmap its own
+ * vocabulary and its own badge (`shared/_status-badge`, `class="badge
  * s-<status>"`, against ringo's `class="label s-<status>"`), and the tabs are
- * links rather than repaints — differences the gate exists to tolerate. So a
- * span whose class carries an `s-` token is skipped on both sides, and so are
- * the two labels only ringo draws: `needs refine`, which trailmap does not
- * port, and the over-LOC flag, which is drawn from a `max_loc` this dataset
- * never carries.
+ * links rather than repaints — differences the gate exists to tolerate.
+ *
+ * The second is SEMANTIC and is a stated divergence. trailmap decides which
+ * status a page shows by one rule — the effective one,
+ * `effectiveStoryStatus`, written out in `app/views/shared/_status-badge` —
+ * whereas ringo decides it per page, from whichever dataset that page happens
+ * to fetch. On the two LIST pages the two answers coincide and the gate proves
+ * it without reading a badge: `/backlog`'s dataset is the CLI read model,
+ * which carries the effective status, and it is that status the tab predicates
+ * partition, so the tab a row lands on IS the comparison — a row trailmap
+ * called `draft` and ringo called `ready` would sit on different tabs and go
+ * red on membership. On `/rfcs` the only status a row states is inside the
+ * progress bar, which this gate does not paint at all; see `RfcListRow`.
+ *
+ * So skipping the label costs the list gate nothing it could otherwise catch,
+ * and the place where the effective status IS compared badge-for-badge is the
+ * RFC SHOW page — `RfcPageFacts.storyStatuses` via {@link badgeStatuses},
+ * effective on both sides, which is how trailmap#17 found the divergence this
+ * rule closes.
+ *
+ * Skipped alongside it are the two labels only ringo draws: `needs refine`,
+ * which trailmap does not port, and the over-LOC flag, which is drawn from a
+ * `max_loc` this dataset never carries.
+ */
+/**
+ * One row of `/rfcs`.
+ *
+ * The PROGRESS BAR is not a field here, and that is the one row value this
+ * gate deliberately does not compare. ringo paints its bar from a
+ * `story_status` map its server computes and this gate does not have —
+ * `ringoRfcs` (gate-ringo-lists.ts) assembles ringo's rows from the RFC
+ * columns and its vendored `rfcStoryCounts`, and passes no `story_status`, so
+ * ringo's side draws no segments to read. Its markup would not be readable
+ * here anyway: ringo's segments are `<i class="ready">`, not a badge or a
+ * label, so `labelsOf`'s `s-` skip never saw them.
+ *
+ * That matters more since trailmap's bar became effective-status
+ * (`storyStatusCounts`, which now takes the parent RFC's status): a `ready`
+ * story under a draft RFC is in the draft segment here, and whether ringo's
+ * server agrees is UNKNOWN to this gate rather than proven equal. It is a
+ * deliberate divergence under the one status rule
+ * (`app/views/shared/_status-badge`) and it is uncompared, which is why it is
+ * written down here instead of left to be inferred from an absent field. The
+ * done/total headline beside the bar IS compared, as `progress`, and is
+ * invariant under the override — `ready` and `draft` are both `open` to
+ * `rfcStoryCounts`.
  */
 export interface RfcListRow {
   id: string;

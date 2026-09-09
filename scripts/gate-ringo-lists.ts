@@ -30,6 +30,26 @@
  * compared is the VALUES a row states, pulled out of each side's own markup by
  * `scripts/page-extract.ts` exactly as the show-page gate does.
  *
+ * TWO row values are NOT compared, and both are stated rather than left to be
+ * noticed:
+ *
+ *   the status BADGE   Skipped on both sides. On `/backlog` that costs nothing
+ *                      — trailmap shows the effective status and ringo's
+ *                      dataset carries it too, and the tab predicates
+ *                      partition on it, so a disagreement moves the row to
+ *                      another tab and this gate goes red on membership.
+ *                      `scripts/page-extract.ts` has the full argument.
+ *   the `/rfcs` BAR    Not painted on ringo's side at all: `ringoRfcs` below
+ *                      builds ringo's rows from the RFC columns and the
+ *                      vendored `rfcStoryCounts` and passes no `story_status`,
+ *                      which is the map ringo's own server computes and its
+ *                      script draws from. So trailmap's bar — effective-status
+ *                      since the one-status rule, `storyStatusCounts` — is
+ *                      UNCOMPARED here rather than proven equal to ringo's.
+ *                      Making it comparable needs ringo's `story_status`,
+ *                      which means the live-ringo gate (`pnpm gate:pages`),
+ *                      not this one. See `RfcListRow`.
+ *
  * Where the ringo side's DATA comes from matters as much as the logic: the
  * story rows and the ready queue are the tasks CLI's (`list`/`ready --json`,
  * the read model ringo ports), the RFC rows are plain columns read straight
