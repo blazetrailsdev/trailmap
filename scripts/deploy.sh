@@ -11,9 +11,16 @@
 #
 # `GIT_REV` is worse than useless here: dokku sets it during the BUILD, so it
 # reports the commit you just pushed whether or not the release replaced
-# anything. The image id of the running container is the only honest witness,
-# so this script reads it before and after and fails loudly when it did not
-# change.
+# anything.
+#
+# The CONTAINER id is the honest witness, and the image id is not. A redeploy
+# of an unchanged commit builds a byte-identical image, so an image-id
+# comparison calls a perfectly good release a failure — which is exactly what
+# it did on the first real redeploy this script was written for, reporting
+# DEPLOY FAILED seconds after dokku had renamed the new container into place.
+# Replacing the container is the property being checked, and only the container
+# id changes every time that happens. The image is reported alongside it,
+# because a new image behind an unreplaced container is the original failure.
 #
 # Runs on the box, as a user who can run dokku.
 set -euo pipefail
@@ -22,6 +29,10 @@ APP="${TRAILMAP_APP:-trailmap}"
 REMOTE="${TRAILMAP_REMOTE:-dokku}"
 BRANCH="${TRAILMAP_BRANCH:-main}"
 HOSTNAME_PUBLIC="${TRAILMAP_HOSTNAME:-trailmap.deanoftech.com}"
+
+runningContainer() {
+  docker inspect "$APP.web.1" --format '{{.Id}}' 2>/dev/null || true
+}
 
 runningImage() {
   docker inspect "$APP.web.1" --format '{{.Image}}' 2>/dev/null || true
@@ -32,8 +43,10 @@ fail() {
   exit 1
 }
 
-before="$(runningImage)"
-echo "==> running image before: ${before:-<not running>}"
+before="$(runningContainer)"
+beforeImage="$(runningImage)"
+echo "==> running container before: ${before:-<not running>}"
+echo "==> running image before:     ${beforeImage:-<not running>}"
 
 # The push exits non-zero even on a successful deploy: the uptime-monitor
 # plugin runs last and cannot reach Uptime Kuma on this box. So the push's exit
@@ -43,26 +56,49 @@ pushStatus=0
 git push "$REMOTE" "$BRANCH:trunk" || pushStatus=$?
 echo "==> push exited $pushStatus (non-zero is expected; see docs/deploy.md)"
 
-after="$(runningImage)"
-echo "==> running image after:  ${after:-<not running>}"
+after="$(runningContainer)"
+afterImage="$(runningImage)"
+echo "==> running container after:  ${after:-<not running>}"
+echo "==> running image after:      ${afterImage:-<not running>}"
 
 [ -n "$after" ] || fail "no $APP.web.1 container is running after the push."
 
 if [ -n "$before" ] && [ "$before" = "$after" ]; then
-  fail "the release did not replace the running container — it is still on
+  fail "the release did not replace the running container — it is still
   $after. The build may well have succeeded; read the push output above for a
   failed release (a port collision, or a failed healthcheck). Do NOT trust
   \`dokku config:get $APP GIT_REV\`, which reports the built commit either way."
 fi
 
+if [ "$beforeImage" = "$afterImage" ]; then
+  echo "==> image unchanged, which is expected when the commit is unchanged:
+  the container was still replaced ($before -> $after)."
+fi
+
 # The two audiences of the one listener, checked separately, because each has
 # failed on its own: SSO has come off a redeploy on sibling apps, and the JSON
 # API has been 404ed by forwarding headers added in front of it.
-apiStatus=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/up || true)
-[ "$apiStatus" = "200" ] ||
-  fail "the loopback API answered $apiStatus, not 200. A 404 here means the
-  request reached the app carrying X-Forwarded-* headers and requireLoopback
-  refused it; see the loopback block in nginx.conf.sigil."
+upStatus=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/up || true)
+[ "$upStatus" = "200" ] ||
+  fail "the loopback listener answered $upStatus for /up, not 200. The app is
+  not reachable on 127.0.0.1:8080 at all; see the loopback block in
+  nginx.conf.sigil."
+
+# /up is UNGUARDED, so a 200 there says nothing about the thing that has
+# actually broken twice: nginx setting X-Forwarded-* in front of the loopback
+# block, which `requireLoopback` treats as disqualifying and answers 404 to.
+# Only a guarded endpoint can prove that, so one is asked for by name.
+apiStatus=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/stories/ready || true)
+[ "$apiStatus" != "404" ] ||
+  fail "the loopback API answered 404 for /stories/ready. That is
+  requireLoopback refusing the request because it arrived carrying proxy
+  provenance — nginx is setting X-Forwarded-For or X-Forwarded-Proto in front
+  of the loopback \`server\` block; see nginx.conf.sigil."
+[ "$apiStatus" = "200" ] || echo "==> WARNING: /stories/ready answered
+  $apiStatus. It is past requireLoopback — a 404 would mean it was not — so the
+  loopback bypass is intact, but the endpoint is not serving. A 500 here is
+  \`ConnectionNotDefined\`: the release has no TASKS_DATABASE and no mount for
+  the CLI's tasks.db, so every database-backed endpoint fails." >&2
 
 publicStatus=$(curl -s -o /dev/null -w '%{http_code}' \
   -H "Host: $HOSTNAME_PUBLIC" http://127.0.0.1/ || true)
@@ -78,4 +114,4 @@ esac
 # btwhooks at all). A warning, never a failure: bumping the pin is its own PR.
 (cd "$(dirname "$0")/.." && pnpm ringo:pin) || true
 
-echo "==> deployed: $before -> $after; loopback API 200, public vhost $publicStatus."
+echo "==> deployed: $before -> $after; /up 200, /stories/ready $apiStatus, public vhost $publicStatus."
