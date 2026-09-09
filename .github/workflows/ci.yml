@@ -136,6 +136,13 @@ jobs:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
           TASKS_CLI: ${{ github.workspace }}/tasks
         run: pnpm gate:lists --self-test
+      # And that the row-VALUE half still detects one: membership and order are
+      # untouched here, only a row's inherited-priority mark changes.
+      - name: The list gate still goes red on a changed row value
+        env:
+          TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
+          TASKS_CLI: ${{ github.workspace }}/tasks
+        run: pnpm gate:lists --self-test=values
       - name: The markdown helper == webhook/markdown.go, over every RFC and story
         env:
           TASKS_DIR: ${{ github.workspace }}/tasks

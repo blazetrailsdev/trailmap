@@ -6,6 +6,10 @@ import {
   extractRingoStory,
   extractTrailmapRfc,
   extractTrailmapStory,
+  ringoRfcRows,
+  ringoStoryRows,
+  trailmapRfcRows,
+  trailmapStoryRows,
   badgeStatuses,
   between,
   hrefIds,
@@ -301,6 +305,138 @@ describe("diffFacts", () => {
   it("reports the end of the shorter list rather than undefined", () => {
     expect(diffFacts({ ids: ["a"] }, { ids: ["a", "b"] })).toEqual([
       "ids: 1 ringo vs 2 trailmap; first difference at 1 (ringo=(end) trailmap=b)",
+    ]);
+  });
+});
+
+
+/**
+ * LIST ROWS. Copied from the two implementations exactly as the show-page
+ * fixtures above are: ringo's from `vendor/ringo/backlog-draw.js` and
+ * `rfcs-draw.js` (the `labels` assembly and the row template), trailmap's from
+ * `app/views/story-pages/index.html.tse` and `app/views/rfc-pages/index.html.tse`.
+ */
+const ringoStoryRow =
+  `<div class="row"><span class="icon open"><svg/></span><div class="main">` +
+  `<div class="titleline"><a class="title" href="/story/alpha">Alpha</a>` +
+  `<span class="label next">next up</span>` +
+  `<span class="label s-ready">ready</span>` +
+  `<span class="label">rank</span>` +
+  `<span class="label icebox" title="its RFC is a draft or postponed">icebox</span>` +
+  `<span class="label pkg" title="package, inherited from RFC 0001-x">activerecord*</span>` +
+  `<span class="label pkg" title="package, inherited from RFC 0001-x">arel*</span>` +
+  `<span class="label" title="ready-queue priority (lower = sooner), inherited from RFC 0001-x">pri 3*</span>` +
+  `</div><div class="meta"><code>alpha</code> · <a href="/rfc/0001-x">RFC 0001-x</a> · ~120 LOC · ` +
+  `<span title="last edited 3 days ago">updated 3d ago</span> · by dean</div></div>` +
+  `<div class="aside"><span class="pr"><a href="/story/alpha">#42</a></span></div></div>` +
+  `<div class="row"><span class="icon done"><svg/></span><div class="main">` +
+  `<div class="titleline"><a class="title" href="/story/beta">Beta &amp; co</a>` +
+  `<span class="label queue">#3 in queue</span>` +
+  `<span class="label pkg" title="package">actionpack</span>` +
+  `<span class="label" title="ready-queue priority (lower = sooner)">pri 1</span>` +
+  `</div><div class="meta"><code>beta</code> · <a href="/rfc/0001-x">RFC 0001-x</a></div></div>` +
+  `<div class="aside"></div></div>`;
+
+const trailmapStoryRow =
+  `<div class="item-row"><span class="badge s-ready">ready</span><span class="row-main">` +
+  `<span class="titleline"><a class="row-title" href="/story/alpha">Alpha</a>` +
+  `<span class="tag next">next up</span>` +
+  `<span class="tag">rank</span>` +
+  `<span class="tag icebox" title="its RFC is a draft or postponed">icebox</span>` +
+  `<span class="tag pkg" title="package, inherited from RFC 0001-x">activerecord*</span>` +
+  `<span class="tag pkg" title="package, inherited from RFC 0001-x">arel*</span>` +
+  `<span class="tag prio" title="ready-queue priority (lower = sooner), inherited from RFC 0001-x">pri 3*</span>` +
+  `</span><div class="row-meta"><code>alpha</code> &middot; <a href="/rfc/0001-x">RFC 0001-x</a>` +
+  ` &middot; ~120 LOC &middot; updated 3d ago &middot; by dean</div>` +
+  `</span><span class="row-aside"><a href="/story/alpha">#42</a></span></div>` +
+  `<div class="item-row"><span class="badge s-done">done</span><span class="row-main">` +
+  `<span class="titleline"><a class="row-title" href="/story/beta">Beta &amp; co</a>` +
+  `<span class="tag queue">#3 in queue</span>` +
+  `<span class="tag pkg" title="package">actionpack</span>` +
+  `<span class="tag prio" title="ready-queue priority (lower = sooner)">pri 1</span>` +
+  `</span><div class="row-meta"><code>beta</code> &middot; <a href="/rfc/0001-x">RFC 0001-x</a></div>` +
+  `</span></div>`;
+
+const ringoRfcRow =
+  `<div class="row"><span class="icon open"><svg/></span><div class="main">` +
+  `<div class="titleline"><a class="title" href="/rfc/0001-x">An RFC</a>` +
+  `<span class="label prio" title="RFC priority (lower = sooner)">P2</span>` +
+  `<span class="label s-active">active</span>` +
+  `<span class="label stalled" title="No ready stories left">needs refine</span>` +
+  `<span class="label prog" title="stories done / total">3/7 done</span>` +
+  `<span class="label">runtime</span>` +
+  `<span class="label">→ 0002-y</span>` +
+  `</div><div class="meta"><code>0001-x</code> · by dean · open 12d</div></div></div>`;
+
+const trailmapRfcRow =
+  `<div class="item-row"><span class="badge s-active">active</span><span class="row-main">` +
+  `<span class="titleline"><a class="row-title" href="/rfc/0001-x">An RFC</a>` +
+  `<span class="tag prio" title="RFC priority (lower = sooner)">P2</span>` +
+  `<span class="tag prog" title="stories done / total">3/7 done</span>` +
+  `<span class="tag">runtime</span>` +
+  `<span class="tag">&rarr; 0002-y</span>` +
+  `</span><div class="row-meta"><code>0001-x</code> &middot; by dean &middot; open 12d</div>` +
+  `</span></div>`;
+
+describe("ringoStoryRows / trailmapStoryRows", () => {
+  it("reads the same values off two differently-marked-up backlog rows", () => {
+    expect(ringoStoryRows(ringoStoryRow)).toEqual(trailmapStoryRows(trailmapStoryRow));
+  });
+
+  it("reads the queue position, the inherited flags and the meta line", () => {
+    expect(ringoStoryRows(ringoStoryRow)).toEqual([
+      {
+        id: "alpha",
+        queue: "0",
+        priority: "3",
+        priorityInherited: true,
+        packages: ["activerecord", "arel"],
+        packagesInherited: true,
+        estLoc: "120",
+        icebox: true,
+        cluster: "rank",
+        pr: "42",
+        assignee: "dean",
+      },
+      {
+        id: "beta",
+        queue: "2",
+        priority: "1",
+        priorityInherited: false,
+        packages: ["actionpack"],
+        packagesInherited: false,
+        estLoc: "",
+        icebox: false,
+        cluster: "",
+        pr: "",
+        assignee: "",
+      },
+    ]);
+  });
+
+  it("differs when only the inherited mark differs, which is the rule #15 ported", () => {
+    const ported = trailmapStoryRow.replace(">pri 3*<", ">pri 3<");
+    expect(diffFacts(ringoStoryRows(ringoStoryRow)[0], trailmapStoryRows(ported)[0])).toEqual([
+      "priorityInherited: ringo=true trailmap=false",
+    ]);
+  });
+});
+
+describe("ringoRfcRows / trailmapRfcRows", () => {
+  it("reads the same values off two differently-marked-up RFC rows", () => {
+    expect(ringoRfcRows(ringoRfcRow)).toEqual(trailmapRfcRows(trailmapRfcRow));
+  });
+
+  it("reads the priority, the tally, the clusters and the supersession", () => {
+    expect(ringoRfcRows(ringoRfcRow)).toEqual([
+      {
+        id: "0001-x",
+        priority: "2",
+        progress: "3/7",
+        clusters: ["runtime"],
+        supersededBy: "0002-y",
+        owner: "dean",
+      },
     ]);
   });
 });
