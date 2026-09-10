@@ -14,7 +14,7 @@ export class Event extends Base {
   declare verb: string;
   declare story_id: string | null;
   declare rfc_id: string | null;
-  declare pr: number | null;
+  declare pr: string | null;
   declare actor: string | null;
   declare detail: string | null;
 

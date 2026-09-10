@@ -29,7 +29,7 @@ export interface StoryJson {
   deps: string[];
   deps_rfc: string[];
   est_loc: number | null;
-  pr: number | null;
+  pr: string | null;
   claim: string | null;
   assignee: string | null;
   blocked_by: string | null;

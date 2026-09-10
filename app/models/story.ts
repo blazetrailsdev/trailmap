@@ -60,7 +60,8 @@ export class Story extends Base {
 
   // ── DB-owned: written only by the mutation verbs ──
   declare status: StoryStatus;
-  declare pr: number | null;
+  /** `repo#N` — see the tasks CLI's src/pr-ref.ts. */
+  declare pr: string | null;
   declare assignee: string | null;
   declare blocked_by: string | null;
   declare closed_reason: string | null;
@@ -341,7 +342,7 @@ export class Story extends Base {
   static async markTrackingAll(
     ids: string[],
     status: Extract<StoryStatus, "in-progress" | "done">,
-    pr: number | null,
+    pr: string | null,
   ): Promise<string[]> {
     const lines: string[] = [];
     await Base.transaction(async () => {
@@ -406,7 +407,7 @@ export class Story extends Base {
    */
   async markTracking(
     status: Extract<StoryStatus, "in-progress" | "done">,
-    pr: number | null,
+    pr: string | null,
   ): Promise<string> {
     if (this.status === status && this.pr === pr && (status !== "in-progress" || this.claim_at !== null)) {
       return `${status} ${this.id} (already, skipped)`;
@@ -417,7 +418,7 @@ export class Story extends Base {
         : {};
     await this.update({ status, pr, ...clearedBy(status), ...selfClaim, updated_on: today() });
     await this.recordEvent(status, { pr });
-    return `${status} ${this.id}${pr === null ? "" : ` #${pr}`}`;
+    return `${status} ${this.id}${pr === null ? "" : ` ${pr}`}`;
   }
 
   async block(reason: string): Promise<string> {
@@ -477,7 +478,7 @@ export class Story extends Base {
    */
   async recordEvent(
     verb: string,
-    extra: { pr?: number | null; actor?: string | null; detail?: unknown } = {},
+    extra: { pr?: string | null; actor?: string | null; detail?: unknown } = {},
   ): Promise<void> {
     await Event.create({
       at: nowIso(),

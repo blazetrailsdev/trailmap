@@ -3,7 +3,7 @@
 
 import type { DatabaseAdapter } from "@blazetrails/activerecord";
 
-export const defineParams = { version: 2026_08_25_000006 };
+export const defineParams = { version: 2026_09_10_000007 };
 
 export default async function defineSchema(ctx: DatabaseAdapter) {
   await ctx.createTable("events", { force: "cascade" }, (t) => {
@@ -11,7 +11,7 @@ export default async function defineSchema(ctx: DatabaseAdapter) {
     t.string("verb", { null: false });
     t.string("story_id");
     t.string("rfc_id");
-    t.integer("pr");
+    t.string("pr");
     t.string("actor");
     t.text("detail");
     t.index(["at"], { name: "index_events_on_at" });
@@ -53,7 +53,7 @@ export default async function defineSchema(ctx: DatabaseAdapter) {
     t.integer("est_loc");
     t.string("file_path");
     t.string("status", { default: "draft", null: false });
-    t.integer("pr");
+    t.string("pr");
     t.string("assignee");
     t.string("blocked_by");
     t.text("closed_reason");

@@ -49,7 +49,7 @@ beforeAll(async () => {
   });
   await StoryPackage.create({ story_id: "ready-one", package: "actionview" });
   await Story.create({ id: "ready-two", rfc_id: "0136-trailmap", status: "ready" });
-  await Story.create({ id: "working", rfc_id: "0136-trailmap", status: "in-progress", pr: 42 });
+  await Story.create({ id: "working", rfc_id: "0136-trailmap", status: "in-progress", pr: "trails#42" });
   await Story.create({ id: "stuck", rfc_id: "0136-trailmap", status: "blocked" });
   await Story.create({ id: "drafted", rfc_id: "0136-trailmap", status: "draft" });
   await Story.create({ id: "iced", rfc_id: "0900-idea", status: "ready" });

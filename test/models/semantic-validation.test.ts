@@ -121,7 +121,7 @@ describe("story lifecycle validations", () => {
   it("does not run on the mutation path, so a bad row stays fixable", async () => {
     // A `ready` story holding a stale pr is exactly what the verbs exist to
     // repair; a save-time semantic validation would refuse the repair.
-    await seed("s", "0136-trailmap", "ready", { pr: 7 });
+    await seed("s", "0136-trailmap", "ready", { pr: "trails#7" });
     const story = (await Story.findBy({ id: "s" }))!;
     expect(await story.validate("ingest")).toBe(false);
     await story.statusSet("draft");

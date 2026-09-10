@@ -54,7 +54,7 @@ beforeAll(async () => {
   // Same `at` as the claim: `at` is only second-resolution, so a burst of
   // verbs inside one second is ordered by `id` or not at all.
   await Event.create({ at: "2026-09-01T00:00:00Z", verb: "in-progress", story_id: "sooner" });
-  await Event.create({ at: "2026-09-02T00:00:00Z", verb: "done", story_id: "sooner", pr: 5 });
+  await Event.create({ at: "2026-09-02T00:00:00Z", verb: "done", story_id: "sooner", pr: "trails#5" });
 });
 
 describe("ReadModelsController", () => {
@@ -105,7 +105,7 @@ describe("ReadModelsController", () => {
       verb: "done",
       story: "sooner",
       rfc: null,
-      pr: 5,
+      pr: "trails#5",
       actor: null,
       detail: null,
     });

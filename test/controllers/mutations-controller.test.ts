@@ -132,10 +132,10 @@ describe("MutationsController", () => {
   });
 
   it("marks a bundle in-progress against its PR", async () => {
-    const { body } = await post("inProgress", { ids: ["s1", "s2"], pr: 7 });
+    const { body } = await post("inProgress", { ids: ["s1", "s2"], pr: "trails#7" });
 
-    expect(body.lines).toEqual(["in-progress s1 #7", "in-progress s2 #7"]);
-    expect((await find("s1")).pr).toBe(7);
+    expect(body.lines).toEqual(["in-progress s1 trails#7", "in-progress s2 trails#7"]);
+    expect((await find("s1")).pr).toBe("trails#7");
   });
 
   // `--pr` is required for in-progress and optional for done. That asymmetry
@@ -153,21 +153,27 @@ describe("MutationsController", () => {
     expect(body.lines).toEqual(["done s1"]);
   });
 
-  // `num()` is `Number(v)`, not `parseInt` — they disagree on exactly the
-  // inputs a typo produces, and `--pr 7abc` stamping PR 7 on a whole bundle is
-  // the failure that matters. cli.ts:106.
-  it("refuses a PR that is not a whole number rather than truncating it", async () => {
-    const typo = await post("inProgress", { ids: ["s1"], pr: "7abc" });
+  // A typo must be refused, not truncated or dropped: `--pr trails#7abc`
+  // stamping PR 7 on a whole bundle, or `done --pr 7abc` silently recording no
+  // PR, is the failure that matters.
+  it("refuses a malformed PR ref on either verb", async () => {
+    for (const verb of ["inProgress", "done"]) {
+      const typo = await post(verb, { ids: ["s1"], pr: "trails#7abc" });
 
-    expect(typo.status).toBe(400);
-    expect(typo.body.error).toBe("in-progress requires --pr");
+      expect(typo.status).toBe(400);
+      expect(typo.body.error).toBe("--pr takes repo#N, e.g. trails#7228 or tasks#94");
+    }
     expect((await find("s1")).pr).toBeNull();
   });
 
-  it("takes a PR the JSON body carries as a number, not only as a string", async () => {
-    await post("done", { ids: ["s1"], pr: 12 });
-
-    expect((await find("s1")).pr).toBe(12);
+  // trails#12, tasks#12 and trailmap#12 are different PRs, so a bare number —
+  // string or JSON number — says nothing about which one it is.
+  it("refuses a bare PR number rather than guessing its repo", async () => {
+    for (const pr of [12, "12"]) {
+      const { status } = await post("done", { ids: ["s1"], pr });
+      expect(status).toBe(400);
+    }
+    expect((await find("s1")).status).toBe("ready");
   });
 
   it("records an RFC-scoped spawn, which names no story", async () => {

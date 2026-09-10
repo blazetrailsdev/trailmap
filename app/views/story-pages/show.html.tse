@@ -8,7 +8,7 @@
       <span class="id"><%= story.id %></span>
       <%= render({ partial: "shared/status-state", locals: { status: shownStatus } }) %>
       <span class="muted">
-        in <a href="/rfc/<%= story.rfc_id %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a><% if (story.pr !== null) { %>, PR #<%= story.pr %><% } %>
+        in <a href="/rfc/<%= story.rfc_id %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a><% if (story.pr !== null) { %>, PR <%= story.pr %><% } %>
       </span>
     </div>
   </div>
@@ -90,7 +90,7 @@
       <% if (story.pr !== null) { %>
         <div class="side-section">
           <div class="side-head">PR</div>
-          <div class="side-value">#<%= story.pr %></div>
+          <div class="side-value"><%= story.pr %></div>
         </div>
       <% } %>
     </div>

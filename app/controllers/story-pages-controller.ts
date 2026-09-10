@@ -42,7 +42,8 @@ export interface BacklogRow {
    * or owner/name to build a GitHub URL from without guessing one. The story
    * page is the page that does know, and it is one hop from here.
    */
-  pr: number | null;
+  /** `repo#N`, e.g. `trails#7228`. */
+  pr: string | null;
   /** 0-based place in the ready queue, or null when the queue does not hold it. */
   queuePos: number | null;
   priority: number | null;

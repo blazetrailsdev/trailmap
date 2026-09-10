@@ -52,20 +52,25 @@ export class MutationsController extends ApplicationController {
     await this.run(() => Story.releaseAll(ids));
   }
 
-  /** `tasks in-progress <id...> --pr N` — the PR is required, as in the CLI. */
+  /** `tasks in-progress <id...> --pr repo#N` — the PR is required, as in the CLI. */
   async inProgress(): Promise<void> {
     const ids = this.ids();
-    const pr = this.intParam("pr");
+    const pr = this.prParam("pr");
     if (!ids.length) return this.usage("in-progress requires at least one story id");
+    if (pr === INVALID_PR) return this.usage(PR_REF_USAGE);
     if (pr === null) return this.usage("in-progress requires --pr");
     await this.run(() => Story.markTrackingAll(ids, "in-progress", pr));
   }
 
-  /** `tasks done <id...> [--pr N]` — the PR is optional here, unlike in-progress. */
+  /** `tasks done <id...> [--pr repo#N]` — the PR is optional here, unlike in-progress. */
   async done(): Promise<void> {
     const ids = this.ids();
+    const pr = this.prParam("pr");
     if (!ids.length) return this.usage("done requires at least one story id");
-    await this.run(() => Story.markTrackingAll(ids, "done", this.intParam("pr")));
+    // Given-but-malformed is refused, not read as "no PR": on `done` that would
+    // silently drop the PR.
+    if (pr === INVALID_PR) return this.usage(PR_REF_USAGE);
+    await this.run(() => Story.markTrackingAll(ids, "done", pr));
   }
 
   /**
@@ -233,23 +238,21 @@ export class MutationsController extends ApplicationController {
   }
 
   /**
-   * `null` for absent OR unparseable, the way the CLI's `num()` decides it
-   * (cli.ts:106 — `Number.isFinite(Number(v)) ? Number(v) : null`).
-   *
-   * `Number`, NOT `parseInt`: they disagree on exactly the inputs a typo
-   * produces. `parseInt("7abc")` is 7, so `--pr 7abc` would stamp PR 7 on a
-   * bundle instead of being refused, and `parseInt("7.9")` truncates where the
-   * CLI keeps the value and lets the column reject it. A refusal is the right
-   * answer to both, and it is also the answer the CLI already gives.
-   *
-   * The one deliberate difference: an EMPTY string reads as absent here (see
-   * `param`), where the CLI's `Number("")` is 0. `--pr ""` stamping PR 0 is
-   * not behaviour worth reproducing.
+   * A `repo#N` PR ref (`trails#7228`, `tasks#94`), the shape the tasks CLI's
+   * `--pr` takes since PR numbers from different repos collide. `null` when
+   * absent, `INVALID_PR` when given but malformed — a bare `7`, `7abc`,
+   * `trails#07` — which the verbs refuse, as the CLI does. An EMPTY string
+   * reads as absent (see `param`).
    */
-  private intParam(name: string): number | null {
+  private prParam(name: string): string | null | typeof INVALID_PR {
     const value = this.param(name);
     if (value === null) return null;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+    const m = PR_REF_RE.exec(value.trim());
+    return m ? `${m[1]}#${Number(m[2])}` : INVALID_PR;
   }
 }
+
+/** Mirrors the tasks CLI's src/pr-ref.ts. */
+const PR_REF_RE = /^([a-z0-9][a-z0-9._-]*)#([1-9]\d*)$/;
+const PR_REF_USAGE = "--pr takes repo#N, e.g. trails#7228 or tasks#94";
+const INVALID_PR = Symbol("invalid pr");
