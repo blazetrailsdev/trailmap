@@ -34,7 +34,7 @@
           <code><%= row.id %></code> &middot; <a href="/rfc/<%= row.rfcId %>">RFC <%= row.rfcId %></a><% if (row.estLoc !== null) { %> &middot; ~<%= row.estLoc %> LOC<% } %><% if (row.staleDays !== null) { %> &middot; updated <%= row.staleDays %>d ago<% } %><% if (row.assignee) { %> &middot; by <%= row.assignee %><% } %>
         </div>
       </span>
-      <% if (row.pr !== null) { %><span class="row-aside"><a href="/story/<%= row.id %>">#<%= row.pr %></a></span><% } %>
+      <% if (row.pr !== null) { %><span class="row-aside"><a href="/story/<%= row.id %>"><%= row.pr %></a></span><% } %>
     </div>
   <% } %>
 </div>

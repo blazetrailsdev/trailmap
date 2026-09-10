@@ -78,19 +78,19 @@ describe("release", () => {
 
 describe("markTracking", () => {
   it("stamps the PR and self-claims an unclaimed in-progress story", async () => {
-    await Story.markTrackingAll(["s1"], "in-progress", 42);
+    await Story.markTrackingAll(["s1"], "in-progress", "trails#42");
     const s = await find("s1");
     expect(s.status).toBe("in-progress");
-    expect(s.pr).toBe(42);
+    expect(s.pr).toBe("trails#42");
     expect(s.claim_at).not.toBeNull();
     expect(s.assignee).toBe("s1");
   });
 
   it("skips an id already at this status and pr rather than aborting the rest", async () => {
-    await Story.markTrackingAll(["s1"], "done", 7);
-    expect(await Story.markTrackingAll(["s1", "s2"], "done", 7)).toEqual([
+    await Story.markTrackingAll(["s1"], "done", "trails#7");
+    expect(await Story.markTrackingAll(["s1", "s2"], "done", "trails#7")).toEqual([
       "done s1 (already, skipped)",
-      "done s2 #7",
+      "done s2 trails#7",
     ]);
     // The skip is what keeps a second `done` from doubling the event log.
     expect(await Event.where({ story_id: "s1", verb: "done" }).count()).toBe(1);

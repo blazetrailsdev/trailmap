@@ -83,8 +83,8 @@ Two things follow:
 
 Story _state_ — `status`, `pr`, `claim`, `assignee`, `blocked-by`,
 `closed-reason` — lives in the tasks SQLite database and changes only through a
-`pnpm tasks` verb (`claim`, `in-progress --pr N`, `done --pr N`, `block`,
-`close`). Editing those fields in a story's markdown does nothing: ingest skips
+`pnpm tasks` verb (`claim`, `in-progress --pr repo#N`, `done --pr repo#N` —
+e.g. `--pr trailmap#22`; a bare number is refused — `block`, `close`). Editing those fields in a story's markdown does nothing: ingest skips
 them by design, and the tasks repo's CI fails the PR.
 
 Story _prose_ — title, `est-loc`, `deps`, acceptance criteria — is the

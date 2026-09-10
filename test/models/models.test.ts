@@ -125,7 +125,7 @@ describe("models", () => {
   });
 
   it("appends events", async () => {
-    await Event.create({ at: new Date().toISOString(), verb: "done", story_id: "base", pr: 7027 });
+    await Event.create({ at: new Date().toISOString(), verb: "done", story_id: "base", pr: "trails#7027" });
     expect(await Event.where({ verb: "done" }).count()).toBe(1);
   });
 
