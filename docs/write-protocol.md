@@ -14,12 +14,22 @@ anything here stops being true.
 | `busy_timeout` | `5000` ms | Every write is one short transaction (a verb, a webhook row). Five seconds is far above a real write and well under the proxy's request timeout. |
 
 trailmap takes both from `tasksDatabaseConfig()` (`timeout:` is the adapter's
-spelling of `busy_timeout`). ringo opens the file with this DSN suffix, which
-the test compares against the constant:
+spelling of `busy_timeout`). `journal_mode` is a property of the file, so
+trailmap's writable connection sets it for everyone.
+
+ringo is Go in another repository and cannot import the constant. Instead,
+`scripts/vendor-ringo.sh` vendors every ringo file containing `sql.Open`
+(today `webhook/tasksdb.go` and `webhook/parity.go`) into `vendor/ringo/db/`,
+and the test requires each DSN there to carry:
 
 ```text
-_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)
+_pragma=busy_timeout(5000)
 ```
+
+and, while ringo owns no table, `mode=ro` as well. Both sites open
+`file:<path>?mode=ro&_pragma=busy_timeout(5000)` at the vendored pin. A ringo
+change is caught when the pin is bumped, which `pnpm ringo:pin` flags on the
+box.
 
 ## Table ownership
 
@@ -52,9 +62,14 @@ column is. ringo never runs DDL.
 
 - a table in `db/schema.ts` has no owner in `tableOwners`;
 - a trailmap model maps a table not owned by trailmap;
-- ringo's vendored Go (`vendor/ringo/go`) carries an `INSERT`, `UPDATE`,
-  `DELETE` or `REPLACE` against a trailmap-owned table;
-- trailmap's connection or the DSN above drifts from the constants.
+- ringo's vendored database code (`vendor/ringo/db`) carries an `INSERT`,
+  `UPDATE`, `DELETE` or `REPLACE` against a trailmap-owned table;
+- a ringo `sql.Open` lacks the busy timeout, or is writable while ringo owns
+  no table;
+- trailmap's connection drifts from the constants.
+
+Its boundary is the vendored pin: ringo has no remote CI can check out, so a
+ringo commit is checked when it is vendored, not when it is written.
 
 ## When the database is locked or migrating
 

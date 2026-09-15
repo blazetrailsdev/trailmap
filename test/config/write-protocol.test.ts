@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import { getFsAsync } from "@blazetrails/activesupport";
 import { env, setEnv } from "@blazetrails/activesupport/process-adapter";
 import { tasksDatabaseConfig } from "../../config/database.js";
-import { ringoDsnPragmas, tableOwners, tablesOwnedBy, writeProtocol } from "../../config/write-protocol.js";
+import { ringoBusyTimeoutPragma, tableOwners, tablesOwnedBy, writeProtocol } from "../../config/write-protocol.js";
 import * as models from "../../app/models/index.js";
 
 /**
  * The write protocol, enforced rather than promised: every table has exactly
  * one owner, trailmap's models only map trailmap-owned tables, and ringo's
- * vendored Go writes nothing it does not own. See docs/write-protocol.md.
+ * database code — every file with a `sql.Open`, vendored whole by
+ * scripts/vendor-ringo.sh — opens the file as the protocol says and writes
+ * nothing it does not own. See docs/write-protocol.md.
  */
 const ROOT = new URL("../..", import.meta.url).pathname;
 const WRITE = /\b(?:(?:insert|replace)\s+(?:or\s+\w+\s+)?into|delete\s+from)\s+["`]?(\w+)|\bupdate\s+["`]?(\w+)["`]?\s+set\b/gi;
@@ -46,11 +48,25 @@ describe("write protocol", () => {
 
   it("keeps ringo's SQL writes off trailmap-owned tables", async () => {
     const owned = new Set(tablesOwnedBy("trailmap"));
-    for (const path of await goSources("vendor/ringo/go")) {
+    const sources = await goSources("vendor/ringo/db");
+    expect(sources.length).toBeGreaterThan(0);
+    for (const path of sources) {
       for (const [, inserted, updated] of (await read(path)).matchAll(WRITE)) {
         const table = inserted ?? updated;
         expect(owned.has(table), `${path} writes trailmap-owned table ${table}`).toBe(false);
       }
+    }
+  });
+
+  it("opens every ringo handle with the protocol's busy timeout, read-only unless it owns a table", async () => {
+    const opens: string[] = [];
+    for (const path of await goSources("vendor/ringo/db")) {
+      for (const [, dsn] of (await read(path)).matchAll(/sql\.Open\("sqlite",\s*(.*)\)\s*$/gm)) opens.push(dsn);
+    }
+    expect(opens.length).toBeGreaterThan(0);
+    for (const dsn of opens) {
+      expect(dsn).toContain(ringoBusyTimeoutPragma);
+      if (tablesOwnedBy("ringo").length === 0) expect(dsn).toContain("mode=ro");
     }
   });
 
@@ -64,8 +80,8 @@ describe("write protocol", () => {
     }
   });
 
-  it("states the same values ringo's DSN carries", async () => {
-    expect(ringoDsnPragmas).toBe("_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)");
-    expect(await read("docs/write-protocol.md")).toContain(ringoDsnPragmas);
+  it("states the pragma ringo's DSN carries", async () => {
+    expect(ringoBusyTimeoutPragma).toBe("_pragma=busy_timeout(5000)");
+    expect(await read("docs/write-protocol.md")).toContain(ringoBusyTimeoutPragma);
   });
 });
