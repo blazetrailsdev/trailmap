@@ -3,6 +3,7 @@ import { Base } from "@blazetrails/activerecord";
 import { env, setEnv } from "@blazetrails/activesupport/process-adapter";
 import { hasTasksDatabase } from "../../config/database.js";
 import { connectToTasksDatabase } from "../../config/initializers/tasks-database.js";
+import { writeProtocol } from "../../config/write-protocol.js";
 import { Story } from "../../app/models/index.js";
 
 /**
@@ -60,11 +61,16 @@ describe("connectToTasksDatabase", () => {
     }
   });
 
-  it("refuses a write, because trailmap is not the writer", async () => {
+  it("opens the live database under the write protocol", async () => {
     if (!hasTasksDatabase()) return;
 
-    await expect(
-      Base.connection.execute("UPDATE stories SET title = title WHERE id = 'nope'"),
-    ).rejects.toThrow();
+    // Read-write by decision (docs/deploy.md), so what is asserted is WAL and
+    // the shared busy timeout from docs/write-protocol.md, not a refused write.
+    expect(String(await Base.connection.selectValue("PRAGMA journal_mode"))).toBe(
+      writeProtocol.journalMode.toLowerCase(),
+    );
+    expect(Number(await Base.connection.selectValue("PRAGMA busy_timeout"))).toBe(
+      writeProtocol.busyTimeoutMs,
+    );
   });
 });
