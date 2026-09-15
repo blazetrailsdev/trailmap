@@ -1,4 +1,5 @@
 import { env } from "@blazetrails/activesupport/process-adapter";
+import { writeProtocol } from "./write-protocol.js";
 
 export default {
   development: {
@@ -29,10 +30,9 @@ export default {
  *
  * That makes trailmap ABLE to write, not yet the only writer — the CLI still
  * opens this file until `move-the-tasks-cli-into-trailmap` turns it into an
- * HTTP client. The guard `readonly` used to provide therefore moves from the
- * connection flag to sequencing, which is weaker: nothing posts to the
- * endpoints yet, so the two writers do not overlap in practice, but this
- * comment should stop claiming a property the deployment does not have yet.
+ * HTTP client. The deployed mount is read-write and that sequencing is the
+ * accepted guard until then; docs/deploy.md records the decision, and
+ * docs/write-protocol.md the WAL + busy-timeout protocol `timeout` comes from.
  *
  * `pool: 1` is load-bearing now rather than incidental. SQLite takes one
  * writer at a time, and a single connection serializes the mutation verbs in
@@ -52,7 +52,13 @@ export function tasksDatabaseConfig(): Record<string, unknown> {
         "(<tasks checkout>/.git/tasks.db) to read the live database.",
     );
   }
-  return { adapter: "sqlite3", database, pool: 1 };
+  return {
+    adapter: "sqlite3",
+    database,
+    pool: 1,
+    timeout: writeProtocol.busyTimeoutMs,
+    pragmas: { journal_mode: writeProtocol.journalMode },
+  };
 }
 
 /** Whether `TASKS_DATABASE` names a database to read. */

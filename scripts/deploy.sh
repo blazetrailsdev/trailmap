@@ -111,13 +111,13 @@ apiStatus=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/stories
   requireLoopback refusing the request because it arrived carrying proxy
   provenance — nginx is setting X-Forwarded-For or X-Forwarded-Proto in front
   of the loopback \`server\` block; see nginx.conf.sigil."
-[ "$apiStatus" = "200" ] || echo "==> WARNING: /stories/ready answered
-  $apiStatus. It is past requireLoopback — a 404 would mean it was not — so the
-  loopback bypass is intact, but the endpoint is not serving. A 500 here is
-  \`ConnectionNotDefined\`: the release has no TASKS_DATABASE and no mount for
-  the CLI's tasks.db, so every database-backed endpoint fails. Story
-  \`mount-the-tasks-database-into-the-release\` closes this, and tightens this
-  check to require 200." >&2
+[ "$apiStatus" = "200" ] ||
+  fail "/stories/ready answered $apiStatus, not 200. It is past
+  requireLoopback — a 404 would mean it was not — but the endpoint is not
+  serving. A 500 is the release without its database: check
+  \`dokku storage:report $APP\` for the tasks checkout mount and
+  \`dokku config:show $APP\` for TASKS_DATABASE and TASKS_DIR; see
+  docs/deploy.md."
 
 publicStatus=$(curl -s -o /dev/null -w '%{http_code}' \
   -H "Host: $HOSTNAME_PUBLIC" http://127.0.0.1/ || true)

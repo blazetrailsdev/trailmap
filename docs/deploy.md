@@ -128,20 +128,31 @@ arrived carrying proxy provenance, and only a guarded endpoint can show that —
 which is why the script asks for `/stories/ready` by name and fails on a 404
 from it.
 
-**Known gap: the release has no database.** `/stories/ready` currently answers
-500 `ConnectionNotDefined`. That is not the loopback regression — a 404 would
-be — it is that no `TASKS_DATABASE` is set on the app and no mount puts the
-CLI's `tasks.db` inside the container, so every database-backed endpoint fails
-while `/up` and the dashboard shell keep working. The script warns rather than
-fails on it, so that wiring the deployment's database stays visible instead of
-blocking every deploy.
+**The release's database.** `/stories/ready` must answer 200, and the script
+fails otherwise. A 500 there is `ConnectionNotDefined` or a missing file: the
+release lost its mount or its `TASKS_DATABASE`. The configuration that closed
+`mount-the-tasks-database-into-the-release`, as the box reports it:
 
-`mount-the-tasks-database-into-the-release` (RFC 0136) is that work: a
-`dokku storage:mount` of the tasks checkout plus `TASKS_DATABASE`/`TASKS_DIR`,
-and it tightens the check above to require 200. It is now urgent rather than
-latent — `config/initializers/tasks-database.ts` makes an unset
-`TASKS_DATABASE` a BOOT failure, so the next deploy from `main` will not start
-until it is done.
+```sh
+dokku storage:report trailmap
+#   host path:      /home/dean/github/blazetrailsdev/tasks
+#   container path: /home/dean/github/blazetrailsdev/tasks
+#   readonly:       false
+dokku config:show trailmap
+#   TASKS_DATABASE: /home/dean/github/blazetrailsdev/tasks/.git/tasks.db
+#   TASKS_DIR:      /home/dean/github/blazetrailsdev/tasks
+```
+
+The container runs as uid/gid 1000, the host owner of `tasks.db`, so the bind
+mount is writable with no permission work. `TASKS_DIR` is needed as well as
+`TASKS_DATABASE`: the show pages read each document's markdown off disk.
+
+**Decided: the mount is read-write.** Authoring and ingest commit into the
+checkout from inside the container, and the mutation endpoints exist to write.
+The CLI still opens the same file, so the guard against two writers is
+sequencing (below), accepted until `move-the-tasks-cli-into-trailmap` makes
+trailmap the only writer of the task tables. Both writers use WAL and a shared
+busy timeout — see [write-protocol.md](write-protocol.md).
 
 A 404 from the loopback API — rather than a connection refused — means the
 request reached the app with `X-Forwarded-*` headers on it and `requireLoopback`
