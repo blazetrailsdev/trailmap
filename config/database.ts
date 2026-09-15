@@ -52,7 +52,13 @@ export function tasksDatabaseConfig(): Record<string, unknown> {
         "(<tasks checkout>/.git/tasks.db) to read the live database.",
     );
   }
-  return { adapter: "sqlite3", database, pool: 1, timeout: writeProtocol.busyTimeoutMs };
+  return {
+    adapter: "sqlite3",
+    database,
+    pool: 1,
+    timeout: writeProtocol.busyTimeoutMs,
+    pragmas: { journal_mode: writeProtocol.journalMode },
+  };
 }
 
 /** Whether `TASKS_DATABASE` names a database to read. */

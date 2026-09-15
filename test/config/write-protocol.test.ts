@@ -60,9 +60,17 @@ describe("write protocol", () => {
 
   it("opens every ringo handle with the protocol's busy timeout, read-only unless it owns a table", async () => {
     const opens: string[] = [];
+    let calls = 0;
     for (const path of await goSources("vendor/ringo/db")) {
-      for (const [, dsn] of (await read(path)).matchAll(/sql\.Open\("sqlite",\s*(.*)\)\s*$/gm)) opens.push(dsn);
+      const source = await read(path);
+      calls += source.match(/\bsql\.Open\s*\(/g)?.length ?? 0;
+      for (const [, dsn] of source.matchAll(/sql\.Open\(\s*"sqlite",\s*([^\n]*?)\)\s*$/gm)) {
+        opens.push(dsn);
+      }
     }
+    // A call the parser could not read (split across lines, another driver)
+    // would otherwise go unchecked while the others keep `opens` non-empty.
+    expect(opens.length).toBe(calls);
     expect(opens.length).toBeGreaterThan(0);
     for (const dsn of opens) {
       expect(dsn).toContain(ringoBusyTimeoutPragma);
@@ -70,11 +78,14 @@ describe("write protocol", () => {
     }
   });
 
-  it("opens trailmap's connection with the protocol's busy timeout", () => {
+  it("opens trailmap's connection with the protocol's journal mode and busy timeout", () => {
     const database = env.TASKS_DATABASE;
     setEnv("TASKS_DATABASE", database ?? "storage/test.sqlite3");
     try {
-      expect(tasksDatabaseConfig()).toMatchObject({ timeout: writeProtocol.busyTimeoutMs });
+      expect(tasksDatabaseConfig()).toMatchObject({
+        timeout: writeProtocol.busyTimeoutMs,
+        pragmas: { journal_mode: writeProtocol.journalMode },
+      });
     } finally {
       setEnv("TASKS_DATABASE", database);
     }

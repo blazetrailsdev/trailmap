@@ -70,13 +70,17 @@ goFile webhook/markdown.go
   show webhook/spawnloop.go | awk '/^\/\/ rfcStoryCounts tallies/ { on = 1 } on && !done { print; if (/^}$/) done = 1 }'
 } > "$out/go/counts.go"
 
-# Every ringo file that opens a SQLite handle, whole, for the write-protocol
-# test (test/config/write-protocol.test.ts) to check its DSN and its SQL writes.
-# Kept out of go/ so `go run` over the harness never compiles them. The set is
-# discovered, not listed: a new `sql.Open` site that is not vendored fails here.
+# Every ringo file that touches SQL — opens a handle, executes a statement, or
+# spells a write — whole, for the write-protocol test
+# (test/config/write-protocol.test.ts) to check its DSNs and its SQL writes. A
+# file executing against a *sql.DB opened elsewhere still names `.Exec` or the
+# statement, so it is caught too. Kept out of go/ so `go run` over the harness
+# never compiles them. The set is discovered across the whole repository, not
+# listed, so a new SQL site is vendored the next time the pin moves.
 mkdir -p "$out/db"
-dbFiles=$(git -C "$src" grep -l 'sql\.Open' "$commit" -- 'webhook/*.go' ':!*_test.go' | sed "s/^$commit://")
-[ -n "$dbFiles" ] || { echo "no sql.Open site in ringo — the write-protocol test would scan nothing" >&2; exit 1; }
+sqlPattern='sql\.Open|\.(Exec|Prepare)(Context)?\(|insert (or [a-z]+ )?into|replace into|delete from|update +[a-z_"`]+ +set'
+dbFiles=$(git -C "$src" grep -liE "$sqlPattern" "$commit" -- '*.go' ':!*_test.go' | sed "s/^$commit://")
+[ -n "$dbFiles" ] || { echo "no SQL site in ringo — the write-protocol test would scan nothing" >&2; exit 1; }
 rm -f "$out"/db/*.go
 for f in $dbFiles; do { header "$f"; show "$f"; } > "$out/db/$(basename "$f")"; done
 

@@ -13,12 +13,13 @@ anything here stops being true.
 | `journal_mode` | `WAL` | Readers never block the writer and the writer never blocks readers, so a page render cannot stall a webhook write. The trails SQLite adapter sets it on every writable connection. |
 | `busy_timeout` | `5000` ms | Every write is one short transaction (a verb, a webhook row). Five seconds is far above a real write and well under the proxy's request timeout. |
 
-trailmap takes both from `tasksDatabaseConfig()` (`timeout:` is the adapter's
-spelling of `busy_timeout`). `journal_mode` is a property of the file, so
+trailmap takes both from `tasksDatabaseConfig()` (`pragmas.journal_mode`, and
+`timeout:`, the adapter's spelling of `busy_timeout`). `journal_mode` is a property of the file, so
 trailmap's writable connection sets it for everyone.
 
 ringo is Go in another repository and cannot import the constant. Instead,
-`scripts/vendor-ringo.sh` vendors every ringo file containing `sql.Open`
+`scripts/vendor-ringo.sh` vendors every ringo Go file that opens a handle,
+executes a statement or spells a SQL write
 (today `webhook/tasksdb.go` and `webhook/parity.go`) into `vendor/ringo/db/`,
 and the test requires each DSN there to carry:
 
@@ -64,7 +65,7 @@ column is. ringo never runs DDL.
 - a trailmap model maps a table not owned by trailmap;
 - ringo's vendored database code (`vendor/ringo/db`) carries an `INSERT`,
   `UPDATE`, `DELETE` or `REPLACE` against a trailmap-owned table;
-- a ringo `sql.Open` lacks the busy timeout, or is writable while ringo owns
+- a ringo `sql.Open` cannot be parsed, lacks the busy timeout, or is writable while ringo owns
   no table;
 - trailmap's connection drifts from the constants.
 
