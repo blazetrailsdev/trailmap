@@ -1,0 +1,73 @@
+# The shared-SQLite write protocol
+
+trailmap and ringo open one SQLite file. The rule that keeps that safe is
+**one writer per table, not per file**: no table ever has two writers, which is
+what "one writer" was protecting in the first place. The values below live in
+`config/write-protocol.ts`, and `test/config/write-protocol.test.ts` fails when
+anything here stops being true.
+
+## Connection settings
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| `journal_mode` | `WAL` | Readers never block the writer and the writer never blocks readers, so a page render cannot stall a webhook write. The trails SQLite adapter sets it on every writable connection. |
+| `busy_timeout` | `5000` ms | Every write is one short transaction (a verb, a webhook row). Five seconds is far above a real write and well under the proxy's request timeout. |
+
+trailmap takes both from `tasksDatabaseConfig()` (`timeout:` is the adapter's
+spelling of `busy_timeout`). ringo opens the file with this DSN suffix, which
+the test compares against the constant:
+
+```text
+_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)
+```
+
+## Table ownership
+
+The other process may **read** every table.
+
+| Table | Owner (sole writer) |
+| --- | --- |
+| `rfcs` | trailmap |
+| `stories` | trailmap |
+| `story_deps` | trailmap |
+| `story_rfc_deps` | trailmap |
+| `story_packages` | trailmap |
+| `story_paths` | trailmap |
+| `events` | trailmap |
+| `meta` | trailmap |
+
+ringo owns no table yet. Each RFC 0136 phase-B migration story that moves one of
+ringo's JSON state files adds its table here, as `ringo`, in the same PR that
+adds its migration.
+
+## Migrations
+
+Every table's migration — ringo's included — lives in trailmap's `db/migrate`.
+One schema authority: a fleet-state column is added exactly the way a story
+column is. ringo never runs DDL.
+
+## Enforcement
+
+`test/config/write-protocol.test.ts` fails when:
+
+- a table in `db/schema.ts` has no owner in `tableOwners`;
+- a trailmap model maps a table not owned by trailmap;
+- ringo's vendored Go (`vendor/ringo/go`) carries an `INSERT`, `UPDATE`,
+  `DELETE` or `REPLACE` against a trailmap-owned table;
+- trailmap's connection or the DSN above drifts from the constants.
+
+## When the database is locked or migrating
+
+ringo must not drop a webhook event because trailmap is busy or redeploying.
+
+- **Locked** (`SQLITE_BUSY` after the 5s timeout): ringo must acknowledge the
+  delivery only after the row is committed. Until then the event stays in an
+  in-memory ingest queue and ringo retries the write with backoff (1s, doubling,
+  capped at 30s) — never discarded.
+- **Migrating**: a redeploy does not migrate the live file on boot; migrations
+  are applied deliberately, as their own step, and SQLite DDL takes the same
+  write lock, so ringo sees it as a lock and retries as above. A write that
+  fails for a schema reason (`no such column`) is retried the same way rather
+  than dropped, since the migration that adds the column is the one running.
+- **ringo restarting while events are queued**: GitHub redelivers anything that
+  was not acknowledged, which is why the acknowledgement follows the commit.
