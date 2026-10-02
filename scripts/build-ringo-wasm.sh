@@ -16,6 +16,12 @@
 # id, and -s -w strip the symbol and debug tables, so the same source and the
 # same Go release (vendor/ringo/go/.go-version) give the same bytes on any
 # machine.
+#
+# -buildvcs=false is the one that is easy to miss. Go stamps the enclosing
+# repository's commit into a binary when it finds one, and vendor/ringo/go
+# sits inside trailmap's — so the bytes would change with every trailmap
+# commit. It went unnoticed where the snapshot was first built because Go does
+# not stamp from a linked worktree; CI builds from a real clone, and did.
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -23,7 +29,7 @@ src=$root/vendor/ringo/go
 
 build() {
   (cd "$src" && GOOS=wasip1 GOARCH=wasm GOFLAGS= CGO_ENABLED=0 \
-    go build -trimpath -ldflags='-s -w -buildid=' -o "$1" ./cmd/core)
+    go build -trimpath -buildvcs=false -ldflags='-s -w -buildid=' -o "$1" ./cmd/core)
 }
 
 case ${1:-} in
