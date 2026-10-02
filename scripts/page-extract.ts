@@ -361,7 +361,7 @@ function show(value: unknown): string {
  * gate deliberately does not compare. ringo paints its bar from a
  * `story_status` map its server computes and this gate does not have —
  * `ringoRfcs` (gate-ringo-lists.ts) assembles ringo's rows from the RFC
- * columns and its vendored `rfcStoryCounts`, and passes no `story_status`, so
+ * columns and its vendored `core.StoryCounts`, and passes no `story_status`, so
  * ringo's side draws no segments to read. Its markup would not be readable
  * here anyway: ringo's segments are `<i class="ready">`, not a badge or a
  * label, so `labelsOf`'s `s-` skip never saw them.

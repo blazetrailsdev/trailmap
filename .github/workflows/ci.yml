@@ -154,15 +154,22 @@ jobs:
         run: pnpm gate
 
       # The two ringo gates. Both run ringo's OWN code — the list pages'
-      # browser scripts and the Go markdown renderer, vendored verbatim under
+      # browser scripts and ringo's `core` Go package, vendored verbatim under
       # vendor/ringo at a pinned commit — against trailmap's port over this
       # same database. btwhooks has no remote to check out, which is why the
       # snapshot is vendored rather than cloned here; scripts/vendor-ringo.sh
       # regenerates it and bumping the pin is its own PR.
       - uses: actions/setup-go@v5
         with:
-          go-version-file: vendor/ringo/go/go.mod
+          # The release that built vendor/ringo/core.wasm, not go.mod's
+          # floor: the check below compares bytes, and bytes are per-release.
+          go-version-file: vendor/ringo/go/.go-version
           cache: false
+      # SHA256 says nobody edited core.wasm after it was vendored. Only a
+      # rebuild says it is the Go source beside it — and the binary is what the
+      # application executes.
+      - name: vendor/ringo/core.wasm is what vendor/ringo/go builds to
+        run: ./scripts/build-ringo-wasm.sh --check
       - name: /rfcs and /backlog == ringo's, per tab
         env:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
@@ -182,7 +189,7 @@ jobs:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
           TASKS_CLI: ${{ github.workspace }}/tasks
         run: pnpm gate:lists --self-test=values
-      - name: The markdown helper == webhook/markdown.go, over every RFC and story
+      - name: The markdown helper == ringo's core/markdown.go, over every RFC and story
         env:
           TASKS_DIR: ${{ github.workspace }}/tasks
         run: pnpm gate:markdown

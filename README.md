@@ -259,7 +259,7 @@ TASKS_DIR=~/github/blazetrailsdev/tasks pnpm gate:markdown
   markup through `scripts/page-extract.ts`, as on the show pages.
 - **`gate:markdown`** renders every RFC and story body in the tasks tree
   through `app/helpers/markdown-helper.ts` and through ringo's
-  `webhook/markdown.go`, and diffs. The one tolerated difference is `&#34;`
+  `core/markdown.go`, and diffs. The one tolerated difference is `&#34;`
   against `&quot;` — Go's spelling of the same character — which the gate
   normalizes rather than forcing either side to change.
 
@@ -271,8 +271,11 @@ just the membership one — still bites.
 
 ringo (`deanmarano/btwhooks`) has no remote for CI to clone, so its code is
 **vendored** rather than checked out: `vendor/ringo/` holds the two page
-scripts and the two Go functions, verbatim, at the commit in `vendor/ringo/PIN`
-(`SHA256` records what was taken). Regenerate with
+scripts and ringo's `core` Go package (`vendor/ringo/go`), verbatim, at the
+commit in `vendor/ringo/PIN` (`SHA256` records what was taken). `core` is the
+part of ringo that is pure computation — the markdown renderer, the pane
+terminal replay, the RFC story tally — and ringo keeps it standard-library
+only so it can be lifted out whole. Regenerate with
 
 ```sh
 ./scripts/vendor-ringo.sh ~/github/deanmarano/btwebooks HEAD
@@ -282,6 +285,14 @@ in a PR of its own, exactly as with the trails tarballs: a gate that goes red
 on a bump must be revertible without taking application work with it. Both
 gates verify `SHA256` before they diff anything, so a hand-edit to the snapshot
 fails loudly instead of quietly making ringo agree with us.
+
+The snapshot also carries **`vendor/ringo/core.wasm`**: that same `core`
+package compiled for WASI, committed so the image needs no Go toolchain. It is
+there so trailmap can RUN a ringo renderer instead of porting it and gating the
+port — one implementation cannot drift from itself. Because the binary is what
+would execute, `SHA256` is not enough for it: `scripts/build-ringo-wasm.sh
+--check` rebuilds it from `vendor/ringo/go` with the Go release in
+`vendor/ringo/go/.go-version` and compares bytes, and CI runs that on every PR.
 
 `SHA256` catches an edited snapshot; it cannot catch a STALE one, where the
 files are untouched and ringo has moved on — both gates then pass, green,

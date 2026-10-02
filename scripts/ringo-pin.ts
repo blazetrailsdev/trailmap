@@ -25,7 +25,9 @@ export async function verifyRingoPin(dir?: string): Promise<string> {
     const [want, file] = line.split(/\s+/, 2) as [string, string];
     const got = crypto
       .createHash("sha256")
-      .update(await fs.readFile!(path.join(dir, file), "utf8"))
+      // Bytes, not a utf8 decode: core.wasm is in the manifest, and decoding a
+      // binary replaces what it cannot read before the hash ever sees it.
+      .update(await fs.readFile!(path.join(dir, file)))
       .digest("hex");
     if (got !== want) {
       throw new Error(
