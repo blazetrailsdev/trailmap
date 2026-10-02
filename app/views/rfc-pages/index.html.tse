@@ -11,9 +11,14 @@
   <% if (rows.length === 0) { %>
     <div class="empty">No <%= filter %> RFCs.</div>
   <% } %>
+  <%#
+    No status badge on a row. Every row here has the status of the selected
+    tab — the list is filtered to it — so a badge would say the same word
+    down the whole page, and the tab already says it once. `/backlog` keeps
+    its badges: its Open and Icebox tabs each hold several statuses.
+  %>
   <% for (const row of rows) { %>
     <div class="item-row">
-      <%= render({ partial: "shared/status-badge", locals: { status: row.status } }) %>
       <span class="row-main">
         <span class="titleline">
           <a class="row-title" href="/rfc/<%= row.id %>"><%= row.title %></a>

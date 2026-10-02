@@ -369,7 +369,7 @@ const ringoRfcRow =
   `</div><div class="meta"><code>0001-x</code> · by dean · open 12d</div></div></div>`;
 
 const trailmapRfcRow =
-  `<div class="item-row"><span class="badge s-active">active</span><span class="row-main">` +
+  `<div class="item-row"><span class="row-main">` +
   `<span class="titleline"><a class="row-title" href="/rfc/0001-x">An RFC</a>` +
   `<span class="tag prio" title="RFC priority (lower = sooner)">P2</span>` +
   `<span class="tag prog" title="stories done / total">3/7 done</span>` +
