@@ -1,7 +1,7 @@
 /**
  * A small, dependency-free markdown renderer for the story and RFC show pages.
  *
- * This is a port of btwhooks' `webhook/markdown.go` (276 lines, stdlib-only by
+ * This is a port of btwhooks' `core/markdown.go` (276 lines, stdlib-only by
  * choice), kept construct for construct so a reader moving between the two
  * dashboards sees the same document: ATX headers, fenced code, bullet/ordered
  * lists, blockquotes, horizontal rules, paragraphs, GFM tables, and inline
@@ -225,7 +225,7 @@ function renderInline(input: string): string {
 const goPathUnreserved = /[A-Za-z0-9\-_.~$&+:=@]/;
 
 /**
- * `url.PathEscape` (webhook/markdown.go:255), not `encodeURIComponent`. The
+ * `url.PathEscape` (core/markdown.go:256), not `encodeURIComponent`. The
  * two agree on nearly everything and disagree on both edges: Go leaves
  * `$ & + : = @` unescaped where JavaScript escapes them, and escapes
  * `! ' ( ) *` where JavaScript leaves them. A story id carrying an `=` — they

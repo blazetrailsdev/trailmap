@@ -41,7 +41,7 @@
  *                      `scripts/page-extract.ts` has the full argument.
  *   the `/rfcs` BAR    Not painted on ringo's side at all: `ringoRfcs` below
  *                      builds ringo's rows from the RFC columns and the
- *                      vendored `rfcStoryCounts` and passes no `story_status`,
+ *                      vendored `core.StoryCounts` and passes no `story_status`,
  *                      which is the map ringo's own server computes and its
  *                      script draws from. So trailmap's bar — effective-status
  *                      since the one-status rule, `storyStatusCounts` — is
@@ -54,7 +54,7 @@
  * story rows and the ready queue are the tasks CLI's (`list`/`ready --json`,
  * the read model ringo ports), the RFC rows are plain columns read straight
  * out of the same snapshot, and the done/total on each RFC row is ringo's own
- * `rfcStoryCounts`, vendored and run as Go. None of it is trailmap's, so the
+ * `core.StoryCounts`, vendored and run as Go. None of it is trailmap's, so the
  * comparison cannot agree with itself by construction.
  *
  *     TASKS_DATABASE=<tasks>/.git/tasks.db TASKS_CLI=<tasks> pnpm gate:lists
@@ -258,7 +258,8 @@ async function ringoRfcs(
   stories: CliStory[],
 ): Promise<Map<string, Painted<RfcListRow>>> {
   // The done/total on each row, and the story_open the equal-priority tiebreak
-  // sorts on, are ringo's `rfcStoryCounts` — run as Go rather than described
+  // sorts on, are ringo's `core.StoryCounts` (the rule behind its
+  // `rfcStoryCounts`) — run as Go rather than described
   // again here, which is the whole point of vendoring it.
   const byRfc: Record<string, string[]> = {};
   for (const s of stories) (byRfc[s.rfc] ??= []).push(s.status);
@@ -306,7 +307,7 @@ async function ringoBacklog(
     BACKLOG_TABS, ringoStoryRows);
 }
 
-/** Run the vendored Go harness over `input`, handing back its stdout. */
+/** Run ringo's vendored `cmd/core` over `input`, handing back its stdout. */
 async function goHarness(
   child: Awaited<ReturnType<typeof getChildProcessAsync>>,
   path: Awaited<ReturnType<typeof getPathAsync>>,
@@ -316,7 +317,7 @@ async function goHarness(
 ): Promise<string> {
   const out = path.join(cwd(), "tmp", `ringo-${mode}.json`);
   await fs.mkdir!(path.dirname(out), { recursive: true });
-  const result = child.spawnSync("go", ["run", ".", mode], {
+  const result = child.spawnSync("go", ["run", "./cmd/core", mode], {
     cwd: path.join(cwd(), "vendor", "ringo", "go"),
     encoding: "utf8",
     input,
