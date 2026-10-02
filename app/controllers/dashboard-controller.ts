@@ -15,8 +15,8 @@ import { fleetEventsUrl, fleetRepos } from "../../config/fleet.js";
  * the HTML; ringo keeps serving the stream.
  */
 export class DashboardController extends ApplicationController {
-  index(): void {
-    this.render({
+  async index(): Promise<void> {
+    await this.render({
       locals: { repos: fleetRepos(), eventsUrl: fleetEventsUrl() },
     });
   }

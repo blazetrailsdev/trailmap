@@ -24,8 +24,8 @@ import {
 /**
  * The markup here is COPIED from the two implementations, not invented:
  * ringo's from `webhook/rfcs.go`'s `rfcShowHTML` and `webhook/story.go`'s
- * `storyHTML`, trailmap's from `app/views/rfc-pages/show.html.tse` and
- * `app/views/story-pages/show.html.tse`. That is what makes the test worth
+ * `storyHTML`, trailmap's from `app/views/rfc_pages/show.html.tse` and
+ * `app/views/story_pages/show.html.tse`. That is what makes the test worth
  * anything — an extractor is only ever right about the markup it is pointed
  * at, and a fixture written to suit the regex proves nothing.
  */
@@ -314,7 +314,7 @@ describe("diffFacts", () => {
  * LIST ROWS. Copied from the two implementations exactly as the show-page
  * fixtures above are: ringo's from `vendor/ringo/backlog-draw.js` and
  * `rfcs-draw.js` (the `labels` assembly and the row template), trailmap's from
- * `app/views/story-pages/index.html.tse` and `app/views/rfc-pages/index.html.tse`.
+ * `app/views/story_pages/index.html.tse` and `app/views/rfc_pages/index.html.tse`.
  */
 const ringoStoryRow =
   `<div class="row"><span class="icon open"><svg/></span><div class="main">` +

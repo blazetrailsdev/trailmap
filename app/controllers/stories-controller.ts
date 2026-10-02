@@ -1,4 +1,3 @@
-import { respondTo } from "@blazetrails/actionpack";
 import { ApplicationController } from "./application-controller.js";
 import { requireLoopback } from "./concerns/loopback-only.js";
 import { Story } from "../models/index.js";
@@ -40,13 +39,13 @@ export class StoriesController extends ApplicationController {
       status: this.param("status"),
       cluster: this.param("cluster"),
     });
-    this.renderStories(rows, index);
+    await this.renderStories(rows, index);
   }
 
   /** `tasks ready [--rfc R]` — the ready queue, in ready-queue order. */
   async ready(): Promise<void> {
     const index = await Story.rankingIndex();
-    this.renderStories(await Story.claimable({ index, rfc: this.param("rfc") }), index);
+    await this.renderStories(await Story.claimable({ index, rfc: this.param("rfc") }), index);
   }
 
   /**
@@ -65,7 +64,7 @@ export class StoriesController extends ApplicationController {
     const rows = await Story.nextBundle(opts);
     const summary = summarizeBundle(rows, maxLoc);
     const stories = serializeStories(rows, index);
-    this.respondWith({
+    await this.respondWith({
       stories,
       bundle_total_loc: summary.total,
       max_loc: maxLoc,
@@ -86,10 +85,10 @@ export class StoriesController extends ApplicationController {
     const index = await Story.rankingIndex();
     const story = index.stories.find((s) => s.id === id);
     if (!story) {
-      this.render({ json: { error: `story "${id}" not found` }, status: 404 });
+      await this.render({ json: { error: `story "${id}" not found` }, status: 404 });
       return;
     }
-    this.renderStories([story], index);
+    await this.renderStories([story], index);
   }
 
   /**
@@ -103,21 +102,21 @@ export class StoriesController extends ApplicationController {
   async touching(): Promise<void> {
     const path = this.param("path");
     if (path === undefined) {
-      this.render({ json: { error: "touching requires a path" }, status: 400 });
+      await this.render({ json: { error: "touching requires a path" }, status: 400 });
       return;
     }
     const index = await Story.rankingIndex();
     const rows = await Story.touching(path, { index, all: this.param("all") !== undefined });
-    this.renderStories(rows, index);
+    await this.renderStories(rows, index);
   }
 
   /**
    * `show` renders the bare object the CLI's `show` prints; every other verb
    * renders the array its `--json` prints.
    */
-  private renderStories(rows: Story[], index: RankingIndex): void {
+  private async renderStories(rows: Story[], index: RankingIndex): Promise<void> {
     const stories = serializeStories(rows, index);
-    this.respondWith(this.actionName === "show" ? stories[0] : stories);
+    await this.respondWith(this.actionName === "show" ? stories[0] : stories);
   }
 
   /**
@@ -125,19 +124,26 @@ export class StoriesController extends ApplicationController {
    * are a later story — so anything that is not asking for JSON is declined
    * here rather than falling through to a missing template.
    */
-  private respondWith(payload: unknown): void {
+  private async respondWith(payload: unknown): Promise<void> {
     // Negotiated on the `Accept` header ALONE, deliberately not through
     // `Base#respondTo`: that consults `request.format`, which answers "html"
     // when a client sends no `Accept` at all — and ringo's Go client sends
-    // none. Registering `json` first also makes `*/*` (curl's default) resolve
-    // to JSON, so both non-browser callers get JSON without asking for it.
-    respondTo(
-      (format) => {
-        format.json(() => this.render({ json: payload }));
-        format.any(() => this.render({ json: { error: "not_acceptable" }, status: 406 }));
-      },
-      { accept: (this.request.getHeader("accept") as string | undefined) ?? undefined },
-    );
+    // none. So a missing header, `*/*` (curl's default) and anything naming
+    // JSON all get JSON, and only a client that asks for something else and
+    // not JSON is refused.
+    //
+    // Written out because the framework has no such thing: trails used to
+    // export a free `respondTo(block, { accept })`, a non-Rails extension, and
+    // dropped it when `respondTo` converged on Rails' `respond_to`. q-values
+    // are not weighed — there is one representation, so the only question is
+    // whether the client will take it.
+    const accept = String(this.request.getHeader("accept") ?? "").trim();
+    const wanted = accept === "" ? ["*/*"] : accept.split(",").map((type) => type.split(";")[0]!.trim().toLowerCase());
+    if (wanted.some((type) => type === "*/*" || type === "application/*" || type === "application/json")) {
+      await this.render({ json: payload });
+    } else {
+      await this.render({ json: { error: "not_acceptable" }, status: 406 });
+    }
   }
 
   private param(name: string): string | undefined {

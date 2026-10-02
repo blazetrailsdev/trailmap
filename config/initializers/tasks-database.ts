@@ -1,5 +1,5 @@
 import { Base } from "@blazetrails/activerecord";
-import { env } from "@blazetrails/activesupport/process-adapter";
+import { env } from "@blazetrails/ruby-compat";
 import { hasTasksDatabase, tasksDatabaseConfig } from "../database.js";
 import { loadModelSchemas } from "../../app/models/index.js";
 

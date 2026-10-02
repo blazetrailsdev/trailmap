@@ -1,8 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { setEnv } from "@blazetrails/activesupport/process-adapter";
+import { setEnv } from "@blazetrails/ruby-compat";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { DashboardController } from "../../app/controllers/dashboard-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 /**
  * `/dashboard`, the fleet dashboard ported from ringo's `/`.
@@ -14,9 +15,9 @@ import { DashboardController } from "../../app/controllers/dashboard-controller.
  * sections the live envelope fills in.
  */
 async function index(): Promise<string> {
-  const tc = new ActionController.TestCase(DashboardController);
+  const tc = await controllerTestCase(DashboardController);
   await tc.get("index");
-  return tc.responseBody;
+  return tc.response.body;
 }
 
 beforeAll(() => {

@@ -184,10 +184,10 @@ export class MutationsController extends ApplicationController {
       await Base.transaction(async () => {
         lines = await body();
       });
-      this.render({ json: { ok: true, lines } });
+      await this.render({ json: { ok: true, lines } });
     } catch (error) {
       if (!(error instanceof VerbExit)) throw error;
-      this.render({
+      await this.render({
         json: { ok: false, error: error.message, exit_code: error.code },
         status: error.code === 1 ? 422 : 409,
       });
@@ -209,8 +209,8 @@ export class MutationsController extends ApplicationController {
    * lost-race, close-requires-a-reason — are the CLI's messages verbatim,
    * because those are decided by the model and not restated here.
    */
-  private usage(message: string): void {
-    this.render({ json: { ok: false, error: message, exit_code: 1 }, status: 400 });
+  private async usage(message: string): Promise<void> {
+    await this.render({ json: { ok: false, error: message, exit_code: 1 }, status: 400 });
   }
 
   /**

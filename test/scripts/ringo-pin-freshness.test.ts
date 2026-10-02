@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getChildProcessAsync } from "@blazetrails/activesupport/child-process-adapter";
-import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
+import { getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
 import { ringoPinFreshness } from "../../scripts/ringo-pin-freshness.js";
 
 /**
@@ -10,8 +9,8 @@ import { ringoPinFreshness } from "../../scripts/ringo-pin-freshness.js";
  */
 async function repositoryAt(dir: string, commits: number): Promise<string> {
   const [fs, path, child] = await Promise.all([
-    getFsAsync(),
-    getPathAsync(),
+    getFs(),
+    getPath(),
     getChildProcessAsync(),
   ]);
   await fs.mkdir!(dir, { recursive: true });
@@ -31,7 +30,7 @@ async function repositoryAt(dir: string, commits: number): Promise<string> {
 
 /** A trailmap root whose only content is `vendor/ringo/PIN`. */
 async function rootPinnedAt(dir: string, commit: string): Promise<string> {
-  const [fs, path] = await Promise.all([getFsAsync(), getPathAsync()]);
+  const [fs, path] = await Promise.all([getFs(), getPath()]);
   await fs.mkdir!(path.join(dir, "vendor", "ringo"), { recursive: true });
   await fs.writeFile!(path.join(dir, "vendor", "ringo", "PIN"), `${commit}\n`);
   return dir;
@@ -39,14 +38,14 @@ async function rootPinnedAt(dir: string, commit: string): Promise<string> {
 
 /** A directory of this run's own, so a rerun is not a different fixture. */
 async function scratch(name: string): Promise<string> {
-  const [fs, path] = await Promise.all([getFsAsync(), getPathAsync()]);
+  const [fs, path] = await Promise.all([getFs(), getPath()]);
   await fs.mkdir!("tmp", { recursive: true });
   return await fs.mkdtemp!(path.join("tmp", `${name}-`));
 }
 
 describe("ringoPinFreshness", () => {
   it("says the pin is current when it is btwhooks' HEAD", async () => {
-    const path = await getPathAsync();
+    const path = getPath();
     const src = await scratch("ringo-fresh-src");
     const head = await repositoryAt(src, 1);
     const root = await rootPinnedAt(await scratch("ringo-fresh-root"), head);
@@ -57,7 +56,7 @@ describe("ringoPinFreshness", () => {
   });
 
   it("names both commits and how far behind when btwhooks has moved on", async () => {
-    const path = await getPathAsync();
+    const path = getPath();
     const src = await scratch("ringo-stale-src");
     await repositoryAt(src, 1);
     const child = await getChildProcessAsync();
@@ -74,7 +73,7 @@ describe("ringoPinFreshness", () => {
   });
 
   it("says nothing to compare when the box has no btwhooks checkout", async () => {
-    const path = await getPathAsync();
+    const path = getPath();
     const root = await rootPinnedAt(await scratch("ringo-nosrc-root"), "0".repeat(40));
 
     const found = await ringoPinFreshness(path.join("tmp", "ringo-no-such-checkout"), root);

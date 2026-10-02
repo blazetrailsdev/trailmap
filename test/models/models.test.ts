@@ -55,7 +55,7 @@ describe("models", () => {
     s!.status = "in-progress";
     await s!.save();
     const raw = (
-      await Base.connection.selectAll("SELECT status FROM stories WHERE id='dependent'")
+      await (await Base.leaseConnection()).selectAll("SELECT status FROM stories WHERE id='dependent'")
     ).toArray();
     expect(raw[0].status).toBe("in-progress");
     s!.status = "ready";
@@ -64,7 +64,7 @@ describe("models", () => {
 
   it("resolves belongsTo", async () => {
     const s = await Story.findBy({ id: "dependent" });
-    const rfc = await s!.loadBelongsTo("rfc");
+    const rfc = await s!.rfc;
     expect((rfc as Rfc).id).toBe("0061-ci-failures");
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cwd, setEnv } from "@blazetrails/activesupport/process-adapter";
+import { Dir, setEnv } from "@blazetrails/ruby-compat";
 import { readDocument, stripFrontmatter } from "../../app/models/concerns/document.js";
 import { tasksContentDir } from "../../config/tasks-content.js";
 
@@ -48,7 +48,7 @@ describe("tasksContentDir", () => {
 
 describe("readDocument", () => {
   it("reads a file relative to the tasks checkout", async () => {
-    setEnv("TASKS_DIR", cwd());
+    setEnv("TASKS_DIR", Dir.pwd());
 
     const doc = await readDocument("README.md");
 
@@ -57,7 +57,7 @@ describe("readDocument", () => {
   });
 
   it("returns the read failure as a value, so the page can still render", async () => {
-    setEnv("TASKS_DIR", cwd());
+    setEnv("TASKS_DIR", Dir.pwd());
 
     const doc = await readDocument("rfcs/nope/stories/gone.md");
 

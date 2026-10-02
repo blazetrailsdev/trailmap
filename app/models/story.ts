@@ -76,7 +76,6 @@ export class Story extends Base {
   declare paths: AssociationProxy<StoryPath>;
   declare packages: AssociationProxy<StoryPackage>;
   declare events: AssociationProxy<Event>;
-  declare loadBelongsTo: (name: "rfc") => Promise<Rfc | null>;
 
   // NOTE: `enum` generates a static `Story.ready()` meaning `status='ready'`.
   // That is NOT the ready queue — see `Story.claimable()` below, which
@@ -167,7 +166,7 @@ export class Story extends Base {
 
     const messages: string[] = [];
     for (const story of stories) {
-      if (!(await story.validate("ingest"))) messages.push(...story.errors.fullMessages);
+      if (!(await story.validate("ingest"))) messages.push(...story.errors.fullMessages.filter((message) => message !== null));
     }
     messages.push(
       ...depGraphMessages(
@@ -181,7 +180,7 @@ export class Story extends Base {
       ),
     );
     for (const rfc of rfcs) {
-      if (!(await rfc.validate("ingest"))) messages.push(...rfc.errors.fullMessages);
+      if (!(await rfc.validate("ingest"))) messages.push(...rfc.errors.fullMessages.filter((message) => message !== null));
     }
     return messages;
   }

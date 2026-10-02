@@ -47,17 +47,16 @@ Two things follow:
 ## Conventions
 
 - camelCase, everywhere. No `snake_case` identifiers.
-- **`app/views/` directories are kebab-case, like everything else**, and
-  implicit rendering still works: `ApplicationController.controllerPath`
-  respells the separator, so `RfcPagesController` finds
-  `app/views/rfc-pages/show` with no `template:` argument. Never add one — a
-  render that names its template is a sign the override was broken rather
-  than a style choice. trails derives the prefix with Rails' `underscore`
-  (`rfc_pages`); overriding `controllerPath` is the public extension point
-  Rails itself documents, not a reach into internals.
-  `test/views/view-directory-names.test.ts` holds both halves of the rule, and
-  `derive-kebab-case-view-prefixes` (RFC 0140) would move the spelling into the
-  framework and let the override go.
+- **`app/views/` directories are the one snake_case exception**: a
+  controller's views live where Rails' lookup puts them, so
+  `RfcPagesController` renders `app/views/rfc_pages/show` with no `template:`
+  argument. Never add one, and never override `controllerPath` to respell the
+  directory. trails settled this the Rails way (`trails g controller` writes
+  the underscored directory, trails#7651), and `controllerPath` also names the
+  controller in routes, where a hyphen is illegal — an override there makes
+  every page controller untestable through `ActionController::TestCase`.
+  Controller FILES stay kebab-case (`rfc-pages-controller.ts`).
+  `test/views/view-directory-names.test.ts` holds the rule.
 - Conventional Commits. No `Co-Authored-By` trailer, no "Generated with Claude
   Code" line.
 - Open PRs as draft.

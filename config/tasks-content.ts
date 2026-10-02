@@ -15,7 +15,7 @@
  * and a page that 500s for want of an unset variable nobody has heard of is
  * worse than one that finds the file.
  */
-import { env } from "@blazetrails/activesupport/process-adapter";
+import { env } from "@blazetrails/ruby-compat";
 
 /** The tasks checkout, or null when neither variable names one. */
 export function tasksContentDir(): string | null {

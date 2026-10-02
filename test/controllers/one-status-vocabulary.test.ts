@@ -5,6 +5,7 @@ import { Rfc, Story, StoryDep, loadModelSchemas } from "../../app/models/index.j
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 /**
  * ONE status vocabulary, across every page that shows one.
@@ -25,10 +26,10 @@ async function get(
   action: string,
   params: Record<string, string> = {},
 ): Promise<string> {
-  const tc = new ActionController.TestCase(controller);
+  const tc = await controllerTestCase(controller);
   await tc.get(action, { params });
   expect(tc.response.status).toBe(200);
-  return tc.responseBody;
+  return tc.response.body;
 }
 
 /** Every status a badge on the page states, in page order. */

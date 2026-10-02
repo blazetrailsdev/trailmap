@@ -5,14 +5,15 @@ import {
   isLoopbackRequest,
   requireLoopback,
 } from "../../app/controllers/concerns/loopback-only.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 class ProbeController extends ApplicationController {
   static {
     this.beforeAction(requireLoopback);
   }
 
-  index(): void {
-    this.render({ json: { ok: true } });
+  async index(): Promise<void> {
+    await this.render({ json: { ok: true } });
   }
 }
 
@@ -70,23 +71,21 @@ describe("isLoopbackRequest", () => {
 
 describe("requireLoopback", () => {
   it("runs the action for a loopback request", async () => {
-    const tc = new ActionController.TestCase(ProbeController);
-    await tc.get("index", { headers: { Host: "127.0.0.1" } });
+    const tc = await controllerTestCase(ProbeController, { Host: "127.0.0.1" });
+    await tc.get("index");
 
     expect(tc.response.status).toBe(200);
-    expect(JSON.parse(tc.responseBody)).toEqual({ ok: true });
+    expect(JSON.parse(tc.response.body)).toEqual({ ok: true });
   });
 
   it("refuses a request forwarded from the public hostname", async () => {
-    const tc = new ActionController.TestCase(ProbeController);
-    await tc.get("index", {
-      headers: {
-        Host: "trailmap.deanoftech.com",
-        "X-Forwarded-For": "203.0.113.7",
-      },
+    const tc = await controllerTestCase(ProbeController, {
+      Host: "trailmap.deanoftech.com",
+      "X-Forwarded-For": "203.0.113.7",
     });
+    await tc.get("index");
 
     expect(tc.response.status).toBe(404);
-    expect(JSON.parse(tc.responseBody)).toEqual({ error: "not_found" });
+    expect(JSON.parse(tc.response.body)).toEqual({ error: "not_found" });
   });
 });

@@ -33,9 +33,24 @@ registerRfcAutoClose();
  * depends on which query a request ran first.
  *
  * Await this once after `establishConnection` and the order stops mattering.
+ *
+ * Each model is reset first — Rails' `reset_column_information`, the call its
+ * docs give for "the schema under this model changed" — because a NEW
+ * connection is exactly that, and trails' `loadSchema` does not notice on its
+ * own: it returns early on a per-class "already loaded" flag that outlives
+ * the connection it was loaded from. The new pool's schema cache then stays
+ * cold, and a cold read of `primaryKey` answers the `id` convention, so an
+ * insert into a table with no `id` column (the four join tables) asks SQLite
+ * to `RETURNING "id"` and fails. The server connects once and never sees it;
+ * the suite and the gates reconnect to a fresh database and do.
  */
 export async function loadModelSchemas(): Promise<void> {
-  await Promise.all(MODELS.map((model) => model.loadSchema()));
+  await Promise.all(
+    MODELS.map((model) => {
+      model.resetColumnInformation();
+      return model.loadSchema();
+    }),
+  );
 }
 
 export { Rfc, RFC_STATUSES, type RfcStatus } from "./rfc.js";

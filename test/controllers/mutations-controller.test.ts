@@ -9,38 +9,30 @@
  * codes onto HTTP status.
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { Request, Response } from "@blazetrails/actionpack";
 import { migrateScratchDatabase } from "../models/schema.js";
 import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 import { MutationsController } from "../../app/controllers/mutations-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 /**
- * A real POST, dispatched straight at the controller.
+ * A real POST with a JSON body, through `ActionController::TestCase`.
  *
- * NOT `ActionController::TestCase`: it overwrites `request.parameters` with
- * its own `params` option, so the JSON body — which is how every one of these
- * endpoints is called — would never be parsed. Building the rack env here
- * exercises the same path a served request takes, body decoding included.
+ * `as: "json"` is Rails' `post :claim, params: {...}, as: :json`: the params
+ * are encoded as the request BODY with a JSON content type, so the controller
+ * decodes them the way it decodes a served request — which is how every one
+ * of these endpoints is called. This used to build a rack env by hand,
+ * because the harness then overwrote `request.parameters` and the body was
+ * never parsed.
  */
 async function post(
   action: string,
   body: Record<string, unknown> = {},
   headers: Record<string, string> = {},
 ): Promise<{ status: number; body: any }> {
-  const request = new Request({
-    REQUEST_METHOD: "POST",
-    PATH_INFO: `/stories/${action}`,
-    // Every request the API is meant to answer arrives on loopback.
-    HTTP_HOST: "127.0.0.1",
-    CONTENT_TYPE: "application/json",
-    "rack.input": JSON.stringify(body),
-    ...Object.fromEntries(
-      Object.entries(headers).map(([k, v]) => [`HTTP_${k.toUpperCase().replace(/-/g, "_")}`, v]),
-    ),
-  });
-  const response = new Response();
-  await new MutationsController().dispatch(action, request, response);
-  return { status: response.status, body: JSON.parse(String(response.body)) };
+  // Every request the API is meant to answer arrives on loopback.
+  const tc = await controllerTestCase(MutationsController, { Host: "127.0.0.1", ...headers });
+  await tc.post(action, { params: body, as: "json" });
+  return { status: tc.response.status, body: JSON.parse(tc.response.body) };
 }
 
 const find = async (id: string): Promise<Story> => (await Story.findBy({ id }))!;

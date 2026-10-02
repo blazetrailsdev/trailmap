@@ -46,8 +46,7 @@
  * real and are not about the port.
  */
 import { Base } from "@blazetrails/activerecord";
-import { getFsAsync } from "@blazetrails/activesupport";
-import { argv, cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
+import { argv, Dir, env, exit, getFs } from "@blazetrails/ruby-compat";
 import { tasksDatabaseConfig } from "../config/database.js";
 import { Rfc, Story, loadModelSchemas } from "../app/models/index.js";
 import {
@@ -190,7 +189,7 @@ async function main(): Promise<number> {
     const rows: RowRecord[] = [];
     for (const table of SNAPSHOT_TABLES) {
       const selected = (
-        await Base.connection.selectAll(`SELECT * FROM ${table} ORDER BY rowid`)
+      await (await Base.leaseConnection()).selectAll(`SELECT * FROM ${table} ORDER BY rowid`)
       ).toArray() as unknown as Record<string, unknown>[];
       for (const row of selected) rows.push({ table, row });
     }
@@ -204,8 +203,8 @@ async function main(): Promise<number> {
 
   // Every difference to a file, because the interesting ones are rarely the
   // first twenty and a terminal cannot hold thousands.
-  const fs = await getFsAsync();
-  const report = `${cwd()}/${REPORT_FILE}`;
+  const fs = getFs();
+  const report = `${Dir.pwd()}/${REPORT_FILE}`;
   await fs.mkdir!(report.slice(0, report.lastIndexOf("/")), { recursive: true });
   await fs.writeFile!(report, `${problems.join("\n")}\n`);
   console.log(`all differences: ${report}`);
@@ -213,22 +212,22 @@ async function main(): Promise<number> {
   if (problems.length === 0) {
     console.log(`\nEQUIVALENT: ${rfcIds.length + storyIds.length} pages agree, value for value.`);
     if (RECORD) {
-      const fixture = `${cwd()}/${SNAPSHOT_FILE}`;
+      const fixture = `${Dir.pwd()}/${SNAPSHOT_FILE}`;
       await fs.mkdir!(fixture.slice(0, fixture.lastIndexOf("/")), { recursive: true });
       await fs.writeFile!(fixture, encodeSnapshot(records));
       console.log(`recorded ${records.length} pages to ${SNAPSHOT_FILE}`);
       const rows = await snapshotRows();
-      await fs.writeFile!(`${cwd()}/${ROWS_FILE}`, encodeRows(rows));
+      await fs.writeFile!(`${Dir.pwd()}/${ROWS_FILE}`, encodeRows(rows));
       console.log(`recorded ${rows.length} rows to ${ROWS_FILE}`);
     }
-    await Base.connection.disconnectBang();
+    (await Base.leaseConnection()).disconnectBang();
     return 0;
   }
   // A fixture is written only by an equivalent run. Recording a difference
   // would freeze the defect into the thing CI replays, which is the one state
   // worse than not having a snapshot at all.
   if (RECORD) console.error("\nNOT RECORDED — the run was not equivalent.");
-  await Base.connection.disconnectBang();
+  (await Base.leaseConnection()).disconnectBang();
 
   console.error(`\nNOT EQUIVALENT — ${problems.length} differences:`);
   for (const problem of problems.slice(0, REPORTED)) console.error(`  ${problem}`);

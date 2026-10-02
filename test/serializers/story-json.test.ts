@@ -1,7 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
-import { env } from "@blazetrails/activesupport/process-adapter";
+import { env, getFs, getPath } from "@blazetrails/ruby-compat";
 import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.js";
 import { migrateScratchDatabase } from "../models/schema.js";
 import {
@@ -139,7 +138,7 @@ const withLiveDatabase = hasTasksDatabase() ? describe : describe.skip;
 
 /** `<checkout>/.git/tasks.db` → `<checkout>/index.json`, the published copy. */
 async function publishedIndexPath(): Promise<string> {
-  const path = await getPathAsync();
+  const path = getPath();
   return path.join(path.dirname(path.dirname(String(env.TASKS_DATABASE))), "index.json");
 }
 
@@ -150,7 +149,7 @@ withLiveDatabase("the published index.json", () => {
   });
 
   async function readPublished(): Promise<string> {
-    const fs = await getFsAsync();
+    const fs = getFs();
     return String(await fs.readFile!(await publishedIndexPath(), "utf8"));
   }
 

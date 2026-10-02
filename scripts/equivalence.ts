@@ -16,9 +16,7 @@
  *     TASKS_DATABASE=<tasks checkout>/.git/tasks.db pnpm gate  # TASKS_CLI=./tasks
  */
 import { Base } from "@blazetrails/activerecord";
-import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
-import { getChildProcessAsync } from "@blazetrails/activesupport/child-process-adapter";
-import { cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
+import { Dir, env, exit, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
 import { tasksDatabaseConfig } from "../config/database.js";
 import { Rfc, Story, StoryPath, loadModelSchemas } from "../app/models/index.js";
 import { claimableIn } from "../app/models/concerns/ranking.js";
@@ -36,11 +34,11 @@ interface Case {
 }
 
 async function main(): Promise<number> {
-  const path = await getPathAsync();
-  const fs = await getFsAsync();
+  const path = getPath();
+  const fs = getFs();
   const child = await getChildProcessAsync();
 
-  const tasksDir = env.TASKS_CLI ?? path.join(cwd(), "tasks");
+  const tasksDir = env.TASKS_CLI ?? path.join(Dir.pwd(), "tasks");
   if (!(await fs.exists(path.join(tasksDir, "bin", "tasks")))) {
     console.error(`error: no tasks CLI at ${tasksDir} — set TASKS_CLI to the checkout`);
     return 1;
@@ -54,14 +52,14 @@ async function main(): Promise<number> {
   // punishes: a stale `-shm` reads back SQLITE_CORRUPT, and skipping the WAL
   // reads back a queue missing whatever committed last.
   const live = String(tasksDatabaseConfig().database);
-  const snapshot = path.join(cwd(), "tmp", "equivalence-snapshot.sqlite3");
+  const snapshot = path.join(Dir.pwd(), "tmp", "equivalence-snapshot.sqlite3");
   await fs.mkdir!(path.dirname(snapshot), { recursive: true });
   for (const suffix of ["", "-wal", "-shm"]) {
     if (await fs.exists(snapshot + suffix)) await fs.unlink!(snapshot + suffix);
   }
   await Base.establishConnection(tasksDatabaseConfig());
-  await Base.connection.execute(`VACUUM INTO '${snapshot.replace(/'/g, "''")}'`);
-  await Base.connection.disconnectBang();
+  (await Base.leaseConnection()).execute(`VACUUM INTO '${snapshot.replace(/'/g, "''")}'`);
+  (await Base.leaseConnection()).disconnectBang();
   console.log(`snapshot: ${live} -> ${snapshot}`);
 
   await Base.establishConnection({ adapter: "sqlite3", database: snapshot, pool: 1 });
@@ -133,7 +131,7 @@ async function main(): Promise<number> {
   // unfiltered `list --json` is ~5MB of story rows, and spawnSync's default
   // 1MB buffer silently truncates it — which surfaced as a JSON syntax error
   // mid-object, not as "your output was cut off".
-  const captured = path.join(cwd(), "tmp", "equivalence-cli-output.json");
+  const captured = path.join(Dir.pwd(), "tmp", "equivalence-cli-output.json");
 
   /** Ask the CLI, and hand back its raw stdout (or the failure to report). */
   const runCli = async (args: string[]): Promise<{ out?: string; failed?: string }> => {

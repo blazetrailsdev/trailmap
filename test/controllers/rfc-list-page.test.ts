@@ -4,6 +4,7 @@ import { migrateScratchDatabase } from "../models/schema.js";
 import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 /**
  * `/rfcs`, the server-rendered RFC list.
@@ -15,9 +16,9 @@ import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.j
  * that.
  */
 async function index(status?: string): Promise<{ status: number; body: string }> {
-  const tc = new ActionController.TestCase(RfcPagesController);
+  const tc = await controllerTestCase(RfcPagesController);
   await tc.get("index", { params: status === undefined ? {} : { status } });
-  return { status: tc.response.status, body: tc.responseBody };
+  return { status: tc.response.status, body: tc.response.body };
 }
 
 /** The RFC ids the page lists, in the order it lists them. */

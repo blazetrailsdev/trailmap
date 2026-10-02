@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { env, setEnv } from "@blazetrails/activesupport/process-adapter";
+import { env, setEnv } from "@blazetrails/ruby-compat";
 import { hasTasksDatabase } from "../../config/database.js";
 import { connectToTasksDatabase } from "../../config/initializers/tasks-database.js";
 import { writeProtocol } from "../../config/write-protocol.js";
@@ -26,7 +26,7 @@ describe("connectToTasksDatabase", () => {
     // variable is tolerated HERE and nowhere else (see the boot test below).
     // No connection was established, so asking for one is what fails — the
     // initializer did not silently substitute an empty database.
-    expect(() => Base.connection).toThrow();
+    expect(() => Base.leaseConnection()).toThrow();
   });
 
   it("connects the models to the live tasks database when it names one", async () => {
@@ -66,10 +66,10 @@ describe("connectToTasksDatabase", () => {
 
     // Read-write by decision (docs/deploy.md), so what is asserted is WAL and
     // the shared busy timeout from docs/write-protocol.md, not a refused write.
-    expect(String(await Base.connection.selectValue("PRAGMA journal_mode"))).toBe(
+    expect(String((await Base.leaseConnection()).selectValue("PRAGMA journal_mode"))).toBe(
       writeProtocol.journalMode.toLowerCase(),
     );
-    expect(Number(await Base.connection.selectValue("PRAGMA busy_timeout"))).toBe(
+    expect(Number((await Base.leaseConnection()).selectValue("PRAGMA busy_timeout"))).toBe(
       writeProtocol.busyTimeoutMs,
     );
   });

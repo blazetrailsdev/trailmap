@@ -35,8 +35,7 @@
  */
 import { ActionController } from "@blazetrails/actionpack";
 import { Base, MigrationContext } from "@blazetrails/activerecord";
-import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
-import { argv, cwd, exit } from "@blazetrails/activesupport/process-adapter";
+import { argv, Dir, exit, getFs, getPath } from "@blazetrails/ruby-compat";
 import { loadModelSchemas } from "../app/models/index.js";
 import { ApplicationController } from "../app/controllers/application-controller.js";
 import { RfcPagesController } from "../app/controllers/rfc-pages-controller.js";
@@ -59,6 +58,7 @@ import {
   type RowRecord,
   type StoryRecord,
 } from "./page-snapshot.js";
+import { controllerTestCase } from "../test/support/controller-test-case.js";
 
 /** How many mismatching ids to print before saying how many more there are. */
 const REPORTED = 20;
@@ -74,12 +74,12 @@ const REPORT_FILE = "tmp/page-snapshot-problems.txt";
  * could drift from them.
  */
 async function loadRecordedRows(rows: readonly RowRecord[]): Promise<void> {
-  const path = await getPathAsync();
+  const path = getPath();
   await Base.establishConnection({ adapter: "sqlite3", database: ":memory:", pool: 1 });
-  await new MigrationContext([path.resolve(cwd(), "db", "migrate")]).migrate();
+  await new MigrationContext([path.resolve(Dir.pwd(), "db", "migrate")]).migrate();
   for (const { table, row } of rows) {
     const columns = Object.keys(row);
-    await Base.connection.execQuery(
+    (await Base.leaseConnection()).execQuery(
       `INSERT INTO ${table} (${columns.map((column) => `"${column}"`).join(", ")}) ` +
         `VALUES (${columns.map(() => "?").join(", ")})`,
       "snapshot row",
@@ -93,15 +93,15 @@ async function page(
   controller: typeof ApplicationController,
   id: string,
 ): Promise<{ status: number; html: string }> {
-  const tc = new ActionController.TestCase(controller);
+  const tc = await controllerTestCase(controller);
   await tc.get("show", { params: { id } });
-  return { status: tc.response.status, html: tc.responseBody };
+  return { status: tc.response.status, html: tc.response.body };
 }
 
 async function main(args: readonly string[]): Promise<number> {
   const selfTest = args.includes("--self-test");
-  const fs = await getFsAsync();
-  const fixture = `${cwd()}/${SNAPSHOT_FILE}`;
+  const fs = getFs();
+  const fixture = `${Dir.pwd()}/${SNAPSHOT_FILE}`;
   if (!(await fs.exists(fixture))) {
     console.error(`error: no recording at ${SNAPSHOT_FILE}`);
     console.error("       record one against ringo with `pnpm gate:pages --record`");
@@ -109,7 +109,7 @@ async function main(args: readonly string[]): Promise<number> {
   }
   const records = decodeSnapshot(await fs.readFile!(fixture, "utf8"));
 
-  const rowsFile = `${cwd()}/${ROWS_FILE}`;
+  const rowsFile = `${Dir.pwd()}/${ROWS_FILE}`;
   if (!(await fs.exists(rowsFile))) {
     console.error(`error: no recorded rows at ${ROWS_FILE}`);
     return 1;
@@ -160,9 +160,9 @@ async function main(args: readonly string[]): Promise<number> {
   }
   console.log(`ok  story (${stories.length} pages, ${exempt} exempt)`);
 
-  await Base.connection.disconnectBang();
+  (await Base.leaseConnection()).disconnectBang();
 
-  const report = `${cwd()}/${REPORT_FILE}`;
+  const report = `${Dir.pwd()}/${REPORT_FILE}`;
   await fs.mkdir!(report.slice(0, report.lastIndexOf("/")), { recursive: true });
   await fs.writeFile!(report, `${problems.join("\n")}\n`);
   console.log(`all differences: ${report}`);

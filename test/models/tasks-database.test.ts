@@ -30,7 +30,7 @@ withLiveDatabase("the live tasks database", () => {
     const story = await Story.findBy({ id: "move-task-models-into-trailmap" });
     expect(story).not.toBeNull();
     expect(story!.rfc_id).toBe("0136-trailmap");
-    const rfc = await story!.loadBelongsTo("rfc");
+    const rfc = await story!.rfc;
     expect(rfc!.title).toBe((await Rfc.findBy({ id: "0136-trailmap" }))!.title);
   });
 
