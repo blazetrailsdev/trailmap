@@ -118,6 +118,18 @@ describe("RfcPagesController#index", () => {
     expect(body).toContain('title="1 closed"');
   });
 
+  it("draws a longer bar for the RFC with more stories", async () => {
+    const { body } = await index();
+
+    const lengths = [...body.matchAll(/class="sbar" style="width:([\d.]+)%"/g)].map((m) => Number(m[1]));
+    // 0100-alpha has one story and leads; trailmap has five, and is the scale.
+    expect(lengths).toHaveLength(2);
+    expect(lengths[0]).toBeLessThan(lengths[1]!);
+    expect(lengths[1]).toBe(100);
+    // Nothing exceeds the scale here, so nothing is marked as clamped.
+    expect(body).not.toContain("sbarmore");
+  });
+
   it("ages an open RFC and says nothing about a terminal one", async () => {
     expect((await index()).body).toMatch(/open \d+d/);
     expect((await index("superseded")).body).not.toMatch(/open \d+d/);

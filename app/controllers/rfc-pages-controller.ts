@@ -9,9 +9,12 @@ import {
   orderStoriesForRfc,
   rfcStoryCounts,
   rfcTerminal,
+  storyBarLength,
+  storyBarScale,
   storyStatusCounts,
   type RfcStoryCounts,
   type StatusCount,
+  type StoryBarLength,
 } from "../models/concerns/rfc-progress.js";
 import { daysSince } from "../models/concerns/elapsed.js";
 import { renderMarkdown } from "../helpers/markdown-helper.js";
@@ -54,6 +57,8 @@ export interface RfcRow {
   clusters: string[];
   counts: RfcStoryCounts;
   bar: StatusCount[];
+  /** How long the bar is drawn: its story count against every RFC's. */
+  barLength: StoryBarLength;
   storyTotal: number;
   /** Days since the RFC was written, or null when it is terminal or undated. */
   openDays: number | null;
@@ -93,7 +98,8 @@ export class RfcPagesController extends ApplicationController {
    * buttons: the "needs refine" flag and the bar's history ticks. Both are
    * ringo's own local state — the stall rule belongs to the spawn trigger and
    * the ticks are a cache over its event stream — and neither is in this
-   * database.
+   * database. The bar's LENGTH is not one of those: it is a function of the
+   * story counts alone, so it is here (`storyBarLength`).
    *
    * The counts are the show page's: `rfcStoryCounts` decides done/total here
    * and there, so an RFC cannot report 12/20 on one page and 12/21 on the
@@ -115,6 +121,9 @@ export class RfcPagesController extends ApplicationController {
       tabCounts.set(rfc.status, (tabCounts.get(rfc.status) ?? 0) + 1);
       openCount.set(rfc.id, rfcStoryCounts(byRfc.get(rfc.id) ?? []).open);
     }
+
+    // Over every RFC, not the tab's: the scale must not move when the tab does.
+    const barScale = storyBarScale(rfcs.map((rfc) => byRfc.get(rfc.id)?.length ?? 0));
 
     const requested = String(this.params.get("status") ?? "");
     const filter = RFC_STATUS_TABS.includes(requested) ? requested : "active";
@@ -143,6 +152,7 @@ export class RfcPagesController extends ApplicationController {
             clusters: jsonArrayColumn(rfc.clusters),
             counts: rfcStoryCounts(own),
             bar: storyStatusCounts(own, rfc.status),
+            barLength: storyBarLength(own.length, barScale),
             storyTotal: own.length,
             openDays: rfcTerminal(rfc.status) ? null : daysSince(rfc.created_on),
           };

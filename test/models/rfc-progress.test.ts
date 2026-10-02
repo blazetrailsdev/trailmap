@@ -4,6 +4,8 @@ import {
   orderStoriesForRfc,
   rfcStoryCounts,
   rfcTerminal,
+  storyBarLength,
+  storyBarScale,
   storyStatusCounts,
   storyStatusRank,
 } from "../../app/models/concerns/rfc-progress.js";
@@ -175,5 +177,50 @@ describe("rfcTerminal", () => {
     expect(rfcTerminal("active")).toBe(false);
     expect(rfcTerminal("postponed")).toBe(false);
     expect(rfcTerminal(null)).toBe(false);
+  });
+});
+
+describe("storyBarScale", () => {
+  it("takes the 95th percentile, so one freak RFC does not set the scale", () => {
+    // Forty ordinary RFCs of 5 to 200 stories, and one with 1521. The
+    // reference lands among the ordinary ones; the freak clamps instead of
+    // leaving everything else a stub.
+    const ordinary = Array.from({ length: 40 }, (_, i) => (i + 1) * 5);
+    expect(storyBarScale([...ordinary, 1521])).toBe(195);
+  });
+
+  it("ignores RFCs with no stories, and is zero when none has any", () => {
+    expect(storyBarScale([0, 0, 40, 0])).toBe(40);
+    expect(storyBarScale([0, 0])).toBe(0);
+    expect(storyBarScale([])).toBe(0);
+  });
+
+  it("does not depend on the order the RFCs arrive in", () => {
+    expect(storyBarScale([300, 2, 50, 9])).toBe(storyBarScale([2, 9, 50, 300]));
+  });
+});
+
+describe("storyBarLength", () => {
+  it("grows with the story count, by square root", () => {
+    // Against a scale of 400: 4 stories is a tenth of the way, 100 is half,
+    // 400 is all of it — of the span between ringo's 26px floor and 400px.
+    expect(storyBarLength(4, 400).pct).toBe(15.85);
+    expect(storyBarLength(100, 400).pct).toBe(53.25);
+    expect(storyBarLength(400, 400).pct).toBe(100);
+    expect(storyBarLength(4, 400).pct).toBeLessThan(storyBarLength(100, 400).pct);
+  });
+
+  it("keeps a one-story RFC a bar rather than a dot", () => {
+    expect(storyBarLength(1, 400).pct).toBeGreaterThan(6.5);
+  });
+
+  it("clamps an RFC past the scale to full length, and says it did", () => {
+    expect(storyBarLength(1521, 400)).toEqual({ pct: 100, clamped: true });
+    // Reaching the scale is not exceeding it.
+    expect(storyBarLength(400, 400)).toEqual({ pct: 100, clamped: false });
+  });
+
+  it("draws full length when there is no scale to compare against", () => {
+    expect(storyBarLength(3, 0)).toEqual({ pct: 100, clamped: false });
   });
 });

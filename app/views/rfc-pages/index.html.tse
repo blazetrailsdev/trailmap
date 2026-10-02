@@ -28,9 +28,12 @@
         <% if (row.storyTotal > 0) { %>
           <div class="sbarwrap">
             <span class="sbarcap"><%= row.storyTotal %> <%= row.storyTotal === 1 ? "story" : "stories" %></span>
-            <span class="sbar">
-              <% for (const seg of row.bar) { %><span class="seg s-<%= seg.status %>" style="width:<%= seg.pct %>%" title="<%= seg.count %> <%= seg.status %>"></span><% } %>
+            <span class="sbartrack">
+              <span class="sbar" style="width:<%= row.barLength.pct %>%">
+                <% for (const seg of row.bar) { %><span class="seg s-<%= seg.status %>" style="width:<%= seg.pct %>%" title="<%= seg.count %> <%= seg.status %>"></span><% } %>
+              </span>
             </span>
+            <% if (row.barLength.clamped) { %><span class="sbarmore" title="longer than the scale — see the count">&rsaquo;</span><% } %>
           </div>
         <% } %>
       </span>
