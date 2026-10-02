@@ -91,6 +91,17 @@ describe("RfcPagesController#index", () => {
     expect(body).toContain('href="/rfcs?status=draft"');
   });
 
+  it("leaves the status off the rows, because the selected tab already says it", async () => {
+    for (const status of ["active", "draft", "superseded"]) {
+      const { body } = await index(status);
+
+      expect(listed(body).length, status).toBeGreaterThan(0);
+      expect(body, status).not.toContain('class="badge s-');
+      // The one place the status is stated: the tab the list is filtered to.
+      expect(body, status).toMatch(new RegExp(`class="tab active"[^>]*>\\d+ ${status}</a>`));
+    }
+  });
+
   it("filters to the requested status, and falls back to active for a bad one", async () => {
     expect(listed((await index("superseded")).body)).toEqual(["0014-fixtures-adoption"]);
     expect(listed((await index("nonsense")).body)).toEqual([

@@ -50,7 +50,6 @@ export interface RfcStoryRow {
 export interface RfcRow {
   id: string;
   title: string;
-  status: string;
   owner: string | null;
   priority: number | null;
   supersededBy: string | null;
@@ -145,7 +144,6 @@ export class RfcPagesController extends ApplicationController {
           return {
             id: rfc.id,
             title: rfc.title ?? rfc.id,
-            status: rfc.status,
             owner: rfc.owner,
             priority: rfc.priority,
             supersededBy: rfc.superseded_by,
