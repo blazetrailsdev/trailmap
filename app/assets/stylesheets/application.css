@@ -340,19 +340,29 @@ ul { margin: 0 0 10px 20px; }
 
 /*
  * The story-composition bar: one segment per story status, widths in per
- * cent. ringo scales the bar's LENGTH by story count as well (sqrt, against a
- * 95th-percentile reference, with history ticks over it); that sizing is left
- * out here — it exists to compare RFCs against a scale ringo caches from its
- * event stream, and the count beside the bar says the same thing without it.
+ * cent, and the bar's own LENGTH carrying how many stories the RFC has (sqrt,
+ * against a 95th-percentile reference — `storyBarLength`), so a 600-story RFC
+ * does not look like a 3-story one.
+ *
+ * ringo sets that length in pixels, up to 400, and a phone is narrower than
+ * that. Here the length is a percentage of `.sbartrack`, which takes whatever
+ * the row can spare up to ringo's 400px: full size on a wide screen, and on a
+ * narrow one every bar shrinks together and stays in proportion. `min-width`
+ * on the track is what lets it shrink at all — a flex item will not go below
+ * its content otherwise. ringo's history ticks over the bar are left out: they
+ * are a cache over its event stream, which is not in this database.
  * The segment hues come from the same variables as `.badge.s-*`, so the bar
  * and the badges cannot disagree about what a status looks like.
  */
 .sbarwrap { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
 .sbarcap { font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 62px; }
+.sbartrack { display: block; flex: 1; min-width: 0; max-width: 400px; }
 .sbar {
-  display: flex; height: 6px; border-radius: 999px; overflow: hidden; flex: 1;
-  max-width: 400px; background: var(--surface); border: 1px solid var(--border);
+  display: flex; height: 6px; border-radius: 999px; overflow: hidden;
+  min-width: 26px; max-width: 100%; box-sizing: border-box;
+  background: var(--surface); border: 1px solid var(--border);
 }
+.sbarmore { font-size: 13px; line-height: 1; color: var(--muted); margin-left: -3px; }
 .sbar .seg { display: block; height: 100%; background: var(--muted); }
 .sbar .seg.s-done { background: var(--purple); }
 .sbar .seg.s-closed { background: color-mix(in srgb, var(--purple) 45%, var(--surface)); }

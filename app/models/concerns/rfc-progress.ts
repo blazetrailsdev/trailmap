@@ -196,6 +196,61 @@ export function storyStatusCounts(
 }
 
 /**
+ * The story count a full-length bar stands for: the 95th percentile of the
+ * RFCs' story totals, empty RFCs left out — ringo's `percentileStories`
+ * (`webhook/rfcs.go`, the `/rfcs` script).
+ *
+ * Two properties matter and they pull against each other. It must not change
+ * when the tab does, or the same RFC looks bigger on one tab than another, so
+ * it is taken over EVERY RFC and not the ones on show. And one freak RFC must
+ * not squash the rest, so it is a percentile and not the maximum: the largest
+ * RFC carries several times the stories of the next, and scaling to it leaves
+ * the median RFC a stub. Anything above the reference is clamped, and says so.
+ */
+export function storyBarScale(totals: readonly number[]): number {
+  const counted = totals.filter((t) => t > 0).sort((a, b) => a - b);
+  if (counted.length === 0) return 0;
+  return counted[Math.min(counted.length - 1, Math.floor(0.95 * counted.length))]!;
+}
+
+/** ringo's bar bounds in px: `SBAR_MIN_PX` and `SBAR_MAX_PX`. */
+const STORY_BAR_MIN = 26;
+const STORY_BAR_MAX = 400;
+
+/** How long one RFC's bar is drawn. */
+export interface StoryBarLength {
+  /**
+   * The bar's length as a percentage of its track, two places.
+   *
+   * ringo sets this in pixels, 26 to 400, which is why its list overflows a
+   * phone: a 400px bar does not fit a 360px screen. The same number is given
+   * here as a share of a track that is AT MOST 400px wide, so on a wide screen
+   * the bar is the length ringo draws, and on a narrow one every bar shrinks
+   * together and keeps its length relative to the others — which is all the
+   * length was ever saying.
+   */
+  pct: number;
+  /** More stories than the scale covers: full length for a different reason. */
+  clamped: boolean;
+}
+
+/**
+ * Map a story count onto a bar length — ringo's `barWidth`.
+ *
+ * Square root, not linear: story counts span three orders of magnitude, and a
+ * linear scale renders everything under about forty stories as a sliver. The
+ * floor keeps a one-story RFC a bar rather than a dot.
+ */
+export function storyBarLength(total: number, scale: number): StoryBarLength {
+  const frac = scale > 0 ? Math.min(1, Math.sqrt(total) / Math.sqrt(scale)) : 1;
+  const px = STORY_BAR_MIN + (STORY_BAR_MAX - STORY_BAR_MIN) * frac;
+  return {
+    pct: Math.round((10_000 * px) / STORY_BAR_MAX) / 100,
+    clamped: scale > 0 && total > scale,
+  };
+}
+
+/**
  * The RFC list's order: priority ascending, unset last. ringo's comparator is
  * webhook/rfcs.go:595-611, which opens
  * `const prio = r => (r.priority == null ? Number.MAX_SAFE_INTEGER : r.priority);`
