@@ -294,6 +294,12 @@ would execute, `SHA256` is not enough for it: `scripts/build-ringo-wasm.sh
 --check` rebuilds it from `vendor/ringo/go` with the Go release in
 `vendor/ringo/go/.go-version` and compares bytes, and CI runs that on every PR.
 
+`lib/ringo-core.ts` is the way in: `runRingoCore(args, stdin)` runs the module
+in-process and returns its stdout, and `renderPaneLog(bytes)` is ringo's pane
+terminal replay on top of it. A call blocks the event loop while it runs —
+the file's header has the measured cost — so a caller serving requests must
+bound its input.
+
 `SHA256` catches an edited snapshot; it cannot catch a STALE one, where the
 files are untouched and ringo has moved on — both gates then pass, green,
 against a copy of the old ringo. **The alarm for that lives on the box**:
