@@ -7,27 +7,24 @@ import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.j
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.js";
 
 /**
- * Every page controller's view directory is the path the implicit lookup
- * derives, so no render has to name its template.
+ * Every page controller's view directory is the one the implicit lookup asks
+ * for, so no render has to name its template — and it is kebab-case, like
+ * every other filename here.
  *
- * That path is Rails' spelling: `RfcPagesController` looks under
- * `app/views/rfc_pages/`, underscored, in a tree whose other filenames are
- * kebab-case. trailmap used to respell it with an `ApplicationController.
- * controllerPath` override. That override is gone, and must stay gone:
+ * Two things are true at once, and this suite holds both:
  *
- * - trails settled the question the Rails way. `trails g controller` writes the
- *   underscored directory, and the framework will not alias the two spellings
- *   (blazetrailsdev/trails#7651).
- * - `controllerPath` is not only the view prefix. `ActionController::TestCase`
- *   generates the request's route from it, and a controller named `rfc-pages`
- *   matches no route — a hyphen is not a legal controller name in one. With
- *   the override, no page controller could be tested through the framework's
- *   own harness.
+ * - The VIEW prefix is kebab-case. `ApplicationController.localPrefixes`
+ *   respells it; that is the hook Rails documents for changing where views are
+ *   looked up (`action_view/view_paths.rb`, `local_prefixes`), and trails
+ *   dispatches it since trails#8450.
+ * - `controllerPath` is untouched. It also names the controller in routes,
+ *   where a hyphen is not legal, and `ActionController::TestCase` generates the
+ *   request's route from it. trailmap overrode `controllerPath` first, and no
+ *   page controller could then be tested through the framework's own harness.
  *
- * So this suite checks the two halves that have to stay in step: the prefix is
- * the framework's own derivation, and every directory on disk is one a
- * controller actually asks for. It fails on a directory renamed to kebab-case,
- * on a controller added without a directory, and on the override coming back.
+ * It fails on a directory spelled with an underscore, on a controller added
+ * without a directory, on the `localPrefixes` override being removed while
+ * the directories stay, and on a `controllerPath` override coming back.
  */
 const PAGE_CONTROLLERS = [
   DashboardController,
@@ -40,6 +37,11 @@ const PAGE_CONTROLLERS = [
 const NOT_A_CONTROLLER = ["layouts", "shared"];
 
 const VIEWS = "app/views";
+
+/** The directory a controller's own views are looked up in: its first prefix. */
+function viewDirectory(controller: { _prefixes(): string[] }): string {
+  return controller._prefixes()[0]!;
+}
 
 /** The directory names directly under `app/views`. */
 async function viewDirectories(): Promise<string[]> {
@@ -54,17 +56,26 @@ async function viewDirectories(): Promise<string[]> {
 }
 
 describe("app/views", () => {
-  it("derives the prefix the framework does, underscored, with no override", () => {
+  it("looks views up under a kebab-case prefix, the spelling every other filename uses", () => {
+    expect(viewDirectory(RfcPagesController)).toBe("rfc-pages");
+    expect(viewDirectory(StoryPagesController)).toBe("story-pages");
+    // A single-word controller has no separator to respell.
+    expect(viewDirectory(HomeController)).toBe("home");
+  });
+
+  it("stops the prefix chain at ApplicationController, as Rails does", () => {
+    expect(RfcPagesController._prefixes()).toEqual(["rfc-pages", "application"]);
+  });
+
+  it("leaves controllerPath, which routes and tests read, as the framework derives it", () => {
     expect(RfcPagesController.controllerPath()).toBe("rfc_pages");
     expect(StoryPagesController.controllerPath()).toBe("story_pages");
-    expect(HomeController.controllerPath()).toBe("home");
-    // The override lived on ApplicationController; it must not come back.
     expect(Object.hasOwn(ApplicationController, "controllerPath")).toBe(false);
   });
 
   it("names each page controller's directory the way the implicit lookup does", async () => {
     const present = new Set(await viewDirectories());
-    const missing = PAGE_CONTROLLERS.map((controller) => controller.controllerPath()).filter(
+    const missing = PAGE_CONTROLLERS.map(viewDirectory).filter(
       (prefix) => !present.has(prefix),
     );
     expect(missing).toEqual([]);
@@ -72,7 +83,7 @@ describe("app/views", () => {
 
   it("has no directory the implicit lookup would never reach", async () => {
     const owned = new Set([
-      ...PAGE_CONTROLLERS.map((controller) => controller.controllerPath()),
+      ...PAGE_CONTROLLERS.map(viewDirectory),
       ...NOT_A_CONTROLLER,
     ]);
     const orphans = (await viewDirectories()).filter((name) => !owned.has(name));

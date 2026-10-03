@@ -13,7 +13,7 @@
  * `test/helpers/app-helpers-in-views.test.ts` runs this under tsx, the way
  * the server itself runs, and reads the line it prints.
  *
- * The template is a fixture (`test/fixtures/views/helper_probes`), not an
+ * The template is a fixture (`test/fixtures/views/helper-probes`), not an
  * application view: no page has been moved onto a helper yet.
  */
 import "../config/environment.js";
