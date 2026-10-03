@@ -11,19 +11,21 @@
  *     await tc.get("index", { params: { status: "draft" } });
  *     tc.response.status; tc.response.body;
  *
- * The routes are the application's own (`config/routes.ts`), so a test fails
- * if the action it calls is not routed — as it would in Rails. A controller
- * that exists only inside a test has no route to find, so each call also adds
- * one catch-all for the controller under test; an application route, drawn
- * first, still wins.
+ * The routes are the application's own. `config/application` registers the
+ * application without booting it, and `config/routes` then draws into its
+ * route set exactly as it does at boot, so a test fails if the action it calls
+ * is not routed — as it would in Rails. A controller that exists only inside
+ * a test has no route there, and gets a route set of its own with one
+ * catch-all, so nothing a test needs is ever drawn into the application's.
  *
  * Request headers go on the request before the call, as rack env keys, which
  * is where the framework's own tests put them: `headers` here is the
  * convenience of writing `Host` instead of `HTTP_HOST`.
  */
 import { ActionController, RouteSet } from "@blazetrails/actionpack";
-import type { Mapper } from "@blazetrails/actionpack";
-import { drawRoutes } from "../../config/routes.js";
+import { Trails } from "@blazetrails/trailties";
+import "../../config/application.js";
+import "../../config/routes.js";
 
 type Controller = Parameters<typeof ActionController.TestCase.tests>[0] & {
   name: string;
@@ -39,13 +41,20 @@ export async function controllerTestCase(
   const tc = new ControllerTest(`${controller.name}Test`);
   await tc.beforeSetup();
 
-  tc.routes = new RouteSet();
-  tc.routes.draw(function (this: Mapper) {
-    drawRoutes(this);
-    this.get(`__test/${controller.controllerPath()}/:action`, {
-      controller: controller.controllerPath(),
+  const application = Trails.application!.routes();
+  const routed = [...application.routes].some(
+    (route) => route.defaults.controller === controller.controllerPath(),
+  );
+  if (routed) {
+    tc.routes = application;
+  } else {
+    tc.routes = new RouteSet();
+    tc.routes.draw(function () {
+      this.get(`__test/${controller.controllerPath()}/:action`, {
+        controller: controller.controllerPath(),
+      });
     });
-  });
+  }
 
   for (const [name, value] of Object.entries(headers)) {
     tc.request.setHeader(`HTTP_${name.toUpperCase().replace(/-/g, "_")}`, value);

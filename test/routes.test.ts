@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { RouteSet, controllerConstants } from "@blazetrails/actionpack";
-import type { Mapper } from "@blazetrails/actionpack";
-import { drawRoutes } from "../config/routes.js";
+import { Trails } from "@blazetrails/trailties";
+import "../config/application.js";
+import "../config/routes.js";
 import { DashboardController } from "../app/controllers/dashboard-controller.js";
 import { HealthController } from "../app/controllers/health-controller.js";
 import { HomeController } from "../app/controllers/home-controller.js";
@@ -31,12 +32,9 @@ for (const controller of [
   controllerConstants.set(controller.controllerPath(), controller);
 }
 
+/** The application's route set, drawn by `config/routes.ts` when it loaded. */
 function routeSet(): RouteSet {
-  const routes = new RouteSet();
-  routes.draw(function (this: Mapper) {
-    drawRoutes(this);
-  });
-  return routes;
+  return Trails.application!.routes();
 }
 
 /**
@@ -53,7 +51,7 @@ function recognize(
   return { route: { controller: params.controller, action: params.action }, params };
 }
 
-describe("drawRoutes", () => {
+describe("config/routes", () => {
   it("routes the dashboard root to home#index", () => {
     const match = recognize(routeSet(), "GET", "/");
 
