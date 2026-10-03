@@ -80,7 +80,7 @@ describe("orderStoriesForRfc", () => {
 
 describe("rfcStoryCounts", () => {
   it("counts done against open", () => {
-    expect(rfcStoryCounts([story("a", "done"), story("b", "ready"), story("c", "done")])).toEqual({
+    expect(rfcStoryCounts(["done", "ready", "done"])).toEqual({
       total: 3,
       done: 2,
       open: 1,
@@ -89,7 +89,7 @@ describe("rfcStoryCounts", () => {
   });
 
   it("leaves closed stories out of the total entirely", () => {
-    expect(rfcStoryCounts([story("a", "done"), story("b", "closed")])).toEqual({
+    expect(rfcStoryCounts(["done", "closed"])).toEqual({
       total: 1,
       done: 1,
       open: 0,
@@ -104,12 +104,7 @@ describe("rfcStoryCounts", () => {
 
 describe("storyStatusCounts", () => {
   it("orders the segments shipped, dead, moving, queued, stuck, not started", () => {
-    const counts = storyStatusCounts([
-      story("a", "draft"),
-      story("b", "ready"),
-      story("c", "done"),
-      story("d", "blocked"),
-    ], "active");
+    const counts = storyStatusCounts(["draft", "ready", "done", "blocked"], "active");
 
     expect(counts.map((c) => c.status)).toEqual(["done", "ready", "blocked", "draft"]);
     expect(counts.map((c) => c.pct)).toEqual([25, 25, 25, 25]);
@@ -118,27 +113,27 @@ describe("storyStatusCounts", () => {
   it("counts the closed stories the done/total headline drops", () => {
     // The two numbers are different questions: the bar is what the RFC is made
     // of, `rfcStoryCounts` is how much of it has shipped.
-    const counts = storyStatusCounts([story("a", "done"), story("b", "closed")], "active");
+    const counts = storyStatusCounts(["done", "closed"], "active");
 
     expect(counts).toEqual([
       { status: "done", count: 1, pct: 50 },
       { status: "closed", count: 1, pct: 50 },
     ]);
-    expect(rfcStoryCounts([story("a", "done"), story("b", "closed")]).total).toBe(1);
+    expect(rfcStoryCounts(["done", "closed"]).total).toBe(1);
   });
 
   it("segments a ready story under a draft RFC as the draft the queue sees", () => {
     // The one status rule (`app/views/shared/_status-badge`): the bar has a
     // ready segment and a draft segment, so the override has to move the story
     // between them or the bar advertises work nothing can claim.
-    const stories = [story("a", "ready"), story("b", "draft")];
+    const stories = ["ready", "draft"];
 
     expect(storyStatusCounts(stories, "active").map((c) => c.status)).toEqual(["ready", "draft"]);
     expect(storyStatusCounts(stories, "draft")).toEqual([{ status: "draft", count: 2, pct: 100 }]);
   });
 
   it("appends a status it does not know rather than under-reporting the RFC", () => {
-    const counts = storyStatusCounts([story("a", "done"), story("b", "invented")], "active");
+    const counts = storyStatusCounts(["done", "invented"], "active");
 
     expect(counts.map((c) => c.status)).toEqual(["done", "invented"]);
   });

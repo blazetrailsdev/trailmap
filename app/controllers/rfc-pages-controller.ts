@@ -14,7 +14,6 @@ import {
   storyStatusCounts,
   type RfcStoryCounts,
   type StatusCount,
-  type StatusOnly,
   type StoryBarLength,
 } from "../models/concerns/rfc-progress.js";
 import { daysSince } from "../models/concerns/elapsed.js";
@@ -111,14 +110,17 @@ export class RfcPagesController extends ApplicationController {
     // each was the whole second this page took.
     const [rfcs, statuses] = await Promise.all([
       Rfc.all().toArray(),
-      Story.pluck("rfc_id", "status") as Promise<[string, Story["status"]][]>,
+      Story.pluck("rfc_id", "status"),
     ]);
 
-    const byRfc = new Map<string, StatusOnly[]>();
-    for (const [rfcId, status] of statuses) {
-      const bucket = byRfc.get(rfcId);
-      if (bucket) bucket.push({ status });
-      else byRfc.set(rfcId, [{ status }]);
+    const byRfc = new Map<string, (string | null)[]>();
+    for (const row of statuses) {
+      if (!Array.isArray(row)) continue;
+      const [rfcId, status] = row;
+      const bucket = byRfc.get(String(rfcId));
+      const value = status == null ? null : String(status);
+      if (bucket) bucket.push(value);
+      else byRfc.set(String(rfcId), [value]);
     }
 
     const tabCounts = new Map<string, number>();
@@ -193,7 +195,7 @@ export class RfcPagesController extends ApplicationController {
         // Counted from the records, not the rows: `rfcStoryCounts` decides
         // done/total, and the override only ever moves `ready` to `draft` —
         // neither of which it counts.
-        counts: rfcStoryCounts(stories),
+        counts: rfcStoryCounts(stories.map((story) => story.status)),
         body: doc.markdown === "" ? null : renderMarkdown(doc.markdown),
         error: doc.error,
       },

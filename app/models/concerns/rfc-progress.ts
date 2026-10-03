@@ -113,21 +113,18 @@ export interface RfcStoryCounts {
 }
 
 /**
- * The one field the counts read. A whole `Story` satisfies it, and so does a
- * plucked status, which is what the RFC list passes: it counts every story of
- * every RFC and has no use for the records.
+ * Total/done/open over story `statuses`, ignoring closed ones. Statuses, not
+ * stories: the RFC list counts every story of every RFC from two plucked
+ * columns and never builds the records.
  */
-export type StatusOnly = Pick<Story, "status">;
-
-/** Total/done/open over `stories`, ignoring closed ones. */
-export function rfcStoryCounts(stories: readonly StatusOnly[]): RfcStoryCounts {
+export function rfcStoryCounts(statuses: readonly (string | null)[]): RfcStoryCounts {
   let total = 0;
   let done = 0;
   let open = 0;
-  for (const story of stories) {
-    if (story.status === "closed") continue;
+  for (const status of statuses) {
+    if (status === "closed") continue;
     total++;
-    if (story.status === "done") done++;
+    if (status === "done") done++;
     else open++;
   }
   return { total, done, open, donePct: total > 0 ? Math.floor((done * 100) / total) : 0 };
@@ -162,7 +159,7 @@ const STORY_BAR_ORDER: readonly string[] = [
 ];
 
 /**
- * `stories` counted by status, in bar order, with anything unrecognised
+ * Story `statuses` counted, in bar order, with anything unrecognised
  * appended in id order rather than dropped.
  *
  * Unlike `rfcStoryCounts` this counts `closed` — the bar is the composition of
@@ -181,17 +178,17 @@ const STORY_BAR_ORDER: readonly string[] = [
  * `open` there.
  */
 export function storyStatusCounts(
-  stories: readonly StatusOnly[],
+  statuses: readonly (string | null)[],
   rfcStatus: string | null,
 ): StatusCount[] {
   const counts = new Map<string, number>();
-  for (const story of stories) {
-    const status = String(effectiveStoryStatus(rfcStatus, story.status) ?? "unknown");
+  for (const authored of statuses) {
+    const status = String(effectiveStoryStatus(rfcStatus, authored) ?? "unknown");
     counts.set(status, (counts.get(status) ?? 0) + 1);
   }
   const known = STORY_BAR_ORDER.filter((status) => counts.has(status));
   const rest = [...counts.keys()].filter((status) => !STORY_BAR_ORDER.includes(status)).sort();
-  const total = stories.length;
+  const total = statuses.length;
   return [...known, ...rest].map((status) => {
     const count = counts.get(status) ?? 0;
     return {
