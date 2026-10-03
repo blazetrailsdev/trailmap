@@ -9,7 +9,6 @@ overrides:
   "@blazetrails/activerecord": "file:./vendor/blazetrails-activerecord-0.1.0.tgz"
   "@blazetrails/activesupport": "file:./vendor/blazetrails-activesupport-0.1.0.tgz"
   "@blazetrails/arel": "file:./vendor/blazetrails-arel-0.1.0.tgz"
-  "@blazetrails/bcrypt": "file:./vendor/blazetrails-bcrypt-0.1.0.tgz"
   "@blazetrails/date": "file:./vendor/blazetrails-date-0.1.0.tgz"
   "@blazetrails/did-you-mean": "file:./vendor/blazetrails-did-you-mean-0.1.0.tgz"
   "@blazetrails/globalid": "file:./vendor/blazetrails-globalid-0.1.0.tgz"
