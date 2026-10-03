@@ -7,8 +7,7 @@
  * nothing. `SHA256` records what scripts/vendor-ringo.sh took from the commit
  * in `PIN`; this re-derives it. Regenerate the snapshot rather than editing it.
  */
-import { getCryptoAsync, getFsAsync, getPathAsync } from "@blazetrails/activesupport";
-import { cwd } from "@blazetrails/activesupport/process-adapter";
+import { Dir, getCryptoAsync, getFs, getPath } from "@blazetrails/ruby-compat";
 
 /**
  * The pinned commit, once every vendored file has been proven to match.
@@ -16,8 +15,8 @@ import { cwd } from "@blazetrails/activesupport/process-adapter";
  * the test can point it at a snapshot it controls.
  */
 export async function verifyRingoPin(dir?: string): Promise<string> {
-  const [fs, path, crypto] = await Promise.all([getFsAsync(), getPathAsync(), getCryptoAsync()]);
-  dir ??= path.join(cwd(), "vendor", "ringo");
+  const [fs, path, crypto] = await Promise.all([getFs(), getPath(), getCryptoAsync()]);
+  dir ??= path.join(Dir.pwd(), "vendor", "ringo");
   const manifest = await fs.readFile!(path.join(dir, "SHA256"), "utf8");
 
   for (const line of manifest.split("\n").filter((l) => l.trim() !== "")) {

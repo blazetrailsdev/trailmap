@@ -3,24 +3,22 @@ import { ActionController } from "@blazetrails/actionpack";
 import { migrateScratchDatabase } from "../models/schema.js";
 import { Rfc, Story, StoryDep, StoryPath, loadModelSchemas } from "../../app/models/index.js";
 import { StoriesController } from "../../app/controllers/stories-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 /** Every request the API is meant to answer arrives on loopback. */
 const LOOPBACK = { Host: "127.0.0.1" };
 
-function testCase(): ActionController.TestCase {
-  return new ActionController.TestCase(StoriesController);
+function testCase(headers: Record<string, string> = LOOPBACK): Promise<ActionController.TestCase> {
+  return controllerTestCase(StoriesController, headers);
 }
 
 async function getJson(
   action: string,
   options: { params?: Record<string, unknown>; headers?: Record<string, string> } = {},
 ): Promise<{ status: number; body: any }> {
-  const tc = testCase();
-  await tc.get(action, {
-    params: options.params,
-    headers: { ...LOOPBACK, ...(options.headers ?? {}) },
-  });
-  return { status: tc.response.status, body: JSON.parse(tc.responseBody) };
+  const tc = await testCase({ ...LOOPBACK, ...(options.headers ?? {}) });
+  await tc.get(action, { params: options.params });
+  return { status: tc.response.status, body: JSON.parse(tc.response.body) };
 }
 
 beforeAll(async () => {
@@ -169,11 +167,25 @@ describe("StoriesController", () => {
   });
 
   it("answers JSON to a client that sends no Accept header", async () => {
-    const tc = testCase();
-    await tc.get("ready", { headers: LOOPBACK });
+    const tc = await testCase();
+    await tc.get("ready");
 
     expect(tc.response.status).toBe(200);
-    expect(Array.isArray(JSON.parse(tc.responseBody))).toBe(true);
+    expect(Array.isArray(JSON.parse(tc.response.body))).toBe(true);
+  });
+
+  // Rails' `negotiate_mime` over the one type on offer: `*/*` anywhere in the
+  // list takes it, a type RANGE that covers JSON takes it, and a q-value orders
+  // the client's types without removing one.
+  it.each([
+    ["text/html, */*"],
+    ["application/*"],
+    ["text/html;q=0.9, application/json;q=0.5"],
+  ])("answers JSON to Accept: %s", async (accept) => {
+    const { status, body } = await getJson("ready", { headers: { Accept: accept } });
+
+    expect(status).toBe(200);
+    expect(Array.isArray(body)).toBe(true);
   });
 
   it("declines a browser asking these actions for HTML", async () => {
@@ -184,12 +196,10 @@ describe("StoriesController", () => {
   });
 
   it("is not reachable from the public hostname", async () => {
-    const tc = testCase();
-    await tc.get("ready", {
-      headers: { Host: "trailmap.deanoftech.com", "X-Forwarded-For": "203.0.113.7" },
-    });
+    const tc = await testCase({ Host: "trailmap.deanoftech.com", "X-Forwarded-For": "203.0.113.7" });
+    await tc.get("ready");
 
     expect(tc.response.status).toBe(404);
-    expect(JSON.parse(tc.responseBody)).toEqual({ error: "not_found" });
+    expect(JSON.parse(tc.response.body)).toEqual({ error: "not_found" });
   });
 });

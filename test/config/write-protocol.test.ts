@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getFsAsync } from "@blazetrails/activesupport";
-import { env, setEnv } from "@blazetrails/activesupport/process-adapter";
+import { env, getFs, setEnv } from "@blazetrails/ruby-compat";
 import { tasksDatabaseConfig } from "../../config/database.js";
 import { ringoBusyTimeoutPragma, tableOwners, tablesOwnedBy, writeProtocol } from "../../config/write-protocol.js";
 import * as models from "../../app/models/index.js";
@@ -16,12 +15,12 @@ const ROOT = new URL("../..", import.meta.url).pathname;
 const WRITE = /\b(?:(?:insert|replace)\s+(?:or\s+\w+\s+)?into|delete\s+from)\s+["`]?(\w+)|\bupdate\s+["`]?(\w+)["`]?\s+set\b/gi;
 
 async function read(path: string): Promise<string> {
-  const fs = await getFsAsync();
+  const fs = getFs();
   return String(await fs.readFile!(`${ROOT}${path}`, "utf8"));
 }
 
 async function goSources(dir: string): Promise<string[]> {
-  const fs = await getFsAsync();
+  const fs = getFs();
   const out: string[] = [];
   for (const name of await fs.readdir!(`${ROOT}${dir}`)) {
     const path = `${dir}/${name}`;

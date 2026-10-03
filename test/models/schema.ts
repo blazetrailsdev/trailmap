@@ -1,5 +1,4 @@
-import { getPathAsync } from "@blazetrails/activesupport";
-import { cwd } from "@blazetrails/activesupport/process-adapter";
+import { Dir, getPath } from "@blazetrails/ruby-compat";
 import { Base, MigrationContext } from "@blazetrails/activerecord";
 
 /**
@@ -11,7 +10,7 @@ import { Base, MigrationContext } from "@blazetrails/activerecord";
  * schema that could drift from them.
  */
 export async function migrateScratchDatabase(): Promise<void> {
-  const path = await getPathAsync();
+  const path = getPath();
   await Base.establishConnection({ adapter: "sqlite3", database: ":memory:", pool: 1 });
-  await new MigrationContext([path.resolve(cwd(), "db", "migrate")]).migrate();
+  await new MigrationContext([path.resolve(Dir.pwd(), "db", "migrate")]).migrate();
 }

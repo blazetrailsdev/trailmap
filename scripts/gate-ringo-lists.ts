@@ -61,9 +61,7 @@
  */
 import { Base } from "@blazetrails/activerecord";
 import { ActionController } from "@blazetrails/actionpack";
-import { getChildProcessAsync } from "@blazetrails/activesupport/child-process-adapter";
-import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
-import { argv, cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
+import { argv, Dir, env, exit, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
 import { verifyRingoPin } from "./ringo-pin.js";
 import type { RfcListRow, StoryListRow } from "./page-extract.js";
 import {
@@ -78,6 +76,7 @@ import { loadModelSchemas } from "../app/models/index.js";
 import { ApplicationController } from "../app/controllers/application-controller.js";
 import { RfcPagesController } from "../app/controllers/rfc-pages-controller.js";
 import { StoryPagesController } from "../app/controllers/story-pages-controller.js";
+import { controllerTestCase } from "../test/support/controller-test-case.js";
 
 /** The RFC list's tabs are RFC statuses; ringo names its counters `cnt-<status>`. */
 const RFC_TABS = ["active", "draft", "postponed", "closed", "superseded"] as const;
@@ -98,8 +97,8 @@ interface Painted<R extends Row> {
 }
 
 async function main(): Promise<number> {
-  const fs = await getFsAsync();
-  const path = await getPathAsync();
+  const fs = getFs();
+  const path = getPath();
   const child = await getChildProcessAsync();
 
   // The snapshot is the reference implementation; prove it is the one
@@ -111,7 +110,7 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const tasksDir = env.TASKS_CLI ?? path.join(cwd(), "tasks");
+  const tasksDir = env.TASKS_CLI ?? path.join(Dir.pwd(), "tasks");
   if (!(await fs.exists(path.join(tasksDir, "bin", "tasks")))) {
     console.error(`error: no tasks CLI at ${tasksDir} — set TASKS_CLI to the checkout`);
     return 1;
@@ -120,19 +119,19 @@ async function main(): Promise<number> {
   // ONE SNAPSHOT, both sides, for the reason scripts/equivalence.ts gives at
   // length: this database is under continuous agent traffic, and two live
   // reads differ by timing alone.
-  const snapshot = path.join(cwd(), "tmp", "ringo-lists-snapshot.sqlite3");
+  const snapshot = path.join(Dir.pwd(), "tmp", "ringo-lists-snapshot.sqlite3");
   await fs.mkdir!(path.dirname(snapshot), { recursive: true });
   for (const suffix of ["", "-wal", "-shm"]) {
     if (await fs.exists(snapshot + suffix)) await fs.unlink!(snapshot + suffix);
   }
   await Base.establishConnection(tasksDatabaseConfig());
-  await Base.connection.execute(`VACUUM INTO '${snapshot.replace(/'/g, "''")}'`);
-  await Base.connection.disconnectBang();
+  (await Base.leaseConnection()).execute(`VACUUM INTO '${snapshot.replace(/'/g, "''")}'`);
+  (await Base.leaseConnection()).disconnectBang();
   await Base.establishConnection({ adapter: "sqlite3", database: snapshot, pool: 1 });
   await loadModelSchemas();
   ApplicationController.prependViewPath("app/views");
 
-  const captured = path.join(cwd(), "tmp", "ringo-lists-cli.json");
+  const captured = path.join(Dir.pwd(), "tmp", "ringo-lists-cli.json");
   const cli = async (args: string[]): Promise<unknown> => {
     const result = child.spawnSync(path.join(tasksDir, "bin", "tasks"), [...args, "--json"], {
       cwd: tasksDir,
@@ -152,7 +151,7 @@ async function main(): Promise<number> {
   // trailmap's models: the RFC list's rows are ringo's `idx.RFCs`, and nothing
   // about ports or ranking stands between a row and this SELECT.
   const rfcs = (
-    await Base.connection.selectAll(
+      await (await Base.leaseConnection()).selectAll(
       "SELECT id, title, status, owner, priority, superseded_by, packages, clusters FROM rfcs",
     )
   ).toArray() as unknown as CliRfc[];
@@ -252,8 +251,8 @@ function jsonList(column: string | null): string[] {
 /** ringo's `/rfcs`, painted by ringo's own script over ringo's own counts. */
 async function ringoRfcs(
   child: Awaited<ReturnType<typeof getChildProcessAsync>>,
-  path: Awaited<ReturnType<typeof getPathAsync>>,
-  fs: Awaited<ReturnType<typeof getFsAsync>>,
+  path: Awaited<ReturnType<typeof getPath>>,
+  fs: Awaited<ReturnType<typeof getFs>>,
   rfcs: CliRfc[],
   stories: CliStory[],
 ): Promise<Map<string, Painted<RfcListRow>>> {
@@ -281,8 +280,8 @@ async function ringoRfcs(
 
 /** ringo's `/backlog`, painted by ringo's own script. */
 async function ringoBacklog(
-  fs: Awaited<ReturnType<typeof getFsAsync>>,
-  path: Awaited<ReturnType<typeof getPathAsync>>,
+  fs: Awaited<ReturnType<typeof getFs>>,
+  path: Awaited<ReturnType<typeof getPath>>,
   rfcs: CliRfc[],
   stories: CliStory[],
   ready: CliStory[],
@@ -310,15 +309,15 @@ async function ringoBacklog(
 /** Run ringo's vendored `cmd/core` over `input`, handing back its stdout. */
 async function goHarness(
   child: Awaited<ReturnType<typeof getChildProcessAsync>>,
-  path: Awaited<ReturnType<typeof getPathAsync>>,
-  fs: Awaited<ReturnType<typeof getFsAsync>>,
+  path: Awaited<ReturnType<typeof getPath>>,
+  fs: Awaited<ReturnType<typeof getFs>>,
   mode: string,
   input: string,
 ): Promise<string> {
-  const out = path.join(cwd(), "tmp", `ringo-${mode}.json`);
+  const out = path.join(Dir.pwd(), "tmp", `ringo-${mode}.json`);
   await fs.mkdir!(path.dirname(out), { recursive: true });
   const result = child.spawnSync("go", ["run", "./cmd/core", mode], {
-    cwd: path.join(cwd(), "vendor", "ringo", "go"),
+    cwd: path.join(Dir.pwd(), "vendor", "ringo", "go"),
     encoding: "utf8",
     input,
     out,
@@ -392,9 +391,9 @@ async function trailmapPages<R extends Row>(
 ): Promise<Map<string, Painted<R>>> {
   const painted = new Map<string, Painted<R>>();
   for (const tab of tabs) {
-    const tc = new ActionController.TestCase(controller);
+    const tc = await controllerTestCase(controller);
     await tc.get("index", { params: { [param]: tab } });
-    let body: string = tc.responseBody;
+    let body: string = tc.response.body;
     // `--self-test=values`: the page as it would read if the inherited-priority
     // rule had been ported wrong — the number kept, the `*` that says it came
     // from the parent RFC dropped. Membership and order are untouched, so only

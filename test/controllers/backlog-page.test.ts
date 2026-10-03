@@ -4,6 +4,7 @@ import { migrateScratchDatabase } from "../models/schema.js";
 import { Rfc, Story, StoryPackage, loadModelSchemas } from "../../app/models/index.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 /**
  * `/backlog`, the server-rendered story list. Separate from the story show
@@ -12,9 +13,9 @@ import { StoryPagesController } from "../../app/controllers/story-pages-controll
  * packages a story inherits from its RFC.
  */
 async function index(filter?: string): Promise<{ status: number; body: string }> {
-  const tc = new ActionController.TestCase(StoryPagesController);
+  const tc = await controllerTestCase(StoryPagesController);
   await tc.get("index", { params: filter === undefined ? {} : { filter } });
-  return { status: tc.response.status, body: tc.responseBody };
+  return { status: tc.response.status, body: tc.response.body };
 }
 
 /** The story ids the page lists, in the order it lists them. */

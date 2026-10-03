@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { env } from "@blazetrails/activesupport/process-adapter";
+import { env } from "@blazetrails/ruby-compat";
 import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.js";
 
 describe("tasksDatabaseConfig", () => {

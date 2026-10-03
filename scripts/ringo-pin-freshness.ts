@@ -22,9 +22,7 @@
  * gate — and a box with no btwhooks checkout is not an error either, it is a
  * machine this check has nothing to say on.
  */
-import { getChildProcessAsync } from "@blazetrails/activesupport/child-process-adapter";
-import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
-import { argv, cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
+import { argv, Dir, env, exit, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
 
 /** Where btwhooks is checked out on the box, unless `--src`/`RINGO_SRC` says otherwise. */
 const DEFAULT_SRC = "github/deanmarano/btwebooks";
@@ -44,11 +42,11 @@ export interface PinFreshness {
 /** Compare `vendor/ringo/PIN` against the HEAD of the btwhooks checkout at `src`. */
 export async function ringoPinFreshness(src: string, root?: string): Promise<PinFreshness> {
   const [fs, path, child] = await Promise.all([
-    getFsAsync(),
-    getPathAsync(),
+    getFs(),
+    getPath(),
     getChildProcessAsync(),
   ]);
-  root ??= cwd();
+  root ??= Dir.pwd();
   const pinned = (await fs.readFile!(path.join(root, "vendor", "ringo", "PIN"), "utf8")).trim();
 
   if (!(await fs.exists(path.join(src, ".git")))) {
@@ -105,7 +103,7 @@ export async function ringoPinFreshness(src: string, root?: string): Promise<Pin
 }
 
 async function main(args: readonly string[]): Promise<number> {
-  const path = await getPathAsync();
+  const path = getPath();
   const at = args.indexOf("--src");
   const src =
     at !== -1 && args[at + 1] !== undefined

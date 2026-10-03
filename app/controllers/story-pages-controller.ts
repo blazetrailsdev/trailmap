@@ -145,7 +145,7 @@ export class StoryPagesController extends ApplicationController {
       queuePos,
     );
 
-    this.render({
+    await this.render({
       locals: {
         filter,
         tabs,
@@ -193,7 +193,7 @@ export class StoryPagesController extends ApplicationController {
     const id = String(this.params.get("id") ?? "");
     const story = id === "" ? null : await Story.findBy({ id });
     if (story === null) {
-      this.renderPage(
+      await this.renderPage(
         { id, story: null, rfc: null, deps: [], rfcDeps: [], packages: [], inherited: false },
         404,
       );
@@ -234,7 +234,7 @@ export class StoryPagesController extends ApplicationController {
       readDocument(story.file_path),
     ]);
 
-    this.renderPage(
+    await this.renderPage(
       {
         id,
         story,
@@ -256,8 +256,8 @@ export class StoryPagesController extends ApplicationController {
   }
 
   /** Named for the same reason as the RFC page's — see `renderPage` there. */
-  private renderPage(locals: Record<string, unknown>, status: number): void {
-    this.render({
+  private async renderPage(locals: Record<string, unknown>, status: number): Promise<void> {
+    await this.render({
       locals: { body: null as SafeBuffer | null, error: "", shownStatus: "", ...locals },
       status,
     });

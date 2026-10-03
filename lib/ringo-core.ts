@@ -35,7 +35,7 @@
  * It is NOT a general WASI implementation: there is no filesystem, no
  * environment and no preopened directory, because `core` may not use any.
  */
-import { getFsAsync } from "@blazetrails/activesupport";
+import { getFs } from "@blazetrails/ruby-compat";
 
 const WASM = new URL("../vendor/ringo/core.wasm", import.meta.url).pathname;
 
@@ -67,8 +67,8 @@ let compiled: Promise<WebAssembly.Module> | undefined;
 
 function module(): Promise<WebAssembly.Module> {
   compiled ??= (async () => {
-    const fs = await getFsAsync();
-    return WebAssembly.compile(await fs.readFile!(WASM));
+    const fs = getFs();
+    return WebAssembly.compile(new Uint8Array(await fs.readFile(WASM)));
   })();
   // A failed read must not be cached as the answer for the life of the process.
   compiled.catch(() => (compiled = undefined));

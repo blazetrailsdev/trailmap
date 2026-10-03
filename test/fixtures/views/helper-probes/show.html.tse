@@ -1,0 +1,1 @@
+<%= renderMarkdown("a **bold** claim") %>

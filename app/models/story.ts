@@ -76,7 +76,6 @@ export class Story extends Base {
   declare paths: AssociationProxy<StoryPath>;
   declare packages: AssociationProxy<StoryPackage>;
   declare events: AssociationProxy<Event>;
-  declare loadBelongsTo: (name: "rfc") => Promise<Rfc | null>;
 
   // NOTE: `enum` generates a static `Story.ready()` meaning `status='ready'`.
   // That is NOT the ready queue — see `Story.claimable()` below, which
@@ -165,9 +164,13 @@ export class Story extends Base {
       rfcEdges.set(d.story_id, [...(rfcEdges.get(d.story_id) ?? []), d.rfc_id]);
     }
 
+    // `Error#full_message` returns `message` unchanged for a `:base` error
+    // (`active_model/error.rb:15-16`), and `message` is `raw_type` when that
+    // is not a symbol (`error.rb:135-141`), so nil is a value Rails' own
+    // `full_messages` can hold. A message with nothing in it reports nothing.
     const messages: string[] = [];
     for (const story of stories) {
-      if (!(await story.validate("ingest"))) messages.push(...story.errors.fullMessages);
+      if (!(await story.validate("ingest"))) messages.push(...story.errors.fullMessages.filter((message) => message !== null));
     }
     messages.push(
       ...depGraphMessages(
@@ -181,7 +184,7 @@ export class Story extends Base {
       ),
     );
     for (const rfc of rfcs) {
-      if (!(await rfc.validate("ingest"))) messages.push(...rfc.errors.fullMessages);
+      if (!(await rfc.validate("ingest"))) messages.push(...rfc.errors.fullMessages.filter((message) => message !== null));
     }
     return messages;
   }

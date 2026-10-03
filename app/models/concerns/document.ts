@@ -15,7 +15,7 @@
  * because a story whose file has been renamed or rehomed is exactly when you
  * want to look at its page.
  */
-import { getFsAsync, getPathAsync } from "@blazetrails/activesupport/fs-adapter";
+import { getFs, getPath } from "@blazetrails/ruby-compat";
 import { tasksContentDir } from "../../../config/tasks-content.js";
 
 export interface Document {
@@ -39,7 +39,7 @@ export async function readDocument(filePath: string | null): Promise<Document> {
     };
   }
 
-  const [fs, path] = await Promise.all([getFsAsync(), getPathAsync()]);
+  const [fs, path] = await Promise.all([getFs(), getPath()]);
   if (!fs.readFile) {
     return { markdown: "", error: "the filesystem adapter cannot read files asynchronously" };
   }

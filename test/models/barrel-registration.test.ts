@@ -10,11 +10,11 @@ import { Story } from "../../app/models/story.js";
 
 beforeAll(async () => {
   await migrateScratchDatabase();
-  await Base.connection.execute(
+  (await Base.leaseConnection()).execute(
     "INSERT INTO stories (id, rfc_id, status, created_at, updated_at)" +
       " VALUES ('dependent', '0061-ci-failures', 'ready', '2026-08-25', '2026-08-25')",
   );
-  await Base.connection.execute(
+  (await Base.leaseConnection()).execute(
     "INSERT INTO story_deps (story_id, depends_on_id) VALUES ('dependent', 'base')",
   );
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { HomeController } from "../../app/controllers/home-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 /**
  * The engine's `add_view_paths` initializer prepends `app/views` at boot; a
@@ -12,9 +13,9 @@ beforeAll(() => {
 });
 
 async function renderIndex(): Promise<string> {
-  const tc = new ActionController.TestCase(HomeController);
+  const tc = await controllerTestCase(HomeController);
   await tc.get("index");
-  return tc.responseBody;
+  return tc.response.body;
 }
 
 describe("HomeController", () => {

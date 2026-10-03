@@ -55,7 +55,7 @@ describe("pinTimestampColumns", () => {
     await story!.save();
 
     const raw = (
-      await Base.connection.selectAll("SELECT updated_on, updated_at FROM stories WHERE id='s'")
+      await (await Base.leaseConnection()).selectAll("SELECT updated_on, updated_at FROM stories WHERE id='s'")
     ).toArray();
     expect(raw[0].updated_on).toBe("2026-08-28");
     expect(String(raw[0].updated_at)).not.toBe("2026-08-28");

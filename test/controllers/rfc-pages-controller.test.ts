@@ -1,22 +1,23 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { cwd, setEnv } from "@blazetrails/activesupport/process-adapter";
+import { Dir, setEnv } from "@blazetrails/ruby-compat";
 import { migrateScratchDatabase } from "../models/schema.js";
 import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 async function show(id: string): Promise<{ status: number; body: string }> {
-  const tc = new ActionController.TestCase(RfcPagesController);
+  const tc = await controllerTestCase(RfcPagesController);
   await tc.get("show", { params: { id } });
-  return { status: tc.response.status, body: tc.responseBody };
+  return { status: tc.response.status, body: tc.response.body };
 }
 
 beforeAll(async () => {
   ApplicationController.prependViewPath("app/views");
   // The document lives on disk, not in the database: `ingest` stores the path
   // and leaves the body in the checkout. This repo stands in for one.
-  setEnv("TASKS_DIR", cwd());
+  setEnv("TASKS_DIR", Dir.pwd());
 
   await migrateScratchDatabase();
   await loadModelSchemas();

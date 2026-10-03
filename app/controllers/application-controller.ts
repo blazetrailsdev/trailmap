@@ -2,28 +2,22 @@ import { ActionController } from "@blazetrails/actionpack";
 
 export class ApplicationController extends ActionController.Base {
   /**
-   * The view prefix, in this repo's spelling: `app/views/rfc-pages/`.
+   * Where a controller's views live, in this repo's spelling:
+   * `RfcPagesController` renders `app/views/rfc-pages/show`.
    *
-   * trails derives the prefix with Rails' `underscore`, so `RfcPagesController`
-   * would look under `app/views/rfc_pages/`. trailmap is kebab-case in every
-   * other filename, and one snake_case exception in `app/views` is the wrong
-   * way round — so the derivation is overridden here, once, and every page
-   * controller renders implicitly with no `template:` argument.
+   * trails derives the view prefix from `controllerPath`, which is Rails'
+   * `underscore` — `rfc_pages` — while every other filename here is kebab-case.
+   * This is the hook Rails documents for exactly that
+   * (`action_view/view_paths.rb`, `local_prefixes`: "Override this method in
+   * your controller if you want to change paths prefixes for finding views"),
+   * and it changes the view lookup and nothing else.
    *
-   * This is the sanctioned extension point, not a reach into internals.
-   * `controllerPath` is a public static exactly as Rails' `controller_path` is
-   * (`abstract_controller/base.rb:127`), `ActionView`'s prefix lookup reads it
-   * through that method (`localPrefixes`, `actionview/src/view-paths.ts`), and
-   * the framework's own suites subclass it the same way
-   * (`view-paths.trails.test.ts`). Nothing private is touched and no framework
-   * behaviour is re-implemented — the base derivation still runs, and only its
-   * separator is respelled.
-   *
-   * `derive-kebab-case-view-prefixes` (RFC 0140) proposes making this the
-   * framework's own spelling. If it lands, delete this method; the suite in
-   * `test/views/view-directory-names.test.ts` is what will notice.
+   * It is deliberately NOT a `controllerPath` override, which trailmap tried
+   * first: `controllerPath` also names the controller in routes, where a
+   * hyphen is illegal, so that made every page controller untestable through
+   * `ActionController::TestCase`.
    */
-  static controllerPath(): string {
-    return super.controllerPath().replace(/_/g, "-");
+  static localPrefixes(): string[] {
+    return [this.controllerPath().replace(/_/g, "-")];
   }
 }

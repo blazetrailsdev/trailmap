@@ -128,7 +128,7 @@ export class RfcPagesController extends ApplicationController {
     const filter = RFC_STATUS_TABS.includes(requested) ? requested : "active";
     const shown = orderRfcsForIndex(rfcs.filter((rfc) => rfc.status === filter), openCount);
 
-    this.render({
+    await this.render({
       locals: {
         filter,
         total: rfcs.length,
@@ -163,13 +163,13 @@ export class RfcPagesController extends ApplicationController {
     const id = String(this.params.get("id") ?? "");
     const rfc = id === "" ? null : await Rfc.findBy({ id });
     if (rfc === null) {
-      this.renderPage({ id, rfc: null, stories: [], counts: null }, 404);
+      await this.renderPage({ id, rfc: null, stories: [], counts: null }, 404);
       return;
     }
 
     const stories = orderStoriesForRfc(await Story.where({ rfc_id: id }).toArray(), rfc.status);
     const doc = await readDocument(rfc.file_path);
-    this.renderPage(
+    await this.renderPage(
       {
         id,
         rfc,
@@ -195,8 +195,8 @@ export class RfcPagesController extends ApplicationController {
   }
 
   /** `/rfc/<id>`, or the same page carrying a not-found or error message. */
-  private renderPage(locals: Record<string, unknown>, status: number): void {
-    this.render({
+  private async renderPage(locals: Record<string, unknown>, status: number): Promise<void> {
+    await this.render({
       locals: { body: null as SafeBuffer | null, error: "", ...locals },
       status,
     });

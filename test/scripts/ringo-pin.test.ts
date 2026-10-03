@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
+import { getFs, getPath } from "@blazetrails/ruby-compat";
 import { verifyRingoPin } from "../../scripts/ringo-pin.js";
 
 /**
@@ -13,7 +13,7 @@ describe("verifyRingoPin", () => {
   });
 
   it("refuses a snapshot whose file no longer matches SHA256", async () => {
-    const [fs, path] = await Promise.all([getFsAsync(), getPathAsync()]);
+    const [fs, path] = await Promise.all([getFs(), getPath()]);
     const dir = path.join("tmp", "ringo-pin-test");
     await fs.mkdir!(dir, { recursive: true });
     await fs.writeFile!(path.join(dir, "PIN"), "0".repeat(40) + "\n");

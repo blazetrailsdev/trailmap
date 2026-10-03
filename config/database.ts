@@ -1,4 +1,4 @@
-import { env } from "@blazetrails/activesupport/process-adapter";
+import { env } from "@blazetrails/ruby-compat";
 import { writeProtocol } from "./write-protocol.js";
 
 export default {

@@ -11,7 +11,7 @@
  * Both come from the environment, so the page is deployable against a fleet
  * whose repo set trailmap does not otherwise know about.
  */
-import { env } from "@blazetrails/activesupport/process-adapter";
+import { env } from "@blazetrails/ruby-compat";
 
 /** One entry of ringo's `RepoPaths`: the `owner/repo` name and its checkout. */
 export interface FleetRepo {

@@ -20,9 +20,7 @@
  *
  *     TASKS_DIR=<tasks checkout> pnpm gate:markdown [--self-test]
  */
-import { getChildProcessAsync } from "@blazetrails/activesupport/child-process-adapter";
-import { getFsAsync, getPathAsync } from "@blazetrails/activesupport";
-import { argv, cwd, env, exit } from "@blazetrails/activesupport/process-adapter";
+import { argv, Dir, env, exit, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
 import { verifyRingoPin } from "./ringo-pin.js";
 import { renderMarkdown } from "../app/helpers/markdown-helper.js";
 import { stripFrontmatter } from "../app/models/concerns/document.js";
@@ -31,8 +29,8 @@ import { stripFrontmatter } from "../app/models/concerns/document.js";
 const REPORT_LIMIT = 5;
 
 async function main(args: readonly string[]): Promise<number> {
-  const fs = await getFsAsync();
-  const path = await getPathAsync();
+  const fs = getFs();
+  const path = getPath();
   const child = await getChildProcessAsync();
 
   // The gate mutates its OWN copy of the trailmap output, never the helper: a
@@ -49,7 +47,7 @@ async function main(args: readonly string[]): Promise<number> {
     return 1;
   }
 
-  const tasksDir = env.TASKS_DIR ?? env.TASKS_CLI ?? path.join(cwd(), "tasks");
+  const tasksDir = env.TASKS_DIR ?? env.TASKS_CLI ?? path.join(Dir.pwd(), "tasks");
   const rfcsDir = path.join(tasksDir, "rfcs");
   if (!(await fs.exists(rfcsDir))) {
     console.error(`error: no RFC tree at ${rfcsDir} — set TASKS_DIR to the tasks checkout`);
@@ -69,10 +67,10 @@ async function main(args: readonly string[]): Promise<number> {
 
   // stdout goes to a FILE, not a buffer: the whole corpus rendered is megabytes
   // of HTML, and spawnSync's default 1MB buffer truncates it mid-JSON.
-  const captured = path.join(cwd(), "tmp", "ringo-markdown.json");
+  const captured = path.join(Dir.pwd(), "tmp", "ringo-markdown.json");
   await fs.mkdir!(path.dirname(captured), { recursive: true });
   const result = child.spawnSync("go", ["run", "./cmd/core", "markdown-corpus"], {
-    cwd: path.join(cwd(), "vendor", "ringo", "go"),
+    cwd: path.join(Dir.pwd(), "vendor", "ringo", "go"),
     encoding: "utf8",
     input: JSON.stringify(corpus),
     out: captured,
@@ -115,8 +113,8 @@ async function main(args: readonly string[]): Promise<number> {
 
 /** Every `.md` under `dir`. */
 async function markdownFilesIn(
-  fs: Awaited<ReturnType<typeof getFsAsync>>,
-  path: Awaited<ReturnType<typeof getPathAsync>>,
+  fs: Awaited<ReturnType<typeof getFs>>,
+  path: Awaited<ReturnType<typeof getPath>>,
   dir: string,
 ): Promise<string[]> {
   const out: string[] = [];

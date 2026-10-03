@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 beforeAll(() => {
   ApplicationController.prependViewPath("app/views");
@@ -19,16 +20,16 @@ beforeAll(() => {
 let badgeStatus: unknown = null;
 
 class SharedController extends ApplicationController {
-  show(): void {
-    this.render({ partial: "status-badge", locals: { status: badgeStatus }, layout: false });
+  async show(): Promise<void> {
+    await this.render({ partial: "status-badge", locals: { status: badgeStatus }, layout: false });
   }
 }
 
 async function renderBadge(status: unknown): Promise<string> {
   badgeStatus = status;
-  const tc = new ActionController.TestCase(SharedController);
+  const tc = await controllerTestCase(SharedController);
   await tc.get("show");
-  return tc.responseBody.trim();
+  return tc.response.body.trim();
 }
 
 describe("shared/_status-badge", () => {

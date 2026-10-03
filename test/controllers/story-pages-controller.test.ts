@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { cwd, setEnv } from "@blazetrails/activesupport/process-adapter";
+import { Dir, setEnv } from "@blazetrails/ruby-compat";
 import { migrateScratchDatabase } from "../models/schema.js";
 import {
   Rfc,
@@ -12,16 +12,17 @@ import {
 } from "../../app/models/index.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 async function show(id: string): Promise<{ status: number; body: string }> {
-  const tc = new ActionController.TestCase(StoryPagesController);
+  const tc = await controllerTestCase(StoryPagesController);
   await tc.get("show", { params: { id } });
-  return { status: tc.response.status, body: tc.responseBody };
+  return { status: tc.response.status, body: tc.response.body };
 }
 
 beforeAll(async () => {
   ApplicationController.prependViewPath("app/views");
-  setEnv("TASKS_DIR", cwd());
+  setEnv("TASKS_DIR", Dir.pwd());
 
   await migrateScratchDatabase();
   await loadModelSchemas();

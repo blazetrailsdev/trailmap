@@ -35,7 +35,7 @@ export class ReadModelsController extends ApplicationController {
   async index(): Promise<void> {
     const snapshot = await Story.rankingIndex();
     const rfcs = await Rfc.order({ id: "asc" }).toArray();
-    this.render({
+    await this.render({
       json: { rfcs: serializeRfcs(rfcs), stories: serializeStories(snapshot.stories, snapshot) },
     });
   }
@@ -47,7 +47,7 @@ export class ReadModelsController extends ApplicationController {
    */
   async events(): Promise<void> {
     const rows = await Event.order({ at: "asc", id: "asc" }).toArray();
-    this.render({
+    await this.render({
       json: {
         events: rows.map((event) => ({
           at: String(event.at),

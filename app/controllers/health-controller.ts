@@ -21,15 +21,15 @@ import { ApplicationController } from "./application-controller.js";
 export class HealthController extends ApplicationController {
   static {
     this.rescueFrom(Error, function (this: HealthController) {
-      this.renderDown();
+      return this.renderDown();
     });
   }
 
-  show(): void {
-    this.render({ json: { status: "ok" } });
+  async show(): Promise<void> {
+    await this.render({ json: { status: "ok" } });
   }
 
-  private renderDown(): void {
-    this.render({ json: { status: "down" }, status: 500 });
+  private async renderDown(): Promise<void> {
+    await this.render({ json: { status: "down" }, status: 500 });
   }
 }

@@ -1,4 +1,4 @@
-import { respondTo } from "@blazetrails/actionpack";
+import { MimeType } from "@blazetrails/actionpack";
 import { ApplicationController } from "./application-controller.js";
 import { requireLoopback } from "./concerns/loopback-only.js";
 import { Story } from "../models/index.js";
@@ -40,13 +40,13 @@ export class StoriesController extends ApplicationController {
       status: this.param("status"),
       cluster: this.param("cluster"),
     });
-    this.renderStories(rows, index);
+    await this.renderStories(rows, index);
   }
 
   /** `tasks ready [--rfc R]` — the ready queue, in ready-queue order. */
   async ready(): Promise<void> {
     const index = await Story.rankingIndex();
-    this.renderStories(await Story.claimable({ index, rfc: this.param("rfc") }), index);
+    await this.renderStories(await Story.claimable({ index, rfc: this.param("rfc") }), index);
   }
 
   /**
@@ -65,7 +65,7 @@ export class StoriesController extends ApplicationController {
     const rows = await Story.nextBundle(opts);
     const summary = summarizeBundle(rows, maxLoc);
     const stories = serializeStories(rows, index);
-    this.respondWith({
+    await this.respondWith({
       stories,
       bundle_total_loc: summary.total,
       max_loc: maxLoc,
@@ -86,10 +86,10 @@ export class StoriesController extends ApplicationController {
     const index = await Story.rankingIndex();
     const story = index.stories.find((s) => s.id === id);
     if (!story) {
-      this.render({ json: { error: `story "${id}" not found` }, status: 404 });
+      await this.render({ json: { error: `story "${id}" not found` }, status: 404 });
       return;
     }
-    this.renderStories([story], index);
+    await this.renderStories([story], index);
   }
 
   /**
@@ -103,21 +103,21 @@ export class StoriesController extends ApplicationController {
   async touching(): Promise<void> {
     const path = this.param("path");
     if (path === undefined) {
-      this.render({ json: { error: "touching requires a path" }, status: 400 });
+      await this.render({ json: { error: "touching requires a path" }, status: 400 });
       return;
     }
     const index = await Story.rankingIndex();
     const rows = await Story.touching(path, { index, all: this.param("all") !== undefined });
-    this.renderStories(rows, index);
+    await this.renderStories(rows, index);
   }
 
   /**
    * `show` renders the bare object the CLI's `show` prints; every other verb
    * renders the array its `--json` prints.
    */
-  private renderStories(rows: Story[], index: RankingIndex): void {
+  private async renderStories(rows: Story[], index: RankingIndex): Promise<void> {
     const stories = serializeStories(rows, index);
-    this.respondWith(this.actionName === "show" ? stories[0] : stories);
+    await this.respondWith(this.actionName === "show" ? stories[0] : stories);
   }
 
   /**
@@ -125,19 +125,23 @@ export class StoriesController extends ApplicationController {
    * are a later story — so anything that is not asking for JSON is declined
    * here rather than falling through to a missing template.
    */
-  private respondWith(payload: unknown): void {
-    // Negotiated on the `Accept` header ALONE, deliberately not through
-    // `Base#respondTo`: that consults `request.format`, which answers "html"
-    // when a client sends no `Accept` at all — and ringo's Go client sends
-    // none. Registering `json` first also makes `*/*` (curl's default) resolve
-    // to JSON, so both non-browser callers get JSON without asking for it.
-    respondTo(
-      (format) => {
-        format.json(() => this.render({ json: payload }));
-        format.any(() => this.render({ json: { error: "not_acceptable" }, status: 406 }));
-      },
-      { accept: (this.request.getHeader("accept") as string | undefined) ?? undefined },
-    );
+  private async respondWith(payload: unknown): Promise<void> {
+    // Rails' `negotiate_mime` (`mime_negotiation.rb:143-153`) over the one
+    // type on offer, with the client's types read from the `Accept` header
+    // ALONE through `Mime::Type.parse` rather than from `request.formats`.
+    // `formats` answers "html" when a client sends no `Accept` at all, and
+    // ringo's Go client sends none, so `Base#respondTo` would refuse it. A
+    // missing header is treated as `*/*`. As in Rails, `*/*` (curl's default)
+    // takes the first type on offer, so `text/html, */*` gets JSON too, and a
+    // q-value orders the types without removing one.
+    const json = MimeType.lookup("application/json");
+    const accept = String(this.request.getHeader("accept") ?? "").trim();
+    const accepted = accept === "" ? [MimeType.ALL] : MimeType.parse(accept);
+    if (accepted.some((type) => type.string === "*/*" || json.equals(type))) {
+      await this.render({ json: payload });
+    } else {
+      await this.render({ json: { error: "not_acceptable" }, status: 406 });
+    }
   }
 
   private param(name: string): string | undefined {
