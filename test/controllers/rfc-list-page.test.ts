@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { migrateScratchDatabase } from "../models/schema.js";
 import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
@@ -151,5 +151,17 @@ describe("RfcPagesController#index", () => {
     const { body } = await index("postponed");
 
     expect(body).toContain("No postponed RFCs.");
+  });
+
+  // The page counts statuses; it has no use for the records. Loading them is
+  // what made every tab take a second against 11,000 stories.
+  it("counts stories without instantiating them", async () => {
+    const built = vi.spyOn(Story, "_instantiate");
+    try {
+      await index("closed");
+      expect(built).not.toHaveBeenCalled();
+    } finally {
+      built.mockRestore();
+    }
   });
 });

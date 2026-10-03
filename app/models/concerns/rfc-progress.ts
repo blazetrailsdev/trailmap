@@ -112,8 +112,15 @@ export interface RfcStoryCounts {
   donePct: number;
 }
 
+/**
+ * The one field the counts read. A whole `Story` satisfies it, and so does a
+ * plucked status, which is what the RFC list passes: it counts every story of
+ * every RFC and has no use for the records.
+ */
+export type StatusOnly = Pick<Story, "status">;
+
 /** Total/done/open over `stories`, ignoring closed ones. */
-export function rfcStoryCounts(stories: readonly Story[]): RfcStoryCounts {
+export function rfcStoryCounts(stories: readonly StatusOnly[]): RfcStoryCounts {
   let total = 0;
   let done = 0;
   let open = 0;
@@ -174,7 +181,7 @@ const STORY_BAR_ORDER: readonly string[] = [
  * `open` there.
  */
 export function storyStatusCounts(
-  stories: readonly Story[],
+  stories: readonly StatusOnly[],
   rfcStatus: string | null,
 ): StatusCount[] {
   const counts = new Map<string, number>();

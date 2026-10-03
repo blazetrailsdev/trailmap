@@ -14,6 +14,7 @@ import {
   storyStatusCounts,
   type RfcStoryCounts,
   type StatusCount,
+  type StatusOnly,
   type StoryBarLength,
 } from "../models/concerns/rfc-progress.js";
 import { daysSince } from "../models/concerns/elapsed.js";
@@ -105,13 +106,19 @@ export class RfcPagesController extends ApplicationController {
    * other.
    */
   async index(): Promise<void> {
-    const [rfcs, stories] = await Promise.all([Rfc.all().toArray(), Story.all().toArray()]);
+    // Two columns, not the records: every figure on this page is a count of
+    // statuses, and building 11,000 `Story` objects to read one field from
+    // each was the whole second this page took.
+    const [rfcs, statuses] = await Promise.all([
+      Rfc.all().toArray(),
+      Story.pluck("rfc_id", "status") as Promise<[string, Story["status"]][]>,
+    ]);
 
-    const byRfc = new Map<string, Story[]>();
-    for (const story of stories) {
-      const bucket = byRfc.get(story.rfc_id);
-      if (bucket) bucket.push(story);
-      else byRfc.set(story.rfc_id, [story]);
+    const byRfc = new Map<string, StatusOnly[]>();
+    for (const [rfcId, status] of statuses) {
+      const bucket = byRfc.get(rfcId);
+      if (bucket) bucket.push({ status });
+      else byRfc.set(rfcId, [{ status }]);
     }
 
     const tabCounts = new Map<string, number>();
