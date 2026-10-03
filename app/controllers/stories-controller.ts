@@ -138,7 +138,6 @@ export class StoriesController extends ApplicationController {
     const accept = String(this.request.getHeader("accept") ?? "").trim();
     const accepted = accept === "" ? [MimeType.ALL] : MimeType.parse(accept);
     if (accepted.some((type) => type.string === "*/*" || json.equals(type))) {
-
       await this.render({ json: payload });
     } else {
       await this.render({ json: { error: "not_acceptable" }, status: 406 });
