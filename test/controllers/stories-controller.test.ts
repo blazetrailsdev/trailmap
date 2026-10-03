@@ -174,6 +174,20 @@ describe("StoriesController", () => {
     expect(Array.isArray(JSON.parse(tc.response.body))).toBe(true);
   });
 
+  // Rails' `negotiate_mime` over the one type on offer: `*/*` anywhere in the
+  // list takes it, a type RANGE that covers JSON takes it, and a q-value orders
+  // the client's types without removing one.
+  it.each([
+    ["text/html, */*"],
+    ["application/*"],
+    ["text/html;q=0.9, application/json;q=0.5"],
+  ])("answers JSON to Accept: %s", async (accept) => {
+    const { status, body } = await getJson("ready", { headers: { Accept: accept } });
+
+    expect(status).toBe(200);
+    expect(Array.isArray(body)).toBe(true);
+  });
+
   it("declines a browser asking these actions for HTML", async () => {
     const { status, body } = await getJson("ready", { headers: { Accept: "text/html" } });
 

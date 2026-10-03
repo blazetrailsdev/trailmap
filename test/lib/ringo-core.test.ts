@@ -87,7 +87,5 @@ describe("renderPaneLog", () => {
     expect(html.match(/committed \d+/g)).toHaveLength(kept);
     expect(lines).toBeLessThan(kept + 5);
     expect(raw.length / html.length).toBeGreaterThan(70);
-    // A second and a half alone; it has run past vitest's 5s default beside
-    // the rest of the suite, on work that is CPU-bound by design.
-  }, 30_000);
+  });
 });

@@ -1,3 +1,4 @@
+import { MimeType } from "@blazetrails/actionpack";
 import { ApplicationController } from "./application-controller.js";
 import { requireLoopback } from "./concerns/loopback-only.js";
 import { Story } from "../models/index.js";
@@ -125,21 +126,19 @@ export class StoriesController extends ApplicationController {
    * here rather than falling through to a missing template.
    */
   private async respondWith(payload: unknown): Promise<void> {
-    // Negotiated on the `Accept` header ALONE, deliberately not through
-    // `Base#respondTo`: that consults `request.format`, which answers "html"
-    // when a client sends no `Accept` at all — and ringo's Go client sends
-    // none. So a missing header, `*/*` (curl's default) and anything naming
-    // JSON all get JSON, and only a client that asks for something else and
-    // not JSON is refused.
-    //
-    // Written out because the framework has no such thing: trails used to
-    // export a free `respondTo(block, { accept })`, a non-Rails extension, and
-    // dropped it when `respondTo` converged on Rails' `respond_to`. q-values
-    // are not weighed — there is one representation, so the only question is
-    // whether the client will take it.
+    // Rails' `negotiate_mime` (`mime_negotiation.rb:143-153`) over the one
+    // type on offer, with the client's types read from the `Accept` header
+    // ALONE through `Mime::Type.parse` rather than from `request.formats`.
+    // `formats` answers "html" when a client sends no `Accept` at all, and
+    // ringo's Go client sends none, so `Base#respondTo` would refuse it. A
+    // missing header is treated as `*/*`. As in Rails, `*/*` (curl's default)
+    // takes the first type on offer, so `text/html, */*` gets JSON too, and a
+    // q-value orders the types without removing one.
+    const json = MimeType.lookup("application/json");
     const accept = String(this.request.getHeader("accept") ?? "").trim();
-    const wanted = accept === "" ? ["*/*"] : accept.split(",").map((type) => type.split(";")[0]!.trim().toLowerCase());
-    if (wanted.some((type) => type === "*/*" || type === "application/*" || type === "application/json")) {
+    const accepted = accept === "" ? [MimeType.ALL] : MimeType.parse(accept);
+    if (accepted.some((type) => type.string === "*/*" || json.equals(type))) {
+
       await this.render({ json: payload });
     } else {
       await this.render({ json: { error: "not_acceptable" }, status: 406 });

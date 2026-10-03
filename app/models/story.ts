@@ -164,6 +164,10 @@ export class Story extends Base {
       rfcEdges.set(d.story_id, [...(rfcEdges.get(d.story_id) ?? []), d.rfc_id]);
     }
 
+    // `Error#full_message` returns `message` unchanged for a `:base` error
+    // (`active_model/error.rb:15-16`), and `message` is `raw_type` when that
+    // is not a symbol (`error.rb:135-141`), so nil is a value Rails' own
+    // `full_messages` can hold. A message with nothing in it reports nothing.
     const messages: string[] = [];
     for (const story of stories) {
       if (!(await story.validate("ingest"))) messages.push(...story.errors.fullMessages.filter((message) => message !== null));

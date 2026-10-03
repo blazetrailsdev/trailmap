@@ -102,6 +102,12 @@ for(const line of fs.readFileSync(wsPath,"utf8").split("\n")){
   if(inBlock && (/^\s+\S/.test(line) || line.trim()==="")) continue;
   inBlock=false; kept.push(line);
 }
+// The block is found by indentation, not parsed: it runs from `overrides:` to
+// the next line at column 0. A comment at column 0 INSIDE it would end it
+// early and strand the entries after it, so refuse rather than write a file
+// with override lines belonging to nothing.
+const stranded=kept.filter(line=>/^\s+["\x27]?@blazetrails\//.test(line));
+if(stranded.length) throw new Error("pnpm-workspace.yaml: the overrides block is not one contiguous block ("+stranded.length+" entries outside it); fix the file by hand");
 const head=kept.join("\n").replace(/\n+$/,"");
 const block=["overrides:",...Object.entries(overrides).map(([n,v])=>"  "+JSON.stringify(n)+": "+JSON.stringify(v))].join("\n");
 fs.writeFileSync(wsPath,(head?head+"\n\n":"")+block+"\n");

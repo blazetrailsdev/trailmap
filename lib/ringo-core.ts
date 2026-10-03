@@ -68,9 +68,7 @@ let compiled: Promise<WebAssembly.Module> | undefined;
 function module(): Promise<WebAssembly.Module> {
   compiled ??= (async () => {
     const fs = getFs();
-    // The adapter types its bytes as a Uint8Array over any buffer kind, shared
-    // included, which WebAssembly.compile will not take as declared.
-    return WebAssembly.compile((await fs.readFile(WASM)) as BufferSource);
+    return WebAssembly.compile(new Uint8Array(await fs.readFile(WASM)));
   })();
   // A failed read must not be cached as the answer for the life of the process.
   compiled.catch(() => (compiled = undefined));
