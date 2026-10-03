@@ -105,13 +105,22 @@ export class RfcPagesController extends ApplicationController {
    * other.
    */
   async index(): Promise<void> {
-    const [rfcs, stories] = await Promise.all([Rfc.all().toArray(), Story.all().toArray()]);
+    // Two columns, not the records: every figure on this page is a count of
+    // statuses, and building 11,000 `Story` objects to read one field from
+    // each was the whole second this page took.
+    const [rfcs, statuses] = await Promise.all([
+      Rfc.all().toArray(),
+      Story.pluck("rfc_id", "status"),
+    ]);
 
-    const byRfc = new Map<string, Story[]>();
-    for (const story of stories) {
-      const bucket = byRfc.get(story.rfc_id);
-      if (bucket) bucket.push(story);
-      else byRfc.set(story.rfc_id, [story]);
+    const byRfc = new Map<string, (string | null)[]>();
+    for (const row of statuses) {
+      if (!Array.isArray(row)) continue;
+      const [rfcId, status] = row;
+      const bucket = byRfc.get(String(rfcId));
+      const value = status == null ? null : String(status);
+      if (bucket) bucket.push(value);
+      else byRfc.set(String(rfcId), [value]);
     }
 
     const tabCounts = new Map<string, number>();
@@ -186,7 +195,7 @@ export class RfcPagesController extends ApplicationController {
         // Counted from the records, not the rows: `rfcStoryCounts` decides
         // done/total, and the override only ever moves `ready` to `draft` —
         // neither of which it counts.
-        counts: rfcStoryCounts(stories),
+        counts: rfcStoryCounts(stories.map((story) => story.status)),
         body: doc.markdown === "" ? null : renderMarkdown(doc.markdown),
         error: doc.error,
       },
