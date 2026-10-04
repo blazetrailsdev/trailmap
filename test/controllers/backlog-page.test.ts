@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { migrateScratchDatabase } from "../models/schema.js";
 import { Rfc, Story, StoryPackage, loadModelSchemas } from "../../app/models/index.js";
@@ -184,5 +184,21 @@ describe("StoryPagesController#index", () => {
     await Story.where({ id: "iced-draft" }).updateAll({ rfc_id: "0136-trailmap" });
 
     expect((await index("icebox")).body).toContain("No stories under draft or postponed RFCs.");
+  });
+
+  // The page ranks from four plucked columns and loads records only for the
+  // rows it draws. Loading every story was two and a half seconds a request.
+  it("builds a record for each row it shows and for no other story", async () => {
+    const built = vi.spyOn(Story, "_instantiate");
+    try {
+      const { body } = await index("blocked");
+      const rows = body.split('class="item-row"').length - 1;
+
+      expect(rows).toBeGreaterThan(0);
+      expect(rows).toBeLessThan(await Story.count());
+      expect(built).toHaveBeenCalledTimes(rows);
+    } finally {
+      built.mockRestore();
+    }
   });
 });

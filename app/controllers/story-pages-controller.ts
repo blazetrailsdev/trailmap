@@ -5,6 +5,7 @@ import { jsonArrayColumn } from "../models/rfc.js";
 import { readDocument } from "../models/concerns/document.js";
 import { renderMarkdown } from "../helpers/markdown-helper.js";
 import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
+import { claimableIn } from "../models/concerns/ranking.js";
 import {
   BACKLOG_FILTERS,
   isBacklogFilter,
@@ -96,11 +97,12 @@ export class StoryPagesController extends ApplicationController {
    * configuration, and it is not in this database to read.
    */
   async index(): Promise<void> {
-    const index = await Story.rankingIndex();
-    const [queue, rfcs] = await Promise.all([
-      Story.claimable({ index }),
-      Rfc.all().toArray(),
-    ]);
+    // The OUTLINE, not the records: the queue's order and every tab's count
+    // read four columns of a story, and this page shows one tab of them. The
+    // records are loaded below, for the rows that are shown and no others.
+    const index = await Story.rankingOutline();
+    const queue = claimableIn(index);
+    const rfcs = await Rfc.all().toArray();
 
     const rfcPackages = new Map(rfcs.map((rfc) => [rfc.id, jsonArrayColumn(rfc.packages)]));
     const queuePos = new Map(queue.map((story, at) => [story.id, at]));
@@ -122,7 +124,6 @@ export class StoryPagesController extends ApplicationController {
     const listed = index.stories
       .filter((story) => index.rfcStatus.get(story.rfc_id) !== "closed")
       .map((story) => ({
-        story,
         id: story.id,
         rfc_id: story.rfc_id,
         status: String(effectiveStoryStatus(index.rfcStatus.get(story.rfc_id), story.status)),
@@ -145,14 +146,22 @@ export class StoryPagesController extends ApplicationController {
       queuePos,
     );
 
+    const records = new Map<string, Story>();
+    for (const story of await Story.where({ id: shown.map((listing) => listing.id) }).toArray()) {
+      records.set(story.id, story);
+    }
+
     await this.render({
       locals: {
         filter,
         tabs,
         queueSize: queue.length,
         showQueueHelp: filter === "open" || filter === "ready",
-        rows: shown.map((listing): BacklogRow => {
-          const story = listing.story;
+        rows: shown.flatMap((listing): BacklogRow[] => {
+          // A story deleted between the outline and this load has no row to
+          // draw; the next request's counts will agree with its list again.
+          const story = records.get(listing.id);
+          if (story === undefined) return [];
           const own = index.packages.get(story.id) ?? [];
           const packagesInherited = own.length === 0;
           // Effective priority and effective packages, both own-then-parent:
@@ -161,7 +170,7 @@ export class StoryPagesController extends ApplicationController {
           // contradict the queue this very page is ordered by.
           const inheritedPriority = index.rfcPriority.get(story.rfc_id);
           const priorityInherited = story.priority === null && inheritedPriority !== undefined;
-          return {
+          return [{
             id: story.id,
             title: story.title ?? story.id,
             status: listing.status,
@@ -183,7 +192,7 @@ export class StoryPagesController extends ApplicationController {
             // means.
             icebox: matchesBacklogFilter(listing, "icebox", index.rfcStatus),
             staleDays: daysSince(story.updated_on),
-          };
+          }];
         }),
       },
     });
