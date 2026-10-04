@@ -15,6 +15,9 @@ import {
 } from "../models/concerns/backlog.js";
 import { daysSince } from "../models/concerns/elapsed.js";
 
+/** How many records one query loads for the rows a tab shows. */
+const RECORD_SLICE = 900;
+
 /** The tab captions, which are not all the filter's own name. */
 const BACKLOG_TAB_LABELS: Record<BacklogFilter, string> = {
   open: "Open",
@@ -86,8 +89,12 @@ export class StoryPagesController extends ApplicationController {
    * positions and the effective priority/packages labels. The tabs become
    * links (`/backlog?filter=ready`) for the reason given on the RFC list.
    *
-   * The queue is `Story.claimable()`, NOT a second ranking written for this
-   * page. It is the port `pnpm gate` proves byte-identical to the CLI, and a
+   * The queue is `claimableIn`, the function behind `Story.claimable()`, NOT a
+   * second ranking written for this page. It runs here over
+   * `Story.rankingOutline()`, the same snapshot with four plucked columns for
+   * each story in place of the record, which is all it reads; the records are
+   * loaded only for the tab being shown. It is the port `pnpm gate` proves
+   * byte-identical to the CLI, and a
    * page that ordered the queue its own way would be advertising a pick order
    * no agent actually follows.
    *
@@ -146,10 +153,20 @@ export class StoryPagesController extends ApplicationController {
       queuePos,
     );
 
+    // In slices, so the id list stays under any SQLite build's bind limit
+    // (999 before 3.32) however long a tab grows.
     const records = new Map<string, Story>();
-    for (const story of await Story.where({ id: shown.map((listing) => listing.id) }).toArray()) {
-      records.set(story.id, story);
+    const ids = shown.map((listing) => listing.id);
+    for (let at = 0; at < ids.length; at += RECORD_SLICE) {
+      const slice = await Story.where({ id: ids.slice(at, at + RECORD_SLICE) }).toArray();
+      for (const story of slice) records.set(story.id, story);
     }
+    // A story deleted between the outline and this load has no row to draw;
+    // the next request's counts will agree with its list again.
+    const drawn = shown.flatMap((listing) => {
+      const story = records.get(listing.id);
+      return story === undefined ? [] : [{ listing, story }];
+    });
 
     await this.render({
       locals: {
@@ -157,11 +174,7 @@ export class StoryPagesController extends ApplicationController {
         tabs,
         queueSize: queue.length,
         showQueueHelp: filter === "open" || filter === "ready",
-        rows: shown.flatMap((listing): BacklogRow[] => {
-          // A story deleted between the outline and this load has no row to
-          // draw; the next request's counts will agree with its list again.
-          const story = records.get(listing.id);
-          if (story === undefined) return [];
+        rows: drawn.map(({ listing, story }): BacklogRow => {
           const own = index.packages.get(story.id) ?? [];
           const packagesInherited = own.length === 0;
           // Effective priority and effective packages, both own-then-parent:
@@ -170,7 +183,7 @@ export class StoryPagesController extends ApplicationController {
           // contradict the queue this very page is ordered by.
           const inheritedPriority = index.rfcPriority.get(story.rfc_id);
           const priorityInherited = story.priority === null && inheritedPriority !== undefined;
-          return [{
+          return {
             id: story.id,
             title: story.title ?? story.id,
             status: listing.status,
@@ -192,7 +205,7 @@ export class StoryPagesController extends ApplicationController {
             // means.
             icebox: matchesBacklogFilter(listing, "icebox", index.rfcStatus),
             staleDays: daysSince(story.updated_on),
-          }];
+          };
         }),
       },
     });
@@ -218,8 +231,9 @@ export class StoryPagesController extends ApplicationController {
     // Unordered, SQLite answers a `story_id =` filter from the index and hands
     // back the rows sorted by the indexed columns — alphabetically by dep id.
     // That reads as a deliberate ordering and is an accident of the query plan;
-    // `pnpm gate:pages` found it on 35 stories. `Story.rankingIndex` never hit
-    // it because a full-table `all()` is already in rowid order.
+    // `pnpm gate:pages` found it on 35 stories. `Story.rankingIndex` asks
+    // for rowid order too, now that it plucks: a pluck of an indexed pair can
+    // be answered from the index just the same.
     const [rfc, depRows, rfcDepRows, packageRows] = await Promise.all([
       Rfc.findBy({ id: story.rfc_id }),
       StoryDep.where({ story_id: id }).order({ rowid: "asc" }).toArray(),

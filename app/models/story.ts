@@ -213,12 +213,11 @@ export class Story extends Base {
     const rows = await Story.pluck("id", "rfc_id", "status", "priority");
     const stories: RankedStory[] = [];
     for (const row of rows) {
-      if (!Array.isArray(row)) continue;
-      const [id, rfcId, status, priority] = row;
+      const [id, rfcId, status, priority] = pluckedRow(row);
       stories.push({
         id: String(id),
         rfc_id: String(rfcId),
-        status: status == null ? null : String(status),
+        status: String(status),
         priority: typeof priority === "number" ? priority : null,
       });
     }
@@ -481,6 +480,69 @@ export class Story extends Base {
 }
 
 /**
+ * Everything the queue reads besides the stories themselves. The join tables
+ * are plucked, not loaded: each row is two strings that go straight into a map,
+ * and building 22,000 records to read two fields of each was over a second of
+ * every request that ranks.
+ *
+ * `ORDER BY rowid` because rowid IS the order the frontmatter listed them in,
+ * and it is what loading the records returned. Two of these tables have a
+ * unique index over exactly the plucked pair, which SQLite is free to answer
+ * from instead, in index order.
+ */
+async function rankingIndexOver<S extends RankedStory>(stories: S[]): Promise<RankingIndex<S>> {
+  const [rfcs, deps, rfcDeps, paths, packages] = await Promise.all([
+    Rfc.all().toArray(),
+    StoryDep.order("rowid").pluck("story_id", "depends_on_id"),
+    StoryRfcDep.order("rowid").pluck("story_id", "rfc_id"),
+    StoryPath.order("rowid").pluck("story_id", "path"),
+    StoryPackage.order("rowid").pluck("story_id", "package"),
+  ]);
+  const group = (rows: unknown[]) => {
+    const m = new Map<string, string[]>();
+    for (const row of rows) {
+      const [key, value] = pluckedRow(row).map(String);
+      const bucket = m.get(key);
+      if (bucket) bucket.push(value);
+      else m.set(key, [value]);
+    }
+    return m;
+  };
+  const rfcPriority = new Map<string, number>();
+  for (const r of rfcs) if (typeof r.priority === "number") rfcPriority.set(r.id, r.priority);
+  // Sorting here is NOT cosmetic. The CLI's index.json is sorted by
+  // (priority, id) before ranking ever sees it, and every downstream tie —
+  // `claimable()`'s stable sort, `list`'s output, the bundle knapsack's pick
+  // among equal-value subsets — falls back to that order. Reading rows in
+  // whatever order SQLite returns them reordered the queue without changing
+  // its membership, which is exactly the silent reordering the equivalence
+  // gate exists to catch (and did).
+  stories.sort(
+    (a, b) => (a.priority ?? PRIORITY_UNSET) - (b.priority ?? PRIORITY_UNSET) ||
+      a.id.localeCompare(b.id),
+  );
+  return {
+    stories,
+    rfcStatus: new Map(rfcs.map((r) => [r.id, r.status as string])),
+    rfcPriority,
+    deps: group(deps),
+    rfcDeps: group(rfcDeps),
+    paths: group(paths),
+    packages: group(packages),
+  };
+}
+
+/**
+ * One row of a multi-column `pluck`, which trails types as `unknown`. Anything
+ * but an array is a framework fault, and is raised, not skipped: a dropped row
+ * here is a story missing from the queue with nothing to say why.
+ */
+function pluckedRow(row: unknown): unknown[] {
+  if (!Array.isArray(row)) throw new TypeError(`pluck returned a non-row: ${String(row)}`);
+  return row;
+}
+
+/**
  * Every read verb loads the same snapshot, so a caller answering ONE request
  * from several of them — the JSON API asks for a queue and then serializes it
  * — can load `rankingIndex()` once and hand it back rather than making each
@@ -532,52 +594,3 @@ const PRIORITY_UNSET = 1_000_000;
 
 export { bestBundle, comparePriority, priorityContext, summarizeBundle };
 export type { EmptyBundleReason, RankingIndex };
-
-/**
- * Everything the queue reads besides the stories themselves. The join tables
- * are plucked, not loaded: each row is two strings that go straight into a map,
- * and building 22,000 records to read two fields of each was over a second of
- * every request that ranks.
- */
-async function rankingIndexOver<S extends RankedStory>(stories: S[]): Promise<RankingIndex<S>> {
-  const [rfcs, deps, rfcDeps, paths, packages] = await Promise.all([
-    Rfc.all().toArray(),
-    StoryDep.pluck("story_id", "depends_on_id"),
-    StoryRfcDep.pluck("story_id", "rfc_id"),
-    StoryPath.pluck("story_id", "path"),
-    StoryPackage.pluck("story_id", "package"),
-  ]);
-  const group = (rows: unknown[]) => {
-    const m = new Map<string, string[]>();
-    for (const row of rows) {
-      if (!Array.isArray(row)) continue;
-      const key = String(row[0]);
-      const bucket = m.get(key);
-      if (bucket) bucket.push(String(row[1]));
-      else m.set(key, [String(row[1])]);
-    }
-    return m;
-  };
-  const rfcPriority = new Map<string, number>();
-  for (const r of rfcs) if (typeof r.priority === "number") rfcPriority.set(r.id, r.priority);
-  // Sorting here is NOT cosmetic. The CLI's index.json is sorted by
-  // (priority, id) before ranking ever sees it, and every downstream tie —
-  // `claimable()`'s stable sort, `list`'s output, the bundle knapsack's pick
-  // among equal-value subsets — falls back to that order. Reading rows in
-  // whatever order SQLite returns them reordered the queue without changing
-  // its membership, which is exactly the silent reordering the equivalence
-  // gate exists to catch (and did).
-  stories.sort(
-    (a, b) => (a.priority ?? PRIORITY_UNSET) - (b.priority ?? PRIORITY_UNSET) ||
-      a.id.localeCompare(b.id),
-  );
-  return {
-    stories,
-    rfcStatus: new Map(rfcs.map((r) => [r.id, r.status as string])),
-    rfcPriority,
-    deps: group(deps),
-    rfcDeps: group(rfcDeps),
-    paths: group(paths),
-    packages: group(packages),
-  };
-}
