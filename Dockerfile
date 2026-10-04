@@ -31,7 +31,8 @@ RUN pnpm run build
 # since the trails bump NODE_ENV=production is honoured. The layout links
 # /assets/stylesheets/application.css and the dashboard its scripts, so they
 # have to exist under public/, where the static middleware looks. The files are
-# plain CSS and JS with no imports, so a copy is the whole precompile.
+# plain CSS and JS whose only import is the relative `./fleet-format.js`, which
+# is copied beside its importer, so a copy is the whole precompile.
 RUN mkdir -p public/assets && cp -r app/assets/. public/assets/
 
 FROM base
