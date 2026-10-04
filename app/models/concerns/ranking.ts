@@ -17,9 +17,21 @@
 import { effectiveStoryStatus } from "./effective-status.js";
 import type { Story } from "../story.js";
 
+/**
+ * What the ranking reads of a story, and all it reads. A `Story` satisfies it;
+ * so do four plucked columns, which is how a page that only needs the queue's
+ * ORDER ranks eleven thousand stories without building eleven thousand records.
+ */
+export interface RankedStory {
+  id: string;
+  rfc_id: string;
+  status: string | null;
+  priority: number | null;
+}
+
 /** A snapshot of everything the queue reads, loaded once per query. */
-export interface RankingIndex {
-  stories: Story[];
+export interface RankingIndex<S extends RankedStory = Story> {
+  stories: S[];
   rfcStatus: ReadonlyMap<string, string>;
   rfcPriority: ReadonlyMap<string, number>;
   deps: ReadonlyMap<string, string[]>;
@@ -47,13 +59,13 @@ export function isDepResolved(status: string | null | undefined): boolean {
 }
 
 export function effectivePriority(
-  story: Story,
+  story: RankedStory,
   rfcPriority: ReadonlyMap<string, number>,
 ): number {
   return story.priority ?? rfcPriority.get(story.rfc_id) ?? Infinity;
 }
 
-function remainingStoryCounts(index: RankingIndex): Map<string, number> {
+function remainingStoryCounts(index: RankingIndex<RankedStory>): Map<string, number> {
   const m = new Map<string, number>();
   for (const s of index.stories) {
     if (isDepResolved(s.status)) continue;
@@ -62,11 +74,11 @@ function remainingStoryCounts(index: RankingIndex): Map<string, number> {
   return m;
 }
 
-export function priorityContext(index: RankingIndex): PriorityContext {
+export function priorityContext(index: RankingIndex<RankedStory>): PriorityContext {
   return { rfcPriority: index.rfcPriority, remaining: remainingStoryCounts(index) };
 }
 
-export function comparePriority(a: Story, b: Story, ctx: PriorityContext): number {
+export function comparePriority(a: RankedStory, b: RankedStory, ctx: PriorityContext): number {
   const ea = effectivePriority(a, ctx.rfcPriority);
   const eb = effectivePriority(b, ctx.rfcPriority);
   if (ea !== eb) return ea < eb ? -1 : 1;
@@ -78,7 +90,10 @@ export function comparePriority(a: Story, b: Story, ctx: PriorityContext): numbe
   return ra === rb ? 0 : ra - rb;
 }
 
-export function claimableIn(index: RankingIndex, opts: { rfc?: string } = {}): Story[] {
+export function claimableIn<S extends RankedStory>(
+  index: RankingIndex<S>,
+  opts: { rfc?: string } = {},
+): S[] {
   const ctx = priorityContext(index);
   const storyStatus = new Map(index.stories.map((s) => [s.id, s.status as string]));
   return (

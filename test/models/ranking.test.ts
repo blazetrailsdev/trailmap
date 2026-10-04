@@ -11,6 +11,7 @@ import { migrateScratchDatabase } from "./schema.js";
 import { Rfc, Story, StoryDep, StoryPath, StoryRfcDep, loadModelSchemas } from "../../app/models/index.js";
 import {
   bestBundle,
+  claimableIn,
   comparePriority,
   effectivePriority,
   isDepResolved,
@@ -87,6 +88,49 @@ describe("Story.claimable", () => {
     await seed("here", "0136-trailmap", "ready");
     await seed("there", "0137-other", "ready");
     expect((await Story.claimable({ rfc: "0137-other" })).map((s) => s.id)).toEqual(["there"]);
+  });
+});
+
+describe("Story.rankingOutline", () => {
+  // The backlog ranks from the outline and the agents claim from the index.
+  // If the two could order the queue differently the page would advertise a
+  // pick order nothing follows.
+  it("ranks the queue exactly as the index of records does", async () => {
+    await seed("none-one", "0136-trailmap", "ready");
+    await seed("p2", "0136-trailmap", "ready", { priority: 2 });
+    await seed("p1", "0136-trailmap", "ready", { priority: 1 });
+    await seed("base", "0136-trailmap", "in-progress");
+    await seed("blocked-by-dep", "0136-trailmap", "ready", { priority: 0 });
+    await StoryDep.create({ story_id: "blocked-by-dep", depends_on_id: "base" });
+    await seed("waits", "0136-trailmap", "ready");
+    await StoryRfcDep.create({ story_id: "waits", rfc_id: "0002-draft" });
+    await seed("under-draft", "0002-draft", "ready");
+
+    const [index, outline] = [await Story.rankingIndex(), await Story.rankingOutline()];
+
+    expect(claimableIn(outline).map((s) => s.id)).toEqual(["p1", "p2", "none-one"]);
+    expect(claimableIn(outline).map((s) => s.id)).toEqual(claimableIn(index).map((s) => s.id));
+    expect(outline.stories).toEqual(
+      index.stories.map((s) => ({
+        id: s.id,
+        rfc_id: s.rfc_id,
+        status: s.status,
+        priority: s.priority,
+      })),
+    );
+    expect(outline.deps).toEqual(index.deps);
+    expect(outline.rfcDeps).toEqual(index.rfcDeps);
+  });
+
+  it("builds no Story", async () => {
+    await seed("one", "0136-trailmap", "ready");
+    const built = vi.spyOn(Story, "_instantiate");
+    try {
+      await Story.rankingOutline();
+      expect(built).not.toHaveBeenCalled();
+    } finally {
+      built.mockRestore();
+    }
   });
 });
 
