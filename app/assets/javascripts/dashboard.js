@@ -11,7 +11,10 @@
  * already hold — every frame repaints from the envelope, as ringo's does.
  */
 import {
+  CLEAR_FAILED_ID,
   activeFixers,
+  anyFailedSpawn,
+  controlRequest,
   fixerCards,
   fixerSummary,
   mainCIByRepo,
@@ -84,6 +87,9 @@ function renderRepoSections(prs, spawns) {
       ? section.prs.map((pr) => prRow(pr, fixers)).join("")
       : '<div class="list-empty">No open PRs.</div>';
   });
+
+  const clearFailed = byId(CLEAR_FAILED_ID);
+  if (clearFailed) clearFailed.style.display = anyFailedSpawn(spawns) ? "" : "none";
 }
 
 function updateMainCI(failures) {
@@ -203,4 +209,54 @@ byId("spawn").addEventListener("click", async () => {
     status.textContent = "Error: " + e.message;
   }
   button.disabled = false;
+});
+
+// ---------------------------------------------------------------------------
+// Row controls — merge, dismiss, clear failed, respawn fixer. One listener for
+// all of them: the rows are redrawn on every frame, so a listener bound to a
+// button would be bound to a node that is gone a second later.
+// ---------------------------------------------------------------------------
+
+document.addEventListener("click", async (event) => {
+  const button = event.target instanceof Element ? event.target.closest("button[data-action]") : null;
+  if (!button || button.disabled) return;
+  const request = controlRequest(button.dataset.action, button.dataset);
+  if (!request) return;
+  if (request.confirm && !window.confirm(request.confirm)) return;
+
+  const label = button.textContent;
+  button.disabled = true;
+  if (request.busy) button.textContent = request.busy;
+  try {
+    const response = await fetch(ringoUrl(request.path), {
+      method: "POST",
+      credentials: "include",
+      ...(request.body === null
+        ? {}
+        : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(request.body) }),
+    });
+    // Quiet controls leave the button disabled: the next frame removes the row.
+    if (request.quiet) return;
+    const text = (await response.text()).trim();
+    button.title = text;
+    if (response.ok) {
+      button.textContent = request.done;
+    } else {
+      button.textContent = request.failed || label;
+      if (!request.resetAfterMs) button.disabled = false;
+      window.alert(request.failureAlert(text || response.statusText));
+    }
+  } catch (e) {
+    button.disabled = false;
+    if (request.quiet) return;
+    button.textContent = request.resetAfterMs ? "err" : label;
+    button.title = e.message;
+    window.alert(request.errorAlert(e.message));
+  }
+  if (request.resetAfterMs) {
+    setTimeout(() => {
+      button.disabled = false;
+      button.textContent = label;
+    }, request.resetAfterMs);
+  }
 });
