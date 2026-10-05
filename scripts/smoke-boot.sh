@@ -146,7 +146,21 @@ for _ in $(seq 1 60); do
   code=0
   curl -s -o /dev/null -m 2 "http://127.0.0.1:$nosecret_port/up" || code=$?
   if [ "$code" != 7 ]; then listening=1; break; fi
-  if ! kill -0 "$nosecret" 2>/dev/null; then listening=1; break; fi
+  # A process that has EXITED is not a server that failed to answer. It is
+  # acceptable only if it says the secret is why (a framework that refuses the
+  # boot outright is as unhealthy as one that hangs); a crash for any other
+  # reason — an import error, the port in use — would otherwise pass the
+  # `curl` below for the wrong reason.
+  if ! kill -0 "$nosecret" 2>/dev/null; then
+    if grep -q "secret_key_base" "$work/no-secret.log"; then
+      echo "smoke-boot: it refused to start, naming the secret"
+      listening=refused
+      break
+    fi
+    echo "smoke-boot: the server with no secret died, and not for the secret:" >&2
+    tail -20 "$work/no-secret.log" >&2
+    exit 1
+  fi
   sleep 1
 done
 if [ -z "$listening" ]; then
@@ -154,7 +168,7 @@ if [ -z "$listening" ]; then
   tail -20 "$work/no-secret.log" >&2
   exit 1
 fi
-if curl -fsS -o /dev/null -m 5 "http://127.0.0.1:$nosecret_port/up"; then
+if [ "$listening" != refused ] && curl -fsS -o /dev/null -m 5 "http://127.0.0.1:$nosecret_port/up"; then
   echo "smoke-boot: production answered /up green with no secret_key_base" >&2
   echo "  dokku would deploy it, and every signed cookie would be unverifiable." >&2
   exit 1

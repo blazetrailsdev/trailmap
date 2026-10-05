@@ -48,9 +48,9 @@ dokku config:set --no-restart trailmap NODE_ENV=production \
   TASKS_DIR=/home/dean/github/blazetrailsdev/tasks
 
 # Also NOT optional. Production reads `secret_key_base` from this variable and
-# there is no credentials file to fall back on. Without it the container
-# accepts connections and answers none of them, so the health check fails and
-# dokku keeps the previous release. Generate it once; changing it later
+# there is no credentials file to fall back on. Without it the container never
+# answers `/up` green, so the health check fails and dokku keeps the previous
+# release. Generate it once; changing it later
 # invalidates signed cookies.
 dokku config:set --no-restart trailmap SECRET_KEY_BASE="$(openssl rand -hex 64)"
 dokku sso:protect trailmap
