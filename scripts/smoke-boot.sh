@@ -43,6 +43,16 @@ pnpm exec tsx "$trails" db migrate
 export TASKS_DATABASE="$work/storage/development.sqlite3"
 export TASKS_DIR="$work"
 
+# PRODUCTION, laid out as the image is. The Dockerfile sets NODE_ENV=production
+# and the framework honours it, so a boot in the default environment tests a
+# server the deployment never runs: development mounts Vite, which serves
+# `app/assets` off disk and needs no secret. Two deploys failed behind a green
+# run of this script for exactly that reason — a container that hung on every
+# request for want of `secret_key_base`, then pages with no stylesheet.
+./scripts/build-assets.sh
+export NODE_ENV=production
+export SECRET_KEY_BASE=smoke-boot-not-a-secret
+
 port=8123
 pnpm exec tsx "$trails" server -b 127.0.0.1 -p "$port" &
 server=$!
@@ -70,7 +80,21 @@ curl -fsS "http://127.0.0.1:$port/" | grep -qi "<html"
 # process with no database connection — the shape that served the deployed
 # 500s. This one selects, and an empty list is a rendered page like any other.
 echo "smoke-boot: GET /rfcs"
-curl -fsS "http://127.0.0.1:$port/rfcs" | grep -qi "<html"
+curl -fsS "http://127.0.0.1:$port/rfcs" > "$work/rfcs.html"
+grep -qi "<html" "$work/rfcs.html"
+
+# Every asset the page asks for, fetched. A page whose stylesheet 404s still
+# answers 200 with a body full of HTML, which is how the unstyled site passed.
+echo "smoke-boot: the assets /rfcs links"
+assets="$({ grep -oE '(href|src)="/assets/[^"]+"' "$work/rfcs.html" || true; } | cut -d'"' -f2 | sort -u)"
+if [ -z "$assets" ]; then
+  echo "smoke-boot: /rfcs links no asset, so this check is testing nothing" >&2
+  exit 1
+fi
+for asset in $assets; do
+  echo "smoke-boot: GET $asset"
+  curl -fsS -o /dev/null "http://127.0.0.1:$port$asset"
+done
 
 # THE INVERSE, and the regression for the deployed 500 (#20). The application
 # must REFUSE to boot when no database is configured, rather than come up and
@@ -97,6 +121,64 @@ if ! grep -q "TASKS_DATABASE is not set" "$work/no-database-boot.log"; then
   tail -20 "$work/no-database-boot.log" >&2
   exit 1
 fi
+
+# THE SECRET. A production process with no `secret_key_base` must never look
+# healthy, because a healthy answer is what lets dokku swap it in.
+#
+# Nothing in this application enforces that, on purpose. The framework reads
+# the secret while building each request and raises; what the server does with
+# that raise is the framework's to get right (today `Handler.Node` answers
+# nothing at all — trails story
+# `node-handler-leaves-the-request-open-when-the-app-raises` — where Rails'
+# servers answer 500). Either is unhealthy, so this asserts the outcome and
+# not the mechanism: it passes on the hang and will pass on the 500.
+echo "smoke-boot: a production server with no SECRET_KEY_BASE must not answer /up"
+nosecret_port=8124
+env -u SECRET_KEY_BASE -u SECRET_KEY_BASE_DUMMY \
+  pnpm exec tsx "$trails" server -b 127.0.0.1 -p "$nosecret_port" > "$work/no-secret.log" 2>&1 &
+nosecret=$!
+trap 'kill "$server" "$nosecret" 2>/dev/null || true; wait "$server" "$nosecret" 2>/dev/null || true; rm -rf "$work"' EXIT
+# A process that has EXITED is not a server that failed to answer. It is
+# acceptable only if it says the secret is why (a framework that refuses the
+# boot outright is as unhealthy as one that hangs); a crash for any other
+# reason — an import error, the port in use — would otherwise pass the `curl`
+# below for the wrong reason.
+nosecret_died() {
+  if grep -q "secret_key_base" "$work/no-secret.log"; then
+    echo "smoke-boot: it refused to start, naming the secret"
+    return 0
+  fi
+  echo "smoke-boot: the server with no secret died, and not for the secret:" >&2
+  tail -20 "$work/no-secret.log" >&2
+  exit 1
+}
+
+# Wait until it is LISTENING, which the server says itself once the socket is
+# bound ("=> Trails application starting ..."). Its own word, not a probe of
+# the port: something else answering on the port would satisfy a probe, and
+# this server would be dead of EADDRINUSE behind it. So "did not answer" below
+# means the request reached THIS server and went unanswered or was refused.
+listening=""
+for _ in $(seq 1 60); do
+  if grep -q "Trails application starting" "$work/no-secret.log"; then listening=1; break; fi
+  if ! kill -0 "$nosecret" 2>/dev/null; then nosecret_died; listening=refused; break; fi
+  sleep 1
+done
+if [ -z "$listening" ]; then
+  echo "smoke-boot: the server with no secret never started listening:" >&2
+  tail -20 "$work/no-secret.log" >&2
+  exit 1
+fi
+if [ "$listening" != refused ] && curl -fsS -o /dev/null -m 5 "http://127.0.0.1:$nosecret_port/up"; then
+  echo "smoke-boot: production answered /up green with no secret_key_base" >&2
+  echo "  dokku would deploy it, and every signed cookie would be unverifiable." >&2
+  exit 1
+fi
+# It did not answer green. If answering KILLED it, that has to be for the
+# secret too: a crash on the first request for another reason is no evidence
+# about the secret.
+if [ "$listening" != refused ] && ! kill -0 "$nosecret" 2>/dev/null; then nosecret_died; fi
+kill "$nosecret" 2>/dev/null || true
 
 # And the positive half through the same path, so the probe is proven to be
 # capable of booting at all — an always-failing probe would pass the check
