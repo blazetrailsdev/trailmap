@@ -148,9 +148,143 @@ export function fixerCards(list) {
           .join(" ");
         rows.push('<div class="fixer-line"><span class="fixer-meta">awaiting rebase:</span> ' + prs + "</div>");
       }
+      // The manual lever for a wedged coordinator: a fixer that finished
+      // unseen dedupes away every replacement, leaving a red main with no
+      // worker on it. Offered only while a red is actually recorded.
+      if (f.red_sha) {
+        rows.push(
+          '<div class="fixer-line">' +
+            control("respawn-fixer", { owner: f.owner, repo: f.repo }, {
+              cls: "btn btn-sm",
+              title: "Discard the tracked fixer story and spawn a fresh worker for this red",
+              label: f.story_id ? "respawn fixer" : "spawn fixer",
+            }) +
+            "</div>",
+        );
+      }
       return '<div class="fixer-repo">' + rows.join("") + "</div>";
     })
     .join("");
+}
+
+// ---------------------------------------------------------------------------
+// Controls
+// ---------------------------------------------------------------------------
+
+/*
+ * The page's write controls. Every one of them is a POST into ringo, which
+ * owns the state it changes (tmux panes, the spawn loop, the merge gate);
+ * trailmap draws the button and addresses the request.
+ *
+ * A button carries its action and arguments as `data-` attributes and the page
+ * has ONE click listener. ringo writes `onclick="mergePR('owner','repo',7,this)"`
+ * into the markup, which needs its functions to be globals and its arguments
+ * to survive being quoted into JavaScript inside HTML; a module has no globals,
+ * and `esc` already makes an attribute value safe.
+ */
+
+/** The button whose click `controlRequest` turns into a request. */
+export function control(action, args, { cls, title, label, id, hidden }) {
+  const data = Object.entries(args)
+    .map(([key, value]) => " data-" + key + '="' + esc(value) + '"')
+    .join("");
+  return (
+    "<button" + (id ? ' id="' + id + '"' : "") +
+    ' class="' + cls + '" data-action="' + action + '"' + data +
+    (hidden ? ' style="display:none"' : "") +
+    ' title="' + esc(title) + '">' + label + "</button>"
+  );
+}
+
+/** The global "clear failed" button, shown only while a spawn has failed. */
+export const CLEAR_FAILED_ID = "clearFailedBtn";
+
+/** It clears every failed row, so it answers to every section's spawns. */
+export const anyFailedSpawn = (spawns) => spawns.some((s) => s.status === "failed");
+
+/**
+ * What a control does: where it posts in ringo, what it sends, what it asks
+ * first, and what its button says while and after. `null` for a button that is
+ * not a control. Ported from `mergePR`, `dismissSpawn`, `clearFailedSpawns` and
+ * `respawnFixer` (`webhook/dashboard.go`), whose requests these are.
+ *
+ * `quiet` is ringo's distinction between the two families: dismissing just
+ * disables the button and lets the next frame remove the row, while merge and
+ * respawn report on the button itself and in an alert, because the row stays.
+ */
+export function controlRequest(action, data) {
+  const repo = data.owner + "/" + data.repo;
+  switch (action) {
+    case "merge": {
+      const pr = Number(data.pr);
+      return {
+        path: "/merge-pr",
+        body: { owner: data.owner, repo: data.repo, pr },
+        confirm: "Merge " + repo + "#" + pr + "?",
+        busy: "...",
+        done: "merged",
+        failed: "fail",
+        errored: "err",
+        // ringo puts the server's answer on the merge button's tooltip.
+        titled: true,
+        // The button comes back, but not for five seconds, whatever happened.
+        resetAfterMs: 5000,
+        failureAlert: (text) => "Merge blocked for " + repo + "#" + pr + ":\n\n" + text,
+        errorAlert: (message) => "Merge error for " + repo + "#" + pr + ":\n\n" + message,
+      };
+    }
+    case "respawn-fixer":
+      return {
+        path: "/ci-fixer/spawn",
+        body: { owner: data.owner, repo: data.repo },
+        confirm: "Discard the tracked fixer story and spawn a fresh fixer for " + repo + "?",
+        busy: "spawning\u2026",
+        done: "spawned",
+        failureAlert: (text) => "Respawn failed: " + text,
+        errorAlert: (message) => "Respawn failed: " + message,
+      };
+    case "dismiss":
+      return { path: "/spawnloop/dismiss", body: { branch: data.branch }, quiet: true };
+    case "clear-failed":
+      return { path: "/spawnloop/dismiss-failed", body: null, quiet: true };
+    default:
+      return null;
+  }
+}
+
+/**
+ * What the button shows once its request has settled. `result` is
+ * `{ ok, text }` for an answered request and `{ error }` for one that never
+ * got an answer; `label` is what the button said before the click.
+ *
+ * Returns `{ disabled, text?, title?, alert?, resetAfterMs? }`. A missing
+ * `text` leaves the button's text alone.
+ *
+ * Three families, as in ringo, with two of its holes closed:
+ *
+ * - merge keeps the button disabled for the full reset period on EVERY
+ *   outcome, a failed fetch included, then restores it.
+ * - respawn stays disabled on success (the card redraws) and comes straight
+ *   back on any failure.
+ * - the quiet controls stay disabled on success, because the next frame
+ *   removes the row or hides the button. On a refusal or a failed fetch they
+ *   come back. ringo leaves them disabled there, and since the row only goes
+ *   away on success, that is a dead button with nothing to say why.
+ */
+export function controlOutcome(request, result, label) {
+  const answered = !("error" in result);
+  const succeeded = answered && result.ok;
+  if (request.quiet) return { disabled: succeeded };
+
+  const said = answered ? result.text : result.error;
+  const outcome = { disabled: succeeded || !!request.resetAfterMs };
+  if (succeeded) outcome.text = request.done;
+  else if (answered) outcome.text = request.failed || label;
+  else outcome.text = request.errored || label;
+  if (request.titled) outcome.title = said;
+  if (!succeeded) outcome.alert = (answered ? request.failureAlert : request.errorAlert)(said);
+  if (request.resetAfterMs) outcome.resetAfterMs = request.resetAfterMs;
+  return outcome;
 }
 
 // ---------------------------------------------------------------------------
@@ -261,6 +395,14 @@ export function spawnRow(s, fixers = [], now = Date.now()) {
       '<a class="rtitle" href="' + url + '">' + esc(s.title || s.story_id) + "</a>" +
       (isFixerStory(fixers, s.story_id) ? " " + FIXER_BADGE : "") + label,
     meta: meta.join(" &middot; "),
+    aside:
+      failed && s.branch
+        ? control("dismiss", { branch: s.branch }, {
+            cls: "spawn-dismiss",
+            title: "Dismiss this failed spawn",
+            label: "&times;",
+          })
+        : "",
     panes: paneLine(WORK_EMOJI, s.pane, s.pane_status),
     cls: " spawn" + (failed ? " failed" : ""),
   });
@@ -300,7 +442,17 @@ export function prRow(pr, fixers = [], now = Date.now()) {
       esc(pr.title || pr.owner + "/" + pr.repo + "#" + pr.pr) + "</a>" +
       ciIcon(pr.ciStatus) + labels,
     meta: meta.join(" &middot; "),
-    aside: statusPill,
+    // A merged PR lingers while its worker pane tears down; the merged glyph
+    // says so and the now-pointless button goes.
+    aside:
+      statusPill +
+      (merged
+        ? ""
+        : control("merge", { owner: pr.owner, repo: pr.repo, pr: pr.pr }, {
+            cls: "act merge",
+            title: "Merge PR",
+            label: "merge",
+          })),
     panes: paneLine(WORK_EMOJI, pr.pane, pr.paneStatus),
   });
 }
@@ -331,7 +483,17 @@ export function repoSectionScaffold(sections) {
     .map(({ name }) => {
       const id = sectionId(name);
       return (
-        '<h2 class="repo-heading">' + esc(name) + "</h2>" +
+        '<h2 class="repo-heading">' + esc(name) +
+        (name === DEFAULT_REPO
+          ? " " + control("clear-failed", {}, {
+              cls: "spawn-dismiss",
+              id: CLEAR_FAILED_ID,
+              hidden: true,
+              title: "Dismiss all failed spawns",
+              label: "clear failed",
+            })
+          : "") +
+        "</h2>" +
         '<div class="listbox" id="' + id + '-spawnsSection" style="display:none">' +
         '<div id="' + id + '-spawns"></div></div>' +
         '<div class="listbox"><div id="' + id + '-prs"></div></div>'

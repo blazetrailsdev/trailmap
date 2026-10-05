@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  CLEAR_FAILED_ID,
   DEFAULT_REPO,
+  anyFailedSpawn,
+  control,
+  controlOutcome,
+  controlRequest,
   activeFixers,
   ciIcon,
   esc,
@@ -260,6 +265,172 @@ describe("row", () => {
   });
 });
 
+describe("control", () => {
+  it("carries its action and arguments as data attributes, escaped", () => {
+    const html = control("dismiss", { branch: `x" onclick="alert(1)` }, {
+      cls: "spawn-dismiss",
+      title: "Dismiss <this>",
+      label: "&times;",
+    });
+
+    expect(html).toContain('data-action="dismiss"');
+    expect(html).toContain('data-branch="x&quot; onclick=&quot;alert(1)"');
+    expect(html).toContain('title="Dismiss &lt;this&gt;"');
+    expect(html).not.toContain("onclick=\"");
+  });
+
+  it("can be drawn hidden, with an id to find it by", () => {
+    const html = control("clear-failed", {}, { cls: "c", title: "t", label: "l", id: "x", hidden: true });
+
+    expect(html).toContain('id="x"');
+    expect(html).toContain('style="display:none"');
+  });
+});
+
+describe("controlRequest", () => {
+  it("merges through ringo's gate, asking first and reporting on the button", () => {
+    const request = controlRequest("merge", { owner: "o", repo: "r", pr: "7" });
+
+    expect(request.path).toBe("/merge-pr");
+    expect(request.body).toEqual({ owner: "o", repo: "r", pr: 7 });
+    expect(request.confirm).toBe("Merge o/r#7?");
+    expect([request.busy, request.done, request.failed, request.errored]).toEqual([
+      "...",
+      "merged",
+      "fail",
+      "err",
+    ]);
+    expect(request.resetAfterMs).toBe(5000);
+    expect(request.failureAlert("needs review")).toBe("Merge blocked for o/r#7:\n\nneeds review");
+    expect(request.errorAlert("offline")).toBe("Merge error for o/r#7:\n\noffline");
+  });
+
+  it("respawns a fixer, asking first", () => {
+    const request = controlRequest("respawn-fixer", { owner: "o", repo: "r" });
+
+    expect(request.path).toBe("/ci-fixer/spawn");
+    expect(request.body).toEqual({ owner: "o", repo: "r" });
+    expect(request.confirm).toBe("Discard the tracked fixer story and spawn a fresh fixer for o/r?");
+    expect([request.busy, request.done]).toEqual(["spawning\u2026", "spawned"]);
+    expect(request.failureAlert("nope")).toBe("Respawn failed: nope");
+  });
+
+  it("dismisses one failed spawn by branch, quietly and without asking", () => {
+    expect(controlRequest("dismiss", { branch: "a-branch-1f2e" })).toEqual({
+      path: "/spawnloop/dismiss",
+      body: { branch: "a-branch-1f2e" },
+      quiet: true,
+    });
+  });
+
+  it("clears every failed spawn with a bodiless post", () => {
+    expect(controlRequest("clear-failed", {})).toEqual({
+      path: "/spawnloop/dismiss-failed",
+      body: null,
+      quiet: true,
+    });
+  });
+
+  it("is null for a button that is not a control", () => {
+    expect(controlRequest("spawn", {})).toBeNull();
+  });
+});
+
+describe("controlOutcome", () => {
+  const merge = controlRequest("merge", { owner: "o", repo: "r", pr: "7" });
+  const respawn = controlRequest("respawn-fixer", { owner: "o", repo: "r" });
+  const dismiss = controlRequest("dismiss", { branch: "b" });
+
+  it("holds the merge button for the reset period on every outcome", () => {
+    expect(controlOutcome(merge, { ok: true, text: "done" }, "merge")).toEqual({
+      disabled: true,
+      text: "merged",
+      title: "done",
+      resetAfterMs: 5000,
+    });
+    expect(controlOutcome(merge, { ok: false, text: "needs review" }, "merge")).toEqual({
+      disabled: true,
+      text: "fail",
+      title: "needs review",
+      alert: "Merge blocked for o/r#7:\n\nneeds review",
+      resetAfterMs: 5000,
+    });
+    // ringo's button stays disabled through "err" too; a live button reading
+    // "err" would take a second click as a second merge.
+    expect(controlOutcome(merge, { error: "offline" }, "merge")).toEqual({
+      disabled: true,
+      text: "err",
+      title: "offline",
+      alert: "Merge error for o/r#7:\n\noffline",
+      resetAfterMs: 5000,
+    });
+  });
+
+  it("leaves a respawned fixer's button spent, and gives it straight back on a failure", () => {
+    expect(controlOutcome(respawn, { ok: true, text: "ok" }, "respawn fixer")).toEqual({
+      disabled: true,
+      text: "spawned",
+    });
+    expect(controlOutcome(respawn, { ok: false, text: "no red recorded" }, "respawn fixer")).toEqual({
+      disabled: false,
+      text: "respawn fixer",
+      alert: "Respawn failed: no red recorded",
+    });
+    expect(controlOutcome(respawn, { error: "offline" }, "spawn fixer")).toEqual({
+      disabled: false,
+      text: "spawn fixer",
+      alert: "Respawn failed: offline",
+    });
+  });
+
+  it("keeps a quiet control disabled only when it worked", () => {
+    expect(controlOutcome(dismiss, { ok: true, text: "" }, "x")).toEqual({ disabled: true });
+    expect(controlOutcome(dismiss, { ok: false, text: "gone" }, "x")).toEqual({ disabled: false });
+    expect(controlOutcome(dismiss, { error: "offline" }, "x")).toEqual({ disabled: false });
+  });
+});
+
+describe("the row controls", () => {
+  const pr = { owner: "o", repo: "r", pr: 7, title: "t", nextAction: "ready to merge" };
+
+  it("offers merge on an open PR, after its status", () => {
+    const html = prRow(pr, [], NOW);
+
+    expect(html).toContain('<button class="act merge" data-action="merge" data-owner="o" data-repo="r" data-pr="7"');
+    expect(html.indexOf("status-ready-to-merge")).toBeLessThan(html.indexOf('data-action="merge"'));
+  });
+
+  it("drops merge once the PR has merged", () => {
+    expect(prRow({ ...pr, merged: true }, [], NOW)).not.toContain('data-action="merge"');
+  });
+
+  it("offers dismiss on a failed spawn and on no other", () => {
+    const spawn = { story_id: "a-story", branch: "a-story-1f2e", status: "failed", error: "boom" };
+
+    expect(spawnRow(spawn, [], NOW)).toContain('data-action="dismiss" data-branch="a-story-1f2e"');
+    expect(spawnRow({ ...spawn, status: "spawned" }, [], NOW)).not.toContain("data-action");
+  });
+
+  it("offers the fixer lever only while a red is recorded", () => {
+    const red = { owner: "o", repo: "r", red_sha: "9f31ca77aa", consecutive_red: 1 };
+
+    expect(fixerCards([red])).toContain('data-action="respawn-fixer" data-owner="o" data-repo="r"');
+    expect(fixerCards([red])).toContain(">spawn fixer</button>");
+    expect(fixerCards([{ ...red, story_id: "fix-red" }])).toContain(">respawn fixer</button>");
+    expect(fixerCards([{ owner: "o", repo: "r", consecutive_red: 1 }])).not.toContain("data-action");
+  });
+
+  it("puts clear-failed on the default repo's heading, hidden until a spawn fails", () => {
+    const html = repoSectionScaffold([{ name: DEFAULT_REPO }, { name: "o/other" }]);
+
+    expect(html.match(/data-action="clear-failed"/g)).toHaveLength(1);
+    expect(html).toContain('id="' + CLEAR_FAILED_ID + '"');
+    expect(html).toContain('style="display:none"');
+    expect(anyFailedSpawn([{ status: "spawned" }])).toBe(false);
+    expect(anyFailedSpawn([{ status: "spawned" }, { status: "failed" }])).toBe(true);
+  });
+});
+
 describe("prRow", () => {
   const base = {
     owner: "blazetrailsdev",
@@ -495,7 +666,7 @@ describe("repoSectionScaffold", () => {
   it("gives each repo a heading and the two boxes, spawns hidden until needed", () => {
     const html = repoSectionScaffold(repoSections([], []));
 
-    expect(html).toContain('<h2 class="repo-heading">blazetrailsdev/trails</h2>');
+    expect(html).toContain('<h2 class="repo-heading">blazetrailsdev/trails ');
     expect(html).toContain('id="repo-blazetrailsdev-trails-spawnsSection" style="display:none"');
     expect(html).toContain('id="repo-blazetrailsdev-trails-prs"');
   });

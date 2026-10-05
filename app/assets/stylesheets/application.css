@@ -551,6 +551,28 @@ ul { margin: 0 0 10px 20px; }
 .rtitle:hover { color: var(--accent); text-decoration: none; }
 .rmeta { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .raside { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.raside .aside-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/*
+ * The row controls. Each posts to ringo; see `controlRequest` in
+ * fleet-format.js. Small and quiet next to the status pill: they are there for
+ * a person watching the page, not the first thing the row says.
+ */
+.raside .act {
+  background: var(--accent); color: #fff; border: none; border-radius: 6px;
+  padding: 2px 8px; font-size: 11px; cursor: pointer;
+}
+.raside .act.merge { background: var(--green); }
+.raside .act:hover { filter: brightness(1.1); }
+.raside .act:disabled { opacity: 0.6; cursor: default; }
+.spawn-dismiss {
+  background: var(--surface); color: var(--red); border: 1px solid var(--border);
+  border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer;
+}
+.spawn-dismiss:hover { border-color: var(--red); }
+.spawn-dismiss:disabled { opacity: 0.6; cursor: default; }
+.repo-heading .spawn-dismiss { margin-left: 8px; vertical-align: middle; }
+.btn-sm { padding: 2px 8px; font-size: 11px; }
 
 /* The pane mini-table on a row's right edge: 💪 worker, and its status dot. */
 .panes { font-size: 12px; }

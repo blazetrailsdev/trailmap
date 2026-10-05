@@ -11,7 +11,11 @@
  * already hold — every frame repaints from the envelope, as ringo's does.
  */
 import {
+  CLEAR_FAILED_ID,
   activeFixers,
+  anyFailedSpawn,
+  controlOutcome,
+  controlRequest,
   fixerCards,
   fixerSummary,
   mainCIByRepo,
@@ -84,6 +88,16 @@ function renderRepoSections(prs, spawns) {
       ? section.prs.map((pr) => prRow(pr, fixers)).join("")
       : '<div class="list-empty">No open PRs.</div>';
   });
+
+  // The heading button outlives the rows (the scaffold is rebuilt only when
+  // the repo set changes), so a click's disabled state would outlive them too:
+  // hiding it is also what makes it usable for the next failure.
+  const clearFailed = byId(CLEAR_FAILED_ID);
+  if (clearFailed) {
+    const failed = anyFailedSpawn(spawns);
+    clearFailed.style.display = failed ? "" : "none";
+    if (!failed) clearFailed.disabled = false;
+  }
 }
 
 function updateMainCI(failures) {
@@ -203,4 +217,51 @@ byId("spawn").addEventListener("click", async () => {
     status.textContent = "Error: " + e.message;
   }
   button.disabled = false;
+});
+
+// ---------------------------------------------------------------------------
+// Row controls — merge, dismiss, clear failed, respawn fixer. One listener for
+// all of them: the rows are redrawn on every frame, so a listener bound to a
+// button would be bound to a node that is gone a second later.
+// ---------------------------------------------------------------------------
+
+document.addEventListener("click", async (event) => {
+  const button = event.target instanceof Element ? event.target.closest("button[data-action]") : null;
+  if (!button || button.disabled) return;
+  const request = controlRequest(button.dataset.action, button.dataset);
+  if (!request) return;
+  if (request.confirm && !window.confirm(request.confirm)) return;
+
+  const label = button.textContent;
+  button.disabled = true;
+  if (request.busy) button.textContent = request.busy;
+
+  let result;
+  try {
+    const response = await fetch(ringoUrl(request.path), {
+      method: "POST",
+      credentials: "include",
+      ...(request.body === null
+        ? {}
+        : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(request.body) }),
+    });
+    const text = (await response.text()).trim();
+    result = { ok: response.ok, text: text || (response.ok ? "" : response.statusText) };
+  } catch (e) {
+    result = { error: e.message };
+  }
+
+  // Everything the button does next is decided in `controlOutcome`, where it
+  // is tested; this only applies it.
+  const outcome = controlOutcome(request, result, label);
+  button.disabled = outcome.disabled;
+  if (outcome.text !== undefined) button.textContent = outcome.text;
+  if (outcome.title !== undefined) button.title = outcome.title;
+  if (outcome.alert) window.alert(outcome.alert);
+  if (outcome.resetAfterMs) {
+    setTimeout(() => {
+      button.disabled = false;
+      button.textContent = label;
+    }, outcome.resetAfterMs);
+  }
 });
