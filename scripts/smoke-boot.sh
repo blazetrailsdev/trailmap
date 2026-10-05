@@ -153,22 +153,15 @@ nosecret_died() {
   exit 1
 }
 
-# Wait until it is LISTENING (curl stops reporting 7, connection refused), so
-# "did not answer" below means the request reached this server and went
-# unanswered or was refused by the application, not that the process had yet
-# to start. The process is checked before and after the port: something else
-# answering on the port must not stand in for it.
+# Wait until it is LISTENING, which the server says itself once the socket is
+# bound ("=> Trails application starting ..."). Its own word, not a probe of
+# the port: something else answering on the port would satisfy a probe, and
+# this server would be dead of EADDRINUSE behind it. So "did not answer" below
+# means the request reached THIS server and went unanswered or was refused.
 listening=""
 for _ in $(seq 1 60); do
+  if grep -q "Trails application starting" "$work/no-secret.log"; then listening=1; break; fi
   if ! kill -0 "$nosecret" 2>/dev/null; then nosecret_died; listening=refused; break; fi
-  code=0
-  curl -s -o /dev/null -m 2 "http://127.0.0.1:$nosecret_port/up" || code=$?
-  if [ "$code" != 7 ]; then
-    sleep 2
-    if ! kill -0 "$nosecret" 2>/dev/null; then nosecret_died; listening=refused; break; fi
-    listening=1
-    break
-  fi
   sleep 1
 done
 if [ -z "$listening" ]; then
