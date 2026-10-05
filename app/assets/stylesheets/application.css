@@ -5,7 +5,7 @@
  * rules are pasted into every handler that renders a page
  * (`webhook/story.go:439-446`, repeated verbatim at `webhook/rfcs.go:649`).
  * A page ported into trailmap links this stylesheet through the application
- * layout and renders `shared/_status-badge` — it never copies the block.
+ * layout and renders `shared/_status-badge` -- it never copies the block.
  */
 
 :root {
@@ -65,7 +65,7 @@ code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, mo
 .muted { color: var(--muted); }
 
 /*
- * Page chrome — GitHub's header, which is also ringo's
+ * Page chrome -- GitHub's header, which is also ringo's
  * (`webhook/nav.go:12-52`): a sticky bar on `--surface` over the content
  * column, brand on the left, page links beside it, the current page marked by
  * Primer's `--tab` underline. The links are plain text at weight 600 rather
@@ -123,7 +123,7 @@ code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, mo
 .nav-links a.active { border-bottom-color: var(--tab); }
 
 /*
- * The mobile menu is CSS only — a hidden checkbox drives the drawer, which is
+ * The mobile menu is CSS only -- a hidden checkbox drives the drawer, which is
  * ringo's `nav-toggle` / `nav-burger` pattern (`webhook/nav.go:41-51`), and
  * means the shell needs no JavaScript and no asset-pipeline entry point for
  * one. Below 640px the links stack under the bar; above it the burger and the
@@ -185,7 +185,7 @@ h2 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; padding-bottom: 8px;
 p { margin-bottom: 10px; }
 ul { margin: 0 0 10px 20px; }
 
-/* Primer's `.Box` — the bordered panel every GitHub list and detail sits in. */
+/* Primer's `.Box` -- the bordered panel every GitHub list and detail sits in. */
 .box { border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
 .box-row { padding: 12px 16px; border-top: 1px solid var(--border); }
 .box-row:first-child { border-top: none; }
@@ -196,7 +196,7 @@ ul { margin: 0 0 10px 20px; }
   .box { border-radius: 0; border-left: none; border-right: none; margin: 0 -16px; }
 }
 
-/* status vocabulary — ringo's `.badge` block, defined once */
+/* status vocabulary -- ringo's `.badge` block, defined once */
 .badge {
   display: inline-block;
   padding: 1px 8px;
@@ -219,17 +219,17 @@ ul { margin: 0 0 10px 20px; }
 .badge.s-postponed { background: var(--surface); color: var(--muted); }
 .badge.s-superseded { background: var(--surface); color: var(--purple); border-color: transparent; }
 
-/* ── show pages ──────────────────────────────────────────────────────────────
+/* -- show pages --------------------------------------------------------------
  *
  * Modelled on GitHub's issue, issue-list and milestone pages, which is what
  * these two are: a document with a state, a list of child items with a done
  * count, and a metadata sidebar. Traits taken from those pages rather than
- * invented — a solid state pill in the header, a bordered Box with a grey
+ * invented -- a solid state pill in the header, a bordered Box with a grey
  * count strip, list rows whose title is BOLD AND DARK (blue only on hover),
  * a muted sub-line under it, and content/sidebar as two columns.
  *
  * The status HUES are untouched. #7 fixed which colour each status gets and
- * put it in `shared/_status-badge`; what changes here is presentation only —
+ * put it in `shared/_status-badge`; what changes here is presentation only --
  * the same token, rendered solid at page-header size (`.state`) and small in
  * a row (`.badge`). One vocabulary, two emphases.
  */
@@ -267,7 +267,7 @@ ul { margin: 0 0 10px 20px; }
 .state.s-claimed, .state.s-in-progress, .state.s-blocked { background: var(--yellow); }
 .state.s-done, .state.s-closed, .state.s-superseded { background: var(--purple); }
 
-/* Two columns, content then a 296px sidebar — GitHub's issue proportions. */
+/* Two columns, content then a 296px sidebar -- GitHub's issue proportions. */
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 296px; gap: 32px; align-items: start; }
 @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); gap: 0; } }
 
@@ -313,7 +313,7 @@ ul { margin: 0 0 10px 20px; }
 
 /*
  * The list pages' filter row. A tab is a LINK here (`/rfcs?status=draft`),
- * not ringo's span-with-an-onclick, because the server renders the slice —
+ * not ringo's span-with-an-onclick, because the server renders the slice --
  * see shared/_filter-tabs.
  */
 .tabs { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
@@ -329,7 +329,7 @@ ul { margin: 0 0 10px 20px; }
 .pager .pager-link.disabled { color: var(--muted); opacity: 0.5; }
 
 /*
- * Row tags — everything a row says about itself that is NOT its status. The
+ * Row tags -- everything a row says about itself that is NOT its status. The
  * status keeps `.badge` and its one hue table (#7); these are deliberately
  * unhued so a row reads as one status marker plus neutral facts, rather than
  * as ringo's line of competing colours.
@@ -348,14 +348,14 @@ ul { margin: 0 0 10px 20px; }
 /*
  * The story-composition bar: one segment per story status, widths in per
  * cent, and the bar's own LENGTH carrying how many stories the RFC has (sqrt,
- * against a 95th-percentile reference — `storyBarLength`), so a 600-story RFC
+ * against a 95th-percentile reference -- `storyBarLength`), so a 600-story RFC
  * does not look like a 3-story one.
  *
  * ringo sets that length in pixels, up to 400, and a phone is narrower than
  * that. Here the length is a percentage of `.sbartrack`, which takes whatever
  * the row can spare up to ringo's 400px: full size on a wide screen, and on a
  * narrow one every bar shrinks together and stays in proportion. `min-width`
- * on the track is what lets it shrink at all — a flex item will not go below
+ * on the track is what lets it shrink at all -- a flex item will not go below
  * its content otherwise. ringo's history ticks over the bar are left out: they
  * are a cache over its event stream, which is not in this database.
  * The segment hues come from the same variables as `.badge.s-*`, so the bar
@@ -399,7 +399,7 @@ ul { margin: 0 0 10px 20px; }
 
 /*
  * The document, in a bordered box like an issue comment. Scoped to
- * `.markdown` because the body is agent-authored and arbitrary — every tag
+ * `.markdown` because the body is agent-authored and arbitrary -- every tag
  * the renderer can emit needs a rule here, not just the ones today's stories
  * happen to use.
  */
@@ -493,7 +493,7 @@ ul { margin: 0 0 10px 20px; }
 .field-note, .field-status { color: var(--muted); font-size: 12px; }
 
 /*
- * The CI-fixer card carries the fixer's yellow left edge — and a RED one while
+ * The CI-fixer card carries the fixer's yellow left edge -- and a RED one while
  * the spawn loop is paused on a red main, which is the state the whole card
  * exists to make unmissable.
  */
@@ -534,7 +534,7 @@ ul { margin: 0 0 10px 20px; }
 .listbox { border: 1px solid var(--border); border-radius: 6px; background: var(--bg); overflow: hidden; margin-bottom: 8px; }
 .list-empty { padding: 16px; color: var(--muted); }
 
-/* One row — a PR, a pre-PR spawn, or a grooming agent. */
+/* One row -- a PR, a pre-PR spawn, or a grooming agent. */
 .row { display: flex; align-items: flex-start; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
 .row:first-child { border-top: none; }
 .row:hover { background: var(--hover); }
@@ -574,7 +574,7 @@ ul { margin: 0 0 10px 20px; }
 .repo-heading .spawn-dismiss { margin-left: 8px; vertical-align: middle; }
 .btn-sm { padding: 2px 8px; font-size: 11px; }
 
-/* The pane mini-table on a row's right edge: 💪 worker, and its status dot. */
+/* The pane mini-table on a row's right edge: worker worker, and its status dot. */
 .panes { font-size: 12px; }
 .pcell { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
 .plabel { color: var(--muted); }
