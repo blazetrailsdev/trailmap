@@ -138,28 +138,36 @@ env -u SECRET_KEY_BASE -u SECRET_KEY_BASE_DUMMY \
   pnpm exec tsx "$trails" server -b 127.0.0.1 -p "$nosecret_port" > "$work/no-secret.log" 2>&1 &
 nosecret=$!
 trap 'kill "$server" "$nosecret" 2>/dev/null || true; wait "$server" "$nosecret" 2>/dev/null || true; rm -rf "$work"' EXIT
+# A process that has EXITED is not a server that failed to answer. It is
+# acceptable only if it says the secret is why (a framework that refuses the
+# boot outright is as unhealthy as one that hangs); a crash for any other
+# reason — an import error, the port in use — would otherwise pass the `curl`
+# below for the wrong reason.
+nosecret_died() {
+  if grep -q "secret_key_base" "$work/no-secret.log"; then
+    echo "smoke-boot: it refused to start, naming the secret"
+    return 0
+  fi
+  echo "smoke-boot: the server with no secret died, and not for the secret:" >&2
+  tail -20 "$work/no-secret.log" >&2
+  exit 1
+}
+
 # Wait until it is LISTENING (curl stops reporting 7, connection refused), so
-# "did not answer" below means the request was accepted and went unanswered or
-# was refused by the application, not that the process had yet to start.
+# "did not answer" below means the request reached this server and went
+# unanswered or was refused by the application, not that the process had yet
+# to start. The process is checked before and after the port: something else
+# answering on the port must not stand in for it.
 listening=""
 for _ in $(seq 1 60); do
+  if ! kill -0 "$nosecret" 2>/dev/null; then nosecret_died; listening=refused; break; fi
   code=0
   curl -s -o /dev/null -m 2 "http://127.0.0.1:$nosecret_port/up" || code=$?
-  if [ "$code" != 7 ]; then listening=1; break; fi
-  # A process that has EXITED is not a server that failed to answer. It is
-  # acceptable only if it says the secret is why (a framework that refuses the
-  # boot outright is as unhealthy as one that hangs); a crash for any other
-  # reason — an import error, the port in use — would otherwise pass the
-  # `curl` below for the wrong reason.
-  if ! kill -0 "$nosecret" 2>/dev/null; then
-    if grep -q "secret_key_base" "$work/no-secret.log"; then
-      echo "smoke-boot: it refused to start, naming the secret"
-      listening=refused
-      break
-    fi
-    echo "smoke-boot: the server with no secret died, and not for the secret:" >&2
-    tail -20 "$work/no-secret.log" >&2
-    exit 1
+  if [ "$code" != 7 ]; then
+    sleep 2
+    if ! kill -0 "$nosecret" 2>/dev/null; then nosecret_died; listening=refused; break; fi
+    listening=1
+    break
   fi
   sleep 1
 done
