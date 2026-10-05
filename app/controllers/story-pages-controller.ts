@@ -15,8 +15,25 @@ import {
 } from "../models/concerns/backlog.js";
 import { daysSince } from "../models/concerns/elapsed.js";
 
-/** How many records one query loads for the rows a tab shows. */
-const RECORD_SLICE = 900;
+/**
+ * Rows to a page. A hundred is a screenful of scanning with the page still
+ * under 150 KB; the Closed tab at one page was 2,482 rows and 3.9 MB, and
+ * grows with every story that ships.
+ */
+export const BACKLOG_PAGE_SIZE = 100;
+
+/** Where a page sits in its tab, and how to reach its neighbours. */
+export interface BacklogPager {
+  page: number;
+  pages: number;
+  /** Rows in the whole tab, which is also the tab's count. */
+  total: number;
+  /** 1-based positions of the first and last row on this page. */
+  from: number;
+  to: number;
+  prevHref: string | null;
+  nextHref: string | null;
+}
 
 /** The tab captions, which are not all the filter's own name. */
 const BACKLOG_TAB_LABELS: Record<BacklogFilter, string> = {
@@ -153,17 +170,34 @@ export class StoryPagesController extends ApplicationController {
       queuePos,
     );
 
-    // In slices, so the id list stays under any SQLite build's bind limit
-    // (999 before 3.32) however long a tab grows.
+    // One page of the tab. The tab is ordered and counted whole, above, from
+    // the outline; only then is it cut, so a row's queue position and the
+    // tab's count are facts about the whole tab and not about this page. A
+    // page past the end is the last page, not an empty one: a bookmarked
+    // `page=9` should not go blank because stories shipped.
+    const pages = Math.max(1, Math.ceil(shown.length / BACKLOG_PAGE_SIZE));
+    const requestedPage = Number.parseInt(String(this.params.get("page") ?? ""), 10);
+    const page = Number.isNaN(requestedPage) ? 1 : Math.min(Math.max(requestedPage, 1), pages);
+    const first = (page - 1) * BACKLOG_PAGE_SIZE;
+    const onPage = shown.slice(first, first + BACKLOG_PAGE_SIZE);
+    const pageHref = (n: number) => `/backlog?filter=${filter}&page=${n}`;
+    const pager: BacklogPager = {
+      page,
+      pages,
+      total: shown.length,
+      from: onPage.length === 0 ? 0 : first + 1,
+      to: first + onPage.length,
+      prevHref: page > 1 ? pageHref(page - 1) : null,
+      nextHref: page < pages ? pageHref(page + 1) : null,
+    };
+
     const records = new Map<string, Story>();
-    const ids = shown.map((listing) => listing.id);
-    for (let at = 0; at < ids.length; at += RECORD_SLICE) {
-      const slice = await Story.where({ id: ids.slice(at, at + RECORD_SLICE) }).toArray();
-      for (const story of slice) records.set(story.id, story);
+    for (const story of await Story.where({ id: onPage.map((l) => l.id) }).toArray()) {
+      records.set(story.id, story);
     }
     // A story deleted between the outline and this load has no row to draw;
     // the next request's counts will agree with its list again.
-    const drawn = shown.flatMap((listing) => {
+    const drawn = onPage.flatMap((listing) => {
       const story = records.get(listing.id);
       return story === undefined ? [] : [{ listing, story }];
     });
@@ -172,6 +206,7 @@ export class StoryPagesController extends ApplicationController {
       locals: {
         filter,
         tabs,
+        pager,
         queueSize: queue.length,
         showQueueHelp: filter === "open" || filter === "ready",
         rows: drawn.map(({ listing, story }): BacklogRow => {

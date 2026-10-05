@@ -321,6 +321,13 @@ ul { margin: 0 0 10px 20px; }
 .tabs .tab:hover { color: var(--fg); text-decoration: none; }
 .tabs .tab.active { color: var(--fg); font-weight: 600; }
 
+/* A list's page links, above and below it. Muted like the tabs: where you are
+   in a list is a fact about the list, not a call to action. */
+.pager { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin: 12px 0; font-size: 13px; }
+.pager .pager-at { color: var(--muted); }
+.pager .pager-link { font-weight: 500; }
+.pager .pager-link.disabled { color: var(--muted); opacity: 0.5; }
+
 /*
  * Row tags — everything a row says about itself that is NOT its status. The
  * status keeps `.badge` and its one hue table (#7); these are deliberately
