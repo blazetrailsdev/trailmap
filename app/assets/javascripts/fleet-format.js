@@ -3,16 +3,16 @@
  * SSE envelope into HTML, with no `document` in sight.
  *
  * Split out of `dashboard.js` so it can be tested. The DOM wiring there is a
- * handful of `innerHTML =` assignments; ALL of the logic worth getting right —
+ * handful of `innerHTML =` assignments; ALL of the logic worth getting right --
  * which phase a red repo is in, which spawn a PR row supersedes, what a git
- * error actually means, how repos order — lives here and is exercised directly
+ * error actually means, how repos order -- lives here and is exercised directly
  * by `test/assets/fleet-format.test.js`.
  *
  * Ported from the render functions inside ringo's constant dashboard HTML
  * (`webhook/dashboard.go:515-2306`).
  */
 
-/** Escape into text/attribute context — the envelope is not ours to trust. */
+/** Escape into text/attribute context -- the envelope is not ours to trust. */
 export function esc(value) {
   return String(value == null ? "" : value).replace(
     /[&<>"']/g,
@@ -37,24 +37,24 @@ export function statusClass(next) {
 
 /*
  * The pane status dot: green working, yellow waiting on an answer, red API
- * error, purple ◑ out of quota, muted ○ idle. The limit dot is its own GLYPH
- * as well as its own colour — an exhausted agent looks idle in every other
+ * error, purple half-circle out of quota, muted ring idle. The limit dot is its own GLYPH
+ * as well as its own colour -- an exhausted agent looks idle in every other
  * way, and a dot that differed only by hue would be missed in a column of
  * them. Colours are the shell's tokens, not ringo's literal hexes.
  */
 const PANE_DOTS = {
-  working: ["var(--green)", "●", "working"],
-  waiting: ["var(--yellow)", "●", "waiting for an answer"],
-  error: ["var(--red)", "●", "API error (5xx / stuck retry)"],
-  limit: ["var(--purple)", "◑", "hit its session/usage limit — stopped until the quota resets"],
+  working: ["var(--green)", "\u25CF", "working"],
+  waiting: ["var(--yellow)", "\u25CF", "waiting for an answer"],
+  error: ["var(--red)", "\u25CF", "API error (5xx / stuck retry)"],
+  limit: ["var(--purple)", "\u25D1", "hit its session/usage limit \u2014 stopped until the quota resets"],
 };
 
 export function paneDot(status) {
-  const [color, glyph, title] = PANE_DOTS[status] || ["var(--muted)", "○", "idle"];
+  const [color, glyph, title] = PANE_DOTS[status] || ["var(--muted)", "\u25CB", "idle"];
   return ' <span style="color:' + color + '" title="' + title + '">' + glyph + "</span>";
 }
 
-export const WORK_EMOJI = "💪";
+export const WORK_EMOJI = "\u{1F4AA}";
 
 /** One row of the compact pane mini-table; '' when there is no pane. */
 export function paneLine(label, pane, status) {
@@ -89,7 +89,7 @@ export const activeFixers = (fixers) =>
 /**
  * `paused` beats `fixing`: it means the spawn loop has STOPPED because main is
  * red, which is the more urgent fact even once a fixer is on it. `recovering`
- * beats both — main is green again and the card is on its way out.
+ * beats both -- main is green again and the card is on its way out.
  */
 export function fixerPhase(f) {
   if (f.recovering) return "recovering";
@@ -99,7 +99,7 @@ export function fixerPhase(f) {
 }
 
 export function fixerSummary(list) {
-  if (list.some((f) => f.paused)) return "spawn loop paused — waiting on main to recover";
+  if (list.some((f) => f.paused)) return "spawn loop paused \u2014 waiting on main to recover";
   return list.length === 1 ? "main is red" : list.length + " repos red";
 }
 
@@ -304,7 +304,7 @@ export const ICONS = {
 /*
  * The CI rollup for ONE PR, shown right after its title: green check, red x,
  * yellow dot. A different signal from the main-CI pills in the status group,
- * which are about a repo's default branch — this one says whether the checks
+ * which are about a repo's default branch -- this one says whether the checks
  * on this pull request are passing, and it is the only place the page says so.
  * Fill comes from the `.ci-<status>` rules.
  */
@@ -475,7 +475,7 @@ export const sectionId = (name) => "repo-" + name.replace(/[^a-zA-Z0-9]+/g, "-")
  *
  * Built here rather than in the wiring so it is the LAST piece of markup with
  * no test. It is rebuilt only when the repo set changes, so an ordinary
- * refresh does not blow away scroll position or anything open inside it —
+ * refresh does not blow away scroll position or anything open inside it --
  * which is what `repoSectionsKey` is compared against.
  */
 export function repoSectionScaffold(sections) {
@@ -505,7 +505,7 @@ export function repoSectionScaffold(sections) {
 export const repoSectionsKey = (sections) => sections.map((s) => s.name).join(" ");
 
 /**
- * Drop a spawn whose branch already has a real PR row — the PR row takes over.
+ * Drop a spawn whose branch already has a real PR row -- the PR row takes over.
  *
  * Three ways to match, because none of them holds alone: the spawn's branch
  * keeps a `-<hex>` suffix while the PR it opens usually uses the bare story
@@ -526,7 +526,7 @@ export function visibleSpawns(prs, spawns) {
 
 /**
  * Group a frame into per-repo sections, default repo first and the rest
- * alphabetically — a stable order, unlike insertion order, which tracks
+ * alphabetically -- a stable order, unlike insertion order, which tracks
  * whichever repo happened to own the first PR in the payload. The default repo
  * is always present even with nothing open; every other repo appears only when
  * it has something, so an idle repo leaves no empty heading behind.
@@ -565,7 +565,7 @@ export function mainCITitle({ repo, items }, now = Date.now()) {
   return (
     repo + " main CI failing:\n" +
     items
-      .map((f) => f.check + " · " + (f.sha || "").slice(0, 7) + (f.time ? " · " + timeAgo(f.time, now) : ""))
+      .map((f) => f.check + " \u00B7 " + (f.sha || "").slice(0, 7) + (f.time ? " \u00B7 " + timeAgo(f.time, now) : ""))
       .join("\n")
   );
 }
@@ -573,13 +573,13 @@ export function mainCITitle({ repo, items }, now = Date.now()) {
 /**
  * "pull failed" alone reads like a network or auth problem. Most of these are
  * a dirty canonical checkout blocking the rebase pull, on a repo that is
- * otherwise current — so name the real cause.
+ * otherwise current -- so name the real cause.
  */
 export function pullFailReason(err) {
   const e = String(err || "").toLowerCase();
   if (/unstaged changes|cannot pull with rebase|would be overwritten|commit or stash|local changes/.test(e))
     return "local edits block pull";
-  if (/non-fast-forward|not possible to fast-forward|diverg/.test(e)) return "diverged — needs manual merge";
+  if (/non-fast-forward|not possible to fast-forward|diverg/.test(e)) return "diverged \u2014 needs manual merge";
   if (/could not read username|authentication failed|permission denied|cannot run ssh|host key/.test(e))
     return "auth/network error";
   if (/conflict/.test(e)) return "merge conflict";
@@ -592,7 +592,7 @@ export const pullFailLabel = (failures) =>
 export const pullFailTitle = (failures) =>
   failures
     .map((f) =>
-      f.owner + "/" + f.repo + " — " + pullFailReason(f.error) + "\n  " +
+      f.owner + "/" + f.repo + " \u2014 " + pullFailReason(f.error) + "\n  " +
       String(f.error || "git pull failed").replace(/\n/g, "\n  "),
     )
     .join("\n");

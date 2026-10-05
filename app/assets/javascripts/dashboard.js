@@ -8,7 +8,7 @@
  *
  * The envelope is `Tracker.ServeEvents` (`webhook/dashboard.go:2383`),
  * unchanged and still served by Go. Nothing here holds state Go does not
- * already hold — every frame repaints from the envelope, as ringo's does.
+ * already hold -- every frame repaints from the envelope, as ringo's does.
  */
 import {
   CLEAR_FAILED_ID,
@@ -115,7 +115,7 @@ function updateMainCI(failures) {
     }
     pill.innerHTML =
       '<span class="connected on" style="background:var(--red)"></span>' +
-      '<span class="ico">🏗️</span><span class="label"></span>';
+      '<span class="ico">\u{1F3D7}\uFE0F</span><span class="label"></span>';
     pill.querySelector(".label").textContent = group.repo + " CI: " + group.items.length;
     host.appendChild(pill);
   });
@@ -146,7 +146,7 @@ function updateAgents(agents) {
       pill.className = "pill";
       pill.id = "agentPill-" + a.name;
       pill.innerHTML = '<span class="connected off"></span><span class="ico"></span><span class="label"></span>';
-      pill.querySelector(".ico").textContent = a.icon || "🎼";
+      pill.querySelector(".ico").textContent = a.icon || "\u{1F3BC}";
       pill.querySelector(".label").textContent = a.name;
       host.appendChild(pill);
     }
@@ -190,7 +190,7 @@ source.onerror = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Manual spawn — the one control this page carries, and the reason the repo
+// Manual spawn -- the one control this page carries, and the reason the repo
 // list is configuration. It posts to ringo, which owns the spawn loop.
 // ---------------------------------------------------------------------------
 
@@ -220,7 +220,7 @@ byId("spawn").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Row controls — merge, dismiss, clear failed, respawn fixer. One listener for
+// Row controls -- merge, dismiss, clear failed, respawn fixer. One listener for
 // all of them: the rows are redrawn on every frame, so a listener bound to a
 // button would be bound to a node that is gone a second later.
 // ---------------------------------------------------------------------------

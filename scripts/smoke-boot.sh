@@ -96,6 +96,36 @@ for asset in $assets; do
   curl -fsS -o /dev/null "http://127.0.0.1:$port$asset"
 done
 
+# EVERY built asset, byte for byte. A 200 is not the file: the framework served
+# any static file holding a non-ASCII byte re-encoded and cut off at the
+# original length (trails story
+# `static-files-with-non-ascii-bytes-are-served-corrupted-and-truncated`), and
+# the fleet page's script answered 200 for days while failing to parse. Every
+# file, not only the linked ones: `fleet-format.js` is reached by an `import`
+# inside `dashboard.js`, which no page links.
+#
+# Until that story is vendored this is also what keeps the assets ASCII: a
+# stray em dash in a comment fails here, before it reaches the deployment.
+# Once it is, nothing here needs to change.
+echo "smoke-boot: every built asset arrives intact"
+checked=0
+while IFS= read -r file; do
+  asset="/assets/${file#public/assets/}"
+  curl -fsS -o "$work/served-asset" "http://127.0.0.1:$port$asset"
+  if ! cmp -s "$file" "$work/served-asset"; then
+    echo "smoke-boot: $asset was not served as built:" >&2
+    echo "  $(wc -c < "$file") bytes on disk, $(wc -c < "$work/served-asset") served" >&2
+    cmp "$file" "$work/served-asset" >&2 || true
+    exit 1
+  fi
+  checked=$((checked + 1))
+done < <(find public/assets -type f ! -name '.gitkeep' | sort)
+if [ "$checked" -eq 0 ]; then
+  echo "smoke-boot: no built asset to check, so this check is testing nothing" >&2
+  exit 1
+fi
+echo "smoke-boot: $checked assets intact"
+
 # THE INVERSE, and the regression for the deployed 500 (#20). The application
 # must REFUSE to boot when no database is configured, rather than come up and
 # 500 on the first page that reads a row.
