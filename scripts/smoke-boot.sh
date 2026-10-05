@@ -86,7 +86,7 @@ grep -qi "<html" "$work/rfcs.html"
 # Every asset the page asks for, fetched. A page whose stylesheet 404s still
 # answers 200 with a body full of HTML, which is how the unstyled site passed.
 echo "smoke-boot: the assets /rfcs links"
-assets="$(grep -oE '(href|src)="/assets/[^"]+"' "$work/rfcs.html" | cut -d'"' -f2 | sort -u)"
+assets="$({ grep -oE '(href|src)="/assets/[^"]+"' "$work/rfcs.html" || true; } | cut -d'"' -f2 | sort -u)"
 if [ -z "$assets" ]; then
   echo "smoke-boot: /rfcs links no asset, so this check is testing nothing" >&2
   exit 1
@@ -122,22 +122,44 @@ if ! grep -q "TASKS_DATABASE is not set" "$work/no-database-boot.log"; then
   exit 1
 fi
 
-# THE SAME INVERSE for the secret, and the regression for the deploy that hung.
-# The framework first reads `secret_key_base` while building a request, and a
-# raise there is answered with silence; `config/initializers/secret-key-base.ts`
-# reads it at boot so the process refuses to start instead.
-echo "smoke-boot: a production boot with no SECRET_KEY_BASE must refuse"
-if env -u SECRET_KEY_BASE pnpm exec tsx scripts/boot-probe.ts \
-     > "$work/no-secret-boot.log" 2>&1; then
-  echo "smoke-boot: production booted with no secret_key_base" >&2
-  echo "  It would accept connections and never answer one." >&2
+# THE SECRET. A production process with no `secret_key_base` must never look
+# healthy, because a healthy answer is what lets dokku swap it in.
+#
+# Nothing in this application enforces that, on purpose. The framework reads
+# the secret while building each request and raises; what the server does with
+# that raise is the framework's to get right (today `Handler.Node` answers
+# nothing at all — trails story
+# `node-handler-leaves-the-request-open-when-the-app-raises` — where Rails'
+# servers answer 500). Either is unhealthy, so this asserts the outcome and
+# not the mechanism: it passes on the hang and will pass on the 500.
+echo "smoke-boot: a production server with no SECRET_KEY_BASE must not answer /up"
+nosecret_port=8124
+env -u SECRET_KEY_BASE -u SECRET_KEY_BASE_DUMMY \
+  pnpm exec tsx "$trails" server -b 127.0.0.1 -p "$nosecret_port" > "$work/no-secret.log" 2>&1 &
+nosecret=$!
+trap 'kill "$server" "$nosecret" 2>/dev/null || true; wait "$server" "$nosecret" 2>/dev/null || true; rm -rf "$work"' EXIT
+# Wait until it is LISTENING (curl stops reporting 7, connection refused), so
+# "did not answer" below means the request was accepted and went unanswered or
+# was refused by the application, not that the process had yet to start.
+listening=""
+for _ in $(seq 1 60); do
+  code=0
+  curl -s -o /dev/null -m 2 "http://127.0.0.1:$nosecret_port/up" || code=$?
+  if [ "$code" != 7 ]; then listening=1; break; fi
+  if ! kill -0 "$nosecret" 2>/dev/null; then listening=1; break; fi
+  sleep 1
+done
+if [ -z "$listening" ]; then
+  echo "smoke-boot: the server with no secret never started listening:" >&2
+  tail -20 "$work/no-secret.log" >&2
   exit 1
 fi
-if ! grep -q "secret_key_base" "$work/no-secret-boot.log"; then
-  echo "smoke-boot: the boot failed, but not for the missing secret:" >&2
-  tail -20 "$work/no-secret-boot.log" >&2
+if curl -fsS -o /dev/null -m 5 "http://127.0.0.1:$nosecret_port/up"; then
+  echo "smoke-boot: production answered /up green with no secret_key_base" >&2
+  echo "  dokku would deploy it, and every signed cookie would be unverifiable." >&2
   exit 1
 fi
+kill "$nosecret" 2>/dev/null || true
 
 # And the positive half through the same path, so the probe is proven to be
 # capable of booting at all — an always-failing probe would pass the check
