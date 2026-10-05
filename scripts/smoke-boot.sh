@@ -174,6 +174,10 @@ if [ "$listening" != refused ] && curl -fsS -o /dev/null -m 5 "http://127.0.0.1:
   echo "  dokku would deploy it, and every signed cookie would be unverifiable." >&2
   exit 1
 fi
+# It did not answer green. If answering KILLED it, that has to be for the
+# secret too: a crash on the first request for another reason is no evidence
+# about the secret.
+if [ "$listening" != refused ] && ! kill -0 "$nosecret" 2>/dev/null; then nosecret_died; fi
 kill "$nosecret" 2>/dev/null || true
 
 # And the positive half through the same path, so the probe is proven to be
