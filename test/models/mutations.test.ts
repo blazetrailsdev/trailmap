@@ -143,11 +143,11 @@ describe("statusSet", () => {
   });
 });
 
-describe("setPriority", () => {
+describe("prioritySet", () => {
   it("sets and clears the priority, recording each as an event", async () => {
-    await (await find("s1")).setPriority(1);
+    await (await find("s1")).prioritySet(1);
     expect((await find("s1")).priority).toBe(1);
-    await (await find("s1")).setPriority(null);
+    await (await find("s1")).prioritySet(null);
     expect((await find("s1")).priority).toBeNull();
     expect(await Event.where({ story_id: "s1", verb: "priority" }).count()).toBe(2);
   });
