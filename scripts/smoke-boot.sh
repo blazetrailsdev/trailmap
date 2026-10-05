@@ -43,6 +43,16 @@ pnpm exec tsx "$trails" db migrate
 export TASKS_DATABASE="$work/storage/development.sqlite3"
 export TASKS_DIR="$work"
 
+# PRODUCTION, laid out as the image is. The Dockerfile sets NODE_ENV=production
+# and the framework honours it, so a boot in the default environment tests a
+# server the deployment never runs: development mounts Vite, which serves
+# `app/assets` off disk and needs no secret. Two deploys failed behind a green
+# run of this script for exactly that reason — a container that hung on every
+# request for want of `secret_key_base`, then pages with no stylesheet.
+./scripts/build-assets.sh
+export NODE_ENV=production
+export SECRET_KEY_BASE=smoke-boot-not-a-secret
+
 port=8123
 pnpm exec tsx "$trails" server -b 127.0.0.1 -p "$port" &
 server=$!
@@ -70,7 +80,21 @@ curl -fsS "http://127.0.0.1:$port/" | grep -qi "<html"
 # process with no database connection — the shape that served the deployed
 # 500s. This one selects, and an empty list is a rendered page like any other.
 echo "smoke-boot: GET /rfcs"
-curl -fsS "http://127.0.0.1:$port/rfcs" | grep -qi "<html"
+curl -fsS "http://127.0.0.1:$port/rfcs" > "$work/rfcs.html"
+grep -qi "<html" "$work/rfcs.html"
+
+# Every asset the page asks for, fetched. A page whose stylesheet 404s still
+# answers 200 with a body full of HTML, which is how the unstyled site passed.
+echo "smoke-boot: the assets /rfcs links"
+assets="$(grep -oE '(href|src)="/assets/[^"]+"' "$work/rfcs.html" | cut -d'"' -f2 | sort -u)"
+if [ -z "$assets" ]; then
+  echo "smoke-boot: /rfcs links no asset, so this check is testing nothing" >&2
+  exit 1
+fi
+for asset in $assets; do
+  echo "smoke-boot: GET $asset"
+  curl -fsS -o /dev/null "http://127.0.0.1:$port$asset"
+done
 
 # THE INVERSE, and the regression for the deployed 500 (#20). The application
 # must REFUSE to boot when no database is configured, rather than come up and
@@ -95,6 +119,23 @@ fi
 if ! grep -q "TASKS_DATABASE is not set" "$work/no-database-boot.log"; then
   echo "smoke-boot: the boot failed, but not for the missing database:" >&2
   tail -20 "$work/no-database-boot.log" >&2
+  exit 1
+fi
+
+# THE SAME INVERSE for the secret, and the regression for the deploy that hung.
+# The framework first reads `secret_key_base` while building a request, and a
+# raise there is answered with silence; `config/initializers/secret-key-base.ts`
+# reads it at boot so the process refuses to start instead.
+echo "smoke-boot: a production boot with no SECRET_KEY_BASE must refuse"
+if env -u SECRET_KEY_BASE pnpm exec tsx scripts/boot-probe.ts \
+     > "$work/no-secret-boot.log" 2>&1; then
+  echo "smoke-boot: production booted with no secret_key_base" >&2
+  echo "  It would accept connections and never answer one." >&2
+  exit 1
+fi
+if ! grep -q "secret_key_base" "$work/no-secret-boot.log"; then
+  echo "smoke-boot: the boot failed, but not for the missing secret:" >&2
+  tail -20 "$work/no-secret-boot.log" >&2
   exit 1
 fi
 
