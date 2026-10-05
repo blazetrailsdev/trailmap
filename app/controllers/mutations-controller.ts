@@ -153,7 +153,7 @@ export class MutationsController extends ApplicationController {
       priority = Number(raw);
       if (!Number.isFinite(priority)) return this.usage(`priority must be a number or "clear"`);
     }
-    await this.onOne((story) => story.setPriority(priority));
+    await this.onOne((story) => story.prioritySet(priority));
   }
 
   /**

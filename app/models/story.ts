@@ -450,7 +450,14 @@ export class Story extends Base {
     return `status ${status}: ${this.id}`;
   }
 
-  async setPriority(priority: number | null): Promise<string> {
+  /**
+   * The `priority` verb. NOT `setPriority`: trails answers the writer
+   * `priority=` with a `setPriority` method when there is one, so a verb by
+   * that name becomes the attribute's setter, and every `priority:` in a
+   * `new`, `create` or `update` runs it. It updates, which assigns, which
+   * runs it again.
+   */
+  async prioritySet(priority: number | null): Promise<string> {
     await this.update({ priority, updated_on: today() });
     await this.recordEvent("priority", {
       detail: { arg: priority === null ? "(clear)" : String(priority) },

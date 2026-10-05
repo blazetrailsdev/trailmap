@@ -58,6 +58,10 @@ Two things follow:
   `trails g controller` writes the underscored directory, so a generated
   controller's views need renaming. `test/views/view-directory-names.test.ts`
   holds the rule.
+- **Never name a model method `set<Attribute>`.** trails answers the writer
+  `priority=` with a `setPriority` method when one exists, so a method by that
+  name IS the attribute's setter and runs on every `new`, `create` and `update`
+  that passes the attribute. The verbs are `statusSet` and `prioritySet`.
 - Conventional Commits. No `Co-Authored-By` trailer, no "Generated with Claude
   Code" line.
 - Open PRs as draft.
