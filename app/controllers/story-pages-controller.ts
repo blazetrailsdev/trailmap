@@ -14,6 +14,7 @@ import {
   type BacklogFilter,
 } from "../models/concerns/backlog.js";
 import { daysSince } from "../models/concerns/elapsed.js";
+import { pagerFor, requestedPage } from "../models/concerns/pager.js";
 
 /**
  * Rows to a page. A hundred is a screenful of scanning with the page still
@@ -22,17 +23,9 @@ import { daysSince } from "../models/concerns/elapsed.js";
  */
 export const BACKLOG_PAGE_SIZE = 100;
 
-/** Where a page sits in its tab, and how to reach its neighbours. */
-export interface BacklogPager {
-  page: number;
-  pages: number;
-  /** Rows in the whole tab, which is also the tab's count. */
-  total: number;
-  /** 1-based positions of the first and last row on this page. */
-  from: number;
-  to: number;
-  prevHref: string | null;
-  nextHref: string | null;
+/** A tab's URL, and one of its pages'. The tab link carries no page: it opens at the first. */
+function backlogHref(filter: BacklogFilter, page?: number): string {
+  return page === undefined ? `/backlog?filter=${filter}` : `/backlog?filter=${filter}&page=${page}`;
 }
 
 /** The tab captions, which are not all the filter's own name. */
@@ -161,7 +154,7 @@ export class StoryPagesController extends ApplicationController {
       key,
       label: BACKLOG_TAB_LABELS[key],
       count: listed.filter((s) => matchesBacklogFilter(s, key, index.rfcStatus)).length,
-      href: `/backlog?filter=${key}`,
+      href: backlogHref(key),
       active: key === filter,
     }));
 
@@ -175,21 +168,13 @@ export class StoryPagesController extends ApplicationController {
     // tab's count are facts about the whole tab and not about this page. A
     // page past the end is the last page, not an empty one: a bookmarked
     // `page=9` should not go blank because stories shipped.
-    const pages = Math.max(1, Math.ceil(shown.length / BACKLOG_PAGE_SIZE));
-    const requestedPage = Number.parseInt(String(this.params.get("page") ?? ""), 10);
-    const page = Number.isNaN(requestedPage) ? 1 : Math.min(Math.max(requestedPage, 1), pages);
-    const first = (page - 1) * BACKLOG_PAGE_SIZE;
-    const onPage = shown.slice(first, first + BACKLOG_PAGE_SIZE);
-    const pageHref = (n: number) => `/backlog?filter=${filter}&page=${n}`;
-    const pager: BacklogPager = {
-      page,
-      pages,
-      total: shown.length,
-      from: onPage.length === 0 ? 0 : first + 1,
-      to: first + onPage.length,
-      prevHref: page > 1 ? pageHref(page - 1) : null,
-      nextHref: page < pages ? pageHref(page + 1) : null,
-    };
+    const pager = pagerFor(
+      shown.length,
+      BACKLOG_PAGE_SIZE,
+      requestedPage(this.params.get("page")),
+      (page) => backlogHref(filter, page),
+    );
+    const onPage = shown.slice(pager.from === 0 ? 0 : pager.from - 1, pager.to);
 
     const records = new Map<string, Story>();
     for (const story of await Story.where({ id: onPage.map((l) => l.id) }).toArray()) {

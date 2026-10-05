@@ -82,6 +82,8 @@ describe("StoryPagesController#index, paged", () => {
     expect(await index({ filter: "ready", page: "99" })).toContain("page 3 of 3");
     expect(await index({ filter: "ready", page: "0" })).toContain("page 1 of 3");
     expect(await index({ filter: "ready", page: "two" })).toContain("page 1 of 3");
+    expect(await index({ filter: "ready", page: "2abc" })).toContain("page 1 of 3");
+    expect(await index({ filter: "ready", page: "1e3" })).toContain("page 1 of 3");
   });
 
   it("draws no page links for a tab that fits one page", async () => {
