@@ -4,6 +4,7 @@ import {
   DEFAULT_REPO,
   anyFailedSpawn,
   control,
+  controlOutcome,
   controlRequest,
   activeFixers,
   ciIcon,
@@ -293,7 +294,12 @@ describe("controlRequest", () => {
     expect(request.path).toBe("/merge-pr");
     expect(request.body).toEqual({ owner: "o", repo: "r", pr: 7 });
     expect(request.confirm).toBe("Merge o/r#7?");
-    expect([request.busy, request.done, request.failed]).toEqual(["...", "merged", "fail"]);
+    expect([request.busy, request.done, request.failed, request.errored]).toEqual([
+      "...",
+      "merged",
+      "fail",
+      "err",
+    ]);
     expect(request.resetAfterMs).toBe(5000);
     expect(request.failureAlert("needs review")).toBe("Merge blocked for o/r#7:\n\nneeds review");
     expect(request.errorAlert("offline")).toBe("Merge error for o/r#7:\n\noffline");
@@ -327,6 +333,60 @@ describe("controlRequest", () => {
 
   it("is null for a button that is not a control", () => {
     expect(controlRequest("spawn", {})).toBeNull();
+  });
+});
+
+describe("controlOutcome", () => {
+  const merge = controlRequest("merge", { owner: "o", repo: "r", pr: "7" });
+  const respawn = controlRequest("respawn-fixer", { owner: "o", repo: "r" });
+  const dismiss = controlRequest("dismiss", { branch: "b" });
+
+  it("holds the merge button for the reset period on every outcome", () => {
+    expect(controlOutcome(merge, { ok: true, text: "done" }, "merge")).toEqual({
+      disabled: true,
+      text: "merged",
+      title: "done",
+      resetAfterMs: 5000,
+    });
+    expect(controlOutcome(merge, { ok: false, text: "needs review" }, "merge")).toEqual({
+      disabled: true,
+      text: "fail",
+      title: "needs review",
+      alert: "Merge blocked for o/r#7:\n\nneeds review",
+      resetAfterMs: 5000,
+    });
+    // ringo's button stays disabled through "err" too; a live button reading
+    // "err" would take a second click as a second merge.
+    expect(controlOutcome(merge, { error: "offline" }, "merge")).toEqual({
+      disabled: true,
+      text: "err",
+      title: "offline",
+      alert: "Merge error for o/r#7:\n\noffline",
+      resetAfterMs: 5000,
+    });
+  });
+
+  it("leaves a respawned fixer's button spent, and gives it straight back on a failure", () => {
+    expect(controlOutcome(respawn, { ok: true, text: "ok" }, "respawn fixer")).toEqual({
+      disabled: true,
+      text: "spawned",
+    });
+    expect(controlOutcome(respawn, { ok: false, text: "no red recorded" }, "respawn fixer")).toEqual({
+      disabled: false,
+      text: "respawn fixer",
+      alert: "Respawn failed: no red recorded",
+    });
+    expect(controlOutcome(respawn, { error: "offline" }, "spawn fixer")).toEqual({
+      disabled: false,
+      text: "spawn fixer",
+      alert: "Respawn failed: offline",
+    });
+  });
+
+  it("keeps a quiet control disabled only when it worked", () => {
+    expect(controlOutcome(dismiss, { ok: true, text: "" }, "x")).toEqual({ disabled: true });
+    expect(controlOutcome(dismiss, { ok: false, text: "gone" }, "x")).toEqual({ disabled: false });
+    expect(controlOutcome(dismiss, { error: "offline" }, "x")).toEqual({ disabled: false });
   });
 });
 

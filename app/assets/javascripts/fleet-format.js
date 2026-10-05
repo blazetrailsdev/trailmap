@@ -224,7 +224,10 @@ export function controlRequest(action, data) {
         busy: "...",
         done: "merged",
         failed: "fail",
-        // The button comes back: a blocked merge is usually retried.
+        errored: "err",
+        // ringo puts the server's answer on the merge button's tooltip.
+        titled: true,
+        // The button comes back, but not for five seconds, whatever happened.
         resetAfterMs: 5000,
         failureAlert: (text) => "Merge blocked for " + repo + "#" + pr + ":\n\n" + text,
         errorAlert: (message) => "Merge error for " + repo + "#" + pr + ":\n\n" + message,
@@ -247,6 +250,41 @@ export function controlRequest(action, data) {
     default:
       return null;
   }
+}
+
+/**
+ * What the button shows once its request has settled. `result` is
+ * `{ ok, text }` for an answered request and `{ error }` for one that never
+ * got an answer; `label` is what the button said before the click.
+ *
+ * Returns `{ disabled, text?, title?, alert?, resetAfterMs? }`. A missing
+ * `text` leaves the button's text alone.
+ *
+ * Three families, as in ringo, with two of its holes closed:
+ *
+ * - merge keeps the button disabled for the full reset period on EVERY
+ *   outcome, a failed fetch included, then restores it.
+ * - respawn stays disabled on success (the card redraws) and comes straight
+ *   back on any failure.
+ * - the quiet controls stay disabled on success, because the next frame
+ *   removes the row or hides the button. On a refusal or a failed fetch they
+ *   come back. ringo leaves them disabled there, and since the row only goes
+ *   away on success, that is a dead button with nothing to say why.
+ */
+export function controlOutcome(request, result, label) {
+  const answered = !("error" in result);
+  const succeeded = answered && result.ok;
+  if (request.quiet) return { disabled: succeeded };
+
+  const said = answered ? result.text : result.error;
+  const outcome = { disabled: succeeded || !!request.resetAfterMs };
+  if (succeeded) outcome.text = request.done;
+  else if (answered) outcome.text = request.failed || label;
+  else outcome.text = request.errored || label;
+  if (request.titled) outcome.title = said;
+  if (!succeeded) outcome.alert = (answered ? request.failureAlert : request.errorAlert)(said);
+  if (request.resetAfterMs) outcome.resetAfterMs = request.resetAfterMs;
+  return outcome;
 }
 
 // ---------------------------------------------------------------------------

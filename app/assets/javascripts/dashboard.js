@@ -14,6 +14,7 @@ import {
   CLEAR_FAILED_ID,
   activeFixers,
   anyFailedSpawn,
+  controlOutcome,
   controlRequest,
   fixerCards,
   fixerSummary,
@@ -88,8 +89,15 @@ function renderRepoSections(prs, spawns) {
       : '<div class="list-empty">No open PRs.</div>';
   });
 
+  // The heading button outlives the rows (the scaffold is rebuilt only when
+  // the repo set changes), so a click's disabled state would outlive them too:
+  // hiding it is also what makes it usable for the next failure.
   const clearFailed = byId(CLEAR_FAILED_ID);
-  if (clearFailed) clearFailed.style.display = anyFailedSpawn(spawns) ? "" : "none";
+  if (clearFailed) {
+    const failed = anyFailedSpawn(spawns);
+    clearFailed.style.display = failed ? "" : "none";
+    if (!failed) clearFailed.disabled = false;
+  }
 }
 
 function updateMainCI(failures) {
@@ -227,6 +235,8 @@ document.addEventListener("click", async (event) => {
   const label = button.textContent;
   button.disabled = true;
   if (request.busy) button.textContent = request.busy;
+
+  let result;
   try {
     const response = await fetch(ringoUrl(request.path), {
       method: "POST",
@@ -235,28 +245,23 @@ document.addEventListener("click", async (event) => {
         ? {}
         : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(request.body) }),
     });
-    // Quiet controls leave the button disabled: the next frame removes the row.
-    if (request.quiet) return;
     const text = (await response.text()).trim();
-    button.title = text;
-    if (response.ok) {
-      button.textContent = request.done;
-    } else {
-      button.textContent = request.failed || label;
-      if (!request.resetAfterMs) button.disabled = false;
-      window.alert(request.failureAlert(text || response.statusText));
-    }
+    result = { ok: response.ok, text: text || (response.ok ? "" : response.statusText) };
   } catch (e) {
-    button.disabled = false;
-    if (request.quiet) return;
-    button.textContent = request.resetAfterMs ? "err" : label;
-    button.title = e.message;
-    window.alert(request.errorAlert(e.message));
+    result = { error: e.message };
   }
-  if (request.resetAfterMs) {
+
+  // Everything the button does next is decided in `controlOutcome`, where it
+  // is tested; this only applies it.
+  const outcome = controlOutcome(request, result, label);
+  button.disabled = outcome.disabled;
+  if (outcome.text !== undefined) button.textContent = outcome.text;
+  if (outcome.title !== undefined) button.title = outcome.title;
+  if (outcome.alert) window.alert(outcome.alert);
+  if (outcome.resetAfterMs) {
     setTimeout(() => {
       button.disabled = false;
       button.textContent = label;
-    }, request.resetAfterMs);
+    }, outcome.resetAfterMs);
   }
 });
