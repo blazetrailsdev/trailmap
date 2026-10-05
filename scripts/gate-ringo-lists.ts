@@ -394,13 +394,23 @@ async function trailmapPages<R extends Row>(
     const tc = await controllerTestCase(controller);
     await tc.get("index", { params: { [param]: tab } });
     let body: string = tc.response.body;
+    // A paged list is compared WHOLE: every page is fetched and its rows joined
+    // in page order, so a row the paging dropped, repeated or reordered is a
+    // difference from ringo's unpaged list like any other.
+    const pages = Number.parseInt(/class="pager" data-pages="(\d+)"/.exec(body)?.[1] ?? "1", 10);
+    const later: string[] = [];
+    for (let page = 2; page <= pages; page++) {
+      const next = await controllerTestCase(controller);
+      await next.get("index", { params: { [param]: tab, page: String(page) } });
+      later.push(next.response.body);
+    }
     // `--self-test=values`: the page as it would read if the inherited-priority
     // rule had been ported wrong — the number kept, the `*` that says it came
     // from the parent RFC dropped. Membership and order are untouched, so only
     // the row-value comparison can catch it.
     if (disinherit) body = body.replace(/(<span class="tag prio"[^>]*>pri \d+)\*/, "$1");
     painted.set(tab, {
-      rows: extract(body).slice(dropOne ? 1 : 0),
+      rows: [body, ...later].flatMap((html) => extract(html)).slice(dropOne ? 1 : 0),
       // The tab row carries every tab's count on every tab, exactly as ringo's
       // does — `<a class="tab..." href="...?filter=ready">12 Ready</a>`.
       counts: new Map(

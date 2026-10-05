@@ -7,6 +7,8 @@
 
 <%= render({ partial: "shared/filter-tabs", locals: { tabs: tabs } }) %>
 
+<%= render({ partial: "shared/pager", locals: { pager: pager } }) %>
+
 <div class="box">
   <% if (showQueueHelp) { %>
     <div class="box-header">
@@ -38,3 +40,5 @@
     </div>
   <% } %>
 </div>
+
+<%= render({ partial: "shared/pager", locals: { pager: pager } }) %>

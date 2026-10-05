@@ -1,0 +1,18 @@
+<%#
+  A list's page links: `render({ partial: "shared/pager", locals: { pager } })`,
+  where `pager` is a `Pager` (`app/models/concerns/pager.ts`).
+
+  "N–M of T" is where the page sits in the list as it was counted, not a count
+  of the rows drawn beneath it: a row deleted in the instant between counting
+  and loading is one fewer row under the same heading, until the next request.
+
+  Nothing is drawn for a list that fits one page. `data-pages` is for the list
+  gate, which walks every page to prove the pages are the whole list.
+%>
+<% if (pager.pages > 1) { %>
+  <nav class="pager" data-pages="<%= pager.pages %>" aria-label="Pages">
+    <% if (pager.prevHref) { %><a class="pager-link" rel="prev" href="<%= pager.prevHref %>">&larr; Previous</a><% } else { %><span class="pager-link disabled">&larr; Previous</span><% } %>
+    <span class="pager-at"><%= pager.from %>&ndash;<%= pager.to %> of <%= pager.total %> &middot; page <%= pager.page %> of <%= pager.pages %></span>
+    <% if (pager.nextHref) { %><a class="pager-link" rel="next" href="<%= pager.nextHref %>">Next &rarr;</a><% } else { %><span class="pager-link disabled">Next &rarr;</span><% } %>
+  </nav>
+<% } %>
