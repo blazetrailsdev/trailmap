@@ -92,7 +92,7 @@ packages:
     version: 0.1.0
 
   '@blazetrails/activemodel@file:vendor/blazetrails-activemodel-0.1.0.tgz':
-    resolution: {integrity: sha512-L1XXStLd5nN44jZEKmIgur1FcclGVYnFA6LzHpAWu+HU0NhnZkoYrRSkOO+q46SmkvjRtec6h7vN8rt+iKUirw==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
+    resolution: {integrity: sha512-MyIDS0WUhWLrrHUS6swLQtCCFmUlnm4DlmjWn2bgul+hYaVkjDYmArGaSzi09CxEj2exvMbFo2nYHqktXLRgzw==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/activerecord@file:vendor/blazetrails-activerecord-0.1.0.tgz':
@@ -165,11 +165,11 @@ packages:
     version: 0.1.0
 
   '@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz':
-    resolution: {integrity: sha512-D+nuHLhoxDQcStVY1zxRUhw5y/kT+PPWufNDQRkYIaAXk+w+XzrMj24Ppygp3sF3qjCOg3G7VE8EALHLJjS5gQ==, tarball: file:vendor/blazetrails-rack-0.1.0.tgz}
+    resolution: {integrity: sha512-5gdmT5UaeqfQy9z+SxSD1kVJU+/J7TijBxMU25Rdx/fWmRApzVJ0o0BH/NF4gWQTZGEDVSvrICcH7EHy3OOEWw==, tarball: file:vendor/blazetrails-rack-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/ruby-compat@file:vendor/blazetrails-ruby-compat-0.1.0.tgz':
-    resolution: {integrity: sha512-fGj6hsdbGsRSnsU1lY5T02S/wGM65nIETx0nkkivrhO5oU+Eq+Z5jaJ9pq/r3Lau3KPPxpiRW1kz1Oxf5gbk7A==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
+    resolution: {integrity: sha512-JdhxATxcmaML6/Hv0qvpo/Fqx6k827DF9qWMoBcN/GIJnH9gFTAnH2DvuNiY0CmqAjYW254HeqrtOWj5OytieA==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/trails-tsc@file:vendor/blazetrails-trails-tsc-0.1.0.tgz':
