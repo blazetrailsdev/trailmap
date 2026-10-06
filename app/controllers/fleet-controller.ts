@@ -28,11 +28,6 @@ export class FleetController extends ApplicationController {
    * action renders after that is discarded by the handler.
    */
   async socket(): Promise<void> {
-    const base = ringoBase();
-    if (base === null) {
-      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
-      return;
-    }
     // A WebSocket handshake carries the viewer's SSO cookie from ANY page
     // that opens one, and no same-origin policy stops the opener reading the
     // frames. So the handshake has to name this site as its origin, as Action
@@ -41,6 +36,11 @@ export class FleetController extends ApplicationController {
     // browser sends one on a WebSocket handshake.
     if (this.request.origin == null || this.request.origin !== this.request.baseUrl) {
       await this.render({ plain: "Page not found", status: 404 });
+      return;
+    }
+    const base = ringoBase();
+    if (base === null) {
+      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
       return;
     }
     const env = this.request.env as Record<string, unknown>;

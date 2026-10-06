@@ -186,6 +186,29 @@ expect_status "a control POST with the token from another origin" 422 \
 expect_status "a control POST with the token from this origin" 503 \
   "$(control -H "X-CSRF-Token: $token" -H "Origin: http://127.0.0.1:$port")"
 
+# THE SOCKET'S ORIGIN CHECK, as the deployment sees it. `/fleet/socket` refuses
+# a handshake whose `Origin` is not this site's base URL. Behind nginx the
+# request arrives as plain HTTP for the public HTTPS hostname, so that
+# comparison is only right if the framework builds the base URL from `Host`
+# and `X-Forwarded-Proto`. If it did not, every real handshake would be a 404
+# and the page would sit empty with nothing to say why.
+#
+# No ringo is configured here, so a handshake that PASSES the check is answered
+# 503 by the next line of the action; one that fails it is a 404.
+echo "smoke-boot: the socket accepts its own origin behind a TLS proxy, and no other"
+socket_status() {
+  curl -s -o /dev/null -w '%{http_code}' \
+    -H 'Host: trailmap.example' -H 'X-Forwarded-Proto: https' "$@" \
+    "http://127.0.0.1:$port/fleet/socket"
+}
+expect_status "a handshake from the site's own https origin" 503 \
+  "$(socket_status -H 'Origin: https://trailmap.example')"
+expect_status "a handshake from another origin" 404 \
+  "$(socket_status -H 'Origin: https://evil.example')"
+expect_status "a handshake naming the http form of the origin" 404 \
+  "$(socket_status -H 'Origin: http://trailmap.example')"
+expect_status "a handshake with no origin" 404 "$(socket_status)"
+
 # THE SECRET. A production process with no `secret_key_base` must never look
 # healthy, because a healthy answer is what lets dokku swap it in.
 #

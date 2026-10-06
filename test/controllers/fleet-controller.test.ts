@@ -151,7 +151,7 @@ describe("FleetController#socket", () => {
   });
 
   it("says ringo is not configured before it takes a connection", async () => {
-    const tc = await controllerTestCase(FleetController);
+    const tc = await controllerTestCase(FleetController, { Origin: "http://test.host" });
 
     await tc.get("socket");
 
