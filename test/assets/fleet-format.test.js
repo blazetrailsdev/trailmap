@@ -19,6 +19,7 @@ import {
   paneDot,
   paneLine,
   prRow,
+  reconnectDelay,
   pullFailLabel,
   pullFailReason,
   pullFailTitle,
@@ -262,6 +263,14 @@ describe("row", () => {
 
     expect(html).not.toContain("aside-top");
     expect(html).not.toContain('class="panes"');
+  });
+});
+
+describe("reconnectDelay", () => {
+  it("retries at once, then doubles from a second to a ceiling of thirty", () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 7, 20].map(reconnectDelay)).toEqual([
+      0, 1000, 2000, 4000, 8000, 16000, 30000, 30000, 30000,
+    ]);
   });
 });
 

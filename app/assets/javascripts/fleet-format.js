@@ -168,6 +168,20 @@ export function fixerCards(list) {
 }
 
 // ---------------------------------------------------------------------------
+// The stream
+// ---------------------------------------------------------------------------
+
+/**
+ * How long to wait before reconnect number `attempt`: nothing for the first,
+ * since a dropped socket is usually a deploy that is already back, then one
+ * second doubling to a ceiling of thirty.
+ */
+export function reconnectDelay(attempt) {
+  if (attempt <= 0) return 0;
+  return Math.min(30000, 1000 * 2 ** (attempt - 1));
+}
+
+// ---------------------------------------------------------------------------
 // Controls
 // ---------------------------------------------------------------------------
 

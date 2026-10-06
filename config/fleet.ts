@@ -46,13 +46,35 @@ export function fleetRepos(): FleetRepo[] {
 }
 
 /**
- * Where the browser opens its `EventSource`.
+ * ringo's origin as THIS PROCESS reaches it, e.g. `http://btwhooks.web:8080`
+ * on the `fleet` docker network. Null when unset, which leaves the fleet page
+ * with nothing to relay; it says so on the page, it does not guess.
  *
- * Default same-origin `/events`, which is ringo's own spelling. See
- * `docs/fleet-dashboard.md` for why the browser connects to ringo's stream
- * directly rather than trailmap proxying it, and what the deployment has to do
- * to make same-origin true.
+ * Not a URL the browser ever sees. The browser talks only to trailmap
+ * (`FLEET_SOCKET_PATH`, `FLEET_CONTROL_PATH`), which reads ringo's stream and
+ * forwards the page's controls. See `docs/fleet-dashboard.md`.
  */
-export function fleetEventsUrl(): string {
-  return env.RINGO_EVENTS_URL?.trim() || "/events";
+export function ringoBase(): string | null {
+  const base = env.RINGO_BASE?.trim().replace(/\/+$/, "");
+  return base ? base : null;
 }
+
+/** Where the fleet page opens its WebSocket. */
+export const FLEET_SOCKET_PATH = "/fleet/socket";
+
+/** The prefix the fleet page's controls post under; the rest is ringo's own path. */
+export const FLEET_CONTROL_PATH = "/fleet/control";
+
+/**
+ * ringo's control endpoints the fleet page may reach through trailmap. An
+ * allowlist, because this route forwards to a process that can merge pull
+ * requests: a path is added here when a button for it is added to the page,
+ * and not before.
+ */
+export const FLEET_CONTROLS: readonly string[] = [
+  "spawn",
+  "merge-pr",
+  "spawnloop/dismiss",
+  "spawnloop/dismiss-failed",
+  "ci-fixer/spawn",
+];

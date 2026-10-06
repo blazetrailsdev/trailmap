@@ -9,40 +9,66 @@ panes, the spawn loop, webhook ingest — and RFC 0136's non-goals keep it there
 `Tracker.ServeEvents` (`dashboard.go:2383`) is untouched, and it is still what
 fills the page in.
 
-## Where the SSE connection points
+## Where the stream comes from
 
-**The browser connects to ringo's `/events` directly.** trailmap never proxies
-it.
+**The browser talks only to trailmap. trailmap talks to ringo.**
 
-The alternative was for trailmap to proxy the stream so the page had one
-origin. It was rejected: a proxy would put trailmap on the critical path of a
-stream it does not own, so a trailmap restart would blank the page the fleet
-watches all day, and trailmap would have to hold an open connection per viewer
-for data it never reads. The stream stays Go's, end to end.
+```text
+browser --WebSocket /fleet/socket----> trailmap --GET /events (SSE)--> ringo
+browser --POST /fleet/control/<path>--> trailmap --POST /<path>-------> ringo
+```
 
-The endpoint is configuration rather than a constant, because trailmap and
-ringo are not the same process:
+The page opens a WebSocket to trailmap. `FleetController#socket` takes the
+connection from the server (`rack.hijack`), reads ringo's `/events`, and
+forwards each event's JSON as one text message, unchanged. The page's buttons
+post to `/fleet/control/<ringo's path>`, which `FleetController#control`
+forwards, answering with ringo's status and text.
 
-| variable | default | meaning |
-| --- | --- | --- |
-| `RINGO_EVENTS_URL` | `/events` | Where the page opens its `EventSource`, and the origin its one control POST (`/spawn`) is resolved against. |
+### Why trailmap is on the path after all
 
-The default is same-origin, which is correct when the SSO reverse proxy routes
-both processes under one host. That is the supported deployment.
+The first version of this page had the browser connect to ringo's `/events`
+directly, and this document argued for it: a proxy puts trailmap on the
+critical path of a stream it does not own, and holds a connection per viewer.
+That never worked in deployment, and could not be made to without changing
+ringo or weakening SSO:
 
-A cross-origin value needs more from ringo than it looks. The page opens the
-stream with `withCredentials` — it has to, or the SSO cookie does not travel
-and the request is bounced to the login page — and a credentialed CORS request
-is subject to the stricter rules: `Access-Control-Allow-Origin: *` is
-**rejected**, so the response must echo trailmap's specific origin and also
-carry `Access-Control-Allow-Credentials: true`. Get one of those wrong and the
-failure is silent: `EventSource` fires `onerror` with no detail, and the page
-sits empty with a red events dot. (This is not theory — it is exactly what
-happened the first time these were shot against a stand-in stream.)
+- ringo is another origin (`ringo.deanoftech.com`), and its stream sends no
+  CORS headers, so a page on trailmap's origin cannot read it.
+- Routing ringo's paths under trailmap's hostname in nginx would work, but the
+  SSO plugin authenticates only the main location block; a `/merge-pr` location
+  added beside it is unauthenticated unless that is proven for each one.
 
-`ServeEvents` sets no CORS headers at all today, and this story does not add
-them, since it must not touch that handler. A CORS allowance on ringo is a
-change to make in ringo, if a separate host is ever wanted.
+Relaying through trailmap needs neither. Everything the browser reaches is on
+trailmap's origin and under trailmap's authentication, including the controls,
+which also get the framework's CSRF protection.
+
+The costs the first version named are real and accepted: a trailmap restart
+drops every viewer's socket (the page reconnects, with backoff), and trailmap
+holds one upstream connection per viewer.
+
+### Why a WebSocket and not a streamed response
+
+Because of what happens when a viewer leaves. A streamed response body is
+iterated by the server and never told that its reader has gone, so each closed
+tab would leave trailmap reading ringo's stream for nobody until the process
+restarted. A hijacked socket has a `close` event, and the relay aborts its
+upstream read on it. That needs `rack.hijack`, which trails' handler offers on
+upgrade requests (trails#8566), so the page's connection is a WebSocket.
+
+It does not work under `pnpm dev`: the Vite dev server does not forward upgrade
+requests to the application yet (trails story
+`trails-dev-server-forwards-upgrade-requests-to-rack-handler`). Run in
+production mode to see the page fill in.
+
+### Configuration
+
+| variable | meaning |
+| --- | --- |
+| `RINGO_BASE` | ringo's origin as the trailmap PROCESS reaches it. In deployment, `http://btwhooks.web:8080` on the `fleet` docker network. Unset, the page says it has no fleet data. |
+
+The controls trailmap will forward are an allowlist, `FLEET_CONTROLS` in
+`config/fleet.ts`: a path is added there when a button for it is added to the
+page.
 
 ## The initial paint
 
@@ -55,4 +81,4 @@ which is `move-tracker-state-into-the-database` — not this story.
 | variable | meaning |
 | --- | --- |
 | `FLEET_REPO_PATHS` | The manual spawn control's repo list, as `owner/repo=/path/to/checkout`, comma-separated. ringo's `DashboardConfig.RepoPaths`. |
-| `RINGO_EVENTS_URL` | Above. |
+| `RINGO_BASE` | Above. |

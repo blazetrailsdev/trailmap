@@ -21,6 +21,7 @@ import {
   mainCIByRepo,
   mainCITitle,
   prRow,
+  reconnectDelay,
   pullFailLabel,
   pullFailTitle,
   repoSectionScaffold,
@@ -32,19 +33,21 @@ import {
 } from "./fleet-format.js";
 
 const config = document.getElementById("fleetConfig");
-const eventsUrl = (config && config.dataset.eventsUrl) || "/events";
+const socketPath = (config && config.dataset.socketPath) || "/fleet/socket";
+const controlPath = (config && config.dataset.controlPath) || "/fleet/control";
 
 /**
- * Where a control POST goes. The SSE URL names ringo's origin, so the one verb
- * this page offers (spawn) is addressed relative to the SAME origin rather
- * than to trailmap, which does not implement it.
+ * Where a control POST goes: trailmap, which forwards it to ringo. `path` is
+ * ringo's own (`/merge-pr`), so the buttons keep naming what they do there.
  */
 function ringoUrl(path) {
-  try {
-    return new URL(path, new URL(eventsUrl, window.location.href)).toString();
-  } catch (e) {
-    return path;
-  }
+  return controlPath + path;
+}
+
+/** The page's CSRF token, which every control POST has to carry. */
+function csrfHeaders() {
+  const token = config && config.dataset.csrfToken;
+  return token ? { "X-CSRF-Token": token } : {};
 }
 
 const byId = (id) => document.getElementById(id);
@@ -160,9 +163,14 @@ function updateAgents(agents) {
 // The stream
 // ---------------------------------------------------------------------------
 
-const source = new EventSource(eventsUrl, { withCredentials: true });
-
-source.onmessage = (event) => {
+/*
+ * A WebSocket to trailmap, which relays ringo's stream (`FleetController`).
+ * Unlike the EventSource this replaced, a WebSocket does not reconnect itself,
+ * so this does: at once after a socket that was delivering frames, backing off
+ * to thirty seconds otherwise. A trailmap deploy or a ringo restart both look
+ * like a dropped socket.
+ */
+function onFrame(event) {
   const data = JSON.parse(event.data);
   // ringo's stream still supports the legacy bare-array frame; so does this.
   const envelope = Array.isArray(data) ? { prs: data } : data;
@@ -177,17 +185,33 @@ source.onmessage = (event) => {
   updateMainCI(envelope.mainCIFailures);
   updatePullFail(envelope.pullFailures);
   updateAgents(envelope.agents);
-};
+}
 
-source.onopen = () => {
-  setDot("eventsDot", true);
-  byId("eventsPill").classList.add("ok");
-};
+function setConnected(on) {
+  setDot("eventsDot", on);
+  byId("eventsPill").classList.toggle("ok", on);
+}
 
-source.onerror = () => {
-  setDot("eventsDot", false);
-  byId("eventsPill").classList.remove("ok");
-};
+function connect(attempt) {
+  const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const socket = new WebSocket(scheme + "//" + window.location.host + socketPath);
+  // The backoff resets on the first FRAME, not on open: with ringo down,
+  // trailmap accepts the socket and closes it at once, and resetting on open
+  // would turn that into a reconnect loop with no delay in it.
+  let received = false;
+  socket.onopen = () => setConnected(true);
+  socket.onmessage = (event) => {
+    received = true;
+    onFrame(event);
+  };
+  socket.onclose = () => {
+    setConnected(false);
+    const next = received ? 0 : attempt + 1;
+    setTimeout(() => connect(next), reconnectDelay(next));
+  };
+}
+
+connect(0);
 
 // ---------------------------------------------------------------------------
 // Manual spawn -- the one control this page carries, and the reason the repo
@@ -206,8 +230,8 @@ byId("spawn").addEventListener("click", async () => {
   try {
     const response = await fetch(ringoUrl("/spawn"), {
       method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", ...csrfHeaders() },
       body: JSON.stringify({ repoDir: byId("repo").value, message }),
     });
     const text = await response.text();
@@ -240,10 +264,12 @@ document.addEventListener("click", async (event) => {
   try {
     const response = await fetch(ringoUrl(request.path), {
       method: "POST",
-      credentials: "include",
-      ...(request.body === null
-        ? {}
-        : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(request.body) }),
+      credentials: "same-origin",
+      headers: {
+        ...csrfHeaders(),
+        ...(request.body === null ? {} : { "Content-Type": "application/json" }),
+      },
+      ...(request.body === null ? {} : { body: JSON.stringify(request.body) }),
     });
     const text = (await response.text()).trim();
     result = { ok: response.ok, text: text || (response.ok ? "" : response.statusText) };
