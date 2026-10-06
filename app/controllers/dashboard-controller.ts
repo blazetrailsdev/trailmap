@@ -1,5 +1,10 @@
 import { ApplicationController } from "./application-controller.js";
-import { fleetEventsUrl, fleetRepos } from "../../config/fleet.js";
+import {
+  FLEET_CONTROL_PATH,
+  FLEET_SOCKET_PATH,
+  fleetRepos,
+  ringoBase,
+} from "../../config/fleet.js";
 
 /**
  * `/dashboard` — the fleet dashboard, ported from ringo's `/`.
@@ -17,7 +22,17 @@ import { fleetEventsUrl, fleetRepos } from "../../config/fleet.js";
 export class DashboardController extends ApplicationController {
   async index(): Promise<void> {
     await this.render({
-      locals: { repos: fleetRepos(), eventsUrl: fleetEventsUrl() },
+      locals: {
+        repos: fleetRepos(),
+        socketPath: FLEET_SOCKET_PATH,
+        controlPath: FLEET_CONTROL_PATH,
+        relayConfigured: ringoBase() !== null,
+        // The page's controls POST with this. Rails would put it in the
+        // layout with `csrf_meta_tags`; trails has not ported that helper
+        // (story `port-action-view-csrf-helper`), so the one page that posts
+        // is handed the token the controller already exposes.
+        csrfToken: this.formAuthenticityToken(),
+      },
     });
   }
 }

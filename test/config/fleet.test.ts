@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { fleetEventsUrl, fleetRepos } from "../../config/fleet.js";
+import { FLEET_CONTROLS, fleetRepos, ringoBase } from "../../config/fleet.js";
 
 /**
  * The dashboard's two configured pieces, unit-tested rather than only through
@@ -9,7 +9,7 @@ import { fleetEventsUrl, fleetRepos } from "../../config/fleet.js";
  */
 afterEach(() => {
   setEnv("FLEET_REPO_PATHS", undefined);
-  setEnv("RINGO_EVENTS_URL", undefined);
+  setEnv("RINGO_BASE", undefined);
 });
 
 describe("fleetRepos", () => {
@@ -61,22 +61,29 @@ describe("fleetRepos", () => {
   });
 });
 
-describe("fleetEventsUrl", () => {
-  it("defaults to same-origin /events, as ringo spells it", () => {
-    expect(fleetEventsUrl()).toBe("/events");
+describe("ringoBase", () => {
+  it("is null when the deployment names no ringo", () => {
+    expect(ringoBase()).toBeNull();
+
+    setEnv("RINGO_BASE", "   ");
+    expect(ringoBase()).toBeNull();
   });
 
-  it("takes an absolute ringo origin", () => {
-    setEnv("RINGO_EVENTS_URL", "https://ringo.example.com/events");
+  it("is ringo's origin, trimmed and without a trailing slash", () => {
+    setEnv("RINGO_BASE", "  http://btwhooks.web:8080/  ");
 
-    expect(fleetEventsUrl()).toBe("https://ringo.example.com/events");
+    expect(ringoBase()).toBe("http://btwhooks.web:8080");
   });
+});
 
-  it("trims, and falls back rather than yielding an empty endpoint", () => {
-    setEnv("RINGO_EVENTS_URL", "  https://ringo.example.com/events  ");
-    expect(fleetEventsUrl()).toBe("https://ringo.example.com/events");
-
-    setEnv("RINGO_EVENTS_URL", "   ");
-    expect(fleetEventsUrl()).toBe("/events");
+describe("FLEET_CONTROLS", () => {
+  it("lists exactly the endpoints the page has a button for", () => {
+    expect([...FLEET_CONTROLS].sort()).toEqual([
+      "ci-fixer/spawn",
+      "merge-pr",
+      "spawn",
+      "spawnloop/dismiss",
+      "spawnloop/dismiss-failed",
+    ]);
   });
 });

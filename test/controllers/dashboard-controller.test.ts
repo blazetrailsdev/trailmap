@@ -52,17 +52,30 @@ describe("DashboardController", () => {
     expect(body).not.toContain("--green-bg");
   });
 
-  it("points the stream at ringo, from configuration", async () => {
-    setEnv("RINGO_EVENTS_URL", "https://ringo.example.com/events");
-    try {
-      expect(await index()).toContain('data-events-url="https://ringo.example.com/events"');
-    } finally {
-      setEnv("RINGO_EVENTS_URL", undefined);
-    }
+  it("points the page at trailmap for both its stream and its controls", async () => {
+    const body = await index();
+
+    expect(body).toContain('data-socket-path="/fleet/socket"');
+    expect(body).toContain('data-control-path="/fleet/control"');
+    expect(body).not.toContain("ringo.example.com");
   });
 
-  it("defaults the stream to same-origin /events, as ringo spells it", async () => {
-    expect(await index()).toContain('data-events-url="/events"');
+  it("hands the page a CSRF token for its control POSTs", async () => {
+    expect(await index()).toMatch(/data-csrf-token="[^"]{20,}"/);
+  });
+
+  it("says so on the page when no ringo is configured, and not otherwise", async () => {
+    expect(await index()).toContain("No fleet data");
+
+    setEnv("RINGO_BASE", "http://btwhooks.web:8080");
+    try {
+      const body = await index();
+
+      expect(body).not.toContain("No fleet data");
+      expect(body).not.toContain("btwhooks.web");
+    } finally {
+      setEnv("RINGO_BASE", undefined);
+    }
   });
 
   it("renders the repo options from configuration, sorted by name", async () => {

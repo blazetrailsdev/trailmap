@@ -53,6 +53,16 @@ dokku config:set --no-restart trailmap NODE_ENV=production \
 # release. Generate it once; changing it later
 # invalidates signed cookies.
 dokku config:set --no-restart trailmap SECRET_KEY_BASE="$(openssl rand -hex 64)"
+
+# The fleet page's data. trailmap relays ringo's event stream and forwards the
+# page's controls, so the trailmap CONTAINER has to reach ringo's. They share a
+# docker network for that, on which each is addressable by name whatever its
+# container IP is this deploy. Without RINGO_BASE the fleet page loads and
+# says it has no fleet data; nothing else is affected.
+dokku network:create fleet
+dokku network:set trailmap attach-post-deploy fleet
+dokku network:set btwhooks attach-post-deploy fleet   # then restart btwhooks once
+dokku config:set --no-restart trailmap RINGO_BASE=http://btwhooks.web:8080
 dokku sso:protect trailmap
 ```
 

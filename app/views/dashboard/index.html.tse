@@ -1,7 +1,7 @@
-<!-- The SSE endpoint is configuration, not a constant: trailmap is a separate
-     origin from the Go process that owns the stream. It rides on an element
-     rather than an inline <script> so the page needs no inline JavaScript. -->
-<div id="fleetConfig" hidden data-events-url="<%= eventsUrl %>"></div>
+<!-- Where the page reaches ringo, which is always through trailmap: a
+     WebSocket for the event stream and a prefix for the controls. On an element
+     rather than in an inline <script> so the page needs no inline JavaScript. -->
+<div id="fleetConfig" hidden data-socket-path="<%= socketPath %>" data-control-path="<%= controlPath %>" data-csrf-token="<%= csrfToken %>"></div>
 
 <div class="page-header">
   <h1 class="page-title">Fleet</h1>
@@ -9,6 +9,13 @@
     <span class="muted">Open PRs, panes, spawns and CI, live from ringo.</span>
   </div>
 </div>
+
+<% if (!relayConfigured) { %>
+  <div class="card ci-fixer paused">
+    <div class="card-head"><span class="card-title">No fleet data</span></div>
+    <div class="field-note">This deployment has no <code>RINGO_BASE</code>, so trailmap has no ringo to relay. See docs/fleet-dashboard.md.</div>
+  </div>
+<% } %>
 
 <div class="status-group" title="Connection status">
   <span class="pill" id="eventsPill" title="Dashboard event stream"><span class="connected off" id="eventsDot"></span><span class="ico">&#128225;</span><span class="label">events</span></span>

@@ -21,6 +21,8 @@ Trails.application!.routes().draw(function () {
   // moving trailmap's own landing page out from under `/` before then would
   // change two things in one step.
   this.get("dashboard", { to: "dashboard#index" });
+  this.get("fleet/socket", { to: "fleet#socket" });
+  this.post("fleet/control/*path", { to: "fleet#control" });
 
   // The list pages. Plural, and they come BEFORE the singular show routes only
   // by convention — the patterns cannot collide. The status/filter tab is a
