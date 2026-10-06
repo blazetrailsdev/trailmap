@@ -24,7 +24,16 @@ describe("sseData", () => {
     });
   });
 
-  it("reads CRLF framing", () => {
+  it("reads CRLF and bare-CR framing", () => {
     expect(sseData("data: x\r\n\r\n").data).toEqual(["x"]);
+    expect(sseData("data: y\r\rdata: z\r\rdata: w").data).toEqual(["y", "z"]);
+  });
+
+  it("holds a trailing CR until the next chunk says whether it is half of a CRLF", () => {
+    const first = sseData("data: x\r\n\r");
+    const second = sseData(first.rest + "\ndata: y\r\n\r\n");
+
+    expect(first).toEqual({ data: [], rest: "data: x\n\r" });
+    expect(second.data).toEqual(["x", "y"]);
   });
 });

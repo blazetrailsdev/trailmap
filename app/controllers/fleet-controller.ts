@@ -3,6 +3,12 @@ import { FLEET_CONTROLS, ringoBase } from "../../config/fleet.js";
 import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.js";
 
 /**
+ * How long ringo has to answer a control. A merge waits on GitHub, so this is
+ * generous; without it a hung ringo holds the request, and the button, forever.
+ */
+export const CONTROL_TIMEOUT_MS = 30_000;
+
+/**
  * The fleet page's two lines to ringo, both through trailmap.
  *
  * ringo is another origin behind the same SSO, and neither its event stream
@@ -27,6 +33,16 @@ export class FleetController extends ApplicationController {
       await this.render({ plain: "RINGO_BASE is not set", status: 503 });
       return;
     }
+    // A WebSocket handshake carries the viewer's SSO cookie from ANY page
+    // that opens one, and no same-origin policy stops the opener reading the
+    // frames. So the handshake has to name this site as its origin, as Action
+    // Cable requires of its own (`connection/base.rb`, `allow_request_origin?`,
+    // which also answers 404). A missing `Origin` is refused too: every
+    // browser sends one on a WebSocket handshake.
+    if (this.request.origin == null || this.request.origin !== this.request.baseUrl) {
+      await this.render({ plain: "Page not found", status: 404 });
+      return;
+    }
     const env = this.request.env as Record<string, unknown>;
     const hijack = env["rack.hijack"];
     const request = {
@@ -48,8 +64,10 @@ export class FleetController extends ApplicationController {
    * shows.
    *
    * A state-changing request made with the viewer's SSO cookie, so it must
-   * come from this page: the framework's forgery protection requires the
-   * page's CSRF token (and a matching `Origin`) before this action runs.
+   * come from this page. The framework's forgery protection sees to that
+   * before this action runs: `config/application.ts` loads the 8.0 defaults,
+   * which turn `default_protect_from_forgery` on for every controller, so a
+   * POST needs the page's CSRF token and an `Origin` that matches.
    */
   async control(): Promise<void> {
     const base = ringoBase();
@@ -68,11 +86,17 @@ export class FleetController extends ApplicationController {
     try {
       const response = await fetch(`${base}/${path}`, {
         method: "POST",
+        signal: AbortSignal.timeout(CONTROL_TIMEOUT_MS),
         ...(body === "" ? {} : { body }),
         ...(contentType ? { headers: { "content-type": String(contentType) } } : {}),
       });
       await this.render({ plain: await response.text(), status: response.status });
     } catch (error) {
+      if (error instanceof Error && error.name === "TimeoutError") {
+        const seconds = CONTROL_TIMEOUT_MS / 1000;
+        await this.render({ plain: `ringo did not answer in ${seconds}s`, status: 504 });
+        return;
+      }
       const reason = error instanceof Error ? error.message : String(error);
       await this.render({ plain: `ringo is unreachable: ${reason}`, status: 502 });
     }

@@ -1,6 +1,10 @@
 /**
  * `FleetController`: the control proxy against a stand-in ringo, and the socket
- * endpoint's refusals. The relay behind a successful handshake is tested over a
+ * endpoint's refusals.
+ *
+ * NOT here: forgery protection on the control route. Controller tests run with
+ * it off, and it is switched on by the application's boot, which a test cannot
+ * do in-process. `scripts/smoke-boot.sh` asserts it against a production boot. The relay behind a successful handshake is tested over a
  * real socket in `test/lib/fleet-relay.test.ts`; a controller test case has no
  * connection to hijack.
  */
@@ -118,9 +122,28 @@ describe("FleetController#control", () => {
 });
 
 describe("FleetController#socket", () => {
-  it("refuses a request that is not a WebSocket handshake", async () => {
+  it("refuses a handshake from another origin, as Action Cable does, before reaching ringo", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    const tc = await controllerTestCase(FleetController, { Origin: "https://evil.example" });
+
+    await tc.get("socket");
+
+    expect(tc.response.status).toBe(404);
+    expect(received).toEqual([]);
+  });
+
+  it("refuses a handshake that names no origin at all", async () => {
     setEnv("RINGO_BASE", ringoBaseUrl);
     const tc = await controllerTestCase(FleetController);
+
+    await tc.get("socket");
+
+    expect(tc.response.status).toBe(404);
+  });
+
+  it("refuses a same-origin request that is not a WebSocket handshake", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    const tc = await controllerTestCase(FleetController, { Origin: "http://test.host" });
 
     await tc.get("socket");
 

@@ -19,6 +19,7 @@ declare module "websocket-driver" {
     start(): boolean;
     parse(chunk: Uint8Array): void;
     text(message: string): boolean;
+    ping(message?: string): boolean;
     close(reason?: string, code?: number): boolean;
   }
 

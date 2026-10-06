@@ -152,6 +152,40 @@ if ! grep -q "TASKS_DATABASE is not set" "$work/no-database-boot.log"; then
   exit 1
 fi
 
+# FORGERY PROTECTION on the fleet page's controls. `/fleet/control/*` forwards
+# to ringo, which can merge pull requests, with nothing but the viewer's
+# session to say who is asking. What stops another site posting to it is the
+# framework's forgery protection, switched on at boot by the 8.0 defaults
+# (`config/application.ts`). That switch is not something a controller test can
+# see, so it is asserted here, on the boot the deployment runs.
+#
+# No ringo is configured in this boot, so a request that gets PAST the
+# protection is answered 503 by the action itself; one that does not is a 422.
+echo "smoke-boot: a control POST without the page's token must be refused"
+jar="$work/cookies"
+curl -fsS -c "$jar" "http://127.0.0.1:$port/dashboard" > "$work/dashboard.html"
+token="$({ grep -oE 'data-csrf-token="[^"]+"' "$work/dashboard.html" || true; } | cut -d'"' -f2)"
+if [ -z "$token" ]; then
+  echo "smoke-boot: /dashboard carries no CSRF token for its controls" >&2
+  exit 1
+fi
+control() {
+  curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X POST \
+    -H 'Content-Type: application/json' -d '{}' "$@" \
+    "http://127.0.0.1:$port/fleet/control/merge-pr"
+}
+expect_status() {
+  if [ "$2" != "$3" ]; then
+    echo "smoke-boot: $1: expected $2, got $3" >&2
+    exit 1
+  fi
+}
+expect_status "a control POST with no token" 422 "$(control)"
+expect_status "a control POST with the token from another origin" 422 \
+  "$(control -H "X-CSRF-Token: $token" -H 'Origin: https://evil.example')"
+expect_status "a control POST with the token from this origin" 503 \
+  "$(control -H "X-CSRF-Token: $token" -H "Origin: http://127.0.0.1:$port")"
+
 # THE SECRET. A production process with no `secret_key_base` must never look
 # healthy, because a healthy answer is what lets dokku swap it in.
 #

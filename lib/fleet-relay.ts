@@ -3,13 +3,27 @@ import { sseData } from "./sse.js";
 
 /** The hijacked connection, as the framework's handler hands it over. */
 export interface RelaySocket {
+  /** False when the chunk was queued because the peer is not keeping up. */
   write(chunk: string | Uint8Array): unknown;
   end(): unknown;
   destroy(): unknown;
   on(event: "data", listener: (chunk: Uint8Array) => void): unknown;
-  on(event: "close" | "end", listener: () => void): unknown;
+  on(event: "close" | "end" | "drain", listener: () => void): unknown;
   on(event: "error", listener: (error: Error) => void): unknown;
 }
+
+/**
+ * How often the relay pings the browser. Under nginx's 60 s read timeout, so
+ * a fleet with nothing to report does not cost the page its connection once a
+ * minute.
+ */
+export const PING_INTERVAL_MS = 25_000;
+
+/** How long the browser has to answer a close frame before the socket is ended. */
+export const CLOSE_GRACE_MS = 5_000;
+
+/** How long ringo has to answer the stream request with headers. */
+export const UPSTREAM_CONNECT_TIMEOUT_MS = 10_000;
 
 /** Whether a request is a WebSocket handshake this relay can answer. */
 export function isWebSocketRequest(request: DriverRequest): boolean {
@@ -42,14 +56,37 @@ export function relayEvents(
   const driver = websocket.http(request);
   const upstream = new AbortController();
   let closed = false;
+  let keepalive: ReturnType<typeof setInterval> | null = null;
   const finish = (): void => {
     if (closed) return;
     closed = true;
+    if (keepalive !== null) clearInterval(keepalive);
     upstream.abort();
     socket.end();
   };
 
-  driver.io.on("data", (chunk) => socket.write(chunk));
+  // A viewer on a slow link must not make this process buffer for them. Every
+  // frame from ringo is a whole snapshot that replaces the last, so while the
+  // socket is backed up only the NEWEST frame is kept, and it goes out when
+  // the socket drains.
+  let congested = false;
+  let latest: string | null = null;
+  driver.io.on("data", (chunk) => {
+    if (socket.write(chunk) === false) congested = true;
+  });
+  socket.on("drain", () => {
+    congested = false;
+    if (latest !== null && !closed) {
+      const frame = latest;
+      latest = null;
+      driver.text(frame);
+    }
+  });
+  const forward = (frame: string): void => {
+    if (congested) latest = frame;
+    else driver.text(frame);
+  };
+
   socket.on("data", (chunk) => driver.parse(chunk));
   socket.on("close", finish);
   socket.on("end", finish);
@@ -60,8 +97,13 @@ export function relayEvents(
   driver.on("close", finish);
   driver.on("error", finish);
   driver.on("open", () => {
-    void pump(driver, eventsUrl, upstream.signal, fetchEvents).finally(() => {
-      if (!closed) driver.close("upstream ended", 1012);
+    keepalive = setInterval(() => driver.ping(), PING_INTERVAL_MS);
+    void pump(forward, eventsUrl, upstream, fetchEvents).finally(() => {
+      if (closed) return;
+      // A close handshake, so the page sees 1012 and reconnects. A browser
+      // answers it at once; one that does not is hung up on.
+      driver.close("upstream ended", 1012);
+      setTimeout(finish, CLOSE_GRACE_MS);
     });
   });
   // The request is already parsed, so there is no `connect` to wait for:
@@ -70,16 +112,20 @@ export function relayEvents(
 }
 
 async function pump(
-  driver: { text(message: string): boolean },
+  forward: (frame: string) => void,
   eventsUrl: string,
-  signal: AbortSignal,
+  upstream: AbortController,
   fetchEvents: typeof fetch,
 ): Promise<void> {
+  // The timeout is on ringo ANSWERING, not on the stream, which is meant to
+  // stay open: it is cleared as soon as the response headers are in.
+  const connecting = setTimeout(() => upstream.abort(), UPSTREAM_CONNECT_TIMEOUT_MS);
   try {
     const response = await fetchEvents(eventsUrl, {
-      signal,
+      signal: upstream.signal,
       headers: { accept: "text/event-stream" },
     });
+    clearTimeout(connecting);
     if (!response.ok || response.body === null) return;
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -89,10 +135,13 @@ async function pump(
       if (done) return;
       const { data, rest } = sseData(pending + decoder.decode(value, { stream: true }));
       pending = rest;
-      for (const message of data) driver.text(message);
+      for (const message of data) forward(message);
     }
   } catch {
-    // Aborted because the browser left, or ringo is unreachable. Either way
-    // there is nothing to forward, and the caller closes the socket.
+    // Aborted because the browser left or ringo never answered, or ringo is
+    // unreachable. Either way there is nothing to forward, and the caller
+    // closes the socket.
+  } finally {
+    clearTimeout(connecting);
   }
 }
