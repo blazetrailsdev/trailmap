@@ -96,17 +96,17 @@ for asset in $assets; do
   curl -fsS -o /dev/null "http://127.0.0.1:$port$asset"
 done
 
-# EVERY built asset, byte for byte. A 200 is not the file: the framework served
-# any static file holding a non-ASCII byte re-encoded and cut off at the
-# original length (trails story
-# `static-files-with-non-ascii-bytes-are-served-corrupted-and-truncated`), and
-# the fleet page's script answered 200 for days while failing to parse. Every
-# file, not only the linked ones: `fleet-format.js` is reached by an `import`
-# inside `dashboard.js`, which no page links.
+# EVERY built asset, byte for byte. A 200 is not the file: the framework once
+# served any static file holding a non-ASCII byte re-encoded and cut off at the
+# original length, and the fleet page's script answered 200 for days while
+# failing to parse. Fixed in trails#8634 and vendored. Every file, not only the
+# linked ones: `fleet-format.js` is reached by an `import` inside
+# `dashboard.js`, which no page links.
 #
-# Until that story is vendored this is also what keeps the assets ASCII: a
-# stray em dash in a comment fails here, before it reaches the deployment.
-# Once it is, nothing here needs to change.
+# The assets hold non-ASCII characters on purpose (the pane dots, an em dash,
+# the worker emoji), so this is a test of the framework and not of the files:
+# were they pure ASCII it would pass over the bug it exists to catch. The
+# check below fails if that ever becomes true again.
 echo "smoke-boot: every built asset arrives intact"
 checked=0
 while IFS= read -r file; do
@@ -122,6 +122,11 @@ while IFS= read -r file; do
 done < <(find public/assets -type f ! -name '.gitkeep' | sort)
 if [ "$checked" -eq 0 ]; then
   echo "smoke-boot: no built asset to check, so this check is testing nothing" >&2
+  exit 1
+fi
+if ! LC_ALL=C grep -rq $'[\x80-\xff]' public/assets; then
+  echo "smoke-boot: no built asset holds a non-ASCII byte, so a server that" >&2
+  echo "  corrupts them would pass the comparison above" >&2
   exit 1
 fi
 echo "smoke-boot: $checked assets intact"

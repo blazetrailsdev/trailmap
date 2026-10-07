@@ -118,7 +118,7 @@ function updateMainCI(failures) {
     }
     pill.innerHTML =
       '<span class="connected on" style="background:var(--red)"></span>' +
-      '<span class="ico">\u{1F3D7}\uFE0F</span><span class="label"></span>';
+      '<span class="ico">🏗️</span><span class="label"></span>';
     pill.querySelector(".label").textContent = group.repo + " CI: " + group.items.length;
     host.appendChild(pill);
   });
@@ -149,7 +149,7 @@ function updateAgents(agents) {
       pill.className = "pill";
       pill.id = "agentPill-" + a.name;
       pill.innerHTML = '<span class="connected off"></span><span class="ico"></span><span class="label"></span>';
-      pill.querySelector(".ico").textContent = a.icon || "\u{1F3BC}";
+      pill.querySelector(".ico").textContent = a.icon || "🎼";
       pill.querySelector(".label").textContent = a.name;
       host.appendChild(pill);
     }
