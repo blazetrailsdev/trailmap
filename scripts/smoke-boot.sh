@@ -124,7 +124,7 @@ if [ "$checked" -eq 0 ]; then
   echo "smoke-boot: no built asset to check, so this check is testing nothing" >&2
   exit 1
 fi
-if ! LC_ALL=C grep -rqP '[^\x00-\x7F]' public/assets; then
+if ! LC_ALL=C grep -rq $'[\x80-\xff]' public/assets; then
   echo "smoke-boot: no built asset holds a non-ASCII byte, so a server that" >&2
   echo "  corrupts them would pass the comparison above" >&2
   exit 1
