@@ -20,9 +20,7 @@ import { ApplicationController } from "./application-controller.js";
  */
 export class HealthController extends ApplicationController {
   static {
-    this.rescueFrom(Error, function (this: HealthController) {
-      return this.renderDown();
-    });
+    this.rescueFrom(Error, { with: "renderDown" });
   }
 
   async show(): Promise<void> {
