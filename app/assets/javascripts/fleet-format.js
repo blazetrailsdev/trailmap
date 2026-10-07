@@ -43,18 +43,18 @@ export function statusClass(next) {
  * them. Colours are the shell's tokens, not ringo's literal hexes.
  */
 const PANE_DOTS = {
-  working: ["var(--green)", "\u25CF", "working"],
-  waiting: ["var(--yellow)", "\u25CF", "waiting for an answer"],
-  error: ["var(--red)", "\u25CF", "API error (5xx / stuck retry)"],
-  limit: ["var(--purple)", "\u25D1", "hit its session/usage limit \u2014 stopped until the quota resets"],
+  working: ["var(--green)", "●", "working"],
+  waiting: ["var(--yellow)", "●", "waiting for an answer"],
+  error: ["var(--red)", "●", "API error (5xx / stuck retry)"],
+  limit: ["var(--purple)", "◑", "hit its session/usage limit — stopped until the quota resets"],
 };
 
 export function paneDot(status) {
-  const [color, glyph, title] = PANE_DOTS[status] || ["var(--muted)", "\u25CB", "idle"];
+  const [color, glyph, title] = PANE_DOTS[status] || ["var(--muted)", "○", "idle"];
   return ' <span style="color:' + color + '" title="' + title + '">' + glyph + "</span>";
 }
 
-export const WORK_EMOJI = "\u{1F4AA}";
+export const WORK_EMOJI = "💪";
 
 /** One row of the compact pane mini-table; '' when there is no pane. */
 export function paneLine(label, pane, status) {
@@ -99,7 +99,7 @@ export function fixerPhase(f) {
 }
 
 export function fixerSummary(list) {
-  if (list.some((f) => f.paused)) return "spawn loop paused \u2014 waiting on main to recover";
+  if (list.some((f) => f.paused)) return "spawn loop paused — waiting on main to recover";
   return list.length === 1 ? "main is red" : list.length + " repos red";
 }
 
@@ -252,7 +252,7 @@ export function controlRequest(action, data) {
         path: "/ci-fixer/spawn",
         body: { owner: data.owner, repo: data.repo },
         confirm: "Discard the tracked fixer story and spawn a fresh fixer for " + repo + "?",
-        busy: "spawning\u2026",
+        busy: "spawning…",
         done: "spawned",
         failureAlert: (text) => "Respawn failed: " + text,
         errorAlert: (message) => "Respawn failed: " + message,
@@ -579,7 +579,7 @@ export function mainCITitle({ repo, items }, now = Date.now()) {
   return (
     repo + " main CI failing:\n" +
     items
-      .map((f) => f.check + " \u00B7 " + (f.sha || "").slice(0, 7) + (f.time ? " \u00B7 " + timeAgo(f.time, now) : ""))
+      .map((f) => f.check + " · " + (f.sha || "").slice(0, 7) + (f.time ? " · " + timeAgo(f.time, now) : ""))
       .join("\n")
   );
 }
@@ -593,7 +593,7 @@ export function pullFailReason(err) {
   const e = String(err || "").toLowerCase();
   if (/unstaged changes|cannot pull with rebase|would be overwritten|commit or stash|local changes/.test(e))
     return "local edits block pull";
-  if (/non-fast-forward|not possible to fast-forward|diverg/.test(e)) return "diverged \u2014 needs manual merge";
+  if (/non-fast-forward|not possible to fast-forward|diverg/.test(e)) return "diverged — needs manual merge";
   if (/could not read username|authentication failed|permission denied|cannot run ssh|host key/.test(e))
     return "auth/network error";
   if (/conflict/.test(e)) return "merge conflict";
@@ -606,7 +606,7 @@ export const pullFailLabel = (failures) =>
 export const pullFailTitle = (failures) =>
   failures
     .map((f) =>
-      f.owner + "/" + f.repo + " \u2014 " + pullFailReason(f.error) + "\n  " +
+      f.owner + "/" + f.repo + " — " + pullFailReason(f.error) + "\n  " +
       String(f.error || "git pull failed").replace(/\n/g, "\n  "),
     )
     .join("\n");
