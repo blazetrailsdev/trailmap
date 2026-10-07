@@ -44,10 +44,13 @@ function ringoUrl(path) {
   return controlPath + path;
 }
 
-/** The page's CSRF token, which every control POST has to carry. */
+/**
+ * The page's CSRF token, which every control POST has to carry. From the
+ * layout's `csrf_meta_tags`, where Rails' own scripts read it.
+ */
 function csrfHeaders() {
-  const token = config && config.dataset.csrfToken;
-  return token ? { "X-CSRF-Token": token } : {};
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? { "X-CSRF-Token": meta.content } : {};
 }
 
 const byId = (id) => document.getElementById(id);

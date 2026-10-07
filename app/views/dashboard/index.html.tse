@@ -1,7 +1,7 @@
 <!-- Where the page reaches ringo, which is always through trailmap: a
      WebSocket for the event stream and a prefix for the controls. On an element
      rather than in an inline <script> so the page needs no inline JavaScript. -->
-<div id="fleetConfig" hidden data-socket-path="<%= socketPath %>" data-control-path="<%= controlPath %>" data-csrf-token="<%= csrfToken %>"></div>
+<div id="fleetConfig" hidden data-socket-path="<%= socketPath %>" data-control-path="<%= controlPath %>"></div>
 
 <div class="page-header">
   <h1 class="page-title">Fleet</h1>
