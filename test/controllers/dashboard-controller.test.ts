@@ -60,8 +60,12 @@ describe("DashboardController", () => {
     expect(body).not.toContain("ringo.example.com");
   });
 
-  it("hands the page a CSRF token for its control POSTs", async () => {
-    expect(await index()).toMatch(/data-csrf-token="[^"]{20,}"/);
+  // The token itself is the layout's `csrf_meta_tags`, which render only with
+  // forgery protection on, and a controller test runs with it off. So the tag
+  // and the token are asserted by `scripts/smoke-boot.sh`, on a production
+  // boot; here, only that the page no longer carries its own copy.
+  it("does not hand the page a CSRF token of its own", async () => {
+    expect(await index()).not.toContain("data-csrf-token");
   });
 
   it("says so on the page when no ringo is configured, and not otherwise", async () => {

@@ -169,7 +169,7 @@ fi
 echo "smoke-boot: a control POST without the page's token must be refused"
 jar="$work/cookies"
 curl -fsS -c "$jar" "http://127.0.0.1:$port/dashboard" > "$work/dashboard.html"
-token="$({ grep -oE 'data-csrf-token="[^"]+"' "$work/dashboard.html" || true; } | cut -d'"' -f2)"
+token="$({ grep -oE '<meta name="csrf-token" content="[^"]+"' "$work/dashboard.html" || true; } | cut -d'"' -f4)"
 if [ -z "$token" ]; then
   echo "smoke-boot: /dashboard carries no CSRF token for its controls" >&2
   exit 1
