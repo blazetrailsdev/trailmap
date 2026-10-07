@@ -45,6 +45,8 @@ Trails.application!.routes().draw(function () {
   // `/stories/ready` is a perfectly good story id as far as the pattern is
   // concerned.
   this.get("stories/ready", { to: "stories#ready" });
+  // `next_bundle`, not `nextBundle`: an action name is Rails' underscored form
+  // of the controller method, here and in every `to:` below. See CLAUDE.md.
   this.get("stories/next-bundle", { to: "stories#next_bundle" });
   this.get("stories/touching", { to: "stories#touching" });
   this.get("stories", { to: "stories#index" });

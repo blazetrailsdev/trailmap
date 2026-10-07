@@ -46,7 +46,14 @@ Two things follow:
 
 ## Conventions
 
-- camelCase, everywhere. No `snake_case` identifiers.
+- camelCase, everywhere. No `snake_case` identifiers. One thing that looks
+  like an exception and is not: an ACTION NAME is a string, and it is Rails'
+  underscored form of the method. `nextBundle()` on the controller is the
+  action `next_bundle`, so `config/routes.ts` says `to: "stories#next_bundle"`
+  and a controller test says `tc.get("next_bundle")`. The framework derives it
+  (`AbstractController.actionMethods` underscores each method name, as Rails'
+  `action_methods` lists them), so the camelCase spelling in either place is
+  "The action 'nextBundle' could not be found". Do not "fix" them back.
 - **`app/views/` directories are kebab-case, like everything else**:
   `RfcPagesController` renders `app/views/rfc-pages/show` with no `template:`
   argument. Never add one. The spelling comes from
