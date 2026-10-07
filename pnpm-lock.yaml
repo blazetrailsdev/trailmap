@@ -82,7 +82,7 @@ importers:
 packages:
 
   '@blazetrails/actionpack@file:vendor/blazetrails-actionpack-0.1.0.tgz':
-    resolution: {integrity: sha512-W5VoSCnfqBH0RdzGQKMSg/czP1FIRkbSMO988W+quKjdLIJGTrO1ZB8qB6Bd+mGMiB4qF7PSuf9SPr1a8xKp+g==, tarball: file:vendor/blazetrails-actionpack-0.1.0.tgz}
+    resolution: {integrity: sha512-LNtAMi4Ao5tAWr4V/lctcrszKkyAE6YJBQNhhD206CDpphfZUNRQqbFDrtqXX7FEnWpbuc7ki8EUM4SW/vK3eQ==, tarball: file:vendor/blazetrails-actionpack-0.1.0.tgz}
     version: 0.1.0
     peerDependencies:
       playwright: '>=1.40.0'
@@ -91,15 +91,15 @@ packages:
         optional: true
 
   '@blazetrails/actionview@file:vendor/blazetrails-actionview-0.1.0.tgz':
-    resolution: {integrity: sha512-yKwG4HAhaR9gwd0PTNpYRHUT66v1dgBKvmrK7pYWoh5ueeIkLVbfQUeyKqbcwfEKv7WSqa4cI355qJB4t46h4w==, tarball: file:vendor/blazetrails-actionview-0.1.0.tgz}
+    resolution: {integrity: sha512-G0kjUwyPdY5JE7/UdZG1aVcV/OnMUAygdVaehyXOqDT8LFqx7U7Yhy2HA8PrL1yCT1f7xUo+ISGTuIYSVt33Ng==, tarball: file:vendor/blazetrails-actionview-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/activemodel@file:vendor/blazetrails-activemodel-0.1.0.tgz':
-    resolution: {integrity: sha512-MyIDS0WUhWLrrHUS6swLQtCCFmUlnm4DlmjWn2bgul+hYaVkjDYmArGaSzi09CxEj2exvMbFo2nYHqktXLRgzw==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
+    resolution: {integrity: sha512-uJhDclqT7BTlf53tHbwCsIOYnamsgy1Y36awafAddHuSy2n9VTE5hR0jw7Mm6dZ5ZGp6W3tHZho0R+oGvymTPg==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/activerecord@file:vendor/blazetrails-activerecord-0.1.0.tgz':
-    resolution: {integrity: sha512-czHsRXfZCIFPk3PSIcxIEU4cKcsyNBPvb4hZf/ZJ8HdzkwU4Haa1po8C7SDFaycsc6pGaDJtzwMDKr7KJS78pQ==, tarball: file:vendor/blazetrails-activerecord-0.1.0.tgz}
+    resolution: {integrity: sha512-yUmUwO/Ibwy7E2Te7qfyiLq/YwfjmTGzYxs/r1v5tyFX/isA/2EHHqVtVJH+NHm14iPymZ70sjnahAFkbWsqhA==, tarball: file:vendor/blazetrails-activerecord-0.1.0.tgz}
     version: 0.1.0
     peerDependencies:
       better-sqlite3: ^12.6.2
@@ -123,7 +123,7 @@ packages:
         optional: true
 
   '@blazetrails/activesupport@file:vendor/blazetrails-activesupport-0.1.0.tgz':
-    resolution: {integrity: sha512-o7e/xyArwMmoJ4s7Jq+gRz0VRt9eneg5GXl1EfhxI22r46LBFWXS1gbJg2NrTKMhjPa5hNkbzkB+YVxR4PRHHg==, tarball: file:vendor/blazetrails-activesupport-0.1.0.tgz}
+    resolution: {integrity: sha512-rfCJ9CpzLhDVI9twOUQUR4+vXmoth3EonrCugx4HHGRdqB+WTKLwvqdH729gJQeyTg/kDA8SF7hYzLUuWtiWRw==, tarball: file:vendor/blazetrails-activesupport-0.1.0.tgz}
     version: 0.1.0
     peerDependencies:
       '@blazetrails/nokogiri': 0.1.0
@@ -132,15 +132,15 @@ packages:
         optional: true
 
   '@blazetrails/arel@file:vendor/blazetrails-arel-0.1.0.tgz':
-    resolution: {integrity: sha512-uwclHhDjhnvo06Xv1zXk0lIRu5IFYkVXrjdezvuazpUeuKBWZjP6tGl2YUYk1NY8duVQTYaxXvP+6fyxOV+lgg==, tarball: file:vendor/blazetrails-arel-0.1.0.tgz}
+    resolution: {integrity: sha512-0ab89jnfulWGbWyW7ReiBliVmc/XX+OMGYCWTk6z6AGmp/dDfThVZeRz0zbf5EzRW7I7MHLe23gQHJARLMibGQ==, tarball: file:vendor/blazetrails-arel-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/date@file:vendor/blazetrails-date-0.1.0.tgz':
-    resolution: {integrity: sha512-5tbnMpEc20xFbR8xl2J1GUANBsNXPCfOU1GUsAkRcC3BQuqRgaFRk8+uzizv+7r4qSUL1I5SdK4jaTimnPvZnw==, tarball: file:vendor/blazetrails-date-0.1.0.tgz}
+    resolution: {integrity: sha512-pWnSiAJAOWCGeABbQLA0LoMwxVRRpWTxOpVl9WH/v1+n4RlL5bT08l7eqI2UUgZnel8saQDr2tEUEg5gpQFRzg==, tarball: file:vendor/blazetrails-date-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/did-you-mean@file:vendor/blazetrails-did-you-mean-0.1.0.tgz':
-    resolution: {integrity: sha512-K0382U/qwjBZAuUdlxrBw1g6J5zzNxWWBrrviCsdgegdDteHJzympj2qdZKhjlqrKAFJ3UUcLjBOJiEf3DyekA==, tarball: file:vendor/blazetrails-did-you-mean-0.1.0.tgz}
+    resolution: {integrity: sha512-ZVdLzErYD0d8tzKeWw1EN23fqFwGCVelp/hkC/b4cYLv9mGSUcbbbzp5hU5T8Edax4sgu/05ESzYTKvvqM5dtw==, tarball: file:vendor/blazetrails-did-you-mean-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/globalid@file:vendor/blazetrails-globalid-0.1.0.tgz':
@@ -152,7 +152,7 @@ packages:
     version: 0.1.0
 
   '@blazetrails/i18n@file:vendor/blazetrails-i18n-0.1.0.tgz':
-    resolution: {integrity: sha512-53t1aMDP5qoonCk24iiE2waqJfA1Mtc3xEOR6QPz4RXcNLzIjELsZ4U7JyL7NrEsI7BYCqq4sKH8GiAkkHmiUw==, tarball: file:vendor/blazetrails-i18n-0.1.0.tgz}
+    resolution: {integrity: sha512-ksuutDZI9aqFlMUHeeUOw4pPu97B3Wz8ajzKJcbKgzUF59D6HwP+pIy9PEN59wrXWvj0jZNJmFdYiYocUkVbiw==, tarball: file:vendor/blazetrails-i18n-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz':
@@ -168,22 +168,22 @@ packages:
     version: 0.1.0
 
   '@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz':
-    resolution: {integrity: sha512-5gdmT5UaeqfQy9z+SxSD1kVJU+/J7TijBxMU25Rdx/fWmRApzVJ0o0BH/NF4gWQTZGEDVSvrICcH7EHy3OOEWw==, tarball: file:vendor/blazetrails-rack-0.1.0.tgz}
+    resolution: {integrity: sha512-/hQMXio/+UvnIOL2DtBE9OEp9bvuHjOlHezABqHEc0c6nVXItxQS0C5Exm+whieJtYC+xVa/e1Kp/03XF4qAnA==, tarball: file:vendor/blazetrails-rack-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/ruby-compat@file:vendor/blazetrails-ruby-compat-0.1.0.tgz':
-    resolution: {integrity: sha512-JdhxATxcmaML6/Hv0qvpo/Fqx6k827DF9qWMoBcN/GIJnH9gFTAnH2DvuNiY0CmqAjYW254HeqrtOWj5OytieA==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
+    resolution: {integrity: sha512-h9Nzal1nUvnEfsod4ofn0Cn/LQgcoWdCwq/k0jwQhagBGqgToV49Lnq+W+UI6O35UzVs+BZZSz8P8zJ2XC90mA==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
     version: 0.1.0
 
   '@blazetrails/trails-tsc@file:vendor/blazetrails-trails-tsc-0.1.0.tgz':
-    resolution: {integrity: sha512-u4tUpejPULQW4J/iLdyzdoKPafZejG1236+Gq01lXanpN7PUUgx8+VbtTg+oVHM1JwiQn1zwl/0alGC2X5VgsA==, tarball: file:vendor/blazetrails-trails-tsc-0.1.0.tgz}
+    resolution: {integrity: sha512-XxIIIrf3n3kmKz+jR+BIRfckrhtehEpO0Ld4PzabtyrV17sPdUBQB+qppt/SxBffNv7tErmVX+N5bggfwQDy8w==, tarball: file:vendor/blazetrails-trails-tsc-0.1.0.tgz}
     version: 0.1.0
     hasBin: true
     peerDependencies:
       '@blazetrails/actionview': 0.1.0
 
   '@blazetrails/trailties@file:vendor/blazetrails-trailties-0.1.0.tgz':
-    resolution: {integrity: sha512-zgv+0ss9pT4o0Qb1hQCqe+oKe3Eb5gjdJ10W3yEcSdgG9gA4PKWXRH/RNHJ/0aXQ9HI2k53l6i7a2a6lCvbD1A==, tarball: file:vendor/blazetrails-trailties-0.1.0.tgz}
+    resolution: {integrity: sha512-2top1K+mqTn7AH0Ovw1+ZtcR2s76IOXx+oReXjOPq/8PYTevh8uCnFh36bL/u6pD/SFmD3xPZh364E9PWsNSWw==, tarball: file:vendor/blazetrails-trailties-0.1.0.tgz}
     version: 0.1.0
     hasBin: true
     peerDependencies:
@@ -1037,7 +1037,6 @@ snapshots:
       tinyglobby: 0.2.17
     optionalDependencies:
       '@blazetrails/nokogiri': file:vendor/blazetrails-nokogiri-0.1.0.tgz
-      yaml: 2.9.0
 
   '@blazetrails/arel@file:vendor/blazetrails-arel-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)':
     dependencies:
@@ -1053,7 +1052,9 @@ snapshots:
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
       '@js-temporal/polyfill': 0.5.1
 
-  '@blazetrails/did-you-mean@file:vendor/blazetrails-did-you-mean-0.1.0.tgz': {}
+  '@blazetrails/did-you-mean@file:vendor/blazetrails-did-you-mean-0.1.0.tgz':
+    dependencies:
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
 
   '@blazetrails/globalid@file:vendor/blazetrails-globalid-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)':
     dependencies:
@@ -1098,7 +1099,9 @@ snapshots:
       '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
 
-  '@blazetrails/ruby-compat@file:vendor/blazetrails-ruby-compat-0.1.0.tgz': {}
+  '@blazetrails/ruby-compat@file:vendor/blazetrails-ruby-compat-0.1.0.tgz':
+    optionalDependencies:
+      yaml: 2.9.0
 
   '@blazetrails/trails-tsc@file:vendor/blazetrails-trails-tsc-0.1.0.tgz(@blazetrails/actionview@file:vendor/blazetrails-actionview-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)':
     dependencies:

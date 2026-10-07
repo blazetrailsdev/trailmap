@@ -124,7 +124,7 @@ describe("MutationsController", () => {
   });
 
   it("marks a bundle in-progress against its PR", async () => {
-    const { body } = await post("inProgress", { ids: ["s1", "s2"], pr: "trails#7" });
+    const { body } = await post("in_progress", { ids: ["s1", "s2"], pr: "trails#7" });
 
     expect(body.lines).toEqual(["in-progress s1 trails#7", "in-progress s2 trails#7"]);
     expect((await find("s1")).pr).toBe("trails#7");
@@ -133,7 +133,7 @@ describe("MutationsController", () => {
   // `--pr` is required for in-progress and optional for done. That asymmetry
   // is the CLI's, and dropping it would let a linked story lose its PR.
   it("refuses in-progress without a PR and accepts done without one", async () => {
-    const refused = await post("inProgress", { ids: ["s1"] });
+    const refused = await post("in_progress", { ids: ["s1"] });
     expect(refused.status).toBe(400);
     expect(refused.body).toEqual({
       ok: false,
@@ -149,7 +149,7 @@ describe("MutationsController", () => {
   // stamping PR 7 on a whole bundle, or `done --pr 7abc` silently recording no
   // PR, is the failure that matters.
   it("refuses a malformed PR ref on either verb", async () => {
-    for (const verb of ["inProgress", "done"]) {
+    for (const verb of ["in_progress", "done"]) {
       const typo = await post(verb, { ids: ["s1"], pr: "trails#7abc" });
 
       expect(typo.status).toBe(400);
@@ -169,14 +169,14 @@ describe("MutationsController", () => {
   });
 
   it("records an RFC-scoped spawn, which names no story", async () => {
-    const { body } = await post("recordSpawn", { rfc: "0136-trailmap", source: "refine" });
+    const { body } = await post("record_spawn", { rfc: "0136-trailmap", source: "refine" });
 
     expect(body.lines).toEqual(["recorded spawn (refine) for rfc 0136-trailmap"]);
     expect(await Event.where({ rfc_id: "0136-trailmap", verb: "spawn" }).count()).toBe(1);
   });
 
   it("refuses a spawn that names neither a story nor an RFC", async () => {
-    const { status, body } = await post("recordSpawn", { source: "loop" });
+    const { status, body } = await post("record_spawn", { source: "loop" });
 
     expect(status).toBe(400);
     expect(body.error).toBe("record-spawn requires --source and either story ids or --rfc");
@@ -206,7 +206,7 @@ describe("MutationsController", () => {
   });
 
   it("sets a status directly", async () => {
-    const { body } = await post("statusSet", { ids: ["s1"], status: "draft" });
+    const { body } = await post("status_set", { ids: ["s1"], status: "draft" });
 
     expect(body.lines).toEqual(["status draft: s1"]);
     expect((await find("s1")).status).toBe("draft");
@@ -215,7 +215,7 @@ describe("MutationsController", () => {
   // The enum column would take an unknown value and leave a row no read verb
   // can classify. The CLI never had to guard it because a human typed it.
   it("refuses an unknown status before it reaches the column", async () => {
-    const { status, body } = await post("statusSet", { ids: ["s1"], status: "shipped" });
+    const { status, body } = await post("status_set", { ids: ["s1"], status: "shipped" });
 
     expect(status).toBe(400);
     expect(body.error).toBe('unknown status "shipped"');
