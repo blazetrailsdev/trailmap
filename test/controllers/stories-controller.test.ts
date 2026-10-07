@@ -74,7 +74,7 @@ describe("StoriesController", () => {
   });
 
   it("serves next-bundle as the object the spawn loop unmarshals", async () => {
-    const { body } = await getJson("next_bundle", { params: { "max-loc": "60" } });
+    const { body } = await getJson("nextBundle", { params: { "max-loc": "60" } });
 
     expect(body.stories.map((s: any) => s.id)).toEqual(["unblocked"]);
     expect(body.bundle_total_loc).toBe(50);
@@ -84,14 +84,14 @@ describe("StoriesController", () => {
   });
 
   it("says why next-bundle came back empty", async () => {
-    const { body } = await getJson("next_bundle", { params: { "max-loc": "5" } });
+    const { body } = await getJson("nextBundle", { params: { "max-loc": "5" } });
 
     expect(body.stories).toEqual([]);
     expect(body.empty_reason).toBe("none-within-budget");
   });
 
   it("defaults next-bundle to the CLI's budget", async () => {
-    const { body } = await getJson("next_bundle");
+    const { body } = await getJson("nextBundle");
 
     expect(body.max_loc).toBe(250);
   });
@@ -160,7 +160,7 @@ describe("StoriesController", () => {
     // next-bundle is the one that asks the models twice — for the bundle and
     // then for why it was empty — and both reads share the one snapshot.
     rankingIndex.mockClear();
-    await getJson("next_bundle", { params: { "max-loc": "5" } });
+    await getJson("nextBundle", { params: { "max-loc": "5" } });
     expect(rankingIndex).toHaveBeenCalledTimes(1);
 
     rankingIndex.mockRestore();

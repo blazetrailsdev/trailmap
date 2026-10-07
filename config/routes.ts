@@ -45,9 +45,7 @@ Trails.application!.routes().draw(function () {
   // `/stories/ready` is a perfectly good story id as far as the pattern is
   // concerned.
   this.get("stories/ready", { to: "stories#ready" });
-  // `next_bundle`, not `nextBundle`: an action name is Rails' underscored form
-  // of the controller method, here and in every `to:` below. See CLAUDE.md.
-  this.get("stories/next-bundle", { to: "stories#next_bundle" });
+  this.get("stories/next-bundle", { to: "stories#nextBundle" });
   this.get("stories/touching", { to: "stories#touching" });
   this.get("stories", { to: "stories#index" });
   this.get("stories/:id", { to: "stories#show" });
@@ -69,11 +67,11 @@ Trails.application!.routes().draw(function () {
   // verb takes a list.
   this.post("stories/claim", { to: "mutations#claim" });
   this.post("stories/release", { to: "mutations#release" });
-  this.post("stories/in-progress", { to: "mutations#in_progress" });
+  this.post("stories/in-progress", { to: "mutations#inProgress" });
   this.post("stories/done", { to: "mutations#done" });
-  this.post("stories/record-spawn", { to: "mutations#record_spawn" });
+  this.post("stories/record-spawn", { to: "mutations#recordSpawn" });
   this.post("stories/block", { to: "mutations#block" });
   this.post("stories/close", { to: "mutations#close" });
-  this.post("stories/status-set", { to: "mutations#status_set" });
+  this.post("stories/status-set", { to: "mutations#statusSet" });
   this.post("stories/priority", { to: "mutations#priority" });
 });

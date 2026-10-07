@@ -115,7 +115,7 @@ describe("config/routes", () => {
     const verbs: [string, string][] = [
       ["/stories", "index"],
       ["/stories/ready", "ready"],
-      ["/stories/next-bundle", "next_bundle"],
+      ["/stories/next-bundle", "nextBundle"],
       ["/stories/touching", "touching"],
     ];
 
@@ -138,12 +138,12 @@ describe("config/routes", () => {
     const verbs: [string, string][] = [
       ["/stories/claim", "claim"],
       ["/stories/release", "release"],
-      ["/stories/in-progress", "in_progress"],
+      ["/stories/in-progress", "inProgress"],
       ["/stories/done", "done"],
-      ["/stories/record-spawn", "record_spawn"],
+      ["/stories/record-spawn", "recordSpawn"],
       ["/stories/block", "block"],
       ["/stories/close", "close"],
-      ["/stories/status-set", "status_set"],
+      ["/stories/status-set", "statusSet"],
       ["/stories/priority", "priority"],
     ];
 
