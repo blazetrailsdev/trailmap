@@ -65,6 +65,17 @@ export const FLEET_SOCKET_PATH = "/fleet/socket";
 /** The prefix the fleet page's controls post under; the rest is ringo's own path. */
 export const FLEET_CONTROL_PATH = "/fleet/control";
 
+/** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
+export const FLEET_PANE_PATH = "/fleet/pane";
+
+/**
+ * Whether `id` is a tmux pane id as a URL carries it: the digits of `%42`,
+ * without the `%`. Bounded, so nothing unbounded reaches ringo's path either.
+ */
+export function isPaneId(id: string): boolean {
+  return /^[0-9]{1,10}$/.test(id);
+}
+
 /**
  * ringo's control endpoints the fleet page may reach through trailmap. An
  * allowlist, because this route forwards to a process that can merge pull

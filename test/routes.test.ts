@@ -4,9 +4,11 @@ import { Trails } from "@blazetrails/trailties";
 import "../config/application.js";
 import "../config/routes.js";
 import { DashboardController } from "../app/controllers/dashboard-controller.js";
+import { FleetController } from "../app/controllers/fleet-controller.js";
 import { HealthController } from "../app/controllers/health-controller.js";
 import { HomeController } from "../app/controllers/home-controller.js";
 import { MutationsController } from "../app/controllers/mutations-controller.js";
+import { PanesController } from "../app/controllers/panes-controller.js";
 import { ReadModelsController } from "../app/controllers/read-models-controller.js";
 import { RfcPagesController } from "../app/controllers/rfc-pages-controller.js";
 import { StoriesController } from "../app/controllers/stories-controller.js";
@@ -21,9 +23,11 @@ import { StoryPagesController } from "../app/controllers/story-pages-controller.
 // check that the route names a controller that is really there.
 for (const controller of [
   DashboardController,
+  FleetController,
   HealthController,
   HomeController,
   MutationsController,
+  PanesController,
   ReadModelsController,
   RfcPagesController,
   StoriesController,
@@ -88,6 +92,18 @@ describe("config/routes", () => {
     // ringo keeps serving its own `/` until this page is verified, so
     // trailmap's root is still its landing page.
     expect(recognize(routes, "GET", "/")?.route.controller).toBe("home");
+  });
+
+  it("routes a pane's live view, and the screen relay it polls", () => {
+    const routes = routeSet();
+
+    const page = recognize(routes, "GET", "/panes/42");
+    expect(page.route).toEqual({ controller: "panes", action: "show" });
+    expect(page.params.id).toBe("42");
+
+    const screen = recognize(routes, "GET", "/fleet/pane/42/screen");
+    expect(screen.route).toEqual({ controller: "fleet", action: "screen" });
+    expect(screen.params.id).toBe("42");
   });
 
   it("routes the singular show-page paths to their page controllers", () => {

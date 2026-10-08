@@ -10,7 +10,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { getHttpAsync, setEnv, type HttpServer } from "@blazetrails/ruby-compat";
-import { FleetController } from "../../app/controllers/fleet-controller.js";
+import { FleetController, SCREEN_TIMEOUT_MS } from "../../app/controllers/fleet-controller.js";
 import { controllerTestCase } from "../support/controller-test-case.js";
 
 interface Received {
@@ -19,9 +19,20 @@ interface Received {
   body: string;
 }
 
+/** What the stand-in ringo says pane %42 shows. */
+const SCREEN = {
+  exists: true,
+  status: "working",
+  cwd: "/srv/worktrees/live-pane-view",
+  html: '<span style="color:#3fb950">$ pnpm test</span>\n&lt;done&gt;',
+  lines: 2,
+  hash: "abc+/=1",
+};
+
 let ringo: HttpServer;
 let ringoBaseUrl = "";
 let received: Received[] = [];
+let hung: (() => void)[] = [];
 
 beforeAll(async () => {
   const http = await getHttpAsync();
@@ -37,6 +48,23 @@ beforeAll(async () => {
         contentType: typeof contentType === "string" ? contentType : undefined,
         body,
       });
+      const url = new URL(req.url ?? "/", "http://ringo");
+      if (url.pathname === "/pane/99/screen") {
+        // A hung ringo: the request is taken and not answered while the test runs.
+        hung.push(() => res.end());
+        return;
+      }
+      if (url.pathname.startsWith("/pane/")) {
+        res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+        if (url.pathname === "/pane/7/screen") {
+          res.end(JSON.stringify({ exists: false }));
+        } else if (url.searchParams.get("have") === SCREEN.hash) {
+          res.end(JSON.stringify({ exists: true, status: "working", unchanged: true }));
+        } else {
+          res.end(JSON.stringify(SCREEN));
+        }
+        return;
+      }
       if (body.includes("blocked")) {
         res.writeHead(409);
         res.end("blocked: CI is red");
@@ -56,6 +84,7 @@ afterAll(async () => {
 });
 
 afterEach(() => {
+  for (const release of hung.splice(0)) release();
   received = [];
   setEnv("RINGO_BASE", undefined);
 });
@@ -118,6 +147,79 @@ describe("FleetController#control", () => {
 
     expect(response.status).toBe(502);
     expect(response.body).toContain("ringo is unreachable");
+  });
+});
+
+async function screen(id: string, have?: string) {
+  const tc = await controllerTestCase(FleetController);
+  await tc.get("screen", { params: { id, ...(have === undefined ? {} : { have }) } });
+  return tc.response;
+}
+
+describe("FleetController#screen", () => {
+  it("relays ringo's screen for a pane, as JSON that is never cached", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await screen("42");
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toEqual(SCREEN);
+    expect(response.getHeader("Content-Type")).toContain("application/json");
+    expect(response.getHeader("Cache-Control")).toContain("no-store");
+    expect(received.map((r) => r.url)).toEqual(["/pane/42/screen"]);
+  });
+
+  it("passes the page's hash on, encoded, and relays ringo's unchanged answer", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await screen("42", SCREEN.hash);
+
+    expect(JSON.parse(response.body)).toEqual({ exists: true, status: "working", unchanged: true });
+    expect(received.map((r) => r.url)).toEqual(["/pane/42/screen?have=abc%2B%2F%3D1"]);
+  });
+
+  it("relays a gone pane as ringo says it: 200, and exists false", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await screen("7");
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ exists: false });
+  });
+
+  it("refuses anything but digits before a request is made of it", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    for (const id of ["%42", "4x", "..", "42?have=1", "-1", "", "12345678901", "٤٢"]) {
+      expect((await screen(id)).status, id).toBe(400);
+    }
+    expect(received).toEqual([]);
+  });
+
+  it("says ringo is not configured rather than guessing where it is", async () => {
+    expect((await screen("42")).status).toBe(503);
+  });
+
+  it("answers 502 when ringo cannot be reached", async () => {
+    setEnv("RINGO_BASE", "http://127.0.0.1:1");
+
+    const response = await screen("42");
+
+    expect(response.status).toBe(502);
+    expect(response.body).toContain("ringo is unreachable");
+  });
+
+  it("answers 504 when ringo takes the request and does not answer", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    const started = Date.now();
+
+    const response = await screen("99");
+
+    expect(response.status).toBe(504);
+    expect(response.body).toContain("ringo did not answer");
+    // Polled every two seconds, so the wait has to end inside one interval.
+    expect(SCREEN_TIMEOUT_MS).toBeLessThan(2000);
+    expect(Date.now() - started).toBeLessThan(2000 + 1000);
   });
 });
 

@@ -17,6 +17,7 @@ import {
   mainCIByRepo,
   mainCITitle,
   paneDot,
+  paneHref,
   paneLine,
   prRow,
   reconnectDelay,
@@ -124,6 +125,25 @@ describe("paneLine", () => {
 
     expect(line).toContain("<code>%214</code>");
     expect(line).toContain("working");
+  });
+
+  it("links the pane id to its live view, whichever row it sits on", () => {
+    const link = '<a class="pane-link" href="/panes/214" title="watch this pane live"><code>%214</code></a>';
+
+    expect(paneLine("💪", "%214", "working")).toContain(link);
+    expect(paneLine("📋", "%214", "idle")).toContain(link);
+    expect(prRow({ owner: "o", repo: "r", pr: 1, pane: "%214" })).toContain(link);
+    expect(spawnRow({ pane: "%214", task: "t" })).toContain(link);
+    expect(rfcSpawnRow({ pane: "%214", rfc: "0136-trailmap" })).toContain(link);
+  });
+
+  it("leaves an id that is not a tmux pane id as escaped text, not a link", () => {
+    expect(paneHref("%214")).toBe("/panes/214");
+    for (const pane of ["214", "%", "%2x", "%1/../x", undefined, ""]) expect(paneHref(pane)).toBe("");
+
+    const line = paneLine("💪", '%1"><script>', "working");
+    expect(line).not.toContain("<a ");
+    expect(line).toContain("<code>%1&quot;&gt;&lt;script&gt;</code>");
   });
 
   it("names the role behind the emoji, for anyone who cannot read it", () => {

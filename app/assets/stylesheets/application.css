@@ -609,3 +609,27 @@ ul { margin: 0 0 10px 20px; }
  * so it drops `.label`'s green chip styling and just sets the size.
  */
 .status-group .pill .label { background: none; color: inherit; margin: 0; padding: 0; font-size: 11px; }
+
+/* A pane id on the fleet page is a link to its live view; it keeps the id's own colour. */
+.pane-link { color: inherit; }
+.pane-link:hover { color: var(--accent); }
+
+/*
+ * The live pane view. The terminal keeps a DARK ground in both themes, in
+ * literal colours rather than the shell's tokens: ringo's SGR colours were
+ * chosen against a dark terminal, and on the light theme's white they are
+ * unreadable.
+ */
+.pane-id { font-size: inherit; }
+.pane-notice { font-size: 12px; color: var(--muted); }
+.pane-notice.bad { color: var(--red); font-weight: 600; }
+#panePause { margin-left: auto; }
+.terminal {
+  background: #0d1117; color: #c9d1d9; color-scheme: dark;
+  border: 1px solid #30363d; border-radius: 6px;
+  padding: 12px; margin-bottom: 8px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px; line-height: 1.35;
+  white-space: pre; overflow: auto; tab-size: 8;
+  height: calc(100vh - 320px); min-height: 240px;
+}

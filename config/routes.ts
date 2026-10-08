@@ -24,6 +24,12 @@ Trails.application!.routes().draw(function () {
   this.get("fleet/socket", { to: "fleet#socket" });
   this.post("fleet/control/*path", { to: "fleet#control" });
 
+  // One agent's tmux pane, live and read-only: the page, and the relay it
+  // polls for ringo's capture of the screen. `:id` is the pane id without its
+  // `%` (`%42` is `/panes/42`), which both actions check as digits.
+  this.get("panes/:id", { to: "panes#show" });
+  this.get("fleet/pane/:id/screen", { to: "fleet#screen" });
+
   // The list pages. Plural, and they come BEFORE the singular show routes only
   // by convention — the patterns cannot collide. The status/filter tab is a
   // query parameter rather than a path segment (`/rfcs?status=draft`) because
