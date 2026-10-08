@@ -44,6 +44,11 @@ export interface BacklogRow {
   title: string;
   status: string;
   rfcId: string;
+  /**
+   * The row prints it only when it is non-zero: ringo's backlog draws the
+   * estimate under `if (s.est_loc)`, so an authored `est-loc: 0` reads the
+   * same as none.
+   */
   estLoc: number | null;
   cluster: string | null;
   assignee: string | null;
