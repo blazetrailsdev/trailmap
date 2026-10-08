@@ -17,6 +17,7 @@ import {
   mainCIByRepo,
   mainCITitle,
   paneDot,
+  paneHref,
   paneLine,
   prRow,
   reconnectDelay,
@@ -35,6 +36,8 @@ import {
   timeAgo,
   visibleSpawns,
 } from "../../app/assets/javascripts/fleet-format.js";
+
+import { isPaneId } from "../../config/fleet.ts";
 
 /**
  * The fleet dashboard's formatting half, which is where all of its decisions
@@ -124,6 +127,35 @@ describe("paneLine", () => {
 
     expect(line).toContain("<code>%214</code>");
     expect(line).toContain("working");
+  });
+
+  it("links the pane id to its live view, whichever row it sits on", () => {
+    const link = '<a class="pane-link" href="/panes/214" title="watch this pane live"><code>%214</code></a>';
+
+    expect(paneLine("💪", "%214", "working")).toContain(link);
+    expect(paneLine("📋", "%214", "idle")).toContain(link);
+    expect(prRow({ owner: "o", repo: "r", pr: 1, pane: "%214" })).toContain(link);
+    expect(spawnRow({ pane: "%214", task: "t" })).toContain(link);
+    expect(rfcSpawnRow({ pane: "%214", rfc: "0136-trailmap" })).toContain(link);
+  });
+
+  it("leaves an id that is not a tmux pane id as escaped text, not a link", () => {
+    expect(paneHref("%214")).toBe("/panes/214");
+    for (const pane of ["214", "%", "%2x", "%1/../x", undefined, ""]) expect(paneHref(pane)).toBe("");
+
+    const line = paneLine("💪", '%1"><script>', "working");
+    expect(line).not.toContain("<a ");
+    expect(line).toContain("<code>%1&quot;&gt;&lt;script&gt;</code>");
+  });
+
+  // Two regexes, one in the browser and one on the server, that cannot share
+  // code. A link `paneHref` makes must be one the page and relay accept, and
+  // an id they accept must be one it links.
+  it("links exactly the ids the server accepts", () => {
+    for (const digits of ["0", "7", "42", "1234567890", "12345678901", "", "4x", "-1", "4.2", " 42", "٤٢", "../1"]) {
+      expect(paneHref("%" + digits) !== "", JSON.stringify(digits)).toBe(isPaneId(digits));
+    }
+    expect(isPaneId(paneHref("%214").replace("/panes/", ""))).toBe(true);
   });
 
   it("names the role behind the emoji, for anyone who cannot read it", () => {

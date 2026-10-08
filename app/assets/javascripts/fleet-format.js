@@ -56,13 +56,33 @@ export function paneDot(status) {
 
 export const WORK_EMOJI = "💪";
 
-/** One row of the compact pane mini-table; '' when there is no pane. */
+/**
+ * The live view of a pane, `/panes/42` for `%42`; '' for anything that is not
+ * a tmux pane id, which then renders as plain text rather than a dead link.
+ *
+ * The digits are the grammar `isPaneId` in `config/fleet.ts` checks on the
+ * server, which this file cannot import; `test/assets/fleet-format.test.js`
+ * holds the two to the same answer.
+ */
+export function paneHref(pane) {
+  const match = /^%([0-9]{1,10})$/.exec(String(pane == null ? "" : pane));
+  return match ? "/panes/" + match[1] : "";
+}
+
+/**
+ * One row of the compact pane mini-table; '' when there is no pane. Every row
+ * type's pane id comes through here, so this is where it becomes a link.
+ */
 export function paneLine(label, pane, status) {
   if (!pane) return "";
   const role = label === WORK_EMOJI ? "worker" : "reviewer";
+  const href = paneHref(pane);
+  const id = "<code>" + esc(pane) + "</code>";
   return (
     '<div class="pcell"><span class="plabel" title="' + role + '">' + label + "</span>" +
-    '<span class="pval"><code>' + esc(pane) + "</code>" + paneDot(status) + "</span></div>"
+    '<span class="pval">' +
+    (href ? '<a class="pane-link" href="' + href + '" title="watch this pane live">' + id + "</a>" : id) +
+    paneDot(status) + "</span></div>"
   );
 }
 

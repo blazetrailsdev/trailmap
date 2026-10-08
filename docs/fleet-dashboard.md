@@ -82,3 +82,29 @@ which is `move-tracker-state-into-the-database` — not this story.
 | --- | --- |
 | `FLEET_REPO_PATHS` | The manual spawn control's repo list, as `owner/repo=/path/to/checkout`, comma-separated. ringo's `DashboardConfig.RepoPaths`. |
 | `RINGO_BASE` | Above. |
+
+## The live pane view
+
+Every pane id on the fleet page links to `/panes/<n>` (`%42` is `/panes/42`):
+that pane's screen, read-only, kept current. `paneLine` in `fleet-format.js`
+makes the link, so every row type gets it from one place.
+
+ringo owns tmux and does the capture; trailmap relays and renders. The page
+polls `GET /fleet/pane/<n>/screen?have=<hash>` on trailmap every two seconds
+(`FleetController#screen`), which asks ringo's `GET /pane/<n>/screen` over the
+private network. Polling rather than the socket, because `have` makes the
+usual answer — nothing changed — a few bytes, and the DOM is touched only when
+ringo sends a new screen.
+
+- The pane id is checked as digits (`isPaneId`) before a URL is built from it.
+- The relay gives ringo `SCREEN_TIMEOUT_MS` (1.5s), inside the poll interval,
+  and answers 502/503/504 as the control relay does.
+- `html` in ringo's answer is its own rendering, already escaped, and is
+  inserted as HTML. Everything else on the page goes in as text.
+- A gone pane (`exists: false`) ends the polling and leaves the last screen
+  up. An unreachable ringo is named in the header and retried; the screen is
+  not blanked. A hidden tab and the Pause button both stop the polling.
+- The terminal panel is dark in both themes: ringo's SGR colours assume it.
+
+The page's decisions are in `pane-format.js` and tested there; `pane.js` is
+the fetch and the assignments. Unlike the socket, it works under `pnpm dev`.

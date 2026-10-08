@@ -3,6 +3,7 @@ import { getFs } from "@blazetrails/ruby-compat";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { DashboardController } from "../../app/controllers/dashboard-controller.js";
 import { HomeController } from "../../app/controllers/home-controller.js";
+import { PanesController } from "../../app/controllers/panes-controller.js";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.js";
 
@@ -28,6 +29,7 @@ import { StoryPagesController } from "../../app/controllers/story-pages-controll
 const PAGE_CONTROLLERS = [
   DashboardController,
   HomeController,
+  PanesController,
   RfcPagesController,
   StoryPagesController,
 ];

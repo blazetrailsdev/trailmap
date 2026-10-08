@@ -1,5 +1,5 @@
 import { ApplicationController } from "./application-controller.js";
-import { FLEET_CONTROLS, ringoBase } from "../../config/fleet.js";
+import { FLEET_CONTROLS, isPaneId, isScreenHash, ringoBase } from "../../config/fleet.js";
 import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.js";
 
 /**
@@ -9,7 +9,15 @@ import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fle
 export const CONTROL_TIMEOUT_MS = 30_000;
 
 /**
- * The fleet page's two lines to ringo, both through trailmap.
+ * How long ringo has to answer for a pane's screen. Far shorter than a
+ * control's: the pane page asks every two seconds, and an answer that takes
+ * longer than the interval is already stale. A hung ringo should cost the
+ * reader one missed frame, not a queue of held requests.
+ */
+export const SCREEN_TIMEOUT_MS = 1_500;
+
+/**
+ * The fleet pages' lines to ringo, all through trailmap.
  *
  * ringo is another origin behind the same SSO, and neither its event stream
  * nor its control endpoints can be reached from a page served here. So the
@@ -92,15 +100,78 @@ export class FleetController extends ApplicationController {
       });
       await this.render({ plain: await response.text(), status: response.status });
     } catch (error) {
-      if (error instanceof Error && error.name === "TimeoutError") {
-        const seconds = CONTROL_TIMEOUT_MS / 1000;
-        await this.render({ plain: `ringo did not answer in ${seconds}s`, status: 504 });
-        return;
-      }
-      const reason = error instanceof Error ? error.message : String(error);
-      await this.render({ plain: `ringo is unreachable: ${reason}`, status: 502 });
+      await this.render(ringoFailure(error, CONTROL_TIMEOUT_MS));
     }
   }
+
+  /**
+   * `GET /fleet/pane/<n>/screen[?have=<hash>]`: one pane's current screen, as
+   * ringo captured and rendered it. ringo owns tmux; this only relays, and
+   * answers with ringo's own JSON.
+   *
+   * `<n>` is the tmux pane id without its `%`, and it is checked as digits
+   * before anything is built from it: it becomes a path segment of a request
+   * to a process on the private network.
+   */
+  async screen(): Promise<void> {
+    const id = String(this.params.get("id") ?? "");
+    if (!isPaneId(id)) {
+      await this.render({ plain: "Not a pane id", status: 400 });
+      return;
+    }
+    const have = String(this.params.get("have") ?? "");
+    if (!isScreenHash(have)) {
+      await this.render({ plain: "Not a screen hash", status: 400 });
+      return;
+    }
+    const base = ringoBase();
+    if (base === null) {
+      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
+      return;
+    }
+
+    const query = have === "" ? "" : `?have=${encodeURIComponent(have)}`;
+    this.noStore();
+    try {
+      const response = await fetch(`${base}/pane/${id}/screen${query}`, {
+        signal: AbortSignal.timeout(SCREEN_TIMEOUT_MS),
+      });
+      const text = await response.text();
+      if (response.ok) {
+        await this.render({ json: text });
+      } else if (saysPaneIsGone(text)) {
+        // The contract is 200 for a gone pane. A ringo that says the same
+        // thing under a 404 is still saying it, and the page must hear
+        // "exited" rather than retry a dead pane as an outage forever. A 404
+        // WITHOUT that body stays an error: it is what a ringo with no such
+        // endpoint answers, for every pane, and those have not exited.
+        await this.render({ json: { exists: false } });
+      } else {
+        await this.render({ plain: text, status: response.status });
+      }
+    } catch (error) {
+      await this.render(ringoFailure(error, SCREEN_TIMEOUT_MS));
+    }
+  }
+}
+
+/** Whether ringo's body is its gone-pane answer, `{ "exists": false }`, whatever status it came under. */
+function saysPaneIsGone(text: string): boolean {
+  try {
+    const body: unknown = JSON.parse(text);
+    return typeof body === "object" && body !== null && (body as { exists?: unknown }).exists === false;
+  } catch {
+    return false;
+  }
+}
+
+/** 504 for a ringo that did not answer in time, 502 for one that could not be reached. */
+function ringoFailure(error: unknown, timeoutMs: number): { plain: string; status: number } {
+  if (error instanceof Error && error.name === "TimeoutError") {
+    return { plain: `ringo did not answer in ${timeoutMs / 1000}s`, status: 504 };
+  }
+  const reason = error instanceof Error ? error.message : String(error);
+  return { plain: `ringo is unreachable: ${reason}`, status: 502 };
 }
 
 /** The handshake headers the WebSocket driver reads, lower-cased, from the Rack env. */

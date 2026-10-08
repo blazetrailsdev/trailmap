@@ -65,6 +65,33 @@ export const FLEET_SOCKET_PATH = "/fleet/socket";
 /** The prefix the fleet page's controls post under; the rest is ringo's own path. */
 export const FLEET_CONTROL_PATH = "/fleet/control";
 
+/** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
+export const FLEET_PANE_PATH = "/fleet/pane";
+
+/**
+ * Whether `id` is a tmux pane id as a URL carries it: the digits of `%42`,
+ * without the `%`. Bounded, so nothing unbounded reaches ringo's path either.
+ *
+ * The browser's half of this grammar is `paneHref` in
+ * `app/assets/javascripts/fleet-format.js`, which cannot import this file.
+ * `test/assets/fleet-format.test.js` holds the two to the same answer.
+ */
+export function isPaneId(id: string): boolean {
+  return /^[0-9]{1,10}$/.test(id);
+}
+
+/** The longest `have` the screen relay passes on. ringo's hashes are far shorter. */
+export const SCREEN_HASH_MAX = 128;
+
+/**
+ * Whether `have` is a screen hash worth sending to ringo: anything the page
+ * could have been handed, up to a length. Bounded for the reason the pane id
+ * is: it is forwarded to a process on the private network.
+ */
+export function isScreenHash(have: string): boolean {
+  return have.length <= SCREEN_HASH_MAX;
+}
+
 /**
  * ringo's control endpoints the fleet page may reach through trailmap. An
  * allowlist, because this route forwards to a process that can merge pull

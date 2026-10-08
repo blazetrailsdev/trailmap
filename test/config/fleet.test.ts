@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { FLEET_CONTROLS, fleetRepos, ringoBase } from "../../config/fleet.js";
+import { FLEET_CONTROLS, FLEET_PANE_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash, ringoBase } from "../../config/fleet.js";
 
 /**
  * The dashboard's two configured pieces, unit-tested rather than only through
@@ -85,5 +85,27 @@ describe("FLEET_CONTROLS", () => {
       "spawnloop/dismiss",
       "spawnloop/dismiss-failed",
     ]);
+  });
+});
+
+describe("isPaneId", () => {
+  it("accepts a tmux pane id's digits, and nothing else", () => {
+    for (const id of ["0", "42", "1234567890"]) expect(isPaneId(id), id).toBe(true);
+    for (const id of ["", "%42", "4x", " 42", "42\n", "-1", "4.2", "../42", "12345678901", "٤٢"]) {
+      expect(isPaneId(id), JSON.stringify(id)).toBe(false);
+    }
+  });
+
+  it("names the relay's prefix on trailmap's own origin", () => {
+    expect(FLEET_PANE_PATH).toBe("/fleet/pane");
+  });
+});
+
+describe("isScreenHash", () => {
+  it("accepts any hash up to the cap, and the absence of one", () => {
+    expect(isScreenHash("")).toBe(true);
+    expect(isScreenHash("abc+/=1")).toBe(true);
+    expect(isScreenHash("a".repeat(SCREEN_HASH_MAX))).toBe(true);
+    expect(isScreenHash("a".repeat(SCREEN_HASH_MAX + 1))).toBe(false);
   });
 });
