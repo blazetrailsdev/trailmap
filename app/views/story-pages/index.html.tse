@@ -33,7 +33,7 @@
           <% if (row.priority !== null) { %><span class="tag prio" title="ready-queue priority (lower = sooner)<%= row.priorityInherited ? ", inherited from RFC " + row.rfcId : "" %>">pri <%= row.priority %><%= row.priorityInherited ? "*" : "" %></span><% } %>
         </span>
         <div class="row-meta">
-          <code><%= row.id %></code> &middot; <a href="/rfc/<%= row.rfcId %>">RFC <%= row.rfcId %></a><% if (row.estLoc !== null) { %> &middot; ~<%= row.estLoc %> LOC<% } %><% if (row.staleDays !== null) { %> &middot; updated <%= row.staleDays %>d ago<% } %><% if (row.assignee) { %> &middot; by <%= row.assignee %><% } %>
+          <code><%= row.id %></code> &middot; <a href="/rfc/<%= row.rfcId %>">RFC <%= row.rfcId %></a><% if (row.estLoc) { %> &middot; ~<%= row.estLoc %> LOC<% } %><% if (row.staleDays !== null) { %> &middot; updated <%= row.staleDays %>d ago<% } %><% if (row.assignee) { %> &middot; by <%= row.assignee %><% } %>
         </div>
       </span>
       <% if (row.pr !== null) { %><span class="row-aside"><a href="/story/<%= row.id %>"><%= row.pr %></a></span><% } %>
