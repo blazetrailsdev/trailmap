@@ -1,5 +1,5 @@
 import { ApplicationController } from "./application-controller.js";
-import { FLEET_CONTROLS, isPaneId, ringoBase } from "../../config/fleet.js";
+import { FLEET_CONTROLS, isPaneId, isScreenHash, ringoBase } from "../../config/fleet.js";
 import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.js";
 
 /**
@@ -119,13 +119,17 @@ export class FleetController extends ApplicationController {
       await this.render({ plain: "Not a pane id", status: 400 });
       return;
     }
+    const have = String(this.params.get("have") ?? "");
+    if (!isScreenHash(have)) {
+      await this.render({ plain: "Not a screen hash", status: 400 });
+      return;
+    }
     const base = ringoBase();
     if (base === null) {
       await this.render({ plain: "RINGO_BASE is not set", status: 503 });
       return;
     }
 
-    const have = String(this.params.get("have") ?? "");
     const query = have === "" ? "" : `?have=${encodeURIComponent(have)}`;
     this.noStore();
     try {
@@ -135,12 +139,29 @@ export class FleetController extends ApplicationController {
       const text = await response.text();
       if (response.ok) {
         await this.render({ json: text });
+      } else if (saysPaneIsGone(text)) {
+        // The contract is 200 for a gone pane. A ringo that says the same
+        // thing under a 404 is still saying it, and the page must hear
+        // "exited" rather than retry a dead pane as an outage forever. A 404
+        // WITHOUT that body stays an error: it is what a ringo with no such
+        // endpoint answers, for every pane, and those have not exited.
+        await this.render({ json: { exists: false } });
       } else {
         await this.render({ plain: text, status: response.status });
       }
     } catch (error) {
       await this.render(ringoFailure(error, SCREEN_TIMEOUT_MS));
     }
+  }
+}
+
+/** Whether ringo's body is its gone-pane answer, `{ "exists": false }`, whatever status it came under. */
+function saysPaneIsGone(text: string): boolean {
+  try {
+    const body: unknown = JSON.parse(text);
+    return typeof body === "object" && body !== null && (body as { exists?: unknown }).exists === false;
+  } catch {
+    return false;
   }
 }
 

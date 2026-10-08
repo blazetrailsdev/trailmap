@@ -54,6 +54,18 @@ beforeAll(async () => {
         hung.push(() => res.end());
         return;
       }
+      if (url.pathname === "/pane/8/screen") {
+        // A ringo that reports a gone pane under a 404 rather than the contract's 200.
+        res.writeHead(404, { "content-type": "application/json" });
+        res.end(JSON.stringify({ exists: false }));
+        return;
+      }
+      if (url.pathname === "/pane/9/screen") {
+        // A ringo with no such endpoint: Go's own not-found, for every pane.
+        res.writeHead(404);
+        res.end("404 page not found\n");
+        return;
+      }
       if (url.pathname.startsWith("/pane/")) {
         res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
         if (url.pathname === "/pane/7/screen") {
@@ -185,6 +197,33 @@ describe("FleetController#screen", () => {
 
     expect(response.status).toBe(200);
     expect(JSON.parse(response.body)).toEqual({ exists: false });
+  });
+
+  it("hears a gone pane under a 404 too, so the page stops instead of retrying forever", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await screen("8");
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ exists: false });
+  });
+
+  it("does not mistake a ringo without the endpoint for a pane that has exited", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await screen("9");
+
+    expect(response.status).toBe(404);
+    expect(response.body).toContain("404 page not found");
+  });
+
+  it("refuses an overlong hash before a request is made of it", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    expect((await screen("42", "a".repeat(128))).status).toBe(200);
+    received = [];
+    expect((await screen("42", "a".repeat(129))).status).toBe(400);
+    expect(received).toEqual([]);
   });
 
   it("refuses anything but digits before a request is made of it", async () => {

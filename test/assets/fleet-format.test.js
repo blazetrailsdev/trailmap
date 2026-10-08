@@ -37,6 +37,8 @@ import {
   visibleSpawns,
 } from "../../app/assets/javascripts/fleet-format.js";
 
+import { isPaneId } from "../../config/fleet.ts";
+
 /**
  * The fleet dashboard's formatting half, which is where all of its decisions
  * live. `dashboard.js` around it is `innerHTML =` and an `EventSource`.
@@ -144,6 +146,16 @@ describe("paneLine", () => {
     const line = paneLine("💪", '%1"><script>', "working");
     expect(line).not.toContain("<a ");
     expect(line).toContain("<code>%1&quot;&gt;&lt;script&gt;</code>");
+  });
+
+  // Two regexes, one in the browser and one on the server, that cannot share
+  // code. A link `paneHref` makes must be one the page and relay accept, and
+  // an id they accept must be one it links.
+  it("links exactly the ids the server accepts", () => {
+    for (const digits of ["0", "7", "42", "1234567890", "12345678901", "", "4x", "-1", "4.2", " 42", "٤٢", "../1"]) {
+      expect(paneHref("%" + digits) !== "", JSON.stringify(digits)).toBe(isPaneId(digits));
+    }
+    expect(isPaneId(paneHref("%214").replace("/panes/", ""))).toBe(true);
   });
 
   it("names the role behind the emoji, for anyone who cannot read it", () => {

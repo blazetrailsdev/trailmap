@@ -59,6 +59,10 @@ export const WORK_EMOJI = "💪";
 /**
  * The live view of a pane, `/panes/42` for `%42`; '' for anything that is not
  * a tmux pane id, which then renders as plain text rather than a dead link.
+ *
+ * The digits are the grammar `isPaneId` in `config/fleet.ts` checks on the
+ * server, which this file cannot import; `test/assets/fleet-format.test.js`
+ * holds the two to the same answer.
  */
 export function paneHref(pane) {
   const match = /^%([0-9]{1,10})$/.exec(String(pane == null ? "" : pane));

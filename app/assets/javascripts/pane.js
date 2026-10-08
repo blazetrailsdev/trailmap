@@ -88,14 +88,25 @@ function schedule(delay) {
   timer = setTimeout(poll, delay);
 }
 
+/**
+ * Ask now if the page should be asking at all. A timer armed before the tab
+ * was hidden, or before Pause, may still be pending; it is dropped first, or
+ * `schedule` would leave the reader waiting out the rest of its two seconds.
+ */
+function pollNow() {
+  if (timer !== null) clearTimeout(timer);
+  timer = null;
+  schedule(0);
+}
+
 pauseButton.addEventListener("click", () => {
   paused = !paused;
   paintHeader();
-  schedule(0);
+  pollNow();
 });
 
 // A hidden tab stops asking; coming back asks at once rather than a beat later.
-document.addEventListener("visibilitychange", () => schedule(0));
+document.addEventListener("visibilitychange", pollNow);
 
 // "updated Ns ago" keeps counting between polls, and while they are failing.
 setInterval(() => {
