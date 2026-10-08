@@ -49,15 +49,13 @@ Two things follow:
 - camelCase, everywhere. No `snake_case` identifiers.
 - **`app/views/` directories are kebab-case, like everything else**:
   `RfcPagesController` renders `app/views/rfc-pages/show` with no `template:`
-  argument. Never add one. The spelling comes from
-  `ApplicationController.localPrefixes`, the hook Rails documents for changing
-  where views are looked up (`view_paths.rb`, `local_prefixes`); trails
-  dispatches it since trails#8450. Never override `controllerPath` for this:
-  it also names the controller in routes, where a hyphen is illegal, and that
-  makes every page controller untestable through `ActionController::TestCase`.
-  `trails g controller` writes the underscored directory, so a generated
-  controller's views need renaming. `test/views/view-directory-names.test.ts`
-  holds the rule.
+  argument. Never add one. The spelling is the framework's own since
+  trails#8670: a controller's view directory is its path in kebab-case, and
+  `trails g controller` writes that directory. trailmap carries no override for
+  it. Never override `controllerPath` for this: it also names the controller in
+  routes, where a hyphen is illegal, and that makes every page controller
+  untestable through `ActionController::TestCase`.
+  `test/views/view-directory-names.test.ts` holds the rule.
 - **Never name a model method `set<Attribute>`.** trails answers the writer
   `priority=` with a `setPriority` method when one exists, so a method by that
   name IS the attribute's setter and runs on every `new`, `create` and `update`

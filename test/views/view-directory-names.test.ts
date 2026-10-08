@@ -13,18 +13,17 @@ import { StoryPagesController } from "../../app/controllers/story-pages-controll
  *
  * Two things are true at once, and this suite holds both:
  *
- * - The VIEW prefix is kebab-case. `ApplicationController.localPrefixes`
- *   respells it; that is the hook Rails documents for changing where views are
- *   looked up (`action_view/view_paths.rb`, `local_prefixes`), and trails
- *   dispatches it since trails#8450.
+ * - The VIEW prefix is kebab-case. That is the framework's spelling since
+ *   trails#8670, and trailmap overrides nothing to get it.
  * - `controllerPath` is untouched. It also names the controller in routes,
  *   where a hyphen is not legal, and `ActionController::TestCase` generates the
  *   request's route from it. trailmap overrode `controllerPath` first, and no
  *   page controller could then be tested through the framework's own harness.
  *
  * It fails on a directory spelled with an underscore, on a controller added
- * without a directory, on the `localPrefixes` override being removed while
- * the directories stay, and on a `controllerPath` override coming back.
+ * without a directory, on a trails pin whose lookup is underscored again, on a
+ * `localPrefixes` override coming back, and on a `controllerPath` override
+ * coming back.
  */
 const PAGE_CONTROLLERS = [
   DashboardController,
@@ -71,6 +70,10 @@ describe("app/views", () => {
     expect(RfcPagesController.controllerPath()).toBe("rfc_pages");
     expect(StoryPagesController.controllerPath()).toBe("story_pages");
     expect(Object.hasOwn(ApplicationController, "controllerPath")).toBe(false);
+  });
+
+  it("takes the kebab-case prefix from the framework, with no override of its own", () => {
+    expect(Object.hasOwn(ApplicationController, "localPrefixes")).toBe(false);
   });
 
   it("names each page controller's directory the way the implicit lookup does", async () => {
