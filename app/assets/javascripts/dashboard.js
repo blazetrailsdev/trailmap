@@ -62,8 +62,15 @@ function setDot(id, on) {
 }
 
 let fixers = [];
-/** ringo's reviewer list, keyed `owner/repo#pr`; see `pollReviewers`. */
-let reviewers = {};
+/**
+ * ringo's reviewer list, keyed `owner/repo#pr`, or NULL for "no answer yet".
+ *
+ * Null until the first poll lands, and null for as long as every poll fails.
+ * The rows render no reviewer line at all while it is null -- see
+ * `reviewerLine`. An empty MAP is a different statement: ringo answered, and
+ * nobody is reviewing anything.
+ */
+let reviewers = null;
 /** The last envelope, so a reviewer answer can repaint without waiting for a frame. */
 let lastEnvelope = null;
 
@@ -258,15 +265,34 @@ function reviewersPollFailed(reason) {
   reviewersPollOk = false;
 }
 
+/*
+ * Whether a poll is in flight. `setInterval` does not wait for the last one,
+ * and the browser's `fetch` has no timeout of its own -- the relay's 5s budget
+ * is the SERVER's patience, and a hung trailmap would leave the request open
+ * in the tab regardless. Without this, every tick of a stuck poll would stack
+ * another connection on a page that already holds a socket per viewer.
+ */
+let reviewersInFlight = false;
+
 async function pollReviewers() {
+  if (reviewersInFlight) return;
+  reviewersInFlight = true;
   try {
-    const response = await fetch(reviewersPath, { credentials: "same-origin" });
+    const response = await fetch(reviewersPath, {
+      credentials: "same-origin",
+      // The browser's own deadline, a poll interval wide: the tab gives up
+      // before the next tick rather than holding a dead request forever.
+      signal: AbortSignal.timeout(REVIEWERS_POLL_MS),
+    });
     if (!response.ok) {
       // The relay answers with ringo's own status and text, so this is the
       // reason itself, not a guess at one.
       reviewersPollFailed(response.status + " " + (await response.text()).trim());
       return;
     }
+    // `reviewersByKey` refuses a body that is not an array, by name, so a
+    // ringo answering `{}` is reported as what it was rather than as a
+    // generic iteration failure.
     reviewers = reviewersByKey(await response.json());
     reviewersPollOk = true;
     // Repaint from the last frame, so the reviewer rows appear on a cold load
@@ -274,6 +300,8 @@ async function pollReviewers() {
     if (lastEnvelope) paint(lastEnvelope);
   } catch (error) {
     reviewersPollFailed(error instanceof Error ? error.message : String(error));
+  } finally {
+    reviewersInFlight = false;
   }
 }
 

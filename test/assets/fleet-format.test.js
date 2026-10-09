@@ -257,8 +257,40 @@ describe("reviewerLine", () => {
   });
 
   it("ignores a hole in ringo's list rather than throwing on it", () => {
-    expect(reviewersByKey(null)).toEqual({});
     expect(reviewersByKey([null])).toEqual({});
+    expect(reviewersByKey([])).toEqual({});
+  });
+
+  // The page's choice is between "nobody is reviewing this" and "I do not
+  // know", and it can only make it if a malformed body is told apart from an
+  // empty list. Naming the type is what puts the reason in the warning.
+  it("refuses a body that is not a list, by name, rather than iterating it", () => {
+    expect(() => reviewersByKey({})).toThrow("not an array: object");
+    expect(() => reviewersByKey(null)).toThrow("not an array: null");
+    expect(() => reviewersByKey("[]")).toThrow("not an array: string");
+    expect(() => reviewersByKey(undefined)).toThrow("not an array: undefined");
+  });
+});
+
+describe("reviewerLine before an answer has arrived", () => {
+  const pr = { owner: "blazetrailsdev", repo: "trailmap", pr: 47 };
+
+  /*
+   * The dash is a CLAIM: it says nobody is reviewing this PR. Before the first
+   * poll lands -- and for as long as every poll fails, which is every page
+   * load with RINGO_BASE unset or ringo unreachable -- the truth is "unknown",
+   * and a page that answers an outage with "nobody is reviewing anything"
+   * would be at its most confident exactly when it knows least.
+   */
+  it("says nothing at all while there is no answer, rather than claiming nobody", () => {
+    expect(reviewerLine(pr, null)).toBe("");
+    expect(reviewerLine(pr, undefined)).toBe("");
+    expect(reviewerLine(pr)).toBe("");
+  });
+
+  it("claims nobody only once ringo has answered with an empty list", () => {
+    expect(reviewerLine(pr, reviewersByKey([]))).toContain("—");
+    expect(reviewerLine(pr, reviewersByKey([]))).toContain('class="pcell unassigned"');
   });
 });
 
@@ -285,6 +317,17 @@ describe("prRow's pane mini-table", () => {
     expect(row).toContain('href="/panes/215"');
     expect(row).toContain(">claude</span>");
     expect(row).not.toContain('data-action="merge"');
+  });
+
+  it("carries no reviewer line at all until the list has been answered", () => {
+    const unanswered = prRow(pr, [], Date.now(), null);
+
+    expect(unanswered).toContain('href="/panes/214"');
+    expect(unanswered).not.toContain("📋");
+    expect(unanswered).not.toContain("pcell unassigned");
+    // The default is the unanswered one: a caller that knows nothing about
+    // reviewers must not make the page claim there are none.
+    expect(prRow(pr, [], Date.now())).toBe(unanswered);
   });
 
   it("shows the reviewer even on a PR with no worker pane of its own", () => {

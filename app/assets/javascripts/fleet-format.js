@@ -114,10 +114,21 @@ export function agentChip(agent, blocked) {
 /** How ringo keys its reviewer list: `owner/repo#pr`. */
 export const reviewerKey = (owner, repo, pr) => owner + "/" + repo + "#" + pr;
 
-/** ringo's `/reviewer/list` array, as the map the rows look a PR up in. */
+/**
+ * ringo's `/reviewer/list` array, as the map the rows look a PR up in.
+ *
+ * An array is the only usable answer, and anything else is refused by name:
+ * the page's choice is between "nobody is reviewing this" and "I do not know",
+ * and it can only make it if a malformed body is told apart from an empty
+ * list. A hole INSIDE the list is skipped -- one unusable entry is not a
+ * reason to lose the other hundred.
+ */
 export function reviewersByKey(list) {
+  if (!Array.isArray(list)) {
+    throw new TypeError("the reviewer list is not an array: " + (list === null ? "null" : typeof list));
+  }
   const map = {};
-  for (const entry of list || []) {
+  for (const entry of list) {
     if (entry) map[reviewerKey(entry.owner, entry.repo, entry.pr)] = entry;
   }
   return map;
@@ -133,8 +144,16 @@ export function reviewersByKey(list) {
  * all (a dash). ringo offers a `+` in the last two; this page is read-only and
  * offers none, but it still says which of the three it is -- "nobody is
  * reviewing this" is the thing a reader most wants to see.
+ *
+ * And a fourth state that is NOT one of them: no answer yet. `reviewers` is
+ * null before the first poll lands and while every poll is failing, and then
+ * this renders NOTHING. The dash is a claim -- it says nobody is reviewing
+ * this PR -- and making that claim out of an unconfigured RINGO_BASE or an
+ * unreachable ringo would be stating as fact the one thing the page most
+ * wants to be trusted on. Silence is the honest answer to "I do not know".
  */
-export function reviewerLine(pr, reviewers = {}) {
+export function reviewerLine(pr, reviewers = null) {
+  if (!reviewers) return "";
   const entry = reviewers[reviewerKey(pr.owner, pr.repo, pr.pr)];
   const chip = entry ? agentChip(entry.agent, entry.blocked_by_usage) : "";
   if (entry && entry.pane_id) return paneLine(REV_EMOJI, entry.pane_id, entry.pane_status, chip);
@@ -501,7 +520,7 @@ export function spawnRow(s, fixers = [], now = Date.now()) {
 }
 
 /** One PR row. */
-export function prRow(pr, fixers = [], now = Date.now(), reviewers = {}) {
+export function prRow(pr, fixers = [], now = Date.now(), reviewers = null) {
   const url = "https://github.com/" + pr.owner + "/" + pr.repo + "/pull/" + pr.pr;
   const labels =
     (isFixerPR(fixers, pr) ? FIXER_BADGE + " " : "") +

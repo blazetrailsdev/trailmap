@@ -104,7 +104,23 @@ hop ringo's page does not have — it relays once per viewer.
   `REVIEWERS_TIMEOUT_MS` (5s) and answers 502/503/504 as the others do.
 - A failed poll keeps the last answer. A reviewer is a long-lived assignment,
   and blanking the rows because one request lost its race would say something
-  false.
+  false. The reason is named on the console once per transition, so a stale
+  column cannot pass for a current one.
+- Before the FIRST answer, and for as long as every poll fails, there is no
+  reviewer line at all. The dash is a claim — it says nobody is reviewing this
+  PR — and an unconfigured `RINGO_BASE` or an unreachable ringo would otherwise
+  make the page assert that about every row at once, which is the page at its
+  most confident exactly where it knows least. The list is `null` until an
+  answer lands; an empty map is the different, real statement that ringo
+  answered and nobody is reviewing anything.
+- Only an array is a usable answer. `reviewersByKey` refuses anything else by
+  naming its type, so a ringo answering `{}` is reported as that rather than as
+  a generic iteration failure — and a body the page cannot read leaves the
+  state unknown instead of empty.
+- One poll at a time, with the browser's own deadline a poll interval wide.
+  `REVIEWERS_TIMEOUT_MS` is the SERVER's patience; `fetch` has none of its own,
+  so without both a hung relay would stack a request per tick on a page that
+  already holds a socket per viewer.
 - Three states, all of them a row: a live pane; a reviewer pinned to a PR
   whose pane has gone (the agent and a dash, because the assignment outlives
   the pane); and no reviewer at all. ringo offers a `+` in the last two that
