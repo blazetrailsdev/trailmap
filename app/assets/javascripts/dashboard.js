@@ -27,6 +27,7 @@ import {
   repoSectionScaffold,
   repoSections,
   repoSectionsKey,
+  reviewersByKey,
   sectionId,
   spawnRow,
   visibleSpawns,
@@ -35,6 +36,7 @@ import {
 const config = document.getElementById("fleetConfig");
 const socketPath = (config && config.dataset.socketPath) || "/fleet/socket";
 const controlPath = (config && config.dataset.controlPath) || "/fleet/control";
+const reviewersPath = (config && config.dataset.reviewersPath) || "/fleet/reviewers";
 
 /**
  * Where a control POST goes: trailmap, which forwards it to ringo. `path` is
@@ -60,6 +62,17 @@ function setDot(id, on) {
 }
 
 let fixers = [];
+/**
+ * ringo's reviewer list, keyed `owner/repo#pr`, or NULL for "no answer yet".
+ *
+ * Null until the first poll lands, and null for as long as every poll fails.
+ * The rows render no reviewer line at all while it is null -- see
+ * `reviewerLine`. An empty MAP is a different statement: ringo answered, and
+ * nobody is reviewing anything.
+ */
+let reviewers = null;
+/** The last envelope, so a reviewer answer can repaint without waiting for a frame. */
+let lastEnvelope = null;
 
 function renderCIFixer(list) {
   const panel = byId("ciFixerPanel");
@@ -91,7 +104,7 @@ function renderRepoSections(prs, spawns) {
     byId(id + "-spawnsSection").style.display = section.spawns.length ? "" : "none";
     byId(id + "-spawns").innerHTML = section.spawns.map((s) => spawnRow(s, fixers)).join("");
     byId(id + "-prs").innerHTML = section.prs.length
-      ? section.prs.map((pr) => prRow(pr, fixers)).join("")
+      ? section.prs.map((pr) => prRow(pr, fixers, Date.now(), reviewers)).join("")
       : '<div class="list-empty">No open PRs.</div>';
   });
 
@@ -177,6 +190,11 @@ function onFrame(event) {
   const data = JSON.parse(event.data);
   // ringo's stream still supports the legacy bare-array frame; so does this.
   const envelope = Array.isArray(data) ? { prs: data } : data;
+  lastEnvelope = envelope;
+  paint(envelope);
+}
+
+function paint(envelope) {
   const prs = envelope.prs || [];
 
   fixers = envelope.fixers || [];
@@ -215,6 +233,80 @@ function connect(attempt) {
 }
 
 connect(0);
+
+// ---------------------------------------------------------------------------
+// The reviewer list
+// ---------------------------------------------------------------------------
+
+/*
+ * Who is reviewing each open PR is not in the event envelope -- ringo's own
+ * dashboard fetches it separately too -- so the reviewer row of every PR's
+ * pane mini-table comes from here, on a timer rather than the stream. A failed
+ * poll keeps the last answer: a reviewer is a long-lived assignment, and
+ * blanking the rows because one request lost its race says something false.
+ *
+ * ringo's own interval (`dashboard.go:2425`), and no faster. A reviewer
+ * changes when a pane is spawned or dies, not between frames, and trailmap is
+ * a hop ringo's page does not have: it relays once per viewer, so polling
+ * harder would multiply that hop for nothing.
+ */
+const REVIEWERS_POLL_MS = 30_000;
+
+/*
+ * Whether the last poll worked, so a failing relay is reported ONCE rather
+ * than on every poll -- and reported at all. Keeping the rows is the
+ * policy; saying nothing about why would make a stale reviewer column
+ * indistinguishable from a current one.
+ */
+let reviewersPollOk = true;
+
+function reviewersPollFailed(reason) {
+  if (reviewersPollOk) console.warn("fleet: the reviewer list is stale --", reason);
+  reviewersPollOk = false;
+}
+
+/*
+ * Whether a poll is in flight. `setInterval` does not wait for the last one,
+ * and the browser's `fetch` has no timeout of its own -- the relay's 5s budget
+ * is the SERVER's patience, and a hung trailmap would leave the request open
+ * in the tab regardless. Without this, every tick of a stuck poll would stack
+ * another connection on a page that already holds a socket per viewer.
+ */
+let reviewersInFlight = false;
+
+async function pollReviewers() {
+  if (reviewersInFlight) return;
+  reviewersInFlight = true;
+  try {
+    const response = await fetch(reviewersPath, {
+      credentials: "same-origin",
+      // The browser's own deadline, a poll interval wide: the tab gives up
+      // before the next tick rather than holding a dead request forever.
+      signal: AbortSignal.timeout(REVIEWERS_POLL_MS),
+    });
+    if (!response.ok) {
+      // The relay answers with ringo's own status and text, so this is the
+      // reason itself, not a guess at one.
+      reviewersPollFailed(response.status + " " + (await response.text()).trim());
+      return;
+    }
+    // `reviewersByKey` refuses a body that is not an array, by name, so a
+    // ringo answering `{}` is reported as what it was rather than as a
+    // generic iteration failure.
+    reviewers = reviewersByKey(await response.json());
+    reviewersPollOk = true;
+    // Repaint from the last frame, so the reviewer rows appear on a cold load
+    // without waiting for the next one (the race ringo's own page notes).
+    if (lastEnvelope) paint(lastEnvelope);
+  } catch (error) {
+    reviewersPollFailed(error instanceof Error ? error.message : String(error));
+  } finally {
+    reviewersInFlight = false;
+  }
+}
+
+pollReviewers();
+setInterval(pollReviewers, REVIEWERS_POLL_MS);
 
 // ---------------------------------------------------------------------------
 // Manual spawn -- the one control this page carries, and the reason the repo

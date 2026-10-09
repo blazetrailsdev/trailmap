@@ -106,6 +106,13 @@ describe("config/routes", () => {
     expect(screen.params.id).toBe("42");
   });
 
+  it("routes the reviewer relay the PR rows poll", () => {
+    const routes = routeSet();
+
+    const reviewers = recognize(routes, "GET", "/fleet/reviewers");
+    expect(reviewers.route).toEqual({ controller: "fleet", action: "reviewers" });
+  });
+
   it("routes the singular show-page paths to their page controllers", () => {
     const routes = routeSet();
 

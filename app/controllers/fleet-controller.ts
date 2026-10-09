@@ -17,6 +17,14 @@ export const CONTROL_TIMEOUT_MS = 30_000;
 export const SCREEN_TIMEOUT_MS = 1_500;
 
 /**
+ * How long ringo has to answer for the reviewer list. Between a control's
+ * patience and a screen's: the page asks on a slow timer and can live one
+ * cycle with yesterday's answer, but a hung ringo must not hold the request
+ * long enough for the next poll to pile up behind it.
+ */
+export const REVIEWERS_TIMEOUT_MS = 5_000;
+
+/**
  * The fleet pages' lines to ringo, all through trailmap.
  *
  * ringo is another origin behind the same SSO, and neither its event stream
@@ -101,6 +109,38 @@ export class FleetController extends ApplicationController {
       await this.render({ plain: await response.text(), status: response.status });
     } catch (error) {
       await this.render(ringoFailure(error, CONTROL_TIMEOUT_MS));
+    }
+  }
+
+  /**
+   * `GET /fleet/reviewers`: ringo's `/reviewer/list`, relayed unchanged.
+   *
+   * The reviewer of a PR is not in the event envelope -- ringo's own
+   * dashboard fetches it separately too (`dashboard.go:904`) -- so the fleet
+   * page's reviewer pane rows need a read path of their own. Read-only, and
+   * narrower than `control`: one fixed upstream path, no body, no allowlist to
+   * keep in step.
+   */
+  async reviewers(): Promise<void> {
+    const base = ringoBase();
+    if (base === null) {
+      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
+      return;
+    }
+
+    this.noStore();
+    try {
+      const response = await fetch(`${base}/reviewer/list`, {
+        signal: AbortSignal.timeout(REVIEWERS_TIMEOUT_MS),
+      });
+      const text = await response.text();
+      if (response.ok) {
+        await this.render({ json: text });
+      } else {
+        await this.render({ plain: text, status: response.status });
+      }
+    } catch (error) {
+      await this.render(ringoFailure(error, REVIEWERS_TIMEOUT_MS));
     }
   }
 

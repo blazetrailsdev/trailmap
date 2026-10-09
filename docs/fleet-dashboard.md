@@ -16,6 +16,7 @@ fills the page in.
 ```text
 browser --WebSocket /fleet/socket----> trailmap --GET /events (SSE)--> ringo
 browser --POST /fleet/control/<path>--> trailmap --POST /<path>-------> ringo
+browser --GET  /fleet/reviewers------> trailmap --GET /reviewer/list--> ringo
 ```
 
 The page opens a WebSocket to trailmap. `FleetController#socket` takes the
@@ -82,6 +83,57 @@ which is `move-tracker-state-into-the-database` — not this story.
 | --- | --- |
 | `FLEET_REPO_PATHS` | The manual spawn control's repo list, as `owner/repo=/path/to/checkout`, comma-separated. ringo's `DashboardConfig.RepoPaths`. |
 | `RINGO_BASE` | Above. |
+
+## The reviewer of a PR
+
+Each PR row's pane mini-table has two lines: the worker's pane, and under it
+the reviewer's — its agent, its pane id, its status dot — exactly as ringo's
+own rows read.
+
+That second line cannot come from the stream. `Tracker.ServeEvents` carries no
+reviewer, and ringo's own dashboard fetches `/reviewer/list` separately
+(`dashboard.go:904`) for the same reason. So the page polls
+`GET /fleet/reviewers` on trailmap every thirty seconds
+(`FleetController#reviewers`), which relays ringo's `GET /reviewer/list`.
+Thirty is ringo's own interval (`dashboard.go:2425`) and no faster: a reviewer
+changes when a pane is spawned or dies, not between frames, and trailmap is a
+hop ringo's page does not have — it relays once per viewer.
+
+- The relay is read-only and narrower than the control relay: one fixed
+  upstream path, no body, nothing to allowlist. It gives ringo
+  `REVIEWERS_TIMEOUT_MS` (5s) and answers 502/503/504 as the others do.
+- A failed poll keeps the last answer. A reviewer is a long-lived assignment,
+  and blanking the rows because one request lost its race would say something
+  false. The reason is named on the console once per transition, so a stale
+  column cannot pass for a current one.
+- Before the FIRST answer, and for as long as every poll fails, there is no
+  reviewer line at all. The dash is a claim — it says nobody is reviewing this
+  PR — and an unconfigured `RINGO_BASE` or an unreachable ringo would otherwise
+  make the page assert that about every row at once, which is the page at its
+  most confident exactly where it knows least. The list is `null` until an
+  answer lands; an empty map is the different, real statement that ringo
+  answered and nobody is reviewing anything.
+- Only an array is a usable answer. `reviewersByKey` refuses anything else by
+  naming its type, so a ringo answering `{}` is reported as that rather than as
+  a generic iteration failure — and a body the page cannot read leaves the
+  state unknown instead of empty.
+- One poll at a time, with the browser's own deadline a poll interval wide.
+  `REVIEWERS_TIMEOUT_MS` is the SERVER's patience; `fetch` has none of its own,
+  so without both a hung relay would stack a request per tick on a page that
+  already holds a socket per viewer.
+- Three states, all of them a row: a live pane; a reviewer pinned to a PR
+  whose pane has gone (the agent and a dash, because the assignment outlives
+  the pane); and no reviewer at all. ringo offers a `+` in the last two that
+  spawns or respawns one — this page is read-only and offers none, but it still
+  says which of the three it is, because "nobody is reviewing this" is what a
+  reader most wants to see. A merged PR keeps its line: the merge BUTTON goes
+  because the action is gone, but the reviewer is information, and who reviewed
+  a PR is most wanted while reading the merge — which is why ringo renders the
+  line unconditionally too (`dashboard.go:1335`).
+- ringo draws the agent's company logo here from its own `/claude-logo.svg`.
+  trailmap carries no image assets, so the chip is the agent's name — the same
+  information in the same space. `blocked_by_usage` marks the chip, not the
+  dot: it is about the agent's quota, not the pane's momentary state.
 
 ## The live pane view
 

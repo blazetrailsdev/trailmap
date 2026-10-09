@@ -65,6 +65,9 @@ export const FLEET_SOCKET_PATH = "/fleet/socket";
 /** The prefix the fleet page's controls post under; the rest is ringo's own path. */
 export const FLEET_CONTROL_PATH = "/fleet/control";
 
+/** Where the fleet page polls for the reviewer of each open PR. */
+export const FLEET_REVIEWERS_PATH = "/fleet/reviewers";
+
 /** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
 export const FLEET_PANE_PATH = "/fleet/pane";
 

@@ -6,7 +6,10 @@ import {
   control,
   controlOutcome,
   controlRequest,
+  REV_EMOJI,
+  WORK_EMOJI,
   activeFixers,
+  agentChip,
   ciIcon,
   esc,
   fixerCards,
@@ -28,6 +31,9 @@ import {
   repoSectionScaffold,
   repoSections,
   repoSectionsKey,
+  reviewerKey,
+  reviewerLine,
+  reviewersByKey,
   rfcSpawnRow,
   row,
   sectionId,
@@ -163,9 +169,172 @@ describe("paneLine", () => {
     expect(paneLine("📋", "%215", "working")).toContain('title="reviewer"');
   });
 
+  it("puts a lead -- the reviewer's agent chip -- before the id, as ringo does", () => {
+    const line = paneLine("📋", "%215", "idle", '<span class="agent-chip">claude</span>');
+
+    expect(line).toContain('<span class="pval"><span class="agent-chip">claude</span><a ');
+  });
+
   it("renders nothing at all when there is no pane", () => {
     expect(paneLine("💪", "", "working")).toBe("");
     expect(paneLine("💪", undefined, undefined)).toBe("");
+  });
+});
+
+describe("reviewerKey", () => {
+  it("is ringo's own key for its reviewer list: owner/repo#pr", () => {
+    expect(reviewerKey("blazetrailsdev", "trailmap", 47)).toBe("blazetrailsdev/trailmap#47");
+  });
+
+  // ringo keys `_reviewers` this way (`dashboard.go:816`), and the list it
+  // serves is looked up by it. A different spelling here finds nothing.
+  it("is what reviewersByKey files an entry under", () => {
+    const entry = { owner: "o", repo: "r", pr: 3, agent: "claude" };
+
+    expect(reviewersByKey([entry])[reviewerKey("o", "r", 3)]).toBe(entry);
+  });
+});
+
+describe("the mini-table's two labels", () => {
+  it("are the emoji ringo uses, which is how a row's two lines are told apart", () => {
+    expect(WORK_EMOJI).toBe("💪");
+    expect(REV_EMOJI).toBe("📋");
+  });
+});
+
+describe("reviewerLine", () => {
+  const pr = { owner: "blazetrailsdev", repo: "trailmap", pr: 47 };
+  const reviewers = reviewersByKey([
+    { owner: "blazetrailsdev", repo: "trailmap", pr: 47, agent: "claude", pane_id: "%215", pane_status: "working" },
+  ]);
+
+  it("gives the reviewer the worker's own shape: agent, pane link, status dot", () => {
+    const line = reviewerLine(pr, reviewers);
+
+    expect(line).toContain('title="reviewer"');
+    expect(line).toContain("📋");
+    expect(line).toContain(">claude</span>");
+    expect(line).toContain('href="/panes/215"');
+    expect(line).toContain('title="working"');
+  });
+
+  it("keys by repo as well as number, so trails#47 is not trailmap#47", () => {
+    expect(reviewerLine({ owner: "blazetrailsdev", repo: "trails", pr: 47 }, reviewers)).not.toContain("%215");
+    expect(reviewerLine({ owner: "blazetrailsdev", repo: "trails", pr: 47 }, reviewers)).toContain("—");
+  });
+
+  it("says so when no reviewer is assigned, rather than leaving the row off", () => {
+    const line = reviewerLine(pr, {});
+
+    expect(line).toContain('class="pcell unassigned"');
+    // `.empty` is the list pages' empty-state block: a cell wearing it gets
+    // 32px of padding and tears the reviewer line off the worker's.
+    expect(line).not.toContain("pcell empty");
+    expect(line).toContain("—");
+    expect(line).not.toContain("<code>");
+  });
+
+  it("keeps the agent, and drops to a dash, when the reviewer's pane has gone", () => {
+    const pinned = reviewersByKey([{ ...pr, agent: "codex" }]);
+    const line = reviewerLine(pr, pinned);
+
+    expect(line).toContain(">codex</span>");
+    expect(line).toContain("—");
+    expect(line).not.toContain('href="/panes/');
+  });
+
+  it("marks an agent blocked by its usage limit, which no pane status says", () => {
+    const blocked = reviewersByKey([{ ...pr, agent: "codex", pane_id: "%9", blocked_by_usage: true }]);
+
+    expect(reviewerLine(pr, blocked)).toContain("agent-chip blocked");
+    expect(reviewerLine(pr, blocked)).toContain("blocked by its usage limit");
+    expect(reviewerLine(pr, reviewers)).not.toContain("blocked");
+  });
+
+  it("escapes the agent, which is ringo's string and not ours", () => {
+    expect(agentChip('<script>', false)).toContain("&lt;script&gt;");
+    expect(agentChip("", false)).toBe("");
+  });
+
+  it("ignores a hole in ringo's list rather than throwing on it", () => {
+    expect(reviewersByKey([null])).toEqual({});
+    expect(reviewersByKey([])).toEqual({});
+  });
+
+  // The page's choice is between "nobody is reviewing this" and "I do not
+  // know", and it can only make it if a malformed body is told apart from an
+  // empty list. Naming the type is what puts the reason in the warning.
+  it("refuses a body that is not a list, by name, rather than iterating it", () => {
+    expect(() => reviewersByKey({})).toThrow("not an array: object");
+    expect(() => reviewersByKey(null)).toThrow("not an array: null");
+    expect(() => reviewersByKey("[]")).toThrow("not an array: string");
+    expect(() => reviewersByKey(undefined)).toThrow("not an array: undefined");
+  });
+});
+
+describe("reviewerLine before an answer has arrived", () => {
+  const pr = { owner: "blazetrailsdev", repo: "trailmap", pr: 47 };
+
+  /*
+   * The dash is a CLAIM: it says nobody is reviewing this PR. Before the first
+   * poll lands -- and for as long as every poll fails, which is every page
+   * load with RINGO_BASE unset or ringo unreachable -- the truth is "unknown",
+   * and a page that answers an outage with "nobody is reviewing anything"
+   * would be at its most confident exactly when it knows least.
+   */
+  it("says nothing at all while there is no answer, rather than claiming nobody", () => {
+    expect(reviewerLine(pr, null)).toBe("");
+    expect(reviewerLine(pr, undefined)).toBe("");
+    expect(reviewerLine(pr)).toBe("");
+  });
+
+  it("claims nobody only once ringo has answered with an empty list", () => {
+    expect(reviewerLine(pr, reviewersByKey([]))).toContain("—");
+    expect(reviewerLine(pr, reviewersByKey([]))).toContain('class="pcell unassigned"');
+  });
+});
+
+describe("prRow's pane mini-table", () => {
+  const pr = { owner: "blazetrailsdev", repo: "trailmap", pr: 47, pane: "%214", paneStatus: "working" };
+  const reviewers = reviewersByKey([
+    { owner: "blazetrailsdev", repo: "trailmap", pr: 47, agent: "claude", pane_id: "%215", pane_status: "idle" },
+  ]);
+
+  it("puts the reviewer's pane under the worker's, in that order", () => {
+    const row = prRow(pr, [], Date.now(), reviewers);
+
+    expect(row).toContain('href="/panes/214"');
+    expect(row).toContain('href="/panes/215"');
+    expect(row.indexOf("/panes/214")).toBeLessThan(row.indexOf("/panes/215"));
+  });
+
+  // The merge BUTTON goes when the PR is merged and the reviewer does not:
+  // one is an action that no longer exists, the other is information, and who
+  // reviewed a PR is most wanted while reading the merge. ringo keeps it too.
+  it("keeps the reviewer row on a merged PR, where the merge button goes", () => {
+    const row = prRow({ ...pr, merged: true }, [], Date.now(), reviewers);
+
+    expect(row).toContain('href="/panes/215"');
+    expect(row).toContain(">claude</span>");
+    expect(row).not.toContain('data-action="merge"');
+  });
+
+  it("carries no reviewer line at all until the list has been answered", () => {
+    const unanswered = prRow(pr, [], Date.now(), null);
+
+    expect(unanswered).toContain('href="/panes/214"');
+    expect(unanswered).not.toContain("📋");
+    expect(unanswered).not.toContain("pcell unassigned");
+    // The default is the unanswered one: a caller that knows nothing about
+    // reviewers must not make the page claim there are none.
+    expect(prRow(pr, [], Date.now())).toBe(unanswered);
+  });
+
+  it("shows the reviewer even on a PR with no worker pane of its own", () => {
+    const row = prRow({ ...pr, pane: undefined, paneStatus: undefined }, [], Date.now(), reviewers);
+
+    expect(row).not.toContain('href="/panes/214"');
+    expect(row).toContain('href="/panes/215"');
   });
 });
 

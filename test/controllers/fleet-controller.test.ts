@@ -10,7 +10,11 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { getHttpAsync, setEnv, type HttpServer } from "@blazetrails/ruby-compat";
-import { FleetController, SCREEN_TIMEOUT_MS } from "../../app/controllers/fleet-controller.js";
+import {
+  FleetController,
+  REVIEWERS_TIMEOUT_MS,
+  SCREEN_TIMEOUT_MS,
+} from "../../app/controllers/fleet-controller.js";
 import { controllerTestCase } from "../support/controller-test-case.js";
 
 interface Received {
@@ -28,6 +32,11 @@ const SCREEN = {
   lines: 2,
   hash: "abc+/=1",
 };
+
+/** What the stand-in ringo says `/reviewer/list` holds. */
+const REVIEWERS = [
+  { owner: "blazetrailsdev", repo: "trailmap", pr: 47, agent: "claude", pane_id: "%215", pane_status: "working" },
+];
 
 let ringo: HttpServer;
 let ringoBaseUrl = "";
@@ -49,6 +58,20 @@ beforeAll(async () => {
         body,
       });
       const url = new URL(req.url ?? "/", "http://ringo");
+      if (url.pathname === "/reviewer/list") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify(REVIEWERS));
+        return;
+      }
+      if (url.pathname === "/reviewer-down/reviewer/list") {
+        res.writeHead(500);
+        res.end("reviewer store is unavailable");
+        return;
+      }
+      if (url.pathname === "/hung/reviewer/list") {
+        hung.push(() => res.end());
+        return;
+      }
       if (url.pathname === "/pane/99/screen") {
         // A hung ringo: the request is taken and not answered while the test runs.
         hung.push(() => res.end());
@@ -260,6 +283,62 @@ describe("FleetController#screen", () => {
     expect(SCREEN_TIMEOUT_MS).toBeLessThan(2000);
     expect(Date.now() - started).toBeLessThan(2000 + 1000);
   });
+});
+
+async function reviewers() {
+  const tc = await controllerTestCase(FleetController);
+  await tc.get("reviewers");
+  return tc.response;
+}
+
+describe("FleetController#reviewers", () => {
+  it("relays ringo's reviewer list, as JSON that is never cached", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await reviewers();
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toEqual(REVIEWERS);
+    expect(response.getHeader("Content-Type")).toContain("application/json");
+    expect(response.getHeader("Cache-Control")).toContain("no-store");
+    expect(received.map((r) => r.url)).toEqual(["/reviewer/list"]);
+  });
+
+  it("passes ringo's own failure through rather than dressing it as an empty list", async () => {
+    setEnv("RINGO_BASE", `${ringoBaseUrl}/reviewer-down`);
+
+    const response = await reviewers();
+
+    expect(response.status).toBe(500);
+    expect(response.body).toContain("reviewer store is unavailable");
+  });
+
+  it("says ringo is not configured rather than guessing where it is", async () => {
+    expect((await reviewers()).status).toBe(503);
+  });
+
+  it("answers 502 when ringo cannot be reached", async () => {
+    setEnv("RINGO_BASE", "http://127.0.0.1:1");
+
+    const response = await reviewers();
+
+    expect(response.status).toBe(502);
+    expect(response.body).toContain("ringo is unreachable");
+  });
+
+  it("answers 504 when ringo takes the request and does not answer", async () => {
+    setEnv("RINGO_BASE", `${ringoBaseUrl}/hung`);
+
+    const response = await reviewers();
+
+    expect(response.status).toBe(504);
+    expect(response.body).toContain("ringo did not answer");
+    // The page polls every thirty seconds; the wait ends well inside one poll,
+    // so a hung ringo costs a reader one stale cycle and never a queue of
+    // held requests.
+    expect(REVIEWERS_TIMEOUT_MS).toBeLessThan(30_000);
+    // The wait itself is the test, so it needs longer than vitest's default.
+  }, 15_000);
 });
 
 describe("FleetController#socket", () => {

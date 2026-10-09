@@ -574,10 +574,29 @@ ul { margin: 0 0 10px 20px; }
 .repo-heading .spawn-dismiss { margin-left: 8px; vertical-align: middle; }
 .btn-sm { padding: 2px 8px; font-size: 11px; }
 
-/* The pane mini-table on a row's right edge: worker worker, and its status dot. */
-.panes { font-size: 12px; }
-.pcell { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
-.plabel { color: var(--muted); }
+/*
+ * The pane mini-table on a row's right edge: the worker's pane and status dot,
+ * and under it the reviewer's -- its agent, its pane, its dot. The rows align
+ * because the label column is a fixed width, so the two emoji and the two ids
+ * sit over each other however long an agent's name is.
+ */
+.panes { font-size: 12px; display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
+.pcell { display: grid; grid-template-columns: 18px auto; align-items: center; gap: 6px; justify-content: flex-end; }
+.plabel { color: var(--muted); text-align: center; }
+.pval { display: inline-flex; align-items: center; gap: 4px; }
+/*
+ * No reviewer, or one whose pane has gone: the row still holds its place.
+ * NOT `.pcell.empty` -- `.empty` is the list pages' empty-state block, and a
+ * cell wearing it inherits 32px of padding and a centred line.
+ */
+.pcell.unassigned .dash { color: var(--muted); opacity: 0.6; }
+/*
+ * The reviewer's agent. Outlined red while it is blocked by its usage limit:
+ * the review is owed and nothing will write it until the quota resets, which
+ * no pane status says.
+ */
+.agent-chip { color: var(--muted); font-size: 11px; }
+.agent-chip.blocked { color: var(--red); background: var(--red-bg); border-radius: 10px; padding: 0 5px; cursor: help; }
 
 /* Status pills. `limit-reached` is purple: blocked, but nothing is broken. */
 .status { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; white-space: nowrap; }
