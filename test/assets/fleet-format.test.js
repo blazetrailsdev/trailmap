@@ -276,11 +276,22 @@ describe("prRow's pane mini-table", () => {
     expect(row.indexOf("/panes/214")).toBeLessThan(row.indexOf("/panes/215"));
   });
 
-  it("drops the reviewer row once the PR is merged: there is nothing left to review", () => {
+  // The merge BUTTON goes when the PR is merged and the reviewer does not:
+  // one is an action that no longer exists, the other is information, and who
+  // reviewed a PR is most wanted while reading the merge. ringo keeps it too.
+  it("keeps the reviewer row on a merged PR, where the merge button goes", () => {
     const row = prRow({ ...pr, merged: true }, [], Date.now(), reviewers);
 
-    expect(row).toContain('href="/panes/214"');
-    expect(row).not.toContain("📋");
+    expect(row).toContain('href="/panes/215"');
+    expect(row).toContain(">claude</span>");
+    expect(row).not.toContain('data-action="merge"');
+  });
+
+  it("shows the reviewer even on a PR with no worker pane of its own", () => {
+    const row = prRow({ ...pr, pane: undefined, paneStatus: undefined }, [], Date.now(), reviewers);
+
+    expect(row).not.toContain('href="/panes/214"');
+    expect(row).toContain('href="/panes/215"');
   });
 });
 

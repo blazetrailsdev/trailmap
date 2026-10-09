@@ -545,9 +545,12 @@ export function prRow(pr, fixers = [], now = Date.now(), reviewers = {}) {
             title: "Merge PR",
             label: "merge",
           })),
-    // The worker's pane, and under it the reviewer's: a merged PR has nobody
-    // left to review it, so the row goes with the merge button.
-    panes: paneLine(WORK_EMOJI, pr.pane, pr.paneStatus) + (merged ? "" : reviewerLine(pr, reviewers)),
+    // The worker's pane, and under it the reviewer's. The merge BUTTON goes
+    // when the PR is merged, because the action is gone; the reviewer stays,
+    // because it is information -- and who reviewed a PR is most wanted while
+    // reading the merge. ringo renders it unconditionally too
+    // (`dashboard.go:1335`).
+    panes: paneLine(WORK_EMOJI, pr.pane, pr.paneStatus) + reviewerLine(pr, reviewers),
   });
 }
 

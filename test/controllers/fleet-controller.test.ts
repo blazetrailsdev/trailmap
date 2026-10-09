@@ -333,8 +333,10 @@ describe("FleetController#reviewers", () => {
 
     expect(response.status).toBe(504);
     expect(response.body).toContain("ringo did not answer");
-    // The page polls every ten seconds; the wait ends well inside one poll.
-    expect(REVIEWERS_TIMEOUT_MS).toBeLessThan(10_000);
+    // The page polls every thirty seconds; the wait ends well inside one poll,
+    // so a hung ringo costs a reader one stale cycle and never a queue of
+    // held requests.
+    expect(REVIEWERS_TIMEOUT_MS).toBeLessThan(30_000);
     // The wait itself is the test, so it needs longer than vitest's default.
   }, 15_000);
 });

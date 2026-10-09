@@ -93,8 +93,11 @@ own rows read.
 That second line cannot come from the stream. `Tracker.ServeEvents` carries no
 reviewer, and ringo's own dashboard fetches `/reviewer/list` separately
 (`dashboard.go:904`) for the same reason. So the page polls
-`GET /fleet/reviewers` on trailmap every ten seconds
+`GET /fleet/reviewers` on trailmap every thirty seconds
 (`FleetController#reviewers`), which relays ringo's `GET /reviewer/list`.
+Thirty is ringo's own interval (`dashboard.go:2425`) and no faster: a reviewer
+changes when a pane is spawned or dies, not between frames, and trailmap is a
+hop ringo's page does not have — it relays once per viewer.
 
 - The relay is read-only and narrower than the control relay: one fixed
   upstream path, no body, nothing to allowlist. It gives ringo
@@ -107,7 +110,10 @@ reviewer, and ringo's own dashboard fetches `/reviewer/list` separately
   the pane); and no reviewer at all. ringo offers a `+` in the last two that
   spawns or respawns one — this page is read-only and offers none, but it still
   says which of the three it is, because "nobody is reviewing this" is what a
-  reader most wants to see. A merged PR drops the line.
+  reader most wants to see. A merged PR keeps its line: the merge BUTTON goes
+  because the action is gone, but the reviewer is information, and who reviewed
+  a PR is most wanted while reading the merge — which is why ringo renders the
+  line unconditionally too (`dashboard.go:1335`).
 - ringo draws the agent's company logo here from its own `/claude-logo.svg`.
   trailmap carries no image assets, so the chip is the agent's name — the same
   information in the same space. `blocked_by_usage` marks the chip, not the

@@ -237,12 +237,17 @@ connect(0);
  * pane mini-table comes from here, on a timer rather than the stream. A failed
  * poll keeps the last answer: a reviewer is a long-lived assignment, and
  * blanking the rows because one request lost its race says something false.
+ *
+ * ringo's own interval (`dashboard.go:2425`), and no faster. A reviewer
+ * changes when a pane is spawned or dies, not between frames, and trailmap is
+ * a hop ringo's page does not have: it relays once per viewer, so polling
+ * harder would multiply that hop for nothing.
  */
-const REVIEWERS_POLL_MS = 10_000;
+const REVIEWERS_POLL_MS = 30_000;
 
 /*
  * Whether the last poll worked, so a failing relay is reported ONCE rather
- * than every ten seconds -- and reported at all. Keeping the rows is the
+ * than on every poll -- and reported at all. Keeping the rows is the
  * policy; saying nothing about why would make a stale reviewer column
  * indistinguishable from a current one.
  */
