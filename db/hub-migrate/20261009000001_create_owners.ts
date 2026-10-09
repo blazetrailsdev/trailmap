@@ -15,7 +15,6 @@ export class CreateOwners extends Migration {
       t.string("kind", { null: false, default: "organization" });
       t.string("display_name");
       t.text("description");
-      t.string("avatar_url");
       t.timestamps();
       // Case-insensitive, because `Owner.findByLogin` and the uniqueness
       // validation both are — GitHub resolves `/BlazeTrailsDev` to the same

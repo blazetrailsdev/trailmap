@@ -14,7 +14,6 @@ export default async function defineSchema(ctx: DatabaseAdapter) {
     t.string("kind", { default: "organization", null: false });
     t.string("display_name");
     t.text("description");
-    t.string("avatar_url");
     t.datetime("created_at", { null: false });
     t.datetime("updated_at", { null: false });
     t.index("lower((login)::text)", { name: "index_owners_on_lower_login", unique: true });

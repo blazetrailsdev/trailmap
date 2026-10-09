@@ -203,16 +203,24 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
     });
 
     it("upserts rather than duplicating a key", async () => {
-      await Setting.write("fleet_socket_path", "/one");
-      await Setting.write("fleet_socket_path", "/two");
+      await Setting.write("ringo_base", "http://one.web:8080");
+      await Setting.write("ringo_base", "http://two.web:8080");
 
       expect(await Setting.count()).toBe(1);
-      expect(await Setting.lookup("fleet_socket_path")).toBe("/two");
+      expect(await Setting.lookup("ringo_base")).toBe("http://two.web:8080");
     });
 
     it("is null when neither the row nor the environment has a value", async () => {
-      setEnv("FLEET_CONTROL_PATH", "");
-      expect(await Setting.lookup("fleet_control_path")).toBeNull();
+      setEnv("RINGO_BASE", "");
+      expect(await Setting.lookup("ringo_base")).toBeNull();
+    });
+
+    it("knows only settings something actually reads", () => {
+      // The guard against the thing this list grew by accident: two keys that
+      // named `config/fleet.ts` CONSTANTS rather than environment variables,
+      // so a row overrode nothing and the settings page offered a knob that
+      // did not turn.
+      expect(Object.keys(Setting.FALLBACKS)).toEqual(["ringo_base"]);
     });
   });
 

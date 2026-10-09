@@ -1,9 +1,8 @@
 import { Migration } from "@blazetrails/activerecord";
 
 /**
- * The application-wide settings — ringo's origin and the fleet page's two
- * relay paths, which until now existed only as `RINGO_BASE`,
- * `FLEET_SOCKET_PATH` and `FLEET_CONTROL_PATH`.
+ * The application-wide settings — ringo's origin, which until now existed only
+ * as `RINGO_BASE`.
  *
  * Key/value, like `meta` in the task database, because these are a handful of
  * operator-set strings rather than a schema. A row overrides the environment

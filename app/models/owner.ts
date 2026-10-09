@@ -24,7 +24,6 @@ export class Owner extends Hub {
   declare kind: OwnerKind;
   declare display_name: string | null;
   declare description: string | null;
-  declare avatar_url: string | null;
 
   declare repositories: AssociationProxy<Repository>;
 

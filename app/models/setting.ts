@@ -3,8 +3,10 @@ import { env } from "@blazetrails/ruby-compat";
 import { ConnectionNotDefined } from "@blazetrails/activerecord";
 
 /**
- * The settings that are one per application rather than one per repository:
- * ringo's origin and the two paths the fleet page's browser talks to.
+ * The settings that are one per application rather than one per repository.
+ *
+ * Today that is ringo's origin, and only that: `FALLBACKS` is the list, and
+ * an entry belongs there when something reads it.
  *
  * Stored key/value, like `app/models/meta.ts` — these are a handful of strings
  * an operator changes, not a schema. A row OVERRIDES the environment variable
@@ -20,11 +22,19 @@ export class Setting extends Hub {
   declare key: string;
   declare value: string | null;
 
-  /** The settings this model knows about, and the env var each one falls back to. */
+  /**
+   * The settings this model knows about, and the env var each one falls back
+   * to.
+   *
+   * ONE entry, and a new one earns its place by being read somewhere. The
+   * fleet page's `FLEET_SOCKET_PATH` and `FLEET_CONTROL_PATH` were in here and
+   * came out: they are `const`s in `config/fleet.ts` naming routes this
+   * application draws itself, not environment variables, so a row would have
+   * overridden nothing and the settings page was telling an operator they
+   * could be configured. A setting nothing reads is decoration.
+   */
   static readonly FALLBACKS: Readonly<Record<string, string>> = {
     ringo_base: "RINGO_BASE",
-    fleet_socket_path: "FLEET_SOCKET_PATH",
-    fleet_control_path: "FLEET_CONTROL_PATH",
   };
 
   /**
