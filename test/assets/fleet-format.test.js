@@ -7,6 +7,7 @@ import {
   controlOutcome,
   controlRequest,
   activeFixers,
+  agentChip,
   ciIcon,
   esc,
   fixerCards,
@@ -28,6 +29,8 @@ import {
   repoSectionScaffold,
   repoSections,
   repoSectionsKey,
+  reviewerLine,
+  reviewersByKey,
   rfcSpawnRow,
   row,
   sectionId,
@@ -166,6 +169,88 @@ describe("paneLine", () => {
   it("renders nothing at all when there is no pane", () => {
     expect(paneLine("💪", "", "working")).toBe("");
     expect(paneLine("💪", undefined, undefined)).toBe("");
+  });
+});
+
+describe("reviewerLine", () => {
+  const pr = { owner: "blazetrailsdev", repo: "trailmap", pr: 47 };
+  const reviewers = reviewersByKey([
+    { owner: "blazetrailsdev", repo: "trailmap", pr: 47, agent: "claude", pane_id: "%215", pane_status: "working" },
+  ]);
+
+  it("gives the reviewer the worker's own shape: agent, pane link, status dot", () => {
+    const line = reviewerLine(pr, reviewers);
+
+    expect(line).toContain('title="reviewer"');
+    expect(line).toContain("📋");
+    expect(line).toContain(">claude</span>");
+    expect(line).toContain('href="/panes/215"');
+    expect(line).toContain('title="working"');
+  });
+
+  it("keys by repo as well as number, so trails#47 is not trailmap#47", () => {
+    expect(reviewerLine({ owner: "blazetrailsdev", repo: "trails", pr: 47 }, reviewers)).not.toContain("%215");
+    expect(reviewerLine({ owner: "blazetrailsdev", repo: "trails", pr: 47 }, reviewers)).toContain("—");
+  });
+
+  it("says so when no reviewer is assigned, rather than leaving the row off", () => {
+    const line = reviewerLine(pr, {});
+
+    expect(line).toContain('class="pcell unassigned"');
+    // `.empty` is the list pages' empty-state block: a cell wearing it gets
+    // 32px of padding and tears the reviewer line off the worker's.
+    expect(line).not.toContain("pcell empty");
+    expect(line).toContain("—");
+    expect(line).not.toContain("<code>");
+  });
+
+  it("keeps the agent, and drops to a dash, when the reviewer's pane has gone", () => {
+    const pinned = reviewersByKey([{ ...pr, agent: "codex" }]);
+    const line = reviewerLine(pr, pinned);
+
+    expect(line).toContain(">codex</span>");
+    expect(line).toContain("—");
+    expect(line).not.toContain('href="/panes/');
+  });
+
+  it("marks an agent blocked by its usage limit, which no pane status says", () => {
+    const blocked = reviewersByKey([{ ...pr, agent: "codex", pane_id: "%9", blocked_by_usage: true }]);
+
+    expect(reviewerLine(pr, blocked)).toContain("agent-chip blocked");
+    expect(reviewerLine(pr, blocked)).toContain("blocked by its usage limit");
+    expect(reviewerLine(pr, reviewers)).not.toContain("blocked");
+  });
+
+  it("escapes the agent, which is ringo's string and not ours", () => {
+    expect(agentChip('<script>', false)).toContain("&lt;script&gt;");
+    expect(agentChip("", false)).toBe("");
+  });
+
+  it("ignores a hole in ringo's list rather than throwing on it", () => {
+    expect(reviewersByKey(null)).toEqual({});
+    expect(reviewersByKey([null])).toEqual({});
+  });
+});
+
+describe("prRow's pane mini-table", () => {
+  const pr = { owner: "blazetrailsdev", repo: "trailmap", pr: 47, pane: "%214", paneStatus: "working" };
+  const reviewers = reviewersByKey([
+    { owner: "blazetrailsdev", repo: "trailmap", pr: 47, agent: "claude", pane_id: "%215", pane_status: "idle" },
+  ]);
+
+  it("puts the reviewer's pane under the worker's, in that order", () => {
+    const row = prRow(pr, [], Date.now(), reviewers);
+
+    expect(row).toContain('href="/panes/214"');
+    expect(row).toContain('href="/panes/215"');
+    expect(row.indexOf("/panes/214")).toBeLessThan(row.indexOf("/panes/215"));
+  });
+
+  it("drops the reviewer row once the PR is merged: there is nothing left to review", () => {
+    const row = prRow({ ...pr, merged: true }, [], Date.now(), reviewers);
+
+    expect(row).toContain('href="/panes/214"');
+    expect(row).not.toContain("📋");
   });
 });
 

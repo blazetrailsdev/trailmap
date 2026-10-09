@@ -27,6 +27,7 @@ import {
   repoSectionScaffold,
   repoSections,
   repoSectionsKey,
+  reviewersByKey,
   sectionId,
   spawnRow,
   visibleSpawns,
@@ -35,6 +36,7 @@ import {
 const config = document.getElementById("fleetConfig");
 const socketPath = (config && config.dataset.socketPath) || "/fleet/socket";
 const controlPath = (config && config.dataset.controlPath) || "/fleet/control";
+const reviewersPath = (config && config.dataset.reviewersPath) || "/fleet/reviewers";
 
 /**
  * Where a control POST goes: trailmap, which forwards it to ringo. `path` is
@@ -60,6 +62,10 @@ function setDot(id, on) {
 }
 
 let fixers = [];
+/** ringo's reviewer list, keyed `owner/repo#pr`; see `pollReviewers`. */
+let reviewers = {};
+/** The last envelope, so a reviewer answer can repaint without waiting for a frame. */
+let lastEnvelope = null;
 
 function renderCIFixer(list) {
   const panel = byId("ciFixerPanel");
@@ -91,7 +97,7 @@ function renderRepoSections(prs, spawns) {
     byId(id + "-spawnsSection").style.display = section.spawns.length ? "" : "none";
     byId(id + "-spawns").innerHTML = section.spawns.map((s) => spawnRow(s, fixers)).join("");
     byId(id + "-prs").innerHTML = section.prs.length
-      ? section.prs.map((pr) => prRow(pr, fixers)).join("")
+      ? section.prs.map((pr) => prRow(pr, fixers, Date.now(), reviewers)).join("")
       : '<div class="list-empty">No open PRs.</div>';
   });
 
@@ -177,6 +183,11 @@ function onFrame(event) {
   const data = JSON.parse(event.data);
   // ringo's stream still supports the legacy bare-array frame; so does this.
   const envelope = Array.isArray(data) ? { prs: data } : data;
+  lastEnvelope = envelope;
+  paint(envelope);
+}
+
+function paint(envelope) {
   const prs = envelope.prs || [];
 
   fixers = envelope.fixers || [];
@@ -215,6 +226,35 @@ function connect(attempt) {
 }
 
 connect(0);
+
+// ---------------------------------------------------------------------------
+// The reviewer list
+// ---------------------------------------------------------------------------
+
+/*
+ * Who is reviewing each open PR is not in the event envelope -- ringo's own
+ * dashboard fetches it separately too -- so the reviewer row of every PR's
+ * pane mini-table comes from here, on a timer rather than the stream. A failed
+ * poll keeps the last answer: a reviewer is a long-lived assignment, and
+ * blanking the rows because one request lost its race says something false.
+ */
+const REVIEWERS_POLL_MS = 10_000;
+
+async function pollReviewers() {
+  try {
+    const response = await fetch(reviewersPath, { credentials: "same-origin" });
+    if (!response.ok) return;
+    reviewers = reviewersByKey(await response.json());
+    // Repaint from the last frame, so the reviewer rows appear on a cold load
+    // without waiting for the next one (the race ringo's own page notes).
+    if (lastEnvelope) paint(lastEnvelope);
+  } catch (e) {
+    // Left to the next poll; the rows keep what they had.
+  }
+}
+
+pollReviewers();
+setInterval(pollReviewers, REVIEWERS_POLL_MS);
 
 // ---------------------------------------------------------------------------
 // Manual spawn -- the one control this page carries, and the reason the repo

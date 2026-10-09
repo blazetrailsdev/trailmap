@@ -72,17 +72,75 @@ export function paneHref(pane) {
 /**
  * One row of the compact pane mini-table; '' when there is no pane. Every row
  * type's pane id comes through here, so this is where it becomes a link.
+ *
+ * `lead` is markup that sits just before the id, which is where the reviewer
+ * row puts its agent chip -- as ringo's `paneLine` puts the agent's logo
+ * (`dashboard.go:575`).
  */
-export function paneLine(label, pane, status) {
+export function paneLine(label, pane, status, lead = "") {
   if (!pane) return "";
   const role = label === WORK_EMOJI ? "worker" : "reviewer";
   const href = paneHref(pane);
   const id = "<code>" + esc(pane) + "</code>";
   return (
     '<div class="pcell"><span class="plabel" title="' + role + '">' + label + "</span>" +
-    '<span class="pval">' +
+    '<span class="pval">' + lead +
     (href ? '<a class="pane-link" href="' + href + '" title="watch this pane live">' + id + "</a>" : id) +
     paneDot(status) + "</span></div>"
+  );
+}
+
+export const REV_EMOJI = "📋";
+
+/**
+ * The reviewer's agent, as a chip just before its pane id. ringo draws the
+ * company logo here; trailmap carries no logo assets, and the agent's NAME
+ * says the same thing in the same space.
+ *
+ * `blocked` is ringo's `blocked_by_usage`: the pane is sitting on its limit
+ * banner and owes a review it cannot write until the quota resets. That is
+ * about the agent, not about the pane's momentary state, so it marks the chip
+ * rather than the dot.
+ */
+export function agentChip(agent, blocked) {
+  if (!agent) return "";
+  const title = blocked ? agent + " is blocked by its usage limit" : agent;
+  return (
+    '<span class="agent-chip' + (blocked ? " blocked" : "") + '" title="' + esc(title) + '">' +
+    esc(agent) + "</span>"
+  );
+}
+
+/** How ringo keys its reviewer list: `owner/repo#pr`. */
+export const reviewerKey = (owner, repo, pr) => owner + "/" + repo + "#" + pr;
+
+/** ringo's `/reviewer/list` array, as the map the rows look a PR up in. */
+export function reviewersByKey(list) {
+  const map = {};
+  for (const entry of list || []) {
+    if (entry) map[reviewerKey(entry.owner, entry.repo, entry.pr)] = entry;
+  }
+  return map;
+}
+
+/**
+ * The reviewer row of a PR's pane mini-table, right below the worker's.
+ *
+ * Three states, all of them worth a row: a reviewer with a live pane (agent,
+ * pane id, status dot -- the same shape as the worker's line, linked to the
+ * same live view), a reviewer pinned to a PR whose pane has gone (the agent
+ * and a dash, because the assignment outlives the pane), and no reviewer at
+ * all (a dash). ringo offers a `+` in the last two; this page is read-only and
+ * offers none, but it still says which of the three it is -- "nobody is
+ * reviewing this" is the thing a reader most wants to see.
+ */
+export function reviewerLine(pr, reviewers = {}) {
+  const entry = reviewers[reviewerKey(pr.owner, pr.repo, pr.pr)];
+  const chip = entry ? agentChip(entry.agent, entry.blocked_by_usage) : "";
+  if (entry && entry.pane_id) return paneLine(REV_EMOJI, entry.pane_id, entry.pane_status, chip);
+  return (
+    '<div class="pcell unassigned"><span class="plabel" title="reviewer">' + REV_EMOJI + "</span>" +
+    '<span class="pval">' + chip + '<span class="dash">—</span></span></div>'
   );
 }
 
@@ -443,7 +501,7 @@ export function spawnRow(s, fixers = [], now = Date.now()) {
 }
 
 /** One PR row. */
-export function prRow(pr, fixers = [], now = Date.now()) {
+export function prRow(pr, fixers = [], now = Date.now(), reviewers = {}) {
   const url = "https://github.com/" + pr.owner + "/" + pr.repo + "/pull/" + pr.pr;
   const labels =
     (isFixerPR(fixers, pr) ? FIXER_BADGE + " " : "") +
@@ -487,7 +545,9 @@ export function prRow(pr, fixers = [], now = Date.now()) {
             title: "Merge PR",
             label: "merge",
           })),
-    panes: paneLine(WORK_EMOJI, pr.pane, pr.paneStatus),
+    // The worker's pane, and under it the reviewer's: a merged PR has nobody
+    // left to review it, so the row goes with the merge button.
+    panes: paneLine(WORK_EMOJI, pr.pane, pr.paneStatus) + (merged ? "" : reviewerLine(pr, reviewers)),
   });
 }
 

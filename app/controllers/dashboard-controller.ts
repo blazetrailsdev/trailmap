@@ -1,6 +1,7 @@
 import { ApplicationController } from "./application-controller.js";
 import {
   FLEET_CONTROL_PATH,
+  FLEET_REVIEWERS_PATH,
   FLEET_SOCKET_PATH,
   fleetRepos,
   ringoBase,
@@ -26,6 +27,7 @@ export class DashboardController extends ApplicationController {
         repos: fleetRepos(),
         socketPath: FLEET_SOCKET_PATH,
         controlPath: FLEET_CONTROL_PATH,
+        reviewersPath: FLEET_REVIEWERS_PATH,
         relayConfigured: ringoBase() !== null,
       },
     });

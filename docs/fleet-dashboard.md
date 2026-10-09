@@ -16,6 +16,7 @@ fills the page in.
 ```text
 browser --WebSocket /fleet/socket----> trailmap --GET /events (SSE)--> ringo
 browser --POST /fleet/control/<path>--> trailmap --POST /<path>-------> ringo
+browser --GET  /fleet/reviewers------> trailmap --GET /reviewer/list--> ringo
 ```
 
 The page opens a WebSocket to trailmap. `FleetController#socket` takes the
@@ -82,6 +83,35 @@ which is `move-tracker-state-into-the-database` — not this story.
 | --- | --- |
 | `FLEET_REPO_PATHS` | The manual spawn control's repo list, as `owner/repo=/path/to/checkout`, comma-separated. ringo's `DashboardConfig.RepoPaths`. |
 | `RINGO_BASE` | Above. |
+
+## The reviewer of a PR
+
+Each PR row's pane mini-table has two lines: the worker's pane, and under it
+the reviewer's — its agent, its pane id, its status dot — exactly as ringo's
+own rows read.
+
+That second line cannot come from the stream. `Tracker.ServeEvents` carries no
+reviewer, and ringo's own dashboard fetches `/reviewer/list` separately
+(`dashboard.go:904`) for the same reason. So the page polls
+`GET /fleet/reviewers` on trailmap every ten seconds
+(`FleetController#reviewers`), which relays ringo's `GET /reviewer/list`.
+
+- The relay is read-only and narrower than the control relay: one fixed
+  upstream path, no body, nothing to allowlist. It gives ringo
+  `REVIEWERS_TIMEOUT_MS` (5s) and answers 502/503/504 as the others do.
+- A failed poll keeps the last answer. A reviewer is a long-lived assignment,
+  and blanking the rows because one request lost its race would say something
+  false.
+- Three states, all of them a row: a live pane; a reviewer pinned to a PR
+  whose pane has gone (the agent and a dash, because the assignment outlives
+  the pane); and no reviewer at all. ringo offers a `+` in the last two that
+  spawns or respawns one — this page is read-only and offers none, but it still
+  says which of the three it is, because "nobody is reviewing this" is what a
+  reader most wants to see. A merged PR drops the line.
+- ringo draws the agent's company logo here from its own `/claude-logo.svg`.
+  trailmap carries no image assets, so the chip is the agent's name — the same
+  information in the same space. `blocked_by_usage` marks the chip, not the
+  dot: it is about the agent's quota, not the pane's momentary state.
 
 ## The live pane view
 

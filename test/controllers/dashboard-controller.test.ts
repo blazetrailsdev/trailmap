@@ -57,6 +57,7 @@ describe("DashboardController", () => {
 
     expect(body).toContain('data-socket-path="/fleet/socket"');
     expect(body).toContain('data-control-path="/fleet/control"');
+    expect(body).toContain('data-reviewers-path="/fleet/reviewers"');
     expect(body).not.toContain("ringo.example.com");
   });
 
