@@ -46,30 +46,15 @@ export function fleetRepos(): FleetRepo[] {
 }
 
 /**
- * ringo's origin as THIS PROCESS reaches it, e.g. `http://btwhooks.web:8080`
- * on the `fleet` docker network. Null when unset, which leaves the fleet page
- * with nothing to relay; it says so on the page, it does not guess.
+ * ringo's origin does NOT live here. It is `Setting.ringoBase()`
+ * (app/models/setting.ts) — a row in the `settings` table, falling back to
+ * `RINGO_BASE`, normalised once.
  *
- * Not a URL the browser ever sees. The browser talks only to trailmap
- * (`FLEET_SOCKET_PATH`, `FLEET_CONTROL_PATH`), which reads ringo's stream and
- * forwards the page's controls. See `docs/fleet-dashboard.md`.
+ * There is one ringo, so there is one resolver. A second one here would be a
+ * second answer to the same question, and the two would be able to disagree
+ * the moment anything wrote a row: the setting is read on four relay paths
+ * and two pages, and they must all reach the same origin.
  */
-export function ringoBase(): string | null {
-  return normalizeOrigin(env.RINGO_BASE);
-}
-
-/**
- * One origin, trimmed and without its trailing slash, or null for nothing.
- *
- * Shared with `Setting.ringoBase()`, which resolves the same setting from a
- * database row before falling back to this variable: both spellings have to
- * normalise identically, or a row with a trailing slash would build
- * `http://host//events` where the environment built `http://host/events`.
- */
-export function normalizeOrigin(raw: string | null | undefined): string | null {
-  const base = raw?.trim().replace(/\/+$/, "");
-  return base ? base : null;
-}
 
 /** Where the fleet page opens its WebSocket. */
 export const FLEET_SOCKET_PATH = "/fleet/socket";

@@ -1,7 +1,6 @@
 import { Hub } from "./hub.js";
 import { env } from "@blazetrails/ruby-compat";
 import { ConnectionNotDefined } from "@blazetrails/activerecord";
-import { normalizeOrigin } from "../../config/fleet.js";
 
 /**
  * The settings that are one per application rather than one per repository:
@@ -55,16 +54,30 @@ export class Setting extends Hub {
   }
 
   /**
-   * Ringo's origin as THIS PROCESS reaches it — the row if one is written,
-   * else `RINGO_BASE`, normalised either way.
+   * Ringo's origin as THIS PROCESS reaches it, e.g. `http://btwhooks.web:8080`
+   * on the `fleet` docker network — the row if one is written, else
+   * `RINGO_BASE`, trimmed and without its trailing slash either way.
    *
-   * Every page that relays ringo resolves it through here
-   * (`app/controllers/fleet-controller.ts`, `panes-controller.ts`,
-   * `dashboard-controller.ts`), which is what makes the row an override rather
-   * than a value the settings page merely displays.
+   * THE ONLY RESOLVER. There is one ringo, so there is one function that
+   * answers where it is: the four relay paths in
+   * `app/controllers/fleet-controller.ts` and the two pages that report
+   * whether a relay is configured all call this. A second one — the env
+   * reader that used to sit in `config/fleet.ts` — could disagree with this
+   * one the moment anything wrote a row, and half the fleet surface would
+   * then reach a different origin from the other half.
+   *
+   * Normalising HERE rather than at each source is the same argument one
+   * level down: a row with a trailing slash would otherwise build
+   * `http://host//events` where the variable built `http://host/events`.
+   *
+   * Null when neither names one, which leaves the fleet page with nothing to
+   * relay; it says so on the page, it does not guess. Not a URL the browser
+   * ever sees — the browser talks only to trailmap (`FLEET_SOCKET_PATH`,
+   * `FLEET_CONTROL_PATH`). See `docs/fleet-dashboard.md`.
    */
   static async ringoBase(): Promise<string | null> {
-    return normalizeOrigin(await Setting.lookup("ringo_base"));
+    const base = (await Setting.lookup("ringo_base"))?.replace(/\/+$/, "");
+    return base ? base : null;
   }
 
   /** The row for `key`, or null — including when nothing is connected. */

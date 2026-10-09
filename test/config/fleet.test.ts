@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash, normalizeOrigin, ringoBase } from "../../config/fleet.js";
+import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash } from "../../config/fleet.js";
 
 /**
  * The dashboard's two configured pieces, unit-tested rather than only through
@@ -61,33 +61,10 @@ describe("fleetRepos", () => {
   });
 });
 
-describe("ringoBase", () => {
-  it("is null when the deployment names no ringo", () => {
-    expect(ringoBase()).toBeNull();
-
-    setEnv("RINGO_BASE", "   ");
-    expect(ringoBase()).toBeNull();
-  });
-
-  it("is ringo's origin, trimmed and without a trailing slash", () => {
-    setEnv("RINGO_BASE", "  http://btwhooks.web:8080/  ");
-
-    expect(ringoBase()).toBe("http://btwhooks.web:8080");
-  });
-});
-
-describe("normalizeOrigin", () => {
-  // Shared with `Setting.ringoBase()`, which applies it to a DATABASE row:
-  // the two spellings of the setting have to normalise identically.
-  it("trims, drops the trailing slashes, and answers null for nothing", () => {
-    expect(normalizeOrigin("  http://btwhooks.web:8080//  ")).toBe("http://btwhooks.web:8080");
-    expect(normalizeOrigin("http://btwhooks.web:8080")).toBe("http://btwhooks.web:8080");
-    expect(normalizeOrigin("   ")).toBeNull();
-    expect(normalizeOrigin("")).toBeNull();
-    expect(normalizeOrigin(null)).toBeNull();
-    expect(normalizeOrigin(undefined)).toBeNull();
-  });
-});
+// `ringoBase` is NOT here. There is one ringo and one resolver for it,
+// `Setting.ringoBase()` (app/models/setting.ts); its cases live with it in
+// test/models/hub-models.test.ts, including the ones that used to be this
+// file's — an unset variable, a blank one, and the trailing slash.
 
 describe("FLEET_CONTROLS", () => {
   it("lists exactly the endpoints the page has a button for", () => {

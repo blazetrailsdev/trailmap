@@ -216,21 +216,42 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
     });
   });
 
+  /**
+   * The ONE resolver for ringo's origin. `config/fleet.ts` used to carry a
+   * second, env-only one of the same name; these are both suites' cases,
+   * together, because the value has one answer and one place that gives it.
+   */
   describe("Setting.ringoBase", () => {
-    it("normalises the environment's value and the row's the same way", async () => {
+    it("is the environment's value, trimmed and without its trailing slash", async () => {
       setEnv("RINGO_BASE", "  http://btwhooks.web:8080/  ");
-      expect(await Setting.ringoBase()).toBe("http://btwhooks.web:8080");
 
-      // The row wins, and loses its trailing slash too — otherwise a relay
-      // built `http://host//events` from one source and `http://host/events`
-      // from the other.
-      await Setting.write("ringo_base", "http://other.web:9090/");
+      expect(await Setting.ringoBase()).toBe("http://btwhooks.web:8080");
+    });
+
+    it("normalises a row the same way, and the row wins", async () => {
+      setEnv("RINGO_BASE", "http://btwhooks.web:8080");
+      await Setting.write("ringo_base", "  http://other.web:9090//  ");
+
+      // Same normalising for both sources: otherwise a relay built
+      // `http://host//events` from one and `http://host/events` from the other.
       expect(await Setting.ringoBase()).toBe("http://other.web:9090");
     });
 
-    it("is null when nothing names an origin", async () => {
+    it("is null when the deployment names no ringo", async () => {
       setEnv("RINGO_BASE", "");
       expect(await Setting.ringoBase()).toBeNull();
+
+      setEnv("RINGO_BASE", "   ");
+      expect(await Setting.ringoBase()).toBeNull();
+    });
+
+    it("is null when a row is blanked, rather than shadowing the variable", async () => {
+      setEnv("RINGO_BASE", "http://btwhooks.web:8080");
+      await Setting.write("ringo_base", "   ");
+
+      // A settings form that cleared the field falls back; it does not leave
+      // the fleet with no origin while a working variable is sitting there.
+      expect(await Setting.ringoBase()).toBe("http://btwhooks.web:8080");
     });
   });
 
