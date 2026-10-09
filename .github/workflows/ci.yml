@@ -28,6 +28,27 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    # POSTGRES, because the `hub` database is Postgres (config/database.ts) and
+    # the tests that read it refuse to pass silently without one: they
+    # `describe.skipIf(!hasHubTestDatabase())`, which prints every skipped
+    # name. `live-database-tests-never-run-in-ci-and-three-have-rotted` is
+    # what that rule comes from — three tests had rotted behind a silent skip.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trailmap_hub_test
+        ports:
+          - 5432:5432
+        # Without the health check the first query races the server's startup.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      HUB_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
     steps:
       - uses: actions/checkout@v4
       # A version is required here; package.json deliberately carries no
@@ -41,6 +62,20 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec trails-tsc-views build --views app/views
+      # The hub schema, through the real entry point. `test/support/hub-schema.ts`
+      # connects and truncates but does not migrate — see the note there — and
+      # fails with this command in its message when the schema is missing.
+      #
+      # NO `--database hub`: that flag narrows the registered configurations to
+      # the one database, which makes it answer `isPrimary` and loads
+      # `db/schema.ts` — the TASK domain's schema — into Postgres. It is a
+      # trails defect (tracked upstream), and the unflagged command, which
+      # registers both configurations, is both correct and what a Rails user
+      # would run.
+      - name: Prepare the hub schema
+        env:
+          HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+        run: pnpm db:migrate
       - run: pnpm test
 
   # The sso plugin re-injects Authelia's auth directives into the generated
@@ -58,6 +93,26 @@ jobs:
 
   boot:
     runs-on: ubuntu-latest
+    # The same service as `test`, for a different reason:
+    # `config/initializers/hub-database.ts` refuses to boot without
+    # `HUB_DATABASE_URL`, exactly as the tasks-database initializer refuses
+    # without `TASKS_DATABASE`. A boot smoke test that skipped it would be
+    # testing a process the deployment never runs.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trailmap_hub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub
     steps:
       - uses: actions/checkout@v4
       # A version is required here; package.json deliberately carries no

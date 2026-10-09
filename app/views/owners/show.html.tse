@@ -1,0 +1,26 @@
+<div class="page-header">
+  <h1 class="page-title"><%= title %> <span class="tag"><%= kind %></span></h1>
+  <div class="page-subhead">
+    <span class="muted"><code><%= owner.login %></code><% if (owner.description) { %> &middot; <%= owner.description %><% } %></span>
+  </div>
+</div>
+
+<div class="box">
+  <% if (rows.length === 0) { %>
+    <div class="empty">No repositories.</div>
+  <% } %>
+  <% for (const row of rows) { %>
+    <div class="item-row">
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title" href="<%= row.href %>"><%= row.name %></a>
+          <% if (row.visibility !== "public") { %><span class="tag"><%= row.visibility %></span><% } %>
+          <% if (row.archived) { %><span class="tag">archived</span><% } %>
+          <% if (row.openCount > 0) { %><span class="tag prog" title="open stories"><%= row.openCount %> open</span><% } %>
+        </span>
+        <% if (row.description) { %><div class="row-meta"><%= row.description %></div><% } %>
+        <div class="row-meta"><code><%= row.defaultBranch %></code></div>
+      </span>
+    </div>
+  <% } %>
+</div>

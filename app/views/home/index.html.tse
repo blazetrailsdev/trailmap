@@ -9,6 +9,20 @@ ready queue, read and written in one place.</p>
   <div class="box-row"><a href="/dashboard">Fleet</a> — open PRs, panes, spawns and CI, live from ringo.</div>
 </div>
 
+<h2>Owners</h2>
+<p class="muted">The same work, the GitHub way: an owner, its repositories, and
+code, issues, pull requests, actions, projects, wiki, insights and settings
+under each one.</p>
+<div class="box">
+  <% if (owners.length === 0) { %>
+    <div class="empty">No owner is configured. <code>pnpm db:seed</code> writes them.</div>
+  <% } %>
+  <% for (const owner of owners) { %>
+    <div class="box-row"><a href="/<%= owner.login %>"><%= owner.login %></a>
+      <% if (owner.display_name) { %> — <%= owner.display_name %><% } %></div>
+  <% } %>
+</div>
+
 <h2>Status vocabulary</h2>
 <p class="muted">Story statuses, then the RFC statuses that gate them.</p>
 <p>

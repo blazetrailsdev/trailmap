@@ -3,6 +3,7 @@ import { env, getFs, setEnv } from "@blazetrails/ruby-compat";
 import { tasksDatabaseConfig } from "../../config/database.js";
 import { ringoBusyTimeoutPragma, tableOwners, tablesOwnedBy, writeProtocol } from "../../config/write-protocol.js";
 import * as models from "../../app/models/index.js";
+import { Hub } from "../../app/models/hub.js";
 
 /**
  * The write protocol, enforced rather than promised: every table has exactly
@@ -38,7 +39,16 @@ describe("write protocol", () => {
   });
 
   it("maps trailmap's models only onto trailmap-owned tables", () => {
+    // The models on the SHARED SQLITE FILE only. `Hub`'s subtree
+    // (app/models/hub.ts) is a Postgres database that ringo has no handle on
+    // and no migrations for, so the one-writer-per-table protocol has nothing
+    // to say about its tables — and `tableOwners` lists the tables of
+    // `db/schema.ts`, which is the shared file's schema.
     const mapped = Object.values(models)
+      .filter(
+        (model) =>
+          typeof model === "function" && !(model.prototype instanceof Hub) && model !== Hub,
+      )
       .map((model) => (model as { _tableName?: string })._tableName)
       .filter((name): name is string => typeof name === "string");
     expect(mapped.length).toBeGreaterThan(0);

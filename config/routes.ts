@@ -1,5 +1,46 @@
 import { Trails } from "@blazetrails/trailties";
 
+/**
+ * The top-level paths that are PAGES, not owners.
+ *
+ * `/:owner` is drawn last and matches a single segment, so without this every
+ * one of these would be ambiguous with an organization of the same name — and,
+ * worse, a top-level page added later would be shadowed silently by whichever
+ * route happened to be drawn first. Naming them here makes the collision a 404
+ * at the router, and makes `test/routes.test.ts` able to assert the whole set.
+ *
+ * GitHub maintains the same list for the same reason: `settings`, `about` and
+ * `new` are reserved there, and no account can hold them.
+ */
+export const RESERVED_OWNER_NAMES = [
+  "assets",
+  "backlog",
+  "dashboard",
+  "events",
+  "fleet",
+  "index",
+  "panes",
+  "rfc",
+  "rfcs",
+  "stories",
+  "story",
+  "up",
+] as const;
+
+/**
+ * `:owner` — one path segment that is not a reserved page and is shaped like a
+ * GitHub login (alphanumerics and interior hyphens, as `Owner` validates).
+ *
+ * No `^` or `$`: a segment constraint is matched against the segment itself,
+ * and an anchored pattern is rejected, as it is in Rails.
+ */
+export const OWNER_SEGMENT = new RegExp(
+  `(?!(?:${RESERVED_OWNER_NAMES.join("|")})$)[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9]))*`,
+);
+
+/** `:repo` — a repository name, as `Repository` validates it. */
+export const REPO_SEGMENT = /[A-Za-z0-9][A-Za-z0-9._-]*/;
+
 // `config/routes.rb`, as Rails writes it and as `trails new` generates it:
 //
 //     Rails.application.routes.draw do
@@ -84,4 +125,52 @@ Trails.application!.routes().draw(function () {
   this.post("stories/close", { to: "mutations#close" });
   this.post("stories/status-set", { to: "mutations#statusSet" });
   this.post("stories/priority", { to: "mutations#priority" });
+
+  // ──────────────────── the GitHub-shaped hierarchy ────────────────────
+  //
+  // `/:owner`, `/:owner/:repo` and the eight tabs under a repo, served from
+  // the `hub` database's models (app/models/hub.ts). Deliberately not a shape
+  // ringo has: ringo's pages keep serving, and nothing above this comment
+  // changed.
+  //
+  // DRAWN LAST, and that is load-bearing — recognition takes the first match,
+  // so every route above wins over `/:owner`. See RESERVED_OWNER_NAMES for the
+  // other half of the collision.
+  //
+  // `map` is captured rather than written as `this`: `draw` binds its block to
+  // the mapper, but `scope` — and `constraints`, which is a `scope` — invokes
+  // a nested block unbound (`cb()`, mapper.ts), so `this` inside one is
+  // undefined. Same mapper either way; this is only how it is reached.
+  const map = this;
+  map.constraints({ owner: OWNER_SEGMENT, repo: REPO_SEGMENT }, () => {
+    map.get(":owner", { to: "owners#show", as: "owner" });
+
+    // The eight tabs. `scope` carries the shared `:owner/:repo` prefix and the
+    // `repo_` route-helper names; the controllers are flat, named
+    // `repo_<tab>`, and the reason is not style:
+    //
+    // `scope(..., { module: "repos" })` with the controllers in
+    // `app/controllers/repos/` DOES dispatch — the autoloader keys a nested
+    // file by its directory, so `repos/issues` resolves (finisher.ts,
+    // `collectControllers`). But `controllerPath()` and therefore `_prefixes()`
+    // are derived from the CLASS NAME, which in TypeScript carries no module,
+    // so the same controller looks its views up under `issues/` while routing
+    // as `repos/issues`. The two spellings disagree, and the only ways to
+    // reconcile them are a `localPrefixes` or `controllerPath` override — both
+    // of which this codebase forbids (test/views/view-directory-names.test.ts).
+    // Flat `RepoIssuesController` has one spelling for both. The divergence is
+    // a trails story, not something to paper over here.
+    map.scope(":owner/:repo", { as: "repo" }, () => {
+      // The code tab IS the repository page, as `/owner/repo` is on GitHub.
+      map.get("", { to: "repo_code#show" });
+      map.resources("issues", { only: ["index", "show"], controller: "repo_issues" });
+      map.resources("pulls", { only: ["index", "show"], controller: "repo_pulls" });
+      map.resources("projects", { only: ["index", "show"], controller: "repo_projects" });
+      map.get("actions", { to: "repo_actions#index" });
+      map.get("wiki", { to: "repo_wiki#index" });
+      // `pulse`, not `insights`: GitHub's Insights tab lands on /pulse.
+      map.get("pulse", { to: "repo_insights#show" });
+      map.get("settings", { to: "repo_settings#show" });
+    });
+  });
 });

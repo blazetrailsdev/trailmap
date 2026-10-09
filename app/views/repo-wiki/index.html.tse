@@ -1,0 +1,29 @@
+<%= render({ partial: "shared/repo-header", locals: { repo: repo, owner: owner, nwo: nwo, tabs: tabs } }) %>
+
+<p class="muted">The wiki of this domain is the content tree: one page per RFC whose work
+touches this repository, rendered by the same markdown helper the RFC pages use.</p>
+
+<div class="box">
+  <% if (pages.length === 0) { %>
+    <div class="empty">No page.</div>
+  <% } %>
+  <% for (const page of pages) { %>
+    <div class="item-row">
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title<%= page.id === selected ? " active" : "" %>" href="<%= page.href %>"><%= page.title %></a>
+          <%= render({ partial: "shared/status-badge", locals: { status: page.status } }) %>
+        </span>
+        <div class="row-meta"><code><%= page.id %></code></div>
+      </span>
+    </div>
+  <% } %>
+</div>
+
+<% if (selected !== null) { %>
+  <h2><%= pageTitle %></h2>
+  <% if (error) { %><div class="box"><div class="empty"><%= error %></div></div><% } %>
+  <% if (body !== null) { %><div class="box doc"><%= body %></div><% } %>
+<% } else { %>
+  <p class="muted">Pick a page.</p>
+<% } %>

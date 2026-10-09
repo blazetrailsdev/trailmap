@@ -17,10 +17,56 @@ Skeleton only. `trails new` output plus vendored framework packages, with a
 root route rendering through a `.tse` template — enough to prove the stack
 boots end to end. No models, no API, no pages yet.
 
+## Two databases, two adapters
+
+trailmap serves from two databases, and they are not the same kind:
+
+| | `primary` | `hub` |
+| --- | --- | --- |
+| Adapter | sqlite3 | **postgresql** |
+| Holds | the task domain — RFCs, stories, events | the owner/repository hierarchy |
+| Pointed at by | `TASKS_DATABASE` (the CLI's live file) | `HUB_DATABASE_URL` |
+| Migrations | `db/migrate` | `db/hub-migrate` |
+| Schema | `db/schema.ts` | `db/hub_schema.ts` |
+| Base class | `ActiveRecord::Base` | `Hub` (`app/models/hub.ts`) |
+
+The hub is where `/:owner`, `/:owner/:repo` and the eight tabs under a
+repository come from — the GitHub-shaped hierarchy, which deliberately deviates
+from ringo, whose pages keep serving unchanged. It is also what moved
+`FLEET_REPO_PATHS` and friends out of the environment and into records that can
+be validated, associated and shown on a page.
+
+**Why two adapters rather than two SQLite files.** trailmap is the proving
+ground for trails, and the yield is framework API exercised. Every connection
+it had ever opened was sqlite3, so the PostgreSQL adapter the vendored
+`activerecord` ships had never been driven by an application. It found three
+defects in its first afternoon; `docs/deploy.md` has the one that matters
+operationally.
+
+Nothing joins across the two: a query that spans them is two queries and a join
+in TypeScript. Where a repo page needs both — every tab does — the repo scope is
+a `where` on a string the task domain already carries, and
+`app/models/concerns/repo-scope.ts` is the one place that decides it.
+
+Set both up with:
+
+```sh
+dokku postgres:create trailmap-hub-dev                    # once, on the box
+HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub-dev --dsn)" pnpm db:migrate
+HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub-dev --dsn)" pnpm db:seed
+```
+
+`pnpm db:migrate` with no `--database` flag migrates both. Do not pass one —
+`docs/deploy.md` explains what `--database hub` does to a fresh database.
+
 ## Requirements
 
 **Node 24 or newer.** `@blazetrails/rack` uses duplicate named capture groups
 (ES2025), which throw a `SyntaxError` at import time on Node 20 and 22.
+
+**A Postgres database for the hub.** The suite's hub tests skip, loudly, without
+`HUB_TEST_DATABASE_URL`; a booting process refuses to start without
+`HUB_DATABASE_URL`.
 
 ## Framework packages are vendored, not installed
 
@@ -82,8 +128,14 @@ written in Ruby's file spelling rather than TypeScript's, and an
 ```sh
 pnpm install
 pnpm exec trails-tsc-views build --views app/views
-pnpm exec tsx node_modules/@blazetrails/trailties/bin/trails.js server
+TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db \
+TASKS_DIR=~/github/blazetrailsdev/tasks \
+HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub-dev --dsn)" \
+  pnpm exec tsx node_modules/@blazetrails/trailties/bin/trails.js server
 ```
+
+Both database variables are required: each one's initializer refuses to boot
+without it rather than serving pages that 500 on their first row.
 
 ## Deployment
 

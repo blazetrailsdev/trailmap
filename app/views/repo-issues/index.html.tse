@@ -1,0 +1,32 @@
+<%= render({ partial: "shared/repo-header", locals: { repo: repo, owner: owner, nwo: nwo, tabs: tabs } }) %>
+
+<%= render({ partial: "shared/filter-tabs", locals: { tabs: [
+  { href: "/" + nwo + "/issues?state=open", label: "Open", count: tabCounts.open, active: state === "open" },
+  { href: "/" + nwo + "/issues?state=closed", label: "Closed", count: tabCounts.closed, active: state === "closed" },
+] } }) %>
+
+<div class="box">
+  <% if (rows.length === 0) { %>
+    <div class="empty">No <%= state %> issues.</div>
+  <% } %>
+  <% for (const row of rows) { %>
+    <div class="item-row">
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title" href="/<%= nwo %>/issues/<%= row.id %>"><%= row.title %></a>
+          <%= render({ partial: "shared/status-badge", locals: { status: row.status } }) %>
+          <% if (row.priority !== null) { %><span class="tag prio" title="story priority (lower = sooner)">P<%= row.priority %></span><% } %>
+          <% if (row.estLoc) { %><span class="tag" title="estimated lines"><%= row.estLoc %> loc</span><% } %>
+        </span>
+        <div class="row-meta">
+          <code><%= row.id %></code>
+          &middot; <a href="/rfc/<%= row.rfcId %>"><%= row.rfcId %></a>
+          <% if (row.pr) { %> &middot; <%= row.pr %><% } %>
+          <% if (row.assignee) { %> &middot; <%= row.assignee %><% } %>
+        </div>
+      </span>
+    </div>
+  <% } %>
+</div>
+
+<%= render({ partial: "shared/pager", locals: { pager: pager } }) %>

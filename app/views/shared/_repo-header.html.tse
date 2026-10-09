@@ -1,0 +1,24 @@
+<%#
+  The owner/repo breadcrumb and the tab bar, on every tab:
+  `render({ partial: "shared/repo-header", locals: { repo, owner, nwo, tabs } })`.
+
+  The bar is built in `RepoController` (app/controllers/repo-controller.ts),
+  not here, because WHICH tabs exist is a question about the repository's
+  settings and a disabled tab must not be drawn by one page and refused by
+  another. A template that filtered the list itself would be a second place
+  where that decision is made.
+%>
+<div class="page-header">
+  <h1 class="page-title">
+    <a href="/<%= owner.login %>"><%= owner.login %></a><span class="muted">/</span><a href="/<%= nwo %>"><%= repo.name %></a>
+    <% if (repo.visibility !== "public") { %><span class="tag"><%= repo.visibility %></span><% } %>
+    <% if (repo.archived) { %><span class="tag">archived</span><% } %>
+  </h1>
+  <% if (repo.description) { %><div class="page-subhead"><span class="muted"><%= repo.description %></span></div><% } %>
+</div>
+
+<div class="tabs">
+  <% for (const tab of tabs) { %>
+    <a class="tab<%= tab.active ? " active" : "" %>" href="<%= tab.href %>"><%= tab.label %></a>
+  <% } %>
+</div>
