@@ -6,6 +6,8 @@ import {
   control,
   controlOutcome,
   controlRequest,
+  REV_EMOJI,
+  WORK_EMOJI,
   activeFixers,
   agentChip,
   ciIcon,
@@ -29,6 +31,7 @@ import {
   repoSectionScaffold,
   repoSections,
   repoSectionsKey,
+  reviewerKey,
   reviewerLine,
   reviewersByKey,
   rfcSpawnRow,
@@ -166,9 +169,36 @@ describe("paneLine", () => {
     expect(paneLine("📋", "%215", "working")).toContain('title="reviewer"');
   });
 
+  it("puts a lead -- the reviewer's agent chip -- before the id, as ringo does", () => {
+    const line = paneLine("📋", "%215", "idle", '<span class="agent-chip">claude</span>');
+
+    expect(line).toContain('<span class="pval"><span class="agent-chip">claude</span><a ');
+  });
+
   it("renders nothing at all when there is no pane", () => {
     expect(paneLine("💪", "", "working")).toBe("");
     expect(paneLine("💪", undefined, undefined)).toBe("");
+  });
+});
+
+describe("reviewerKey", () => {
+  it("is ringo's own key for its reviewer list: owner/repo#pr", () => {
+    expect(reviewerKey("blazetrailsdev", "trailmap", 47)).toBe("blazetrailsdev/trailmap#47");
+  });
+
+  // ringo keys `_reviewers` this way (`dashboard.go:816`), and the list it
+  // serves is looked up by it. A different spelling here finds nothing.
+  it("is what reviewersByKey files an entry under", () => {
+    const entry = { owner: "o", repo: "r", pr: 3, agent: "claude" };
+
+    expect(reviewersByKey([entry])[reviewerKey("o", "r", 3)]).toBe(entry);
+  });
+});
+
+describe("the mini-table's two labels", () => {
+  it("are the emoji ringo uses, which is how a row's two lines are told apart", () => {
+    expect(WORK_EMOJI).toBe("💪");
+    expect(REV_EMOJI).toBe("📋");
   });
 });
 

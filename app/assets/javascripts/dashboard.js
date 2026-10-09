@@ -240,16 +240,35 @@ connect(0);
  */
 const REVIEWERS_POLL_MS = 10_000;
 
+/*
+ * Whether the last poll worked, so a failing relay is reported ONCE rather
+ * than every ten seconds -- and reported at all. Keeping the rows is the
+ * policy; saying nothing about why would make a stale reviewer column
+ * indistinguishable from a current one.
+ */
+let reviewersPollOk = true;
+
+function reviewersPollFailed(reason) {
+  if (reviewersPollOk) console.warn("fleet: the reviewer list is stale --", reason);
+  reviewersPollOk = false;
+}
+
 async function pollReviewers() {
   try {
     const response = await fetch(reviewersPath, { credentials: "same-origin" });
-    if (!response.ok) return;
+    if (!response.ok) {
+      // The relay answers with ringo's own status and text, so this is the
+      // reason itself, not a guess at one.
+      reviewersPollFailed(response.status + " " + (await response.text()).trim());
+      return;
+    }
     reviewers = reviewersByKey(await response.json());
+    reviewersPollOk = true;
     // Repaint from the last frame, so the reviewer rows appear on a cold load
     // without waiting for the next one (the race ringo's own page notes).
     if (lastEnvelope) paint(lastEnvelope);
-  } catch (e) {
-    // Left to the next poll; the rows keep what they had.
+  } catch (error) {
+    reviewersPollFailed(error instanceof Error ? error.message : String(error));
   }
 }
 
