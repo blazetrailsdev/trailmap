@@ -55,7 +55,19 @@ export function fleetRepos(): FleetRepo[] {
  * forwards the page's controls. See `docs/fleet-dashboard.md`.
  */
 export function ringoBase(): string | null {
-  const base = env.RINGO_BASE?.trim().replace(/\/+$/, "");
+  return normalizeOrigin(env.RINGO_BASE);
+}
+
+/**
+ * One origin, trimmed and without its trailing slash, or null for nothing.
+ *
+ * Shared with `Setting.ringoBase()`, which resolves the same setting from a
+ * database row before falling back to this variable: both spellings have to
+ * normalise identically, or a row with a trailing slash would build
+ * `http://host//events` where the environment built `http://host/events`.
+ */
+export function normalizeOrigin(raw: string | null | undefined): string | null {
+  const base = raw?.trim().replace(/\/+$/, "");
   return base ? base : null;
 }
 

@@ -1,6 +1,7 @@
 import { Hub } from "./hub.js";
 import { env } from "@blazetrails/ruby-compat";
 import { ConnectionNotDefined } from "@blazetrails/activerecord";
+import { normalizeOrigin } from "../../config/fleet.js";
 
 /**
  * The settings that are one per application rather than one per repository:
@@ -51,6 +52,19 @@ export class Setting extends Hub {
     const fallback = Setting.FALLBACKS[key];
     const fromEnv = fallback ? env[fallback]?.trim() : undefined;
     return fromEnv ? fromEnv : null;
+  }
+
+  /**
+   * Ringo's origin as THIS PROCESS reaches it — the row if one is written,
+   * else `RINGO_BASE`, normalised either way.
+   *
+   * Every page that relays ringo resolves it through here
+   * (`app/controllers/fleet-controller.ts`, `panes-controller.ts`,
+   * `dashboard-controller.ts`), which is what makes the row an override rather
+   * than a value the settings page merely displays.
+   */
+  static async ringoBase(): Promise<string | null> {
+    return normalizeOrigin(await Setting.lookup("ringo_base"));
   }
 
   /** The row for `key`, or null — including when nothing is connected. */

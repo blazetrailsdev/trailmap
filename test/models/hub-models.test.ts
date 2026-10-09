@@ -8,7 +8,11 @@ import {
 } from "../support/hub-schema.js";
 import { Owner } from "../../app/models/owner.js";
 import { Repository } from "../../app/models/repository.js";
-import { RepositorySetting, OPTIONAL_TABS } from "../../app/models/repository-setting.js";
+import {
+  ALL_TABS_ENABLED,
+  OPTIONAL_TABS,
+  RepositorySetting,
+} from "../../app/models/repository-setting.js";
 import { Setting } from "../../app/models/setting.js";
 
 /**
@@ -166,6 +170,14 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
       expect(settings.enabled("isssues")).toBe(true);
     });
 
+    it("turns everything on for a repository whose row has not been written", () => {
+      // A tab that 404s for want of a row would look exactly like a tab
+      // someone deliberately turned off, so the default is opt-OUT even
+      // before `RepositorySetting.create` has run.
+      for (const tab of OPTIONAL_TABS) expect(ALL_TABS_ENABLED.enabled(tab)).toBe(true);
+      expect(ALL_TABS_ENABLED.enabled("code")).toBe(true);
+    });
+
     it("is one row per repository", async () => {
       const owner = await Owner.create({ login: "blazetrailsdev", kind: "organization" });
       const repo = await Repository.create({ owner_id: owner.id, name: "trails" });
@@ -201,6 +213,41 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
     it("is null when neither the row nor the environment has a value", async () => {
       setEnv("FLEET_CONTROL_PATH", "");
       expect(await Setting.lookup("fleet_control_path")).toBeNull();
+    });
+  });
+
+  describe("Setting.ringoBase", () => {
+    it("normalises the environment's value and the row's the same way", async () => {
+      setEnv("RINGO_BASE", "  http://btwhooks.web:8080/  ");
+      expect(await Setting.ringoBase()).toBe("http://btwhooks.web:8080");
+
+      // The row wins, and loses its trailing slash too — otherwise a relay
+      // built `http://host//events` from one source and `http://host/events`
+      // from the other.
+      await Setting.write("ringo_base", "http://other.web:9090/");
+      expect(await Setting.ringoBase()).toBe("http://other.web:9090");
+    });
+
+    it("is null when nothing names an origin", async () => {
+      setEnv("RINGO_BASE", "");
+      expect(await Setting.ringoBase()).toBeNull();
+    });
+  });
+
+  describe("loadHubSchemas", () => {
+    it("has reflected every hub model's columns, so an enum resolves", async () => {
+      // The hub twin of `schema-loading.test.ts`: `enum` resolves its storage
+      // type from the reflected column, reflection is lazy, and reaching a
+      // model first THROUGH AN ASSOCIATION never loads it. `connectHubTestDatabase`
+      // calls `loadHubSchemas`, as the initializer does.
+      const owner = await Owner.create({ login: "blazetrailsdev", kind: "organization" });
+      const repo = await Repository.create({ owner_id: owner.id, name: "trails" });
+      await RepositorySetting.create({ repository_id: repo.id });
+
+      const found = await Owner.findByLogin("blazetrailsdev");
+      const viaAssociation = await found!.repositories.toArray();
+      expect(viaAssociation.map((r) => r.visibility)).toEqual(["public"]);
+      expect(viaAssociation[0]!.isVisibilityPublic()).toBe(true);
     });
   });
 });

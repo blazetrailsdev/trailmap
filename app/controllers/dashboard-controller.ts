@@ -4,8 +4,8 @@ import {
   FLEET_REVIEWERS_PATH,
   FLEET_SOCKET_PATH,
   fleetRepos,
-  ringoBase,
 } from "../../config/fleet.js";
+import { Setting } from "../models/setting.js";
 
 /**
  * `/dashboard` — the fleet dashboard, ported from ringo's `/`.
@@ -28,7 +28,7 @@ export class DashboardController extends ApplicationController {
         socketPath: FLEET_SOCKET_PATH,
         controlPath: FLEET_CONTROL_PATH,
         reviewersPath: FLEET_REVIEWERS_PATH,
-        relayConfigured: ringoBase() !== null,
+        relayConfigured: (await Setting.ringoBase()) !== null,
       },
     });
   }

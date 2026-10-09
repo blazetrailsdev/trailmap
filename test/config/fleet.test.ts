@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash, ringoBase } from "../../config/fleet.js";
+import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash, normalizeOrigin, ringoBase } from "../../config/fleet.js";
 
 /**
  * The dashboard's two configured pieces, unit-tested rather than only through
@@ -73,6 +73,19 @@ describe("ringoBase", () => {
     setEnv("RINGO_BASE", "  http://btwhooks.web:8080/  ");
 
     expect(ringoBase()).toBe("http://btwhooks.web:8080");
+  });
+});
+
+describe("normalizeOrigin", () => {
+  // Shared with `Setting.ringoBase()`, which applies it to a DATABASE row:
+  // the two spellings of the setting have to normalise identically.
+  it("trims, drops the trailing slashes, and answers null for nothing", () => {
+    expect(normalizeOrigin("  http://btwhooks.web:8080//  ")).toBe("http://btwhooks.web:8080");
+    expect(normalizeOrigin("http://btwhooks.web:8080")).toBe("http://btwhooks.web:8080");
+    expect(normalizeOrigin("   ")).toBeNull();
+    expect(normalizeOrigin("")).toBeNull();
+    expect(normalizeOrigin(null)).toBeNull();
+    expect(normalizeOrigin(undefined)).toBeNull();
   });
 });
 

@@ -49,6 +49,12 @@ jobs:
           --health-retries 5
     env:
       HUB_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+      # The same database again under the BOOT variable, so
+      # `test/initializers/hub-database.test.ts` exercises the branch that
+      # connects rather than the one that tolerates an unset variable. Without
+      # it that case returns early and proves nothing — the silent skip this
+      # job's postgres service exists to avoid.
+      HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
     steps:
       - uses: actions/checkout@v4
       # A version is required here; package.json deliberately carries no

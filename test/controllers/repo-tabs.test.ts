@@ -14,13 +14,18 @@ import { RepositorySetting } from "../../app/models/repository-setting.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { OwnersController } from "../../app/controllers/owners-controller.js";
 import { RepoCodeController } from "../../app/controllers/repo-code-controller.js";
-import { RepoIssuesController } from "../../app/controllers/repo-issues-controller.js";
+import {
+  ISSUES_PAGE_SIZE,
+  RepoIssuesController,
+} from "../../app/controllers/repo-issues-controller.js";
 import { RepoPullsController } from "../../app/controllers/repo-pulls-controller.js";
 import { RepoActionsController } from "../../app/controllers/repo-actions-controller.js";
 import { RepoProjectsController } from "../../app/controllers/repo-projects-controller.js";
 import { RepoWikiController } from "../../app/controllers/repo-wiki-controller.js";
 import { RepoInsightsController } from "../../app/controllers/repo-insights-controller.js";
 import { RepoSettingsController } from "../../app/controllers/repo-settings-controller.js";
+import { DashboardController } from "../../app/controllers/dashboard-controller.js";
+import { Setting } from "../../app/models/setting.js";
 import { controllerTestCase } from "../support/controller-test-case.js";
 
 /**
@@ -155,6 +160,61 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     const closed = await get(RepoIssuesController, "index", { ...TRAILS, state: "closed" });
     expect(closed.body).toContain("A shipped story");
     expect(closed.body).not.toContain("A story under review");
+  });
+
+  it("pages the issues list, counting the whole tab rather than the page", async () => {
+    // `trails` has 9,163 closed stories on the live database, and the first
+    // draft of this page drew every one of them — seven megabytes of HTML.
+    const extra = ISSUES_PAGE_SIZE + 5;
+    for (let n = 0; n < extra; n += 1) {
+      await Story.create({
+        id: `bulk-${String(n).padStart(3, "0")}`,
+        rfc_id: "0136-trailmap",
+        status: "ready",
+        title: `Bulk story ${n}`,
+        pr: `trails#${9000 + n}`,
+      });
+    }
+    try {
+      const first = await get(RepoIssuesController, "index", TRAILS);
+      // The count is the tab's, not the page's: one pre-existing open story
+      // plus the bulk.
+      expect(first.body).toContain(`${extra + 1} Open`);
+      expect(first.body).toContain("Bulk story 0");
+      expect(first.body).not.toContain("Bulk story 104");
+      expect(first.body).toContain("page 1 of 2");
+
+      const second = await get(RepoIssuesController, "index", { ...TRAILS, page: "2" });
+      expect(second.body).toContain("Bulk story 104");
+      expect(second.body).not.toContain("Bulk story 0<");
+
+      // A page past the end is the last page, not a blank one — a bookmarked
+      // `page=9` must not go empty because stories shipped.
+      const past = await get(RepoIssuesController, "index", { ...TRAILS, page: "9" });
+      expect(past.body).toContain("page 2 of 2");
+    } finally {
+      for (let n = 0; n < extra; n += 1) {
+        await (await Story.findBy({ id: `bulk-${String(n).padStart(3, "0")}` }))?.destroy();
+      }
+    }
+  });
+
+  it("lets a Setting row override RINGO_BASE for the pages that relay ringo", async () => {
+    // The point of the `settings` table: the row is not something the settings
+    // page merely displays. The dashboard resolves ringo's origin through
+    // `Setting.ringoBase()`, so with neither a row nor the variable it reports
+    // no relay, and a row alone is enough to turn it on.
+    setEnv("RINGO_BASE", "");
+    const without = await get(DashboardController, "index", {});
+    expect(without.body).toContain("No fleet data");
+
+    await Setting.write("ringo_base", "http://btwhooks.web:8080");
+    try {
+      const withRow = await get(DashboardController, "index", {});
+      expect(withRow.body).not.toContain("No fleet data");
+    } finally {
+      await Setting.write("ringo_base", null);
+    }
   });
 
   it("serves one issue, and 404s a story that is not there", async () => {
