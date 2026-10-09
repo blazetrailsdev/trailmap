@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { FLEET_CONTROLS, FLEET_PANE_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash, ringoBase } from "../../config/fleet.js";
+import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash, ringoBase } from "../../config/fleet.js";
 
 /**
  * The dashboard's two configured pieces, unit-tested rather than only through
@@ -98,6 +98,14 @@ describe("isPaneId", () => {
 
   it("names the relay's prefix on trailmap's own origin", () => {
     expect(FLEET_PANE_PATH).toBe("/fleet/pane");
+  });
+});
+
+describe("FLEET_REVIEWERS_PATH", () => {
+  // The page reads this off `#fleetConfig` and the route draws it; the three
+  // have to be the same string, and this is the one they are all taken from.
+  it("is where the page polls for each PR's reviewer, on trailmap's own origin", () => {
+    expect(FLEET_REVIEWERS_PATH).toBe("/fleet/reviewers");
   });
 });
 
