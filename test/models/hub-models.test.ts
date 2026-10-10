@@ -14,6 +14,7 @@ import {
   RepositorySetting,
 } from "../../app/models/repository-setting.js";
 import { Setting } from "../../app/models/setting.js";
+import { RepositoryCollaborator } from "../../app/models/repository-collaborator.js";
 
 /**
  * The hub models, against a real Postgres database.
@@ -80,17 +81,45 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
   });
 
   describe("Repository", () => {
-    it("belongs to an owner and is unique within it, not globally", async () => {
+    it("belongs to an owner, and its name is unique GLOBALLY", async () => {
       const one = await Owner.create({ login: "one", kind: "organization" });
       const two = await Owner.create({ login: "two", kind: "organization" });
 
-      expect(await Repository.create({ owner_id: one.id, name: "trails" })).toBeTruthy();
-      // The same name under a DIFFERENT owner is fine — that is what the
-      // scoped uniqueness is for.
-      expect(await Repository.create({ owner_id: two.id, name: "trails" })).toBeTruthy();
+      const first = await Repository.createBang({ owner_id: one.id, name: "trails" });
+      expect(first.isPersisted()).toBe(true);
+      expect(first.owner_id).toBe(one.id);
 
-      const dup = Repository.build({ owner_id: one.id, name: "TRAILS" });
-      expect(await dup.save()).toBe(false);
+      // The same name under a DIFFERENT owner is REFUSED. `repo-scope.ts` maps
+      // a story to a repository through `stories.pr`, which is `repo#N` with
+      // no owner in it, so a second `trails` would inherit the first one's
+      // nine thousand stories.
+      const second = Repository.build({ owner_id: two.id, name: "trails" });
+      expect(await second.save()).toBe(false);
+      expect(second.isPersisted()).toBe(false);
+      expect(second.errors.fullMessages.join(" ")).toMatch(/name/i);
+
+      // Case-insensitively, under either owner.
+      expect(await Repository.build({ owner_id: one.id, name: "TRAILS" }).save()).toBe(false);
+      expect(await Repository.build({ owner_id: two.id, name: "Trails" }).save()).toBe(false);
+    });
+
+    it("is refused by the DATABASE too, when validations are skipped", async () => {
+      // A validation races and `insertAll` skips it outright, so the index is
+      // what actually keeps the scope's assumption true.
+      // `index_repositories_on_lower_name`.
+      const one = await Owner.create({ login: "one", kind: "organization" });
+      const two = await Owner.create({ login: "two", kind: "organization" });
+      await Repository.createBang({ owner_id: one.id, name: "trails" });
+
+      await expect(
+        Repository.connectionPool().withConnection((connection) =>
+          connection.execute(
+            `INSERT INTO repositories (owner_id, name, default_branch, visibility, archived,
+               created_at, updated_at)
+             VALUES (${two.id}, 'TRAILS', 'main', 'public', false, NOW(), NOW())`,
+          ),
+        ),
+      ).rejects.toThrow(/index_repositories_on_lower_name|unique/i);
     });
 
     it("defaults its branch and visibility, and prefixes the visibility enum", async () => {
@@ -260,6 +289,161 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
       // A settings form that cleared the field falls back; it does not leave
       // the fleet with no origin while a working variable is sitting there.
       expect(await Setting.ringoBase()).toBe("http://btwhooks.web:8080");
+    });
+  });
+
+  describe("a reserved login", () => {
+    it("is refused, in any case", async () => {
+      // `dashboard` is a page. An owner by that name is reachable at
+      // `/Dashboard` only, because the route constraint takes `/dashboard` —
+      // an owner that half exists.
+      for (const login of ["dashboard", "Dashboard", "DASHBOARD", "RFCs"]) {
+        const owner = Owner.build({ login, kind: "user" });
+
+        expect([login, await owner.save()]).toEqual([login, false]);
+        expect(owner.errors.fullMessages.join(" ")).toMatch(/reserved/i);
+      }
+    });
+
+    it("does not refuse a login that merely contains one", async () => {
+      const owner = Owner.build({ login: "dashboards-r-us", kind: "user" });
+
+      expect(await owner.save()).toBe(true);
+    });
+  });
+
+  describe("destroying an owner or a repository", () => {
+    it("takes its repositories, their settings and their collaborators", async () => {
+      const owner = await Owner.createBang({ login: "one", kind: "organization" });
+      const member = await Owner.createBang({ login: "member", kind: "user" });
+      const repo = await Repository.createBang({ owner_id: owner.id, name: "trails" });
+      await RepositorySetting.createBang({ repository_id: repo.id });
+      await RepositoryCollaborator.createBang({
+        repository_id: repo.id,
+        owner_id: member.id,
+        role: "admin",
+      });
+
+      await owner.destroy();
+
+      // `dependent: "destroy"` down to the repositories and their settings,
+      // `deleteAll` for the join rows — which have no callbacks and a
+      // composite key.
+      expect(await Repository.count()).toBe(0);
+      expect(await RepositorySetting.count()).toBe(0);
+      expect(await RepositoryCollaborator.count()).toBe(0);
+      // The collaborator is a person, not a detail of the repository.
+      expect(await Owner.findByLogin("member")).not.toBeNull();
+    });
+
+    it("takes a repository's settings and collaborators with it", async () => {
+      const owner = await Owner.createBang({ login: "one", kind: "organization" });
+      const member = await Owner.createBang({ login: "member", kind: "user" });
+      const repo = await Repository.createBang({ owner_id: owner.id, name: "trails" });
+      await RepositorySetting.createBang({ repository_id: repo.id });
+      await RepositoryCollaborator.createBang({
+        repository_id: repo.id,
+        owner_id: member.id,
+        role: "read",
+      });
+
+      await repo.destroy();
+
+      expect(await RepositorySetting.count()).toBe(0);
+      expect(await RepositoryCollaborator.count()).toBe(0);
+      expect(await Owner.findByLogin("one")).not.toBeNull();
+    });
+  });
+
+  describe("Repository.spawnChoices", () => {
+    it("is the environment's entries when the hub holds no checkout", async () => {
+      setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails=/checkout/trails");
+
+      expect(await Repository.spawnChoices()).toEqual([
+        { name: "blazetrailsdev/trails", path: "/checkout/trails" },
+      ]);
+    });
+
+    it("lets a row OVERRIDE the environment entry of the same name", async () => {
+      setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails=/stale/trails");
+      const owner = await Owner.createBang({ login: "blazetrailsdev", kind: "organization" });
+      await Repository.createBang({
+        owner_id: owner.id,
+        name: "trails",
+        checkout_path: "/moved/trails",
+      });
+
+      expect(await Repository.spawnChoices()).toEqual([
+        { name: "blazetrailsdev/trails", path: "/moved/trails" },
+      ]);
+    });
+
+    it("still offers an environment entry that has no row", async () => {
+      // The all-or-nothing version dropped this one the moment any row
+      // existed, so adding a repo to FLEET_REPO_PATHS did nothing until
+      // someone reseeded.
+      setEnv(
+        "FLEET_REPO_PATHS",
+        "blazetrailsdev/trails=/checkout/trails,blazetrailsdev/ringo=/checkout/ringo",
+      );
+      const owner = await Owner.createBang({ login: "blazetrailsdev", kind: "organization" });
+      await Repository.createBang({
+        owner_id: owner.id,
+        name: "trails",
+        checkout_path: "/moved/trails",
+      });
+
+      expect(await Repository.spawnChoices()).toEqual([
+        { name: "blazetrailsdev/ringo", path: "/checkout/ringo" },
+        { name: "blazetrailsdev/trails", path: "/moved/trails" },
+      ]);
+    });
+
+    it("leaves out a row with no checkout, and an archived one", async () => {
+      setEnv("FLEET_REPO_PATHS", "");
+      const owner = await Owner.createBang({ login: "blazetrailsdev", kind: "organization" });
+      await Repository.createBang({ owner_id: owner.id, name: "trails" });
+      await Repository.createBang({
+        owner_id: owner.id,
+        name: "ringo",
+        checkout_path: "/checkout/ringo",
+        archived: true,
+      });
+
+      expect(await Repository.spawnChoices()).toEqual([]);
+    });
+  });
+
+  describe("Repository.importFleetRepos", () => {
+    it("raises rather than reporting success on a name the model refuses", async () => {
+      // `createBang`, not `create`: `create` answers an unsaved record, and
+      // the seeds then printed "seeded" over a database with nothing in it.
+      setEnv("FLEET_REPO_PATHS", "blazetrailsdev/not a repo name=/checkout/x");
+
+      await expect(Repository.importFleetRepos()).rejects.toThrow();
+    });
+  });
+
+  describe("the settings memo", () => {
+    it("is dropped by `write`, so a new value takes effect at once", async () => {
+      setEnv("RINGO_BASE", "");
+      await Setting.write("ringo_base", "http://first.web:8080");
+      expect(await Setting.ringoBase()).toBe("http://first.web:8080");
+
+      await Setting.write("ringo_base", "http://second.web:8080");
+
+      expect(await Setting.ringoBase()).toBe("http://second.web:8080");
+    });
+
+    it("caches the ROW, and re-reads the environment every call", async () => {
+      // The memo exists to stop the polled relay paths querying Postgres per
+      // request. It must not freeze the env fallback with them.
+      setEnv("RINGO_BASE", "http://from-env:8080");
+      expect(await Setting.ringoBase()).toBe("http://from-env:8080");
+
+      setEnv("RINGO_BASE", "http://changed:9090");
+
+      expect(await Setting.ringoBase()).toBe("http://changed:9090");
     });
   });
 

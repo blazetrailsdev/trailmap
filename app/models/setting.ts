@@ -150,29 +150,35 @@ export class Setting extends Hub {
   /**
    * The row for `key`, or null — including when nothing is connected.
    *
-   * `ConnectionNotDefined` means ONE thing: no pool was ever established for
-   * `Hub`. It is not what a wrong URL, a down server or a bad password raises
-   * — those surface as connection errors from the adapter and propagate from
-   * here like any other fault. So this catch cannot mask a misconfigured
-   * database; it can only answer "this process never had a hub".
-   *
-   * In a booted server that state is unreachable:
-   * `config/initializers/hub-database.ts` refuses to come up without
+   * THIS BRANCH EXISTS FOR THE TEST SUITE. Saying so plainly is the honest
+   * version: `config/initializers/hub-database.ts` refuses to boot without
    * `HUB_DATABASE_URL` and then reflects the hub's columns, which needs a live
-   * connection. So the only processes that reach this branch are the ones with
-   * no hub at all — most of the test suite, and `trails db`.
+   * connection — so a running server always has a pool and never reaches here.
+   * The processes that do are the ones that load no initializers: most of the
+   * suite, and `trails db`.
    *
-   * Two things that look like cleaner tests and are both WRONG:
+   * It is narrow enough to be safe. `ConnectionNotDefined` means ONE thing —
+   * no pool was ever established for `Hub`. A wrong URL, a down server or a
+   * bad password raise connection errors from the adapter instead, and those
+   * propagate from here like any other fault, so this cannot turn a
+   * misconfigured database into a quietly wrong page.
+   *
+   * Two narrower-looking tests were tried and are both WRONG:
    *
    * - `hasHubDatabase()`, i.e. asking whether `HUB_DATABASE_URL` is set. The
    *   variable says what a process COULD connect to; what decides whether
    *   there is a row to read is whether it DID. The suite runs with the
-   *   variable set and no pool established (`pnpm test` passes it so the
-   *   initializer test can assert on it), and predicting from the variable
+   *   variable set and no pool established, and predicting from the variable
    *   failed 44 tests across four controllers.
    * - `Hub.isConnected()`. A pool answers false until one of its connections
-   *   is actually open, so a freshly booted process would silently fall back
-   *   to the environment on its first request and then stop doing so.
+   *   is actually open, so a freshly booted process would fall back to the
+   *   environment on its first request and then stop doing so.
+   *
+   * The alternative is to establish a hub in those suites. It was not taken
+   * because the fleet and home pages genuinely do not need one, and requiring
+   * Postgres to test them would make them SKIP on a machine without it —
+   * trading a branch this comment can explain for coverage that silently
+   * disappears.
    */
   private static async findByKey(key: string): Promise<Setting | null> {
     try {

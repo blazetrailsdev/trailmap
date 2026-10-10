@@ -67,24 +67,51 @@ export class Owner extends Hub {
       // trailing hyphen. `LOGIN_FORMAT` is shared with the router's
       // `OWNER_SEGMENT` so the two cannot drift.
       format: { with: new RegExp(`^${LOGIN_FORMAT.source}$`) },
-      // The format alone does NOT keep a login out of the router's reserved
-      // space — `rfcs` and `dashboard` are perfectly well-formed logins. The
-      // route constraint stops such an owner being reached; this stops it
-      // being created, which is the half that matters, because an owner no URL
-      // can name is worse than a refused one.
-      exclusion: { in: [...RESERVED_OWNER_NAMES] },
       length: { maximum: 39 },
     });
     this.validates("kind", { presence: true });
+
+    // A reserved login is reserved IN EVERY CASE.
+    //
+    // The format alone does not keep a login out of the router's reserved
+    // space — `rfcs` and `dashboard` are perfectly well-formed logins. The
+    // route constraint stops such an owner being REACHED; this stops it being
+    // created, which is the half that matters, because an owner no URL can
+    // name is worse than a refused one.
+    //
+    // `exclusion: { in: RESERVED_OWNER_NAMES }` was the first spelling and let
+    // `Dashboard` through: it compares the raw value, while `findByLogin`
+    // lowercases — so the row answers to `/Dashboard` and `/dashboard` alike
+    // as far as the lookup goes, but the route constraint sends `/dashboard`
+    // to the dashboard page, leaving an owner that half exists. Rails writes a
+    // comparison the built-in validator cannot express as a custom validation
+    // (`validate :login_is_not_reserved`), which is this.
+    this.validate((record) => {
+      const owner = record as unknown as Owner;
+      const login = owner.login?.toLowerCase();
+      // `includes` on a readonly tuple narrows its argument to the members;
+      // the whole point here is to ask about a string that may not be one.
+      if (login && (RESERVED_OWNER_NAMES as readonly string[]).includes(login)) {
+        owner.errors.add("login", "is reserved by a trailmap page");
+      }
+    });
   }
 
   /**
    * The owner whose `login` is `login`, case-insensitively — `/BlazeTrailsDev`
    * resolves to `blazetrailsdev` as it does on GitHub, which is also what the
    * uniqueness validation above promises.
+   *
+   * Built through Arel rather than a raw `lower(login) = ?` fragment, which is
+   * how Rails writes a functional comparison:
+   * `arel_table[:login].lower.eq(login.downcase)`. The node is quoted by the
+   * adapter, it renders `LOWER("owners"."login") = …` so it matches
+   * `index_owners_on_lower_login`, and nothing here has to know how the
+   * connection spells a string.
    */
   static async findByLogin(login: string): Promise<Owner | null> {
-    return (await Owner.where("lower(login) = ?", login.toLowerCase()).first()) ?? null;
+    const lowered = Owner.arelTable.get("login").lower().eq(login.toLowerCase());
+    return (await Owner.where(lowered).first()) ?? null;
   }
 
   /** What the page shows: the display name when there is one, else the login. */

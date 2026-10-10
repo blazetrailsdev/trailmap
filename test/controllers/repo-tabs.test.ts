@@ -228,6 +228,24 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     expect(missing.status).toBe(404);
   });
 
+  it("404s a story that exists but belongs to ANOTHER repository", async () => {
+    // `unshipped` has no PR, so it is an issue of the content repo. Asking for
+    // it under `trails` served it before `storyForRepo`: a bare
+    // `Story.findBy({ id })` ignores the tab it was reached through.
+    const underTasks = await get(RepoIssuesController, "show", { ...TASKS, id: "unshipped" });
+    expect(underTasks.status).toBe(200);
+
+    const underTrails = await get(RepoIssuesController, "show", { ...TRAILS, id: "unshipped" });
+    expect(underTrails.status).toBe(404);
+
+    // And the other way: a `trails` story is not an issue of the content repo.
+    const crossed = await get(RepoIssuesController, "show", {
+      ...TASKS,
+      id: "open-in-trails",
+    });
+    expect(crossed.status).toBe(404);
+  });
+
   it("groups pull requests by their ref and calls one merged when every story is", async () => {
     const open = await get(RepoPullsController, "index", TRAILS);
     expect(open.status).toBe(200);

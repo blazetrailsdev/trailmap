@@ -46,7 +46,7 @@ export class RepoController extends ApplicationController {
 
   /**
    * The locals every tab's template needs, merged into whatever the action
-   * adds. `repo` and `tabs` are what `repos/_header` renders.
+   * adds. `repo` and `tabs` are what `shared/_repo-header` renders.
    */
   protected repoLocals(extra: Record<string, unknown> = {}): Record<string, unknown> {
     return {

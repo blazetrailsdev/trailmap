@@ -183,12 +183,19 @@ export interface ScopedEvent {
 }
 
 /**
- * SQLite's bind ceiling, and the reason the two helpers below exist.
+ * How many ids go into one `column IN (…)`.
  *
- * `trails` scopes to over nine thousand stories, so any `column IN (…)` built
- * from that scope is a query with nine thousand binds — which no index helps
- * and which SQLite eventually refuses outright. 900 keeps a chunk an order of
- * magnitude under the limit with room for the rest of the statement.
+ * `trails` scopes to over nine thousand stories, so building that `IN` from
+ * the whole scope is a query with nine thousand binds. MEASURED, because the
+ * first version of this comment guessed: this build of SQLite accepts 32,766
+ * bound parameters and refuses 32,767 with "too many SQL variables". So
+ * nine thousand does not fail today — it is one more `trails`-sized repository
+ * away from failing, and it is a query shape no index helps in the meantime.
+ *
+ * 900 is therefore a guard against growth and a better plan, not a fix for a
+ * present error. It is kept because the alternative was two policies for one
+ * constraint: `eventsForRepo` below went out of its way to avoid binding the
+ * scope's ids while the code tab bound all of them.
  */
 const BIND_CHUNK = 900;
 
@@ -200,12 +207,9 @@ export function inChunks<T>(ids: T[]): T[][] {
 }
 
 /**
- * Every `story_paths.path` the scope's stories cite.
+ * Every `story_paths.path` the scope's stories cite, chunked as above.
  *
- * Chunked for the reason above. The code tab built this as ONE `IN (…)` over
- * the whole scope while `eventsForRepo` right below avoided exactly that — two
- * policies for one constraint, and the one that would break first was the one
- * with no guard.
+ * Order is not promised: the caller counts paths by their first segment.
  */
 export async function pathsForStories(stories: ScopedStory[]): Promise<string[]> {
   const ids = stories.map((story) => story.id);

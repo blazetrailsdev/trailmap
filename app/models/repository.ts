@@ -104,28 +104,30 @@ export class Repository extends Hub {
    * The repository `/:owner/:repo` names, with its owner and settings loaded,
    * because every tab needs all three.
    *
-   * TWO queries, not one: the owner is looked up first so the lookup can stop
-   * there when the login is unknown, and so the row it returns can be assigned
-   * to `repo.owner` rather than fetched a second time by `includes("owner")`.
+   * THREE queries: the owner, the repository, and `includes("settings")`
+   * preloading the settings row. The owner is looked up first so the lookup
+   * can stop there when the login is unknown, and so the row it returns can be
+   * assigned to `repo.owner` rather than fetched a fourth time by
+   * `includes("owner")`.
+   *
    * A single joined query would be one round trip, but `lower(login)` and
    * `lower(name)` are indexed separately
    * (`index_owners_on_lower_login`, `index_repositories_on_lower_name`), so
-   * each of these is an index lookup and the join saves a round trip rather
-   * than any work.
+   * each of these is an index lookup and the join would save round trips
+   * rather than work.
    *
-   * Both comparisons are raw `lower(…) = ?` with a bind rather than an Arel
-   * `lower()` node: `@blazetrails/arel` is a transitive dependency of
-   * `@blazetrails/activerecord`, not one of the vendored tarballs, so it does
-   * not resolve from application code. The binds are parameterised and hit
-   * the functional indexes above.
+   * Both comparisons go through Arel — `arelTable.get("name").lower().eq(…)`,
+   * Rails' own spelling — so the SQL is `LOWER("repositories"."name") = …`
+   * and matches `index_repositories_on_lower_name`. See `Owner.findByLogin`.
    *
    * "nwo" is GitHub's own abbreviation for name-with-owner.
    */
   static async findByNwo(login: string, name: string): Promise<Repository | null> {
     const owner = await Owner.findByLogin(login);
     if (!owner) return null;
+    const lowered = Repository.arelTable.get("name").lower().eq(name.toLowerCase());
     const repo = await Repository.where({ owner_id: owner.id })
-      .where("lower(name) = ?", name.toLowerCase())
+      .where(lowered)
       .includes("settings")
       .first();
     if (!repo) return null;
@@ -146,16 +148,26 @@ export class Repository extends Hub {
    * The fallback is what keeps a box with only the variable working, and it is
    * the same ordering: a row overrides, the environment is the floor.
    *
-   * NO HUB is one more way to have no rows. The fleet surface predates the hub
-   * and is deployed on boxes that have only `FLEET_REPO_PATHS`, so a dashboard
-   * that 500s because the owner/repository tables are not there would be a
-   * regression this change has no business causing. `ConnectionNotDefined`
-   * means "no pool was established" and nothing else — `Setting.findByKey`
-   * carries the full argument for catching exactly it.
+   * MERGED BY NAME, not all-or-nothing. A row wins over the environment entry
+   * of the same `owner/repo`, and an entry with no row is still offered. The
+   * first version returned the rows whenever there were any, which meant
+   * adding a repository to `FLEET_REPO_PATHS` did nothing until someone
+   * reseeded — the same two-sources-disagree failure this change exists to
+   * remove, pointing the other way.
+   *
+   * The empty-hub case falls out of the merge rather than being a special
+   * case: no rows, so every entry comes from the environment.
+   *
+   * `checkoutsOrNone` swallows `ConnectionNotDefined` FOR THE TEST SUITE, the
+   * same way and for the same reason as `Setting.findByKey`, whose docblock
+   * carries the argument. A deployed process cannot be in that state: it
+   * refuses to boot without `HUB_DATABASE_URL`.
    */
   static async spawnChoices(): Promise<FleetRepo[]> {
-    const fromRows = await Repository.checkoutsOrNone();
-    return fromRows.length > 0 ? fromRows : fleetRepos();
+    const byName = new Map<string, FleetRepo>();
+    for (const entry of fleetRepos()) byName.set(entry.name, entry);
+    for (const row of await Repository.checkoutsOrNone()) byName.set(row.name, row);
+    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /** The rows with a checkout, or none at all when there is no hub to ask. */
