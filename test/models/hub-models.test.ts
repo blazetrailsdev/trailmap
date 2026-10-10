@@ -14,6 +14,7 @@ import {
   RepositorySetting,
 } from "../../app/models/repository-setting.js";
 import { Setting } from "../../app/models/setting.js";
+import { fleetRepos } from "../../config/fleet.js";
 import { RepositoryCollaborator } from "../../app/models/repository-collaborator.js";
 
 /**
@@ -399,6 +400,39 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
       ]);
     });
 
+    it("is alphabetical, as the environment reader already was", async () => {
+      // NOT a change this branch makes: `fleetRepos()` sorts (config/fleet.ts),
+      // so `FLEET_REPO_PATHS` never decided the order. The dashboard's first
+      // `<option>` is the default spawn target, and on an env-only box it must
+      // be the same repository after this change as before it.
+      setEnv(
+        "FLEET_REPO_PATHS",
+        "blazetrailsdev/zebra=/checkout/zebra,blazetrailsdev/alpha=/checkout/alpha",
+      );
+
+      expect((await Repository.spawnChoices()).map((choice) => choice.name)).toEqual([
+        "blazetrailsdev/alpha",
+        "blazetrailsdev/zebra",
+      ]);
+      // The merge agrees with the reader it merges over.
+      expect(await Repository.spawnChoices()).toEqual(fleetRepos());
+    });
+
+    it("sorts a row-only entry in with the environment's, not after them", async () => {
+      setEnv("FLEET_REPO_PATHS", "blazetrailsdev/zebra=/checkout/zebra");
+      const owner = await Owner.createBang({ login: "blazetrailsdev", kind: "organization" });
+      await Repository.createBang({
+        owner_id: owner.id,
+        name: "alpha",
+        checkout_path: "/checkout/alpha",
+      });
+
+      expect((await Repository.spawnChoices()).map((choice) => choice.name)).toEqual([
+        "blazetrailsdev/alpha",
+        "blazetrailsdev/zebra",
+      ]);
+    });
+
     it("leaves out a row with no checkout, and an archived one", async () => {
       setEnv("FLEET_REPO_PATHS", "");
       const owner = await Owner.createBang({ login: "blazetrailsdev", kind: "organization" });
@@ -425,14 +459,35 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
   });
 
   describe("the settings memo", () => {
+    /**
+     * Change the row WITHOUT going through `Setting.write`, which clears the
+     * memo. This is what another process does, and it is the only way to see
+     * whether this one is reading its cache or the database.
+     */
+    async function updateRowBehindTheModel(value: string): Promise<void> {
+      await Setting.connectionPool().withConnection((connection) =>
+        connection.execute(`UPDATE settings SET value = '${value}' WHERE key = 'ringo_base'`),
+      );
+    }
+
     it("is dropped by `write`, so a new value takes effect at once", async () => {
       setEnv("RINGO_BASE", "");
       await Setting.write("ringo_base", "http://first.web:8080");
       expect(await Setting.ringoBase()).toBe("http://first.web:8080");
 
+      // The read above filled the memo. Without `write` clearing it, this
+      // value would not be visible for another ten seconds.
       await Setting.write("ringo_base", "http://second.web:8080");
 
       expect(await Setting.ringoBase()).toBe("http://second.web:8080");
+
+      // And the same again after a read that is served FROM the memo, which is
+      // the state the clearing actually has to survive.
+      await updateRowBehindTheModel("http://out-of-band:7070");
+      expect(await Setting.ringoBase()).toBe("http://second.web:8080");
+
+      await Setting.write("ringo_base", "http://third.web:8080");
+      expect(await Setting.ringoBase()).toBe("http://third.web:8080");
     });
 
     it("caches the ROW, and re-reads the environment every call", async () => {
@@ -444,6 +499,20 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
       setEnv("RINGO_BASE", "http://changed:9090");
 
       expect(await Setting.ringoBase()).toBe("http://changed:9090");
+
+      // The ROW half: write one, read it (filling the memo), then move it
+      // behind the model's back. A process with no cache would see the new
+      // value at once; this one must not, which is the whole point of the
+      // memo and the only assertion here that fails if it is deleted.
+      await Setting.write("ringo_base", "http://from-the-row:8080");
+      expect(await Setting.ringoBase()).toBe("http://from-the-row:8080");
+
+      await updateRowBehindTheModel("http://moved:7070");
+      expect(await Setting.ringoBase()).toBe("http://from-the-row:8080");
+
+      // ...until the memo is dropped, as `truncateHub` and a passing TTL do.
+      Setting.forgetResolved();
+      expect(await Setting.ringoBase()).toBe("http://moved:7070");
     });
   });
 

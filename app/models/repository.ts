@@ -155,6 +155,18 @@ export class Repository extends Hub {
    * reseeded — the same two-sources-disagree failure this change exists to
    * remove, pointing the other way.
    *
+   * ALPHABETICAL BY NAME, deliberately, and that is the STATUS QUO rather
+   * than a change: `fleetRepos()` has sorted its entries since before this
+   * branch (config/fleet.ts, the `sort` at the end), so `FLEET_REPO_PATHS` has
+   * never decided the order an operator sees. The dashboard renders these as
+   * `<option>`s and the browser selects the first, so the head of the list is
+   * the default spawn target — on an env-only box it is the same repository
+   * after this change as before it, which is the property worth keeping.
+   *
+   * Were it ever to become meaningful, the fix belongs in `fleetRepos()`,
+   * where the environment's order still exists to preserve; by the time it
+   * reaches here it has already been sorted away.
+   *
    * The empty-hub case falls out of the merge rather than being a special
    * case: no rows, so every entry comes from the environment.
    *
