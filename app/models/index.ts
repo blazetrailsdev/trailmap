@@ -9,6 +9,7 @@ import { Repository } from "./repository.js";
 import { RepositorySetting } from "./repository-setting.js";
 import { RepositoryCollaborator } from "./repository-collaborator.js";
 import { Setting } from "./setting.js";
+import { Hub } from "./hub.js";
 import { registerRfcAutoClose } from "./rfc-close.js";
 
 // Association targets are named by STRING (`belongsTo("rfc")`,
@@ -64,6 +65,30 @@ export async function loadModelSchemas(): Promise<void> {
  */
 export async function loadHubSchemas(): Promise<void> {
   await Promise.all(HUB_MODELS.map((model) => model.loadSchema()));
+}
+
+/**
+ * The hub tables these models need that the connected database does not have.
+ *
+ * `loadHubSchemas` does NOT answer this: reflecting a model whose table is
+ * missing SUCCEEDS, so a hub with no tables at all establishes a connection,
+ * warms every schema and boots — then answers `relation "repositories" does
+ * not exist` on the first page that reads a row. Measured against an empty
+ * Postgres database, not assumed.
+ *
+ * Derived from `HUB_MODELS` rather than a written-out list, so a model added
+ * above is checked without anyone remembering to add it here.
+ */
+export async function missingHubTables(): Promise<string[]> {
+  const present = new Set(
+    await Hub.connectionPool().withConnection((connection) => connection.tables()),
+  );
+  // `tableName` is typed nullable on the base class; every hub model sets one
+  // explicitly, and a null would mean a model with no table at all — which is
+  // not a missing TABLE and not this function's business.
+  return HUB_MODELS.map((model) => model.tableName)
+    .filter((table): table is string => table !== null && !present.has(table))
+    .sort();
 }
 
 export { Rfc, RFC_STATUSES, type RfcStatus } from "./rfc.js";
