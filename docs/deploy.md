@@ -76,10 +76,13 @@ dokku sso:protect trailmap
 dokku postgres:create trailmap-hub
 dokku postgres:link trailmap-hub trailmap --alias HUB_DATABASE   # → HUB_DATABASE_URL
 
-# Then the schema and the seed rows, from a checkout with the linked URL in
-# the environment. NO `--database hub` — see "Migrating the hub" below.
-HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub --dsn)" pnpm db:migrate
-HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub --dsn)" pnpm db:seed
+# Then the schema and the seed rows, IN THE APP CONTAINER — see "Migrating the
+# hub" below for why it cannot be run from a host checkout. NO `--database hub`.
+# After this first time, deploys migrate the hub themselves (predeploy).
+dokku run trailmap node_modules/.bin/tsx \
+  node_modules/@blazetrails/trailties/bin/trails.js db migrate
+dokku run trailmap node_modules/.bin/tsx \
+  node_modules/@blazetrails/trailties/bin/trails.js db seed
 ```
 
 `HUB_DATABASE_URL` is as NOT optional as `TASKS_DATABASE`:
@@ -108,9 +111,37 @@ is how a process on the box reaches it without exposing a port.
 
 ### Migrating the hub
 
+**Deploys do this.** `app.json` declares a dokku `predeploy` script that runs
+`db migrate` in a container built from the new image, before it serves
+traffic, so a release that adds a hub table migrates on the way in and a
+failed migration aborts the deploy instead of publishing a container that 500s.
+
+To run it by hand — the first deploy, or a repair:
+
 ```sh
-HUB_DATABASE_URL=<the hub's DSN> pnpm db:migrate     # both databases
+dokku run trailmap node_modules/.bin/tsx \
+  node_modules/@blazetrails/trailties/bin/trails.js db migrate   # both databases
 ```
+
+**Not `pnpm db:migrate`, and not from a host checkout.** Both halves of the
+obvious recipe are wrong here, and each fails differently:
+
+- **`pnpm` is not in the runtime image.** The Dockerfile enables it with
+  `corepack enable pnpm` in the BUILD stage only, and corepack's shims live
+  outside `/app`, which is all the final stage copies. `dokku run trailmap
+  pnpm db:migrate` therefore hands `pnpm` to the image's `node` entrypoint as
+  a script path and dies with `Cannot find module '/app/pnpm'`. Call the
+  binary the way `CMD` does instead.
+- **The hub's hostname does not resolve on the host.** `dokku postgres:info
+  trailmap-hub --dsn` prints `@dokku-postgres-trailmap-hub:5432`, a name that
+  exists only on the docker network the service and the app share. A host
+  checkout with that URL in its environment cannot connect at all. (For local
+  work against the dev service, `dokku postgres:info <service> --internal-ip`
+  gives an address the host can reach.)
+
+Seeds are NOT part of the predeploy: they are first-time setup, and
+`db/seeds.ts` is idempotent but noisy — `trails db seed` runs it once per
+configured database, so its output appears twice.
 
 **Never `pnpm exec trails db migrate --database hub`.** That flag narrows the
 registered database configurations to the one targeted, and
@@ -125,8 +156,15 @@ It is a trails defect, tracked upstream, and it is also why nothing in this
 repository passes `--database`: the unflagged command registers both
 configurations and is correct, and it is what a Rails user would run anyway.
 
-`app.json` declares the startup healthcheck dokku polls after a deploy
-(`GET /up`, 12 attempts, 5s apart).
+`app.json` declares two things: the `predeploy` migration above, and the
+startup healthcheck dokku polls after a deploy (`GET /up`, 12 attempts, 5s
+apart).
+
+The healthcheck alone cannot catch an unmigrated hub — `/up` reads no row, so
+a container with `HUB_DATABASE_URL` set and no tables answers it green and
+then 500s with `relation "repositories" does not exist` on `/dashboard` and
+every page under `/:owner`. That is what the predeploy is for; it is the
+reason this is a deploy step and not a runbook entry.
 
 ## Deploying
 
