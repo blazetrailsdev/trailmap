@@ -66,30 +66,6 @@ const HUB_TABLES = [
  */
 const HUB_TEST_LOCK = 0x7471_6d70;
 
-/**
- * Hold the same lock for one block, on whatever connection `Hub` currently
- * has.
- *
- * For a test that touches the shared hub database WITHOUT going through
- * `connectHubTestDatabase` — `hub-database.test.ts` connects the way the
- * application does, through `HUB_DATABASE_URL`, so it is not serialized by
- * the `beforeAll`/`afterAll` pair below and would otherwise run on top of
- * whichever file is holding the lock.
- */
-export async function withHubTestLock<T>(fn: () => Promise<T>): Promise<T> {
-  await Hub.connectionPool().withConnection(async (connection) => {
-    await connection.execute("SET lock_timeout = '60s'");
-    await connection.execute(`SELECT pg_advisory_lock(${HUB_TEST_LOCK})`);
-  });
-  try {
-    return await fn();
-  } finally {
-    await Hub.connectionPool().withConnection((connection) =>
-      connection.execute(`SELECT pg_advisory_unlock(${HUB_TEST_LOCK})`),
-    );
-  }
-}
-
 export async function connectHubTestDatabase(): Promise<void> {
   const url = hubTestUrl();
   if (url === null) {

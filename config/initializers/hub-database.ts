@@ -35,9 +35,10 @@ import { loadHubSchemas, missingHubTables } from "../../app/models/index.js";
  * problem — it connects, `loadHubSchemas` reflects happily, `GET /up` reads no
  * row and answers green — and the application then 500s with `relation
  * "repositories" does not exist` on `/dashboard` and every page under
- * `/:owner`. That is what trailmap#48 shipped and what #50's predeploy stops
- * happening on a release; this stops it happening at all, including when a
- * database is replaced underneath a container that is already running.
+ * `/:owner`. That is what trailmap#48 shipped and what the Procfile's
+ * `release` task stops happening on a deploy; this stops it happening at all,
+ * including when a database is replaced underneath a container that is
+ * already running.
  */
 export async function connectToHubDatabase(): Promise<void> {
   if (!hasHubDatabase()) {
@@ -58,7 +59,7 @@ export async function connectToHubDatabase(): Promise<void> {
         "Migrate it — in the app container, because pnpm is not in the runtime image:\n" +
         "  dokku run trailmap node_modules/.bin/tsx " +
         "node_modules/@blazetrails/trailties/bin/trails.js db migrate\n" +
-        "See docs/deploy.md. Deploys do this themselves (app.json predeploy).",
+        "See docs/deploy.md. Deploys do this themselves (Procfile release task).",
     );
   }
 }
