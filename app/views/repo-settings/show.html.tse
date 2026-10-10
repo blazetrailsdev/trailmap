@@ -25,6 +25,23 @@ the form that writes these is its own story.</p>
   <% } %>
 </div>
 
+<h2>Collaborators</h2>
+<p class="muted">Who may push here. The row's identity is the pair
+<code>(repository_id, owner_id)</code> — a composite primary key, which
+Postgres enforces as the table's real PRIMARY KEY.</p>
+<div class="box">
+  <% if (collaborators.length === 0) { %>
+    <div class="empty">No collaborators.</div>
+  <% } %>
+  <% for (const row of collaborators) { %>
+    <div class="box-row">
+      <a href="/<%= row.login %>"><%= row.login %></a> &middot;
+      <span class="badge s-<%= row.canPush ? "ready" : "draft" %>"><%= row.role %></span>
+      <% if (!row.canPush) { %><span class="muted">read-only</span><% } %>
+    </div>
+  <% } %>
+</div>
+
 <h2>Application settings</h2>
 <p class="muted">One row per setting, and where its value is coming from: a row in this
 database overrides the environment variable of the same meaning.</p>

@@ -1,8 +1,9 @@
 import { Hub } from "./hub.js";
 import { Owner } from "./owner.js";
 import { RepositorySetting } from "./repository-setting.js";
+import type { RepositoryCollaborator } from "./repository-collaborator.js";
 import { fleetRepos } from "../../config/fleet.js";
-import type { Relation } from "@blazetrails/activerecord";
+import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 
 export const REPOSITORY_VISIBILITIES = ["public", "private"] as const;
 export type RepositoryVisibility = (typeof REPOSITORY_VISIBILITIES)[number];
@@ -42,6 +43,9 @@ export class Repository extends Hub {
    */
   declare settings: RepositorySetting | null;
 
+  /** Who may push here — the composite-key join, see RepositoryCollaborator. */
+  declare collaborators: AssociationProxy<RepositoryCollaborator>;
+
   declare static visibilityPublic: () => Relation<Repository>;
   declare static visibilityPrivate: () => Relation<Repository>;
   declare isVisibilityPublic: () => boolean;
@@ -50,6 +54,11 @@ export class Repository extends Hub {
   static {
     this.belongsTo("owner", { className: "Owner", foreignKey: "owner_id" });
     this.hasOne("settings", { className: "RepositorySetting", foreignKey: "repository_id" });
+    this.hasMany("collaborators", {
+      className: "RepositoryCollaborator",
+      foreignKey: "repository_id",
+      inverseOf: "repository",
+    });
 
     // Identity-mapped, as every other enum here is, and PREFIXED: without
     // `prefix` the generated statics are `Repository.public()` and

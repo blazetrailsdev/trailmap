@@ -1,6 +1,7 @@
 import { Owner } from "../app/models/owner.js";
 import { Repository } from "../app/models/repository.js";
 import { RepositorySetting } from "../app/models/repository-setting.js";
+import { RepositoryCollaborator } from "../app/models/repository-collaborator.js";
 import { Hub } from "../app/models/hub.js";
 import { loadHubSchemas } from "../app/models/index.js";
 import { hasHubDatabase, hubDatabaseConfig } from "../config/database.js";
@@ -49,6 +50,26 @@ if (!hasHubDatabase()) {
     }
     const repo = await Repository.create({ owner_id: owner.id, name, description });
     await RepositorySetting.create({ repository_id: repo.id });
+  }
+
+  // One collaborator, so the settings tab's composite-key join has a row to
+  // show. `dean` is the account the fleet's work is authored under; admin on
+  // every repository the org owns.
+  const dean =
+    (await Owner.findByLogin("dean")) ??
+    (await Owner.create({ login: "dean", kind: "user", display_name: "Dean Marano" }));
+  for (const repo of await Repository.where({ owner_id: owner.id }).toArray()) {
+    const existing = await RepositoryCollaborator.where({
+      repository_id: repo.id,
+      owner_id: dean.id,
+    }).first();
+    if (!existing) {
+      await RepositoryCollaborator.create({
+        repository_id: repo.id,
+        owner_id: dean.id,
+        role: "admin",
+      });
+    }
   }
 
   const imported = await Repository.importFleetRepos();

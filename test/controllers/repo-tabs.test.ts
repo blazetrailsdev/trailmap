@@ -11,6 +11,7 @@ import { Rfc, Story, Event, StoryPath, loadModelSchemas } from "../../app/models
 import { Owner } from "../../app/models/owner.js";
 import { Repository } from "../../app/models/repository.js";
 import { RepositorySetting } from "../../app/models/repository-setting.js";
+import { RepositoryCollaborator } from "../../app/models/repository-collaborator.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { OwnersController } from "../../app/controllers/owners-controller.js";
 import { RepoCodeController } from "../../app/controllers/repo-code-controller.js";
@@ -283,6 +284,24 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     expect(status).toBe(200);
     expect(body).toContain("120 loc");
     expect(body).toContain("in-progress");
+  });
+
+  it("lists collaborators on the settings tab, from the composite-key join", async () => {
+    const repo = await Repository.findByNwo("blazetrailsdev", "trails");
+    const member = await Owner.create({ login: "a-collaborator", kind: "user" });
+    await RepositoryCollaborator.create({
+      repository_id: repo!.id,
+      owner_id: member.id,
+      role: "write",
+    });
+
+    const { status, body } = await get(RepoSettingsController, "show", TRAILS);
+
+    expect(status).toBe(200);
+    expect(body).toContain("a-collaborator");
+    expect(body).toContain("write");
+    // A read-only collaborator is marked as such; `write` is not.
+    expect(body).not.toContain("read-only");
   });
 
   it("serves the settings tab with the switches and where each global value comes from", async () => {

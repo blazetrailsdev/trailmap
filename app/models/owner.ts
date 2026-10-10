@@ -1,6 +1,7 @@
 import { Hub } from "./hub.js";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 import type { Repository } from "./repository.js";
+import type { RepositoryCollaborator } from "./repository-collaborator.js";
 
 export const OWNER_KINDS = ["user", "organization"] as const;
 export type OwnerKind = (typeof OWNER_KINDS)[number];
@@ -26,6 +27,8 @@ export class Owner extends Hub {
   declare description: string | null;
 
   declare repositories: AssociationProxy<Repository>;
+  /** Repositories this owner collaborates on, via the composite-key join. */
+  declare collaborations: AssociationProxy<RepositoryCollaborator>;
 
   declare isUser: () => boolean;
   declare isOrganization: () => boolean;
@@ -34,6 +37,11 @@ export class Owner extends Hub {
 
   static {
     this.hasMany("repositories", { foreignKey: "owner_id", inverseOf: "owner" });
+    this.hasMany("collaborations", {
+      className: "RepositoryCollaborator",
+      foreignKey: "owner_id",
+      inverseOf: "owner",
+    });
 
     // Identity-mapped, for the reason Story.status is: a label that differs
     // from the stored value makes `owner.kind` and `SELECT kind` disagree, and

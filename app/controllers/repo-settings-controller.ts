@@ -1,6 +1,8 @@
 import { RepoController } from "./repo-controller.js";
 import { OPTIONAL_TABS } from "../models/repository-setting.js";
 import { Setting } from "../models/setting.js";
+import { Owner } from "../models/owner.js";
+import { RepositoryCollaborator } from "../models/repository-collaborator.js";
 
 /**
  * `/:owner/:repo/settings` — the repository's record and its feature switches.
@@ -33,8 +35,28 @@ export class RepoSettingsController extends RepoController {
       });
     }
 
+    // Collaborators, as GitHub lists them under settings. Two queries rather
+    // than an association include: the join's owner side is a second hub
+    // table, and `collaborators` carries only ids.
+    const collaborators = await RepositoryCollaborator.where({
+      repository_id: this.repo.id,
+    }).toArray();
+    const logins = new Map(
+      (await Owner.where({ id: collaborators.map((c) => c.owner_id) }).toArray()).map((o) => [
+        o.id,
+        o.login,
+      ]),
+    );
+
     await this.render({
       locals: this.repoLocals({
+        collaborators: collaborators
+          .map((c) => ({
+            login: logins.get(c.owner_id) ?? String(c.owner_id),
+            role: c.role,
+            canPush: c.canPush(),
+          }))
+          .sort((a, b) => a.login.localeCompare(b.login)),
         // `null` when the row has not been written: the tabs are all on, and
         // the page says so rather than drawing six switches that do not exist.
         hasSwitches: switches !== null,

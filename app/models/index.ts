@@ -7,6 +7,7 @@ import { Meta } from "./meta.js";
 import { Owner } from "./owner.js";
 import { Repository } from "./repository.js";
 import { RepositorySetting } from "./repository-setting.js";
+import { RepositoryCollaborator } from "./repository-collaborator.js";
 import { Setting } from "./setting.js";
 import { registerRfcAutoClose } from "./rfc-close.js";
 
@@ -28,7 +29,7 @@ const MODELS = [Rfc, Story, StoryDep, StoryRfcDep, StoryPath, StoryPackage, Even
  * is shared — that is process-global constant resolution, not a connection —
  * so `hasOne("settings")` resolves whether or not the database is reachable.
  */
-const HUB_MODELS = [Owner, Repository, RepositorySetting, Setting];
+const HUB_MODELS = [Owner, Repository, RepositorySetting, RepositoryCollaborator, Setting];
 
 registerModel([...MODELS, ...HUB_MODELS]);
 
@@ -84,4 +85,9 @@ export {
   type OptionalTab,
   type TabSwitches,
 } from "./repository-setting.js";
+export {
+  RepositoryCollaborator,
+  COLLABORATOR_ROLES,
+  type CollaboratorRole,
+} from "./repository-collaborator.js";
 export { Setting } from "./setting.js";

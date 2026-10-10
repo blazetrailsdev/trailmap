@@ -42,7 +42,13 @@ export function hasHubTestDatabase(): boolean {
 }
 
 /** The hub tables, in one list: what is truncated, and what must exist. */
-const HUB_TABLES = ["owners", "repositories", "repository_settings", "settings"] as const;
+const HUB_TABLES = [
+  "owners",
+  "repositories",
+  "repository_settings",
+  "repository_collaborators",
+  "settings",
+] as const;
 
 /**
  * One advisory lock, held for as long as a test FILE is using the hub.

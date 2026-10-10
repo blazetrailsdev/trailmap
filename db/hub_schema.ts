@@ -3,7 +3,7 @@
 
 import type { DatabaseAdapter } from "@blazetrails/activerecord";
 
-export const defineParams = { version: 2026_10_09_000004 };
+export const defineParams = { version: 2026_10_10_000005 };
 
 export default async function defineSchema(ctx: DatabaseAdapter) {
   // These are extensions that must be enabled in order to support this database
@@ -34,6 +34,15 @@ export default async function defineSchema(ctx: DatabaseAdapter) {
     t.index(["owner_id"], { name: "index_repositories_on_owner_id" });
   });
 
+  await ctx.createTable("repository_collaborators", { primaryKey: ["repository_id","owner_id"], force: "cascade" }, (t) => {
+    t.bigint("repository_id", { null: false });
+    t.bigint("owner_id", { null: false });
+    t.string("role", { default: "read", null: false });
+    t.datetime("created_at", { null: false });
+    t.datetime("updated_at", { null: false });
+    t.index(["owner_id"], { name: "index_repository_collaborators_on_owner_id" });
+  });
+
   await ctx.createTable("repository_settings", { force: "cascade" }, (t) => {
     t.bigint("repository_id", { null: false });
     t.boolean("issues_enabled", { default: true, null: false });
@@ -54,5 +63,7 @@ export default async function defineSchema(ctx: DatabaseAdapter) {
   });
 
   await ctx.addForeignKey("repositories", "owners");
+  await ctx.addForeignKey("repository_collaborators", "owners");
+  await ctx.addForeignKey("repository_collaborators", "repositories");
   await ctx.addForeignKey("repository_settings", "repositories");
 }
