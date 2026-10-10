@@ -1,9 +1,4 @@
 {
-  "scripts": {
-    "dokku": {
-      "predeploy": "node_modules/.bin/tsx node_modules/@blazetrails/trailties/bin/trails.js db migrate"
-    }
-  },
   "healthchecks": {
     "web": [
       {
