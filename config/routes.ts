@@ -1,41 +1,23 @@
 import { Trails } from "@blazetrails/trailties";
+import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "./owner-names.js";
+
+// Re-exported so `test/routes.test.ts` and anything reading the route table
+// can reach them from here, where they are used.
+export { LOGIN_FORMAT, RESERVED_OWNER_NAMES };
 
 /**
- * The top-level paths that are PAGES, not owners.
- *
- * `/:owner` is drawn last and matches a single segment, so without this every
- * one of these would be ambiguous with an organization of the same name — and,
- * worse, a top-level page added later would be shadowed silently by whichever
- * route happened to be drawn first. Naming them here makes the collision a 404
- * at the router, and makes `test/routes.test.ts` able to assert the whole set.
- *
- * GitHub maintains the same list for the same reason: `settings`, `about` and
- * `new` are reserved there, and no account can hold them.
- */
-export const RESERVED_OWNER_NAMES = [
-  "assets",
-  "backlog",
-  "dashboard",
-  "events",
-  "fleet",
-  "index",
-  "panes",
-  "rfc",
-  "rfcs",
-  "stories",
-  "story",
-  "up",
-] as const;
-
-/**
- * `:owner` — one path segment that is not a reserved page and is shaped like a
- * GitHub login (alphanumerics and interior hyphens, as `Owner` validates).
+ * `:owner` — one path segment that is login-shaped and is not a reserved page.
  *
  * No `^` or `$`: a segment constraint is matched against the segment itself,
  * and an anchored pattern is rejected, as it is in Rails.
+ *
+ * The reserved-name half is belt AND braces: `Owner` also refuses to save one
+ * (an exclusion validation), because a constraint only stops such an owner
+ * being REACHED, not being created — and an owner nothing can route to is
+ * worse than a refused one.
  */
 export const OWNER_SEGMENT = new RegExp(
-  `(?!(?:${RESERVED_OWNER_NAMES.join("|")})$)[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9]))*`,
+  `(?!(?:${RESERVED_OWNER_NAMES.join("|")})$)${LOGIN_FORMAT.source}`,
 );
 
 /** `:repo` — a repository name, as `Repository` validates it. */
@@ -137,13 +119,16 @@ Trails.application!.routes().draw(function () {
   // so every route above wins over `/:owner`. See RESERVED_OWNER_NAMES for the
   // other half of the collision.
   //
-  // `map` is captured rather than written as `this`: `draw` binds its block to
-  // the mapper, but `scope` — and `constraints`, which is a `scope` — invokes
-  // a nested block unbound (`cb()`, mapper.ts), so `this` inside one is
-  // undefined. Same mapper either way; this is only how it is reached.
-  const map = this;
-  map.constraints({ owner: OWNER_SEGMENT, repo: REPO_SEGMENT }, () => {
-    map.get(":owner", { to: "owners#show", as: "owner" });
+  // The nested blocks are ARROWS, which is load-bearing: `draw` binds its
+  // block to the mapper, but `scope` — and `constraints`, which is a `scope` —
+  // invokes a nested block unbound (`cb()`, actionpack's mapper.ts), where
+  // Rails' `scope` yields through `instance_eval` and keeps `self`. An arrow
+  // takes `this` lexically from the enclosing `function ()`, so it sidesteps
+  // that entirely; a nested `function () { this.get(...) }` would throw.
+  // `scope-and-constraints-call-their-block-unbound` (RFC 0141, filed from
+  // this PR) tracks the divergence. Nothing here works around it.
+  this.constraints({ owner: OWNER_SEGMENT, repo: REPO_SEGMENT }, () => {
+    this.get(":owner", { to: "owners#show", as: "owner" });
 
     // The eight tabs. `scope` carries the shared `:owner/:repo` prefix and the
     // `repo_` route-helper names; the controllers are flat, named
@@ -160,17 +145,17 @@ Trails.application!.routes().draw(function () {
     // of which this codebase forbids (test/views/view-directory-names.test.ts).
     // Flat `RepoIssuesController` has one spelling for both. The divergence is
     // a trails story, not something to paper over here.
-    map.scope(":owner/:repo", { as: "repo" }, () => {
+    this.scope(":owner/:repo", { as: "repo" }, () => {
       // The code tab IS the repository page, as `/owner/repo` is on GitHub.
-      map.get("", { to: "repo_code#show" });
-      map.resources("issues", { only: ["index", "show"], controller: "repo_issues" });
-      map.resources("pulls", { only: ["index", "show"], controller: "repo_pulls" });
-      map.resources("projects", { only: ["index", "show"], controller: "repo_projects" });
-      map.get("actions", { to: "repo_actions#index" });
-      map.get("wiki", { to: "repo_wiki#index" });
+      this.get("", { to: "repo_code#show" });
+      this.resources("issues", { only: ["index", "show"], controller: "repo_issues" });
+      this.resources("pulls", { only: ["index", "show"], controller: "repo_pulls" });
+      this.resources("projects", { only: ["index", "show"], controller: "repo_projects" });
+      this.get("actions", { to: "repo_actions#index" });
+      this.get("wiki", { to: "repo_wiki#index" });
       // `pulse`, not `insights`: GitHub's Insights tab lands on /pulse.
-      map.get("pulse", { to: "repo_insights#show" });
-      map.get("settings", { to: "repo_settings#show" });
+      this.get("pulse", { to: "repo_insights#show" });
+      this.get("settings", { to: "repo_settings#show" });
     });
   });
 });

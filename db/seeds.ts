@@ -3,6 +3,8 @@ import { Repository } from "../app/models/repository.js";
 import { RepositorySetting } from "../app/models/repository-setting.js";
 import { RepositoryCollaborator } from "../app/models/repository-collaborator.js";
 import { Hub } from "../app/models/hub.js";
+import { CONTENT_REPO } from "../app/models/concerns/repo-scope.js";
+import { env } from "@blazetrails/ruby-compat";
 import { loadHubSchemas } from "../app/models/index.js";
 import { hasHubDatabase, hubDatabaseConfig } from "../config/database.js";
 
@@ -24,9 +26,12 @@ if (!hasHubDatabase()) {
   await Hub.establishConnection(hubDatabaseConfig());
   await loadHubSchemas();
 
+  // `createBang`, not `create`, everywhere below: `create` answers an UNSAVED
+  // record when a validation fails, so a seed run against a schema the models
+  // have outgrown would print "seeded" and leave an empty database.
   const owner =
     (await Owner.findByLogin("blazetrailsdev")) ??
-    (await Owner.create({
+    (await Owner.createBang({
       login: "blazetrailsdev",
       kind: "organization",
       display_name: "Blaze Trails",
@@ -36,37 +41,53 @@ if (!hasHubDatabase()) {
   // The repos the task domain cites whether or not this box runs the fleet:
   // `stories.pr` is `repo#N` over exactly these names, so a backlog row has
   // somewhere to point even where `FLEET_REPO_PATHS` is unset.
+  // `CONTENT_REPO` rather than a second literal "tasks": the scope in
+  // `repo-scope.ts` treats that one name specially (unattributed stories count
+  // as its own), so a seed file spelling it independently is a rename away
+  // from seeding a repository the scope no longer recognises.
   const known: Array<[string, string]> = [
     ["trails", "The framework. Rails, in TypeScript."],
     ["trailmap", "The task domain as a trails application — this app."],
-    ["tasks", "RFCs, stories and the CLI that ingests them."],
+    [CONTENT_REPO, "RFCs, stories and the CLI that ingests them."],
     ["ringo", "The fleet's webhook process and dashboard."],
   ];
   for (const [name, description] of known) {
     const existing = await Repository.findByNwo(owner.login, name);
     if (existing) {
-      await existing.update({ description });
+      // Only FILLS a blank description; it never overwrites one. These seeds
+      // are also how a box refreshes its repo list, and clobbering an edited
+      // description on every run makes the field unusable for anything but
+      // this file's opinion of it.
+      if (existing.description === null || existing.description.trim() === "") {
+        await existing.updateBang({ description });
+      }
       continue;
     }
-    const repo = await Repository.create({ owner_id: owner.id, name, description });
-    await RepositorySetting.create({ repository_id: repo.id });
+    const repo = await Repository.createBang({ owner_id: owner.id, name, description });
+    await RepositorySetting.createBang({ repository_id: repo.id });
   }
 
   // One collaborator, so the settings tab's composite-key join has a row to
-  // show. `dean` is the account the fleet's work is authored under; admin on
-  // every repository the org owns.
-  const dean =
-    (await Owner.findByLogin("dean")) ??
-    (await Owner.create({ login: "dean", kind: "user", display_name: "Dean Marano" }));
+  // show: admin on every repository the org owns.
+  //
+  // Who that is comes from the environment, defaulting to the account this
+  // fleet's work is authored under. The login was hard-coded in three places
+  // here, which made a seeded database a statement about one person rather
+  // than about the box it runs on.
+  const adminLogin = env.SEED_ADMIN_LOGIN?.trim() || "dean";
+  const adminName = env.SEED_ADMIN_NAME?.trim() || "Dean Marano";
+  const admin =
+    (await Owner.findByLogin(adminLogin)) ??
+    (await Owner.createBang({ login: adminLogin, kind: "user", display_name: adminName }));
   for (const repo of await Repository.where({ owner_id: owner.id }).toArray()) {
     const existing = await RepositoryCollaborator.where({
       repository_id: repo.id,
-      owner_id: dean.id,
+      owner_id: admin.id,
     }).first();
     if (!existing) {
-      await RepositoryCollaborator.create({
+      await RepositoryCollaborator.createBang({
         repository_id: repo.id,
-        owner_id: dean.id,
+        owner_id: admin.id,
         role: "admin",
       });
     }

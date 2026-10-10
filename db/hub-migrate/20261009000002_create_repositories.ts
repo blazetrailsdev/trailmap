@@ -14,12 +14,23 @@ export class CreateRepositories extends Migration {
       t.text("description");
       t.boolean("archived", { null: false, default: false });
       t.timestamps();
+      // GLOBALLY unique, not unique per owner, and that is deliberate: the
+      // ready-queue scope maps a story to a repository through `stories.pr`,
+      // which is `repo#N` with no owner in it, so a second `trails` under
+      // another owner would silently inherit this one's nine thousand
+      // stories. `Repository`'s uniqueness validation says the same thing,
+      // but a validation races and `upsert` skips it, so the constraint has
+      // to live here for the scope's assumption to actually hold.
+      //
+      // A per-owner unique index would be implied by this one and is left
+      // out; `references` above still indexes `owner_id` for the association.
+      //
       // One STRING, not an array: an array element is quoted as a column name
       // ("lower(name)" does not exist), while a string is passed through as
       // the expression it is. Rails' functional indexes work the same way.
-      t.index("owner_id, lower(name)", {
+      t.index("lower(name)", {
         unique: true,
-        name: "index_repositories_on_owner_id_and_lower_name",
+        name: "index_repositories_on_lower_name",
       });
     });
   }

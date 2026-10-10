@@ -2,11 +2,7 @@ import type { AbstractController } from "@blazetrails/actionpack";
 import { RecordNotFound } from "@blazetrails/activerecord";
 import { ApplicationController } from "./application-controller.js";
 import { Repository } from "../models/repository.js";
-import {
-  ALL_TABS_ENABLED,
-  OPTIONAL_TABS,
-  type TabSwitches,
-} from "../models/repository-setting.js";
+import { ALL_TABS_ENABLED, type TabSwitches } from "../models/repository-setting.js";
 
 /** One entry of the tab bar. */
 export interface RepoTab {
@@ -22,15 +18,20 @@ export interface RepoTab {
  * Every tab needs the same three things before it can render anything: the
  * repository the path names, its owner, and the tab bar — which depends on the
  * repo's settings, since a tab that is switched off is not drawn and not
- * served. Doing that once here is the point of the class; `scope(..., { module:
- * "repos" })` in config/routes.ts is what lets the subclasses be named after
- * their tab.
+ * served. Doing that once here is the point of the class.
+ *
+ * The subclasses are FLAT (`RepoIssuesController`, not `Repos::Issues`) and
+ * config/routes.ts says why: a `module`-scoped controller routes under one
+ * name and looks its views up under another.
  *
  * A subclass declares its own `tab`, and the `beforeAction` below uses it for
  * both the switch check and which entry of the bar is marked active. A missing
- * repository, a missing owner and a disabled tab are all 404s: on GitHub they
- * are indistinguishable from the outside, and deliberately so — a 403 would
- * tell an anonymous reader that a private repository with that name exists.
+ * repository, a missing owner and a disabled tab are all 404s: the three are
+ * indistinguishable from the outside, which is one less thing for a reader —
+ * or a test — to have to tell apart.
+ *
+ * `visibility` is NOT one of the things checked here, and the docblock below
+ * says why.
  */
 export class RepoController extends ApplicationController {
   /** The tab this controller serves. Overridden by every subclass. */
@@ -81,8 +82,19 @@ const TAB_LABELS: ReadonlyArray<[string, string, string]> = [
  * its own to render, and naming one here would be the `template:` argument this
  * codebase does not use.
  *
- * All three are the same status on purpose, as they are on GitHub: a 403 on a
- * private repository tells an anonymous reader that it exists.
+ * All three are the same status on purpose: there is one way to fail to reach
+ * a page here, so there is one status.
+ *
+ * `visibility: private` is deliberately NOT enforced, and this is the place a
+ * reader would expect it to be. trailmap has no viewer identity — no sessions,
+ * no login, nothing that distinguishes a collaborator from a stranger — so the
+ * only enforcement available is to hide the repository from everyone,
+ * including the one operator who could change the column back. Until there is
+ * authentication to enforce it against, `visibility` is a column the pages
+ * DISPLAY and nothing more.
+ * `enforce-repository-visibility-against-a-viewer` (RFC 0136) tracks making
+ * it mean something, against the `repository_collaborators` rows that already
+ * carry the roles.
  */
 async function loadRepository(
   controller: AbstractController.AbstractController,
@@ -122,5 +134,3 @@ function tabsFor(repo: Repository, current: string): RepoTab[] {
     active: key === current,
   }));
 }
-
-export { OPTIONAL_TABS };

@@ -2,8 +2,8 @@ import { Migration } from "@blazetrails/activerecord";
 
 /**
  * The first migration of the `hub` database — PostgreSQL, not the SQLite the
- * task domain lives in, and migrated on its own with
- * `trails db migrate --database hub` (see config/database.ts).
+ * task domain lives in. `pnpm db:migrate` runs both; never pass
+ * `--database hub` (see config/database.ts and docs/deploy.md).
  */
 export class CreateOwners extends Migration {
   async change() {

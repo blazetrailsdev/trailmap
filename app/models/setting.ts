@@ -2,6 +2,12 @@ import { Hub } from "./hub.js";
 import { env } from "@blazetrails/ruby-compat";
 import { ConnectionNotDefined } from "@blazetrails/activerecord";
 
+/** A setting's value and which source won. */
+export interface ResolvedSetting {
+  value: string | null;
+  source: "database" | "environment" | "unset";
+}
+
 /**
  * The settings that are one per application rather than one per repository.
  *
@@ -17,6 +23,13 @@ import { ConnectionNotDefined } from "@blazetrails/activerecord";
  */
 export class Setting extends Hub {
   static _tableName = "settings";
+  // The class-field form is correct HERE and wrong for a composite key (see
+  // the note in app/models/repository-collaborator.ts). What the `primaryKey`
+  // SETTER adds over the field is `_compositePrimaryKey` — whose right value
+  // for a string is the `false` the field leaves in place — and resetting the
+  // attributes builder and predicate builder, which are unbuilt at class
+  // definition time anyway. A single column is genuinely exempt; an array is
+  // not.
   static _primaryKey = "key";
 
   declare key: string;
@@ -50,17 +63,12 @@ export class Setting extends Hub {
    * That is what keeps the fleet surface working, and testable, on a process
    * that has only `RINGO_BASE`: moving a value into the table becomes a
    * per-box decision rather than a new hard dependency for a working page.
+   * `findByKey` says why the absent connection is caught rather than predicted.
    *
-   * The absent connection is caught rather than predicted from
-   * `HUB_DATABASE_URL`: the variable says what a process COULD connect to, and
-   * what decides whether there is a row to read is whether it DID.
+   * Resolution is memoised briefly; see `resolve`.
    */
   static async lookup(key: keyof typeof Setting.FALLBACKS & string): Promise<string | null> {
-    const stored = (await Setting.findByKey(key))?.value?.trim();
-    if (stored) return stored;
-    const fallback = Setting.FALLBACKS[key];
-    const fromEnv = fallback ? env[fallback]?.trim() : undefined;
-    return fromEnv ? fromEnv : null;
+    return (await Setting.resolve(key)).value;
   }
 
   /**
@@ -90,7 +98,82 @@ export class Setting extends Hub {
     return base ? base : null;
   }
 
-  /** The row for `key`, or null — including when nothing is connected. */
+  /**
+   * The stored value of each key, and when it was read from the database.
+   *
+   * `Setting.ringoBase()` is awaited on every `/fleet/pane/:id/screen` poll
+   * and on each of the four relay paths, so going to the row each time meant a
+   * Postgres round trip per poll for a string an operator changes by hand.
+   *
+   * THE ROW IS CACHED, NOT THE RESOLUTION. The environment fallback is re-read
+   * every call, which costs nothing and keeps `RINGO_BASE` live — so this is a
+   * cache over the query it is meant to remove, and nothing else.
+   *
+   * TTL rather than forever, because the row can be written by another process
+   * or by hand: `write` below clears the entry immediately, and anyone else's
+   * change converges within the window instead of needing a restart.
+   */
+  private static memo = new Map<string, { at: number; stored: string | null }>();
+  private static readonly MEMO_MS = 10_000;
+
+  /**
+   * A setting's value AND where it came from, in one query.
+   *
+   * The settings page needs both, and computing "which source won" a second
+   * time — re-reading the row, repeating the trim — is how the page and the
+   * resolver drift into disagreeing about what is in effect.
+   */
+  static async resolve(
+    key: keyof typeof Setting.FALLBACKS & string,
+  ): Promise<ResolvedSetting> {
+    const stored = await Setting.storedValue(key);
+    if (stored) return { value: stored, source: "database" };
+
+    const fallback = Setting.FALLBACKS[key];
+    const fromEnv = fallback ? env[fallback]?.trim() : undefined;
+    if (fromEnv) return { value: fromEnv, source: "environment" };
+
+    return { value: null, source: "unset" };
+  }
+
+  /** The row's trimmed value, from the memo when it is still fresh. */
+  private static async storedValue(key: string): Promise<string | null> {
+    const cached = Setting.memo.get(key);
+    if (cached && Date.now() - cached.at < Setting.MEMO_MS) return cached.stored;
+
+    const value = (await Setting.findByKey(key))?.value?.trim();
+    const stored = value ? value : null;
+    Setting.memo.set(key, { at: Date.now(), stored });
+    return stored;
+  }
+
+  /**
+   * The row for `key`, or null — including when nothing is connected.
+   *
+   * `ConnectionNotDefined` means ONE thing: no pool was ever established for
+   * `Hub`. It is not what a wrong URL, a down server or a bad password raises
+   * — those surface as connection errors from the adapter and propagate from
+   * here like any other fault. So this catch cannot mask a misconfigured
+   * database; it can only answer "this process never had a hub".
+   *
+   * In a booted server that state is unreachable:
+   * `config/initializers/hub-database.ts` refuses to come up without
+   * `HUB_DATABASE_URL` and then reflects the hub's columns, which needs a live
+   * connection. So the only processes that reach this branch are the ones with
+   * no hub at all — most of the test suite, and `trails db`.
+   *
+   * Two things that look like cleaner tests and are both WRONG:
+   *
+   * - `hasHubDatabase()`, i.e. asking whether `HUB_DATABASE_URL` is set. The
+   *   variable says what a process COULD connect to; what decides whether
+   *   there is a row to read is whether it DID. The suite runs with the
+   *   variable set and no pool established (`pnpm test` passes it so the
+   *   initializer test can assert on it), and predicting from the variable
+   *   failed 44 tests across four controllers.
+   * - `Hub.isConnected()`. A pool answers false until one of its connections
+   *   is actually open, so a freshly booted process would silently fall back
+   *   to the environment on its first request and then stop doing so.
+   */
   private static async findByKey(key: string): Promise<Setting | null> {
     try {
       return (await Setting.findBy({ key })) ?? null;
@@ -100,13 +183,21 @@ export class Setting extends Hub {
     }
   }
 
-  /** Write one setting. Upserts, because there is exactly one row per key. */
+  /**
+   * Write one setting.
+   *
+   * Find-then-create races on the primary key: two writers both miss, both
+   * insert, and the loser gets a uniqueness violation out of what reads like
+   * an upsert. Rails answers this with `upsert`, which is one statement and
+   * lets the database arbitrate.
+   */
   static async write(key: string, value: string | null): Promise<void> {
-    const row = await Setting.findBy({ key });
-    if (row) {
-      await row.update({ value });
-      return;
-    }
-    await Setting.create({ key, value });
+    await Setting.upsert({ key, value }, { uniqueBy: "key" });
+    Setting.memo.delete(key);
+  }
+
+  /** Drop the memo. For a test that writes rows behind this model's back. */
+  static forgetResolved(): void {
+    Setting.memo.clear();
   }
 }

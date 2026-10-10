@@ -23,7 +23,9 @@ export const HUB_MIGRATIONS_PATH = "db/hub-migrate";
  * `hub` carries `migrationsPaths` because its migrations are NOT `db/migrate`:
  * that directory is the task domain's history, shared with the tasks CLI, and
  * `trails db migrate` would otherwise try to run it against Postgres.
- * `trails db <verb> --database hub` is how this one is migrated.
+ * `pnpm db:migrate` — with NO `--database` flag — migrates both. That flag
+ * loads `db/schema.ts` into whichever database it targets; docs/deploy.md and
+ * CLAUDE.md both say never to pass it.
  */
 export default {
   development: {

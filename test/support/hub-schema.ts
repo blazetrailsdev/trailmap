@@ -1,6 +1,7 @@
 import { env } from "@blazetrails/ruby-compat";
 import { Hub } from "../../app/models/hub.js";
 import { loadHubSchemas } from "../../app/models/index.js";
+import { Setting } from "../../app/models/setting.js";
 
 /**
  * Connect `Hub` to a throwaway Postgres database and empty it —
@@ -115,6 +116,12 @@ export async function releaseHubTestDatabase(): Promise<void> {
  * isolates files in workers rather than cases, and `owners.login` is unique,
  * so a row left by the previous case fails the next one's `create` rather than
  * being ignored.
+ *
+ * Also drops `Setting`'s memo of the `settings` rows. That cache exists so the
+ * polled fleet paths do not query Postgres per request, and it is keyed by
+ * time, not by the rows — so a `settings` row truncated out from under it
+ * would otherwise keep winning over the environment for another ten seconds
+ * and fail the next case for reasons nothing on screen explains.
  */
 export async function truncateHub(): Promise<void> {
   await Hub.connectionPool().withConnection(async (connection) => {
@@ -122,4 +129,5 @@ export async function truncateHub(): Promise<void> {
       `TRUNCATE ${HUB_TABLES.join(", ")} RESTART IDENTITY CASCADE`,
     );
   });
+  Setting.forgetResolved();
 }

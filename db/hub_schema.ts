@@ -30,7 +30,7 @@ export default async function defineSchema(ctx: DatabaseAdapter) {
     t.boolean("archived", { default: false, null: false });
     t.datetime("created_at", { null: false });
     t.datetime("updated_at", { null: false });
-    t.index("owner_id, lower((name)::text)", { name: "index_repositories_on_owner_id_and_lower_name", unique: true });
+    t.index("lower((name)::text)", { name: "index_repositories_on_lower_name", unique: true });
     t.index(["owner_id"], { name: "index_repositories_on_owner_id" });
   });
 

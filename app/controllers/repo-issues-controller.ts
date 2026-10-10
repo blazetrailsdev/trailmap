@@ -1,7 +1,10 @@
 import { RepoController } from "./repo-controller.js";
-import { Story } from "../models/story.js";
 import { RESOLVED_DEP_STATUSES } from "../models/story.js";
-import { storiesForRepo, type ScopedStory } from "../models/concerns/repo-scope.js";
+import {
+  storiesForRepo,
+  storyForRepo,
+  type ScopedStory,
+} from "../models/concerns/repo-scope.js";
 import { pagerFor, requestedPage } from "../models/concerns/pager.js";
 
 /** A page of issues, the size `/backlog` uses. */
@@ -67,27 +70,20 @@ export class RepoIssuesController extends RepoController {
     });
   }
 
-  /** `/:owner/:repo/issues/<story-id>`, which is the story page's data. */
+  /**
+   * `/:owner/:repo/issues/<story-id>`.
+   *
+   * SCOPED. An unscoped `Story.findBy({ id })` renders `tasks`' stories under
+   * `/blazetrailsdev/trails/issues/…` — a repository serving another's work,
+   * from a URL that says otherwise. The scope rule has one home
+   * (`repo-scope.ts`); this asks it rather than re-deriving it.
+   */
   async show(): Promise<void> {
     const id = String(this.params.get("id") ?? "");
-    const story = id === "" ? null : await Story.findBy({ id });
+    const story = await storyForRepo(this.repo.name, id);
+
     await this.render({
-      locals: this.repoLocals({
-        id,
-        row:
-          story === null
-            ? null
-            : toRow({
-                id: story.id,
-                rfc_id: story.rfc_id,
-                status: story.status,
-                pr: story.pr,
-                title: story.title,
-                assignee: story.assignee,
-                priority: story.priority,
-                est_loc: story.est_loc,
-              }),
-      }),
+      locals: this.repoLocals({ id, row: story === null ? null : toRow(story) }),
       status: story === null ? 404 : 200,
     });
   }

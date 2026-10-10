@@ -11,6 +11,11 @@ export class HomeController extends ApplicationController {
    * A process with no hub connection (the suite, mostly) gets an empty list
    * rather than an error: this page reads a row it does not need, and it was
    * answering `/` long before the hub existed.
+   *
+   * `ConnectionNotDefined` is specifically "no pool was established", never
+   * "the database is misconfigured" — a wrong URL or a down server raises a
+   * connection error and 500s from here. `Setting.findByKey` carries the full
+   * argument, including why `HUB_DATABASE_URL` is the wrong thing to test.
    */
   async index(): Promise<void> {
     await this.render({ locals: { owners: await ownersOrNone() } });

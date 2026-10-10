@@ -1,7 +1,6 @@
 import { RepoController } from "./repo-controller.js";
 import { OPTIONAL_TABS } from "../models/repository-setting.js";
 import { Setting } from "../models/setting.js";
-import { Owner } from "../models/owner.js";
 import { RepositoryCollaborator } from "../models/repository-collaborator.js";
 
 /**
@@ -9,7 +8,7 @@ import { RepositoryCollaborator } from "../models/repository-collaborator.js";
  *
  * READ-ONLY in this change, and the switches are already load-bearing: a tab
  * turned off here is not drawn in the bar and 404s when asked for
- * (`repos/repo-controller.ts`). The form that writes them is its own story,
+ * (`repo-controller.ts`). The form that writes them is its own story,
  * because a write needs the CSRF path, a strong-parameters permit and a
  * redirect-after-post, none of which this page has.
  *
@@ -24,35 +23,38 @@ export class RepoSettingsController extends RepoController {
   async show(): Promise<void> {
     const switches = this.repo.settings;
 
-    const global: Array<{ key: string; value: string | null; from: string }> = [];
+    // One `resolve` per key: it answers the value and its source together,
+    // so this page cannot disagree with the resolver about what is in effect.
+    const global = [];
     for (const key of Object.keys(Setting.FALLBACKS)) {
-      const row = await Setting.findBy({ key });
-      const stored = row?.value?.trim();
+      const { value, source } = await Setting.resolve(key);
       global.push({
         key,
-        value: await Setting.lookup(key),
-        from: stored ? "this database" : `${Setting.FALLBACKS[key]} (environment)`,
+        value,
+        from:
+          source === "database"
+            ? "this database"
+            : `${Setting.FALLBACKS[key]} (environment)`,
       });
     }
 
-    // Collaborators, as GitHub lists them under settings. Two queries rather
-    // than an association include: the join's owner side is a second hub
-    // table, and `collaborators` carries only ids.
+    // Collaborators, as GitHub lists them under settings. `includes("owner")`
+    // loads the logins with them: an earlier comment here claimed the owner
+    // side was "a second hub table" and had to be fetched separately, which
+    // was simply wrong — `owners` and `repository_collaborators` are both in
+    // the hub, on one connection, and `belongsTo("owner")` spans them like
+    // any other association.
     const collaborators = await RepositoryCollaborator.where({
       repository_id: this.repo.id,
-    }).toArray();
-    const logins = new Map(
-      (await Owner.where({ id: collaborators.map((c) => c.owner_id) }).toArray()).map((o) => [
-        o.id,
-        o.login,
-      ]),
-    );
+    })
+      .includes("owner")
+      .toArray();
 
     await this.render({
       locals: this.repoLocals({
         collaborators: collaborators
           .map((c) => ({
-            login: logins.get(c.owner_id) ?? String(c.owner_id),
+            login: c.owner?.login ?? String(c.owner_id),
             role: c.role,
             canPush: c.canPush(),
           }))

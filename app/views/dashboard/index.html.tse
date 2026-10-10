@@ -14,7 +14,7 @@
 <% if (!relayConfigured) { %>
   <div class="card ci-fixer paused">
     <div class="card-head"><span class="card-title">No fleet data</span></div>
-    <div class="field-note">This deployment has no <code>RINGO_BASE</code>, so trailmap has no ringo to relay. See docs/fleet-dashboard.md.</div>
+    <div class="field-note">This deployment has no ringo origin — neither the <code>ringo_base</code> setting nor <code>RINGO_BASE</code> — so trailmap has no ringo to relay. See docs/fleet-dashboard.md.</div>
   </div>
 <% } %>
 

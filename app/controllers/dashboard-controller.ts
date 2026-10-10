@@ -3,9 +3,9 @@ import {
   FLEET_CONTROL_PATH,
   FLEET_REVIEWERS_PATH,
   FLEET_SOCKET_PATH,
-  fleetRepos,
 } from "../../config/fleet.js";
 import { Setting } from "../models/setting.js";
+import { Repository } from "../models/repository.js";
 
 /**
  * `/dashboard` — the fleet dashboard, ported from ringo's `/`.
@@ -24,7 +24,7 @@ export class DashboardController extends ApplicationController {
   async index(): Promise<void> {
     await this.render({
       locals: {
-        repos: fleetRepos(),
+        repos: await Repository.spawnChoices(),
         socketPath: FLEET_SOCKET_PATH,
         controlPath: FLEET_CONTROL_PATH,
         reviewersPath: FLEET_REVIEWERS_PATH,

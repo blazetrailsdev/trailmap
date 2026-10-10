@@ -57,7 +57,7 @@ export class FleetController extends ApplicationController {
     }
     const base = await Setting.ringoBase();
     if (base === null) {
-      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
+      await this.render({ plain: "no ringo origin is configured", status: 503 });
       return;
     }
     const env = this.request.env as Record<string, unknown>;
@@ -94,7 +94,7 @@ export class FleetController extends ApplicationController {
       return;
     }
     if (base === null) {
-      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
+      await this.render({ plain: "no ringo origin is configured", status: 503 });
       return;
     }
 
@@ -125,7 +125,7 @@ export class FleetController extends ApplicationController {
   async reviewers(): Promise<void> {
     const base = await Setting.ringoBase();
     if (base === null) {
-      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
+      await this.render({ plain: "no ringo origin is configured", status: 503 });
       return;
     }
 
@@ -167,7 +167,7 @@ export class FleetController extends ApplicationController {
     }
     const base = await Setting.ringoBase();
     if (base === null) {
-      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
+      await this.render({ plain: "no ringo origin is configured", status: 503 });
       return;
     }
 

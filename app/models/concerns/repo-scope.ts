@@ -1,5 +1,6 @@
 import { Event } from "../event.js";
 import { Story } from "../story.js";
+import { StoryPath } from "../joins.js";
 
 /**
  * Which stories belong to a repository, and the one place that decides it.
@@ -21,6 +22,18 @@ import { Story } from "../story.js";
  * PR is stamped, and `trails#7228` is a story of `trails` even though its
  * markdown lives in `tasks`. That is the honest answer for data that records a
  * PR and not a repository.
+ *
+ * SCOPED BY BARE NAME, NOT BY OWNER, and that is a property of the data rather
+ * than a shortcut: `stories.pr` is `repo#N` with no owner in it, so `trails#1`
+ * names one pull request in this fleet and the column cannot express a second
+ * `trails` under a different owner. Two consequences, both deliberate:
+ *
+ * - `Repository` enforces it. A name is unique across ALL owners, not scoped
+ *   to one, so the hub cannot hold the second `trails` that this scope would
+ *   mis-attribute. Making the data honest is the only way to keep the scope
+ *   honest while the column stays `repo#N`.
+ * - Lifting that restriction means qualifying `stories.pr`, which is the tasks
+ *   CLI's column and a migration there — not something a page can paper over.
  */
 export const CONTENT_REPO = "tasks";
 
@@ -46,11 +59,58 @@ export interface ScopedStory {
 
 const COLUMNS = ["id", "rfc_id", "status", "pr", "title", "assignee", "priority", "est_loc"] as const;
 
+/**
+ * `my_repo` is a legal repository name and `_` is a LIKE WILDCARD, so an
+ * unescaped pattern matches `myXrepo#1` as readily as `my_repo#1`. Rails
+ * escapes for exactly this (`sanitize_sql_like`, sanitization.rb:132) using
+ * the same backslash convention, which SQLite accepts via `ESCAPE`.
+ *
+ * `%` is escaped too even though `Repository` does not permit it today: the
+ * validation is the only thing keeping it out, and a scope that silently
+ * depends on a validation elsewhere is one edit from being wrong.
+ */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+/**
+ * The relations the scope rule selects: one on `pr LIKE 'repo#%'`, plus the
+ * unattributed stories when `repo` is the content repo.
+ *
+ * ONE definition of the rule, used by the list, the count and the single-story
+ * lookup alike. Each of those needs a different projection — eight columns, an
+ * integer, one row — and before this they each re-derived the predicate, which
+ * is how `storyForRepo` ended up scanning the whole list to find one id.
+ */
+function scopeRelations(repo: string) {
+  const relations = [Story.where("pr LIKE ? ESCAPE '\\'", `${escapeLike(repo)}#%`)];
+  if (repo === CONTENT_REPO) relations.push(Story.where({ pr: null }));
+  return relations;
+}
+
 /** Every story scoped to `repo`, by the rule above. */
 export async function storiesForRepo(repo: string): Promise<ScopedStory[]> {
-  const scoped = [...(await pluckScoped(Story.where("pr LIKE ?", `${repo}#%`)))];
-  if (repo === CONTENT_REPO) scoped.push(...(await pluckScoped(Story.where({ pr: null }))));
+  const scoped: ScopedStory[] = [];
+  for (const relation of scopeRelations(repo)) scoped.push(...(await pluckScoped(relation)));
   return scoped;
+}
+
+/**
+ * How many of `repo`'s stories are still open.
+ *
+ * A COUNT, which is the whole point: the owner page wants one integer per
+ * repository and used to get it by plucking eight columns of every story the
+ * repo has — nine thousand rows on `trails` — and filtering in JavaScript.
+ *
+ * "Open" is everything that is not `done` or `closed`, the same two terminal
+ * statuses the issue tabs use.
+ */
+export async function openCountForRepo(repo: string): Promise<number> {
+  let open = 0;
+  for (const relation of scopeRelations(repo)) {
+    open += await relation.where("status NOT IN (?, ?)", "done", "closed").count();
+  }
+  return open;
 }
 
 async function pluckScoped(relation: {
@@ -78,6 +138,27 @@ async function pluckScoped(relation: {
   return out;
 }
 
+/**
+ * One story, IF it belongs to this repository.
+ *
+ * The scope rule lives here and nowhere else (CLAUDE.md), so a page that wants
+ * a single story asks for it the same way a page that wants a list does. A
+ * bare `Story.findBy({ id })` in a controller would serve `tasks`' stories
+ * under `/blazetrailsdev/trails/issues/<id>` and vice versa.
+ *
+ * Scoped AND keyed in the query, not filtered out of the full list: an issue
+ * page is one row, and reading nine thousand to find it was the cost of
+ * sharing a helper rather than sharing the predicate.
+ */
+export async function storyForRepo(repo: string, id: string): Promise<ScopedStory | null> {
+  if (id === "") return null;
+  for (const relation of scopeRelations(repo)) {
+    const found = await pluckScoped(relation.where({ id }));
+    if (found[0]) return found[0];
+  }
+  return null;
+}
+
 /** The `pr` values (`repo#N`) seen on these stories, highest number first. */
 export function prRefsOf(stories: ScopedStory[]): string[] {
   const refs = new Set<string>();
@@ -102,14 +183,48 @@ export interface ScopedEvent {
 }
 
 /**
+ * SQLite's bind ceiling, and the reason the two helpers below exist.
+ *
+ * `trails` scopes to over nine thousand stories, so any `column IN (…)` built
+ * from that scope is a query with nine thousand binds — which no index helps
+ * and which SQLite eventually refuses outright. 900 keeps a chunk an order of
+ * magnitude under the limit with room for the rest of the statement.
+ */
+const BIND_CHUNK = 900;
+
+/** `ids` in chunks small enough to be bound, preserving order. */
+export function inChunks<T>(ids: T[]): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < ids.length; i += BIND_CHUNK) chunks.push(ids.slice(i, i + BIND_CHUNK));
+  return chunks;
+}
+
+/**
+ * Every `story_paths.path` the scope's stories cite.
+ *
+ * Chunked for the reason above. The code tab built this as ONE `IN (…)` over
+ * the whole scope while `eventsForRepo` right below avoided exactly that — two
+ * policies for one constraint, and the one that would break first was the one
+ * with no guard.
+ */
+export async function pathsForStories(stories: ScopedStory[]): Promise<string[]> {
+  const ids = stories.map((story) => story.id);
+  const paths: string[] = [];
+  for (const chunk of inChunks(ids)) {
+    for (const row of await StoryPath.where({ story_id: chunk }).pluck("path")) {
+      paths.push(Array.isArray(row) ? String(row[0]) : String(row));
+    }
+  }
+  return paths;
+}
+
+/**
  * The repo's events inside a time window, newest first.
  *
- * Bounded by TIME rather than by the scope's story ids, deliberately: the
- * scope is nine thousand ids on `trails`, and `WHERE story_id IN (…)` with
- * nine thousand binds is a query no index helps and that SQLite's parameter
- * limit eventually refuses outright. The window is indexed
+ * Bounded by TIME rather than by the scope's story ids: the window is indexed
  * (`index_events_on_at`), so this reads the recent slice and filters it to the
- * scope in memory.
+ * scope in memory, instead of binding nine thousand ids (see BIND_CHUNK). A
+ * list that needs the ids themselves chunks — `pathsForStories` above.
  *
  * What that costs: activity older than the window is invisible to the tabs
  * that use this, which is why both of them SAY their window on the page.

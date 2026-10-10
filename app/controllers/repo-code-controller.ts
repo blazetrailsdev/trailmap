@@ -1,6 +1,5 @@
 import { RepoController } from "./repo-controller.js";
-import { StoryPath } from "../models/joins.js";
-import { storiesForRepo } from "../models/concerns/repo-scope.js";
+import { pathsForStories, storiesForRepo } from "../models/concerns/repo-scope.js";
 
 /**
  * `/:owner/:repo` — the code tab, which IS the repository page, as it is on
@@ -18,15 +17,12 @@ export class RepoCodeController extends RepoController {
 
   async show(): Promise<void> {
     const stories = await storiesForRepo(this.repo.name);
-    const paths = await StoryPath.where({ story_id: stories.map((story) => story.id) }).pluck(
-      "path",
-    );
+    const paths = await pathsForStories(stories);
 
     // Grouped by first segment: `packages/activerecord/src/base.ts` counts
     // towards `packages`. A full tree of 22,000 cited paths is not a page.
     const counts = new Map<string, number>();
-    for (const row of paths) {
-      const value = Array.isArray(row) ? String(row[0]) : String(row);
+    for (const value of paths) {
       const top = value.split("/")[0] ?? value;
       if (top === "") continue;
       counts.set(top, (counts.get(top) ?? 0) + 1);

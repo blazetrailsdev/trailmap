@@ -1,8 +1,9 @@
+import { ConnectionNotDefined } from "@blazetrails/activerecord";
 import { Hub } from "./hub.js";
 import { Owner } from "./owner.js";
 import { RepositorySetting } from "./repository-setting.js";
 import type { RepositoryCollaborator } from "./repository-collaborator.js";
-import { fleetRepos } from "../../config/fleet.js";
+import { fleetRepos, type FleetRepo } from "../../config/fleet.js";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 
 export const REPOSITORY_VISIBILITIES = ["public", "private"] as const;
@@ -53,11 +54,18 @@ export class Repository extends Hub {
 
   static {
     this.belongsTo("owner", { className: "Owner", foreignKey: "owner_id" });
-    this.hasOne("settings", { className: "RepositorySetting", foreignKey: "repository_id" });
+    // `dependent` for the same reason as Owner's: real FKs mean a destroy
+    // without it raises instead of cascading.
+    this.hasOne("settings", {
+      className: "RepositorySetting",
+      foreignKey: "repository_id",
+      dependent: "destroy",
+    });
     this.hasMany("collaborators", {
       className: "RepositoryCollaborator",
       foreignKey: "repository_id",
       inverseOf: "repository",
+      dependent: "deleteAll",
     });
 
     // Identity-mapped, as every other enum here is, and PREFIXED: without
@@ -69,7 +77,15 @@ export class Repository extends Hub {
 
     this.validates("name", {
       presence: true,
-      uniqueness: { scope: "owner_id", caseSensitive: false },
+      // GLOBAL, not scoped to the owner. `app/models/concerns/repo-scope.ts`
+      // maps a story to a repository through `stories.pr`, which is `repo#N`
+      // with no owner in it — so a second `trails` under another owner would
+      // silently inherit this one's 9,000 stories. Until that column is
+      // qualified (the tasks CLI's migration, not a page's), the scope needs
+      // the name to be unique on its own. `index_repositories_on_lower_name`
+      // is the real constraint — this validation only turns the violation
+      // into an error on the record instead of a 500.
+      uniqueness: { caseSensitive: false },
       format: { with: /^[a-zA-Z0-9](?:[a-zA-Z0-9._-])*$/ },
       length: { maximum: 100 },
     });
@@ -85,8 +101,23 @@ export class Repository extends Hub {
   }
 
   /**
-   * The repository `/:owner/:repo` names, with its owner and settings loaded —
-   * one round trip, because every tab needs all three.
+   * The repository `/:owner/:repo` names, with its owner and settings loaded,
+   * because every tab needs all three.
+   *
+   * TWO queries, not one: the owner is looked up first so the lookup can stop
+   * there when the login is unknown, and so the row it returns can be assigned
+   * to `repo.owner` rather than fetched a second time by `includes("owner")`.
+   * A single joined query would be one round trip, but `lower(login)` and
+   * `lower(name)` are indexed separately
+   * (`index_owners_on_lower_login`, `index_repositories_on_lower_name`), so
+   * each of these is an index lookup and the join saves a round trip rather
+   * than any work.
+   *
+   * Both comparisons are raw `lower(…) = ?` with a bind rather than an Arel
+   * `lower()` node: `@blazetrails/arel` is a transitive dependency of
+   * `@blazetrails/activerecord`, not one of the vendored tarballs, so it does
+   * not resolve from application code. The binds are parameterised and hit
+   * the functional indexes above.
    *
    * "nwo" is GitHub's own abbreviation for name-with-owner.
    */
@@ -101,6 +132,47 @@ export class Repository extends Hub {
     // `includes("owner")` would re-query the row we already hold.
     repo.owner = owner;
     return repo;
+  }
+
+  /**
+   * The repos the dashboard's spawn control offers: the ROWS, falling back to
+   * `FLEET_REPO_PATHS` when the hub holds none.
+   *
+   * One resolver, as `Setting.ringoBase()` is for ringo's origin. Without it
+   * `importFleetRepos` wrote a second copy of the environment that nothing
+   * read, which is exactly the two-sources-that-can-disagree shape this
+   * application argues against elsewhere.
+   *
+   * The fallback is what keeps a box with only the variable working, and it is
+   * the same ordering: a row overrides, the environment is the floor.
+   *
+   * NO HUB is one more way to have no rows. The fleet surface predates the hub
+   * and is deployed on boxes that have only `FLEET_REPO_PATHS`, so a dashboard
+   * that 500s because the owner/repository tables are not there would be a
+   * regression this change has no business causing. `ConnectionNotDefined`
+   * means "no pool was established" and nothing else — `Setting.findByKey`
+   * carries the full argument for catching exactly it.
+   */
+  static async spawnChoices(): Promise<FleetRepo[]> {
+    const fromRows = await Repository.checkoutsOrNone();
+    return fromRows.length > 0 ? fromRows : fleetRepos();
+  }
+
+  /** The rows with a checkout, or none at all when there is no hub to ask. */
+  private static async checkoutsOrNone(): Promise<FleetRepo[]> {
+    try {
+      const rows = await Repository.where({ archived: false })
+        .where("checkout_path IS NOT NULL")
+        .includes("owner")
+        .toArray();
+      return rows
+        .filter((repo) => repo.checkout_path)
+        .map((repo) => ({ name: repo.nameWithOwner(), path: repo.checkout_path as string }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+      if (error instanceof ConnectionNotDefined) return [];
+      throw error;
+    }
   }
 
   /**
@@ -121,21 +193,29 @@ export class Repository extends Hub {
       const [login, name] = splitNwo(entry.name);
       if (!login || !name) continue;
 
+      // BANG forms throughout. `create` and `update` answer an UNSAVED record
+      // when a validation fails (persistence.ts, as Rails' `create` does at
+      // persistence.rb:33 against `create!` at :50), so the non-bang forms
+      // turn a malformed `FLEET_REPO_PATHS` entry into a cascade of silent
+      // failures: `owner.id` is undefined, the repository fails on it, its
+      // settings row fails, and the unsaved repository is still pushed to
+      // `touched` and counted in what the seeds print. A bad variable should
+      // say so, loudly, once.
       const owner =
         (await Owner.findByLogin(login)) ??
-        (await Owner.create({ login, kind: "organization" }));
+        (await Owner.createBang({ login, kind: "organization" }));
       const existing = await Repository.findByNwo(login, name);
       if (existing) {
-        await existing.update({ checkout_path: entry.path });
+        await existing.updateBang({ checkout_path: entry.path });
         touched.push(existing);
         continue;
       }
-      const repo = await Repository.create({
+      const repo = await Repository.createBang({
         owner_id: owner.id,
         name,
         checkout_path: entry.path,
       });
-      await RepositorySetting.create({ repository_id: repo.id });
+      await RepositorySetting.createBang({ repository_id: repo.id });
       touched.push(repo);
     }
     return touched;
