@@ -1,0 +1,23 @@
+<%= render({ partial: "shared/repo-header", locals: { repo: repo, owner: owner, nwo: nwo, tabs: tabs } }) %>
+
+<div class="page-header">
+  <h1 class="page-title">#<%= number %> <span class="muted"><%= ref %></span></h1>
+  <div class="page-subhead"><a href="<%= href %>">Open on GitHub &rarr;</a></div>
+</div>
+
+<div class="box">
+  <% if (stories.length === 0) { %>
+    <div class="empty">No story is stamped <code><%= ref %></code>.</div>
+  <% } %>
+  <% for (const story of stories) { %>
+    <div class="item-row">
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title" href="/<%= nwo %>/issues/<%= story.id %>"><%= story.title %></a>
+          <%= render({ partial: "shared/status-badge", locals: { status: story.status } }) %>
+        </span>
+        <div class="row-meta"><code><%= story.id %></code></div>
+      </span>
+    </div>
+  <% } %>
+</div>

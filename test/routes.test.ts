@@ -13,6 +13,16 @@ import { ReadModelsController } from "../app/controllers/read-models-controller.
 import { RfcPagesController } from "../app/controllers/rfc-pages-controller.js";
 import { StoriesController } from "../app/controllers/stories-controller.js";
 import { StoryPagesController } from "../app/controllers/story-pages-controller.js";
+import { OwnersController } from "../app/controllers/owners-controller.js";
+import { RepoActionsController } from "../app/controllers/repo-actions-controller.js";
+import { RepoCodeController } from "../app/controllers/repo-code-controller.js";
+import { RepoInsightsController } from "../app/controllers/repo-insights-controller.js";
+import { RepoIssuesController } from "../app/controllers/repo-issues-controller.js";
+import { RepoProjectsController } from "../app/controllers/repo-projects-controller.js";
+import { RepoPullsController } from "../app/controllers/repo-pulls-controller.js";
+import { RepoSettingsController } from "../app/controllers/repo-settings-controller.js";
+import { RepoWikiController } from "../app/controllers/repo-wiki-controller.js";
+import { RESERVED_OWNER_NAMES } from "../config/routes.js";
 
 // `recognizePath` resolves a route's controller to its class and refuses a
 // route whose controller does not exist, as Rails' `recognize_path` does by
@@ -32,6 +42,15 @@ for (const controller of [
   RfcPagesController,
   StoriesController,
   StoryPagesController,
+  OwnersController,
+  RepoCodeController,
+  RepoIssuesController,
+  RepoPullsController,
+  RepoActionsController,
+  RepoProjectsController,
+  RepoWikiController,
+  RepoInsightsController,
+  RepoSettingsController,
 ]) {
   controllerConstants.set(controller.controllerPath(), controller);
 }
@@ -194,5 +213,111 @@ describe("config/routes", () => {
 
     expect(match?.route.action).toBe("show");
     expect(match?.params.id).toBe("serve-the-read-verbs-as-json");
+  });
+  // ──────────────── the GitHub-shaped hierarchy ────────────────
+
+  it("routes an owner and a repository, and names the segments", () => {
+    const routes = routeSet();
+
+    const owner = recognize(routes, "GET", "/blazetrailsdev");
+    expect(owner.route).toEqual({ controller: "owners", action: "show" });
+    expect(owner.params.owner).toBe("blazetrailsdev");
+
+    const repo = recognize(routes, "GET", "/blazetrailsdev/trails");
+    expect(repo.route).toEqual({ controller: "repo_code", action: "show" });
+    expect(repo.params.owner).toBe("blazetrailsdev");
+    expect(repo.params.repo).toBe("trails");
+  });
+
+  it("routes each repo tab to its own controller", () => {
+    const routes = routeSet();
+    const tabs: [string, string, string][] = [
+      ["/blazetrailsdev/trails/issues", "repo_issues", "index"],
+      ["/blazetrailsdev/trails/pulls", "repo_pulls", "index"],
+      ["/blazetrailsdev/trails/actions", "repo_actions", "index"],
+      ["/blazetrailsdev/trails/projects", "repo_projects", "index"],
+      ["/blazetrailsdev/trails/wiki", "repo_wiki", "index"],
+      // `pulse`, as GitHub spells its Insights tab's path.
+      ["/blazetrailsdev/trails/pulse", "repo_insights", "show"],
+      ["/blazetrailsdev/trails/settings", "repo_settings", "show"],
+    ];
+
+    for (const [path, controller, action] of tabs) {
+      const match = recognize(routes, "GET", path);
+      expect(match.route, path).toEqual({ controller, action });
+      expect(match.params.repo, path).toBe("trails");
+    }
+  });
+
+  it("routes a member of the three resourceful tabs", () => {
+    const routes = routeSet();
+
+    const issue = recognize(routes, "GET", "/blazetrailsdev/trails/issues/a-story");
+    expect(issue.route).toEqual({ controller: "repo_issues", action: "show" });
+    expect(issue.params.id).toBe("a-story");
+
+    const pull = recognize(routes, "GET", "/blazetrailsdev/trails/pulls/7228");
+    expect(pull.route).toEqual({ controller: "repo_pulls", action: "show" });
+    expect(pull.params.id).toBe("7228");
+
+    const project = recognize(routes, "GET", "/blazetrailsdev/trails/projects/0136-trailmap");
+    expect(project.route).toEqual({ controller: "repo_projects", action: "show" });
+    expect(project.params.id).toBe("0136-trailmap");
+  });
+
+  // THE REGRESSION TEST for the owner route. `/:owner` matches one segment, so
+  // every existing top-level page is ambiguous with an organization of that
+  // name, and the only two things standing between them are the drawing order
+  // and RESERVED_OWNER_NAMES. A page added above the hierarchy without being
+  // reserved would pass the first and fail this.
+  it("leaves every reserved top-level path with its own controller", () => {
+    const routes = routeSet();
+    const pages: [string, string][] = [
+      ["/up", "health"],
+      ["/dashboard", "dashboard"],
+      ["/rfcs", "rfc_pages"],
+      ["/backlog", "story_pages"],
+      ["/index", "read_models"],
+      ["/events", "read_models"],
+      ["/stories", "stories"],
+      ["/rfc/0136-trailmap", "rfc_pages"],
+      ["/story/a-story", "story_pages"],
+      ["/panes/42", "panes"],
+      ["/fleet/reviewers", "fleet"],
+    ];
+
+    for (const [path, controller] of pages) {
+      expect(recognize(routes, "GET", path).route.controller, path).toBe(controller);
+    }
+  });
+
+  it("refuses a reserved name as an owner rather than serving it as one", () => {
+    const routes = routeSet();
+
+    // `/rfcs` is a page, so `/rfcs/0136-trailmap` is NOT a repository under an
+    // owner called `rfcs` — nothing matches it at all. Without the constraint
+    // it would reach `repo_code#show` and 404 there, which is the same status
+    // for the wrong reason: a `/rfcs/<id>` page added later would then be
+    // shadowed silently.
+    expect(() => recognize(routes, "GET", "/rfcs/0136-trailmap")).toThrow();
+
+    for (const name of RESERVED_OWNER_NAMES) {
+      let controller = "(unrouted)";
+      try {
+        controller = String(recognize(routes, "GET", `/${name}`).route.controller);
+      } catch {
+        // Not every reserved name is a route of its own — `assets` is served
+        // by the asset middleware, `fleet` and `panes` only under a segment.
+      }
+      expect(controller, name).not.toBe("owners");
+    }
+  });
+
+  it("refuses an owner segment that is not login-shaped", () => {
+    const routes = routeSet();
+
+    for (const bad of ["/-leading", "/trailing-", "/two--hyphens", "/has_underscore"]) {
+      expect(() => recognize(routes, "GET", bad), bad).toThrow();
+    }
   });
 });

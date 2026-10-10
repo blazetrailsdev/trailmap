@@ -1,0 +1,34 @@
+<%= render({ partial: "shared/repo-header", locals: { repo: repo, owner: owner, nwo: nwo, tabs: tabs } }) %>
+
+<% if (row === null) { %>
+  <div class="box"><div class="empty">No story <code><%= id %></code>.</div></div>
+<% } else { %>
+  <div class="page-header">
+    <h1 class="page-title"><%= row.title %>
+      <%= render({ partial: "shared/status-badge", locals: { status: row.status } }) %>
+    </h1>
+    <div class="page-subhead"><span class="muted"><code><%= row.id %></code></span></div>
+  </div>
+
+  <div class="box">
+    <div class="box-row"><strong>RFC</strong> &middot; <a href="/rfc/<%= row.rfcId %>"><%= row.rfcId %></a></div>
+    <div class="box-row"><strong>Pull request</strong> &middot;
+      <% if (row.pr) { %><%= row.pr %><% } else { %><span class="muted">none yet</span><% } %>
+    </div>
+    <div class="box-row"><strong>Assignee</strong> &middot;
+      <% if (row.assignee) { %><%= row.assignee %><% } else { %><span class="muted">unclaimed</span><% } %>
+    </div>
+    <div class="box-row"><strong>Estimate</strong> &middot;
+      <% if (row.estLoc) { %><%= row.estLoc %> loc<% } else { %><span class="muted">none</span><% } %>
+    </div>
+  </div>
+
+  <%#
+    The body is NOT rendered here. `/story/<id>` already serves the story's
+    markdown, its deps and its dep-of lists, gated against ringo page for
+    page — a second rendering of the same document is a second thing to keep
+    equal to it. This tab's job is the repo-scoped view; the permalink is the
+    document.
+  %>
+  <p><a href="/story/<%= row.id %>">Open the story page &rarr;</a></p>
+<% } %>

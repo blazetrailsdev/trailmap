@@ -1,0 +1,56 @@
+<%= render({ partial: "shared/repo-header", locals: { repo: repo, owner: owner, nwo: nwo, tabs: tabs } }) %>
+
+<h2>Repository</h2>
+<div class="box">
+  <div class="box-row"><strong>Name with owner</strong> &middot; <code><%= nwo %></code></div>
+  <div class="box-row"><strong>Default branch</strong> &middot; <code><%= repo.default_branch %></code></div>
+  <div class="box-row"><strong>Visibility</strong> &middot; <%= repo.visibility %></div>
+  <div class="box-row"><strong>Archived</strong> &middot; <%= repo.archived ? "yes" : "no" %></div>
+  <div class="box-row"><strong>Checkout path</strong> &middot;
+    <% if (repo.checkout_path) { %><code><%= repo.checkout_path %></code><% } else { %><span class="muted">not set</span><% } %>
+  </div>
+</div>
+
+<h2>Features</h2>
+<p class="muted">A tab turned off is not drawn above and answers 404. Read-only here —
+the form that writes these is its own story.</p>
+<div class="box">
+  <% if (!hasSwitches) { %>
+    <div class="box-row muted">This repository has no settings row, so every tab is on.</div>
+  <% } %>
+  <% for (const row of switches) { %>
+    <div class="box-row"><code><%= row.tab %></code> &middot;
+      <span class="badge s-<%= row.enabled ? "done" : "closed" %>"><%= row.enabled ? "on" : "off" %></span>
+    </div>
+  <% } %>
+</div>
+
+<h2>Collaborators</h2>
+<p class="muted">Who may push here. The row's identity is the pair
+<code>(repository_id, owner_id)</code> — a composite primary key, which
+Postgres enforces as the table's real PRIMARY KEY.</p>
+<div class="box">
+  <% if (collaborators.length === 0) { %>
+    <div class="empty">No collaborators.</div>
+  <% } %>
+  <% for (const row of collaborators) { %>
+    <div class="box-row">
+      <a href="/<%= row.login %>"><%= row.login %></a> &middot;
+      <span class="badge s-<%= row.canPush ? "ready" : "draft" %>"><%= row.role %></span>
+      <% if (!row.canPush) { %><span class="muted">read-only</span><% } %>
+    </div>
+  <% } %>
+</div>
+
+<h2>Application settings</h2>
+<p class="muted">One row per setting, and where its value is coming from: a row in this
+database overrides the environment variable of the same meaning.</p>
+<div class="box">
+  <% for (const row of global) { %>
+    <div class="box-row">
+      <code><%= row.key %></code> &middot;
+      <% if (row.value) { %><%= row.value %><% } else { %><span class="muted">unset</span><% } %>
+      <span class="tag"><%= row.from %></span>
+    </div>
+  <% } %>
+</div>

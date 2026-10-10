@@ -28,16 +28,17 @@
     "gate:snapshot": "tsx scripts/gate-page-snapshot.ts"
   },
   "dependencies": {
-    "@blazetrails/activerecord": "file:vendor/blazetrails-activerecord-0.1.0.tgz",
-    "@blazetrails/activemodel": "file:vendor/blazetrails-activemodel-0.1.0.tgz",
-    "@blazetrails/activesupport": "file:vendor/blazetrails-activesupport-0.1.0.tgz",
-    "@blazetrails/rack": "file:vendor/blazetrails-rack-0.1.0.tgz",
     "@blazetrails/actionpack": "file:vendor/blazetrails-actionpack-0.1.0.tgz",
     "@blazetrails/actionview": "file:vendor/blazetrails-actionview-0.1.0.tgz",
-    "@blazetrails/trailties": "file:vendor/blazetrails-trailties-0.1.0.tgz",
+    "@blazetrails/activemodel": "file:vendor/blazetrails-activemodel-0.1.0.tgz",
+    "@blazetrails/activerecord": "file:vendor/blazetrails-activerecord-0.1.0.tgz",
+    "@blazetrails/activesupport": "file:vendor/blazetrails-activesupport-0.1.0.tgz",
     "@blazetrails/date": "file:vendor/blazetrails-date-0.1.0.tgz",
+    "@blazetrails/rack": "file:vendor/blazetrails-rack-0.1.0.tgz",
     "@blazetrails/ruby-compat": "file:vendor/blazetrails-ruby-compat-0.1.0.tgz",
+    "@blazetrails/trailties": "file:vendor/blazetrails-trailties-0.1.0.tgz",
     "better-sqlite3": "^12.6.2",
+    "pg": "^8.23.1",
     "websocket-driver": "0.7.4"
   },
   "devDependencies": {

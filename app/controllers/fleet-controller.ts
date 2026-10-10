@@ -1,5 +1,6 @@
 import { ApplicationController } from "./application-controller.js";
-import { FLEET_CONTROLS, isPaneId, isScreenHash, ringoBase } from "../../config/fleet.js";
+import { FLEET_CONTROLS, isPaneId, isScreenHash } from "../../config/fleet.js";
+import { Setting } from "../models/setting.js";
 import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.js";
 
 /**
@@ -54,9 +55,9 @@ export class FleetController extends ApplicationController {
       await this.render({ plain: "Page not found", status: 404 });
       return;
     }
-    const base = ringoBase();
+    const base = await Setting.ringoBase();
     if (base === null) {
-      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
+      await this.render({ plain: "no ringo origin is configured", status: 503 });
       return;
     }
     const env = this.request.env as Record<string, unknown>;
@@ -86,14 +87,14 @@ export class FleetController extends ApplicationController {
    * POST needs the page's CSRF token and an `Origin` that matches.
    */
   async control(): Promise<void> {
-    const base = ringoBase();
+    const base = await Setting.ringoBase();
     const path = String(this.params.get("path") ?? "");
     if (!FLEET_CONTROLS.includes(path)) {
       await this.render({ plain: "Not a fleet control", status: 404 });
       return;
     }
     if (base === null) {
-      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
+      await this.render({ plain: "no ringo origin is configured", status: 503 });
       return;
     }
 
@@ -122,9 +123,9 @@ export class FleetController extends ApplicationController {
    * keep in step.
    */
   async reviewers(): Promise<void> {
-    const base = ringoBase();
+    const base = await Setting.ringoBase();
     if (base === null) {
-      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
+      await this.render({ plain: "no ringo origin is configured", status: 503 });
       return;
     }
 
@@ -164,9 +165,9 @@ export class FleetController extends ApplicationController {
       await this.render({ plain: "Not a screen hash", status: 400 });
       return;
     }
-    const base = ringoBase();
+    const base = await Setting.ringoBase();
     if (base === null) {
-      await this.render({ plain: "RINGO_BASE is not set", status: 503 });
+      await this.render({ plain: "no ringo origin is configured", status: 503 });
       return;
     }
 

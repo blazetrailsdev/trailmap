@@ -6,6 +6,15 @@ import { HomeController } from "../../app/controllers/home-controller.js";
 import { PanesController } from "../../app/controllers/panes-controller.js";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.js";
+import { OwnersController } from "../../app/controllers/owners-controller.js";
+import { RepoActionsController } from "../../app/controllers/repo-actions-controller.js";
+import { RepoCodeController } from "../../app/controllers/repo-code-controller.js";
+import { RepoInsightsController } from "../../app/controllers/repo-insights-controller.js";
+import { RepoIssuesController } from "../../app/controllers/repo-issues-controller.js";
+import { RepoProjectsController } from "../../app/controllers/repo-projects-controller.js";
+import { RepoPullsController } from "../../app/controllers/repo-pulls-controller.js";
+import { RepoSettingsController } from "../../app/controllers/repo-settings-controller.js";
+import { RepoWikiController } from "../../app/controllers/repo-wiki-controller.js";
 
 /**
  * Every page controller's view directory is the one the implicit lookup asks
@@ -32,6 +41,15 @@ const PAGE_CONTROLLERS = [
   PanesController,
   RfcPagesController,
   StoryPagesController,
+  OwnersController,
+  RepoCodeController,
+  RepoIssuesController,
+  RepoPullsController,
+  RepoActionsController,
+  RepoProjectsController,
+  RepoWikiController,
+  RepoInsightsController,
+  RepoSettingsController,
 ];
 
 /** The two directories that back no controller: layouts and shared partials. */
@@ -66,6 +84,47 @@ describe("app/views", () => {
 
   it("stops the prefix chain at ApplicationController, as Rails does", () => {
     expect(RfcPagesController._prefixes()).toEqual(["rfc-pages", "application"]);
+  });
+
+  it("gives each repo tab its own directory, with the shared base's in the chain", () => {
+    // `repo` is RepoController's prefix and backs no directory: it is an
+    // abstract base, like ApplicationController, and the orphan check below
+    // would otherwise demand `app/views/repo`.
+    expect(RepoIssuesController._prefixes()).toEqual([
+      "repo-issues",
+      "repo",
+      "application",
+    ]);
+    expect(viewDirectory(RepoInsightsController)).toBe("repo-insights");
+  });
+
+  it("names the tab controllers after the tab they serve", () => {
+    const tabs = [
+      RepoCodeController,
+      RepoIssuesController,
+      RepoPullsController,
+      RepoActionsController,
+      RepoProjectsController,
+      RepoWikiController,
+      RepoInsightsController,
+      RepoSettingsController,
+    ];
+    // Every tab's `tab` is its own, and matches the directory it renders from:
+    // the switch check in `loadRepository` reads that field, so a controller
+    // that inherited the base's `code` would serve a tab its owner turned off.
+    expect(tabs.map((controller) => controller.tab)).toEqual([
+      "code",
+      "issues",
+      "pulls",
+      "actions",
+      "projects",
+      "wiki",
+      "insights",
+      "settings",
+    ]);
+    for (const controller of tabs) {
+      expect(viewDirectory(controller)).toBe(`repo-${controller.tab}`);
+    }
   });
 
   it("leaves controllerPath, which routes and tests read, as the framework derives it", () => {

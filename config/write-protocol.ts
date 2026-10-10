@@ -33,6 +33,11 @@ export const ringoBusyTimeoutPragma = `_pragma=busy_timeout(${writeProtocol.busy
  * Every table in `db/schema.ts`, and the only process that may write it. The
  * other process may read every table. Migrations for all of them — ringo's
  * included — live in trailmap's `db/migrate`.
+ *
+ * The `hub` database is NOT here and does not belong here: it is Postgres
+ * (config/database.ts, app/models/hub.ts), ringo has no handle on it, and one
+ * writer per table is a rule about a file two processes open. `db/hub-migrate`
+ * is its history, and `db/hub_schema.ts` its schema.
  */
 export const tableOwners: Record<string, Owner> = {
   events: "trailmap",

@@ -44,6 +44,26 @@ Two things follow:
   then `pnpm install`, and nothing else in the same change, so a regression can
   be reverted without taking application work with it.
 
+## Two databases, and which one a model is on
+
+The task domain is SQLite (`ActiveRecord::Base`, the CLI's live `tasks.db`) and
+the owner/repository hierarchy is **Postgres**, under `Hub`
+(`app/models/hub.ts`). README has the table. Three things follow:
+
+- **A new model picks a base class, and that is a design decision.** `Hub` for
+  anything about owners, repositories or settings; `Base` for the task domain.
+  Getting it wrong is not a type error — it is a model that silently queries
+  the other database and fails on "no such table".
+- **Nothing joins across them, and nothing can.** A page that needs both does
+  two queries. The repo scope is a `where` on a string the task domain already
+  carries, and `app/models/concerns/repo-scope.ts` is the only place that
+  decides which repository a story belongs to. Do not re-derive that rule in a
+  controller.
+- **`db/migrate` is the task domain's history, `db/hub-migrate` the hub's**, and
+  `pnpm db:migrate` with no `--database` flag runs both. **Never pass
+  `--database hub`**: it loads `db/schema.ts` into Postgres. docs/deploy.md has
+  the why; it is a trails defect, not a rule of this repo.
+
 ## Conventions
 
 - camelCase, everywhere. No `snake_case` identifiers.
@@ -56,6 +76,11 @@ Two things follow:
   routes, where a hyphen is illegal, and that makes every page controller
   untestable through `ActionController::TestCase`.
   `test/views/view-directory-names.test.ts` holds the rule.
+- **`abstractClass` is ASSIGNED in a static block, never a class field.**
+  `static abstractClass = true` shadows the library's accessor with an own data
+  property, and a static data property is inherited — so every subclass reads
+  `true` and `create()` raises "X is an abstract class". `app/models/hub.ts`
+  has the long version.
 - **Never name a model method `set<Attribute>`.** trails answers the writer
   `priority=` with a `setPriority` method when one exists, so a method by that
   name IS the attribute's setter and runs on every `new`, `create` and `update`

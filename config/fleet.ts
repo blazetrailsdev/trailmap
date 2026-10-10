@@ -46,18 +46,15 @@ export function fleetRepos(): FleetRepo[] {
 }
 
 /**
- * ringo's origin as THIS PROCESS reaches it, e.g. `http://btwhooks.web:8080`
- * on the `fleet` docker network. Null when unset, which leaves the fleet page
- * with nothing to relay; it says so on the page, it does not guess.
+ * ringo's origin does NOT live here. It is `Setting.ringoBase()`
+ * (app/models/setting.ts) — a row in the `settings` table, falling back to
+ * `RINGO_BASE`, normalised once.
  *
- * Not a URL the browser ever sees. The browser talks only to trailmap
- * (`FLEET_SOCKET_PATH`, `FLEET_CONTROL_PATH`), which reads ringo's stream and
- * forwards the page's controls. See `docs/fleet-dashboard.md`.
+ * There is one ringo, so there is one resolver. A second one here would be a
+ * second answer to the same question, and the two would be able to disagree
+ * the moment anything wrote a row: the setting is read on four relay paths
+ * and two pages, and they must all reach the same origin.
  */
-export function ringoBase(): string | null {
-  const base = env.RINGO_BASE?.trim().replace(/\/+$/, "");
-  return base ? base : null;
-}
 
 /** Where the fleet page opens its WebSocket. */
 export const FLEET_SOCKET_PATH = "/fleet/socket";

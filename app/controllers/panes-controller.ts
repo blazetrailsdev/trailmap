@@ -1,5 +1,6 @@
 import { ApplicationController } from "./application-controller.js";
-import { FLEET_PANE_PATH, isPaneId, ringoBase } from "../../config/fleet.js";
+import { FLEET_PANE_PATH, isPaneId } from "../../config/fleet.js";
+import { Setting } from "../models/setting.js";
 
 /**
  * `/panes/<n>` — one agent's tmux pane, live in the browser and read-only.
@@ -19,7 +20,7 @@ export class PanesController extends ApplicationController {
       locals: {
         pane: `%${id}`,
         screenPath: `${FLEET_PANE_PATH}/${id}/screen`,
-        relayConfigured: ringoBase() !== null,
+        relayConfigured: (await Setting.ringoBase()) !== null,
       },
     });
   }

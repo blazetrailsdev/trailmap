@@ -64,7 +64,66 @@ dokku network:set trailmap attach-post-deploy fleet
 dokku network:set btwhooks attach-post-deploy fleet   # then restart btwhooks once
 dokku config:set --no-restart trailmap RINGO_BASE=http://btwhooks.web:8080
 dokku sso:protect trailmap
+
+# THE HUB DATABASE. The owner/repository hierarchy (`/:owner`,
+# `/:owner/:repo` and its eight tabs) lives in Postgres, not in the tasks
+# SQLite file — see `config/database.ts` and `app/models/hub.ts`. A dokku
+# postgres service, linked under an ALIAS: trailmap has no primary Postgres,
+# so the stock `DATABASE_URL` name would read as if it did.
+#
+# Linking restarts the app, so do it when a restart is acceptable (or add
+# `--no-restart` and deploy afterwards).
+dokku postgres:create trailmap-hub
+dokku postgres:link trailmap-hub trailmap --alias HUB_DATABASE   # → HUB_DATABASE_URL
+
+# Then the schema and the seed rows, from a checkout with the linked URL in
+# the environment. NO `--database hub` — see "Migrating the hub" below.
+HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub --dsn)" pnpm db:migrate
+HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub --dsn)" pnpm db:seed
 ```
+
+`HUB_DATABASE_URL` is as NOT optional as `TASKS_DATABASE`:
+`config/initializers/hub-database.ts` refuses to boot without it, for the
+reason that initializer records — a container that comes up without a
+connection answers `/up` green and 500s on the first page that reads a row.
+
+## The hub database
+
+| | |
+| --- | --- |
+| Service | `dokku postgres:create trailmap-hub`, linked as `HUB_DATABASE` |
+| Schema | `db/hub-migrate/*`, dumped to `db/hub_schema.ts` |
+| Tables | `owners`, `repositories`, `repository_settings`, `settings` |
+| Backups | `dokku postgres:export trailmap-hub > hub.dump` |
+
+**Back it up.** Everything in the tasks database is reconstructible from the
+content tree in git (`tasks ingest`); nothing in the hub is. The repository
+rows can be re-seeded from `FLEET_REPO_PATHS`
+(`Repository.importFleetRepos`), but the feature switches and the
+application settings someone turned off by hand exist only here.
+
+A second service for development is the same two commands with a different
+name (`trailmap-hub-dev`), and `dokku postgres:info <service> --internal-ip`
+is how a process on the box reaches it without exposing a port.
+
+### Migrating the hub
+
+```sh
+HUB_DATABASE_URL=<the hub's DSN> pnpm db:migrate     # both databases
+```
+
+**Never `pnpm exec trails db migrate --database hub`.** That flag narrows the
+registered database configurations to the one targeted, and
+`DatabaseConfigurations#isPrimary` answers "the first registered config" for
+any name that is not literally `primary` — so the hub becomes primary for every
+schema question inside the command, and a FRESH hub database gets `db/schema.ts`
+— the task domain's SQLite schema — loaded into it. Observed: `stories`,
+`rfcs`, `events` and the join tables created in Postgres, with
+`schema_migrations` holding only the dump's version.
+
+It is a trails defect, tracked upstream, and it is also why nothing in this
+repository passes `--database`: the unflagged command registers both
+configurations and is correct, and it is what a Rails user would run anyway.
 
 `app.json` declares the startup healthcheck dokku polls after a deploy
 (`GET /up`, 12 attempts, 5s apart).

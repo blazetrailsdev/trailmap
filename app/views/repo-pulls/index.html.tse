@@ -1,0 +1,33 @@
+<%= render({ partial: "shared/repo-header", locals: { repo: repo, owner: owner, nwo: nwo, tabs: tabs } }) %>
+
+<%= render({ partial: "shared/filter-tabs", locals: { tabs: [
+  { href: "/" + nwo + "/pulls?state=open", label: "Open", count: tabCounts.open, active: state === "open" },
+  { href: "/" + nwo + "/pulls?state=merged", label: "Merged", count: tabCounts.merged, active: state === "merged" },
+] } }) %>
+
+<p class="muted">A pull request exists here because a story was stamped with it
+(<code>stories.pr</code>). &ldquo;Merged&rdquo; means every story under it is done or closed —
+the only merge signal this database holds.</p>
+
+<div class="box">
+  <% if (rows.length === 0) { %>
+    <div class="empty">No <%= state %> pull requests.</div>
+  <% } %>
+  <% for (const row of rows) { %>
+    <div class="item-row">
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title" href="/<%= nwo %>/pulls/<%= row.number %>">#<%= row.number %></a>
+          <span class="tag prog"><%= row.stories.length %> <%= row.stories.length === 1 ? "story" : "stories" %></span>
+          <a class="tag" href="<%= row.href %>">on GitHub</a>
+        </span>
+        <div class="row-meta">
+          <% for (const story of row.stories) { %>
+            <a href="/<%= nwo %>/issues/<%= story.id %>"><%= story.title %></a>
+            <%= render({ partial: "shared/status-badge", locals: { status: story.status } }) %>
+          <% } %>
+        </div>
+      </span>
+    </div>
+  <% } %>
+</div>
