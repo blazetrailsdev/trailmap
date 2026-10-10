@@ -78,7 +78,7 @@ dokku postgres:link trailmap-hub trailmap --alias HUB_DATABASE   # → HUB_DATAB
 
 # Then the schema and the seed rows, IN THE APP CONTAINER — see "Migrating the
 # hub" below for why it cannot be run from a host checkout. NO `--database hub`.
-# After this first time, deploys migrate the hub themselves (predeploy).
+# After this first time, deploys migrate the hub themselves (Procfile release).
 dokku run trailmap node_modules/.bin/tsx \
   node_modules/@blazetrails/trailties/bin/trails.js db migrate
 dokku run trailmap node_modules/.bin/tsx \
@@ -111,10 +111,18 @@ is how a process on the box reaches it without exposing a port.
 
 ### Migrating the hub
 
-**Deploys do this.** `app.json` declares a dokku `predeploy` script that runs
+**Deploys do this.** The `Procfile` declares a `release` task that runs
 `db migrate` in a container built from the new image, before it serves
-traffic, so a release that adds a hub table migrates on the way in and a
-failed migration aborts the deploy instead of publishing a container that 500s.
+traffic, so a release that adds a hub table migrates on the way in. A failed
+release task fails the deploy and leaves the running containers alone, so a
+hub that cannot be migrated never gets a container serving pages against it.
+
+`release` rather than `app.json`'s `scripts.dokku.predeploy`, which also
+works: a predeploy container is COMMITTED back into the built image — that is
+what it is for — and `db migrate` rewrites `db/schema.ts` and
+`db/hub_schema.ts` as it runs, so every release would bake a schema dump into
+the image. A release container's changes are discarded, which is why dokku's
+deployment-tasks page names it for migrations.
 
 To run it by hand — the first deploy, or a repair:
 
@@ -139,7 +147,7 @@ obvious recipe are wrong here, and each fails differently:
   work against the dev service, `dokku postgres:info <service> --internal-ip`
   gives an address the host can reach.)
 
-Seeds are NOT part of the predeploy: they are first-time setup, and
+Seeds are NOT part of the release task: they are first-time setup, and
 `db/seeds.ts` is idempotent but noisy — `trails db seed` runs it once per
 configured database, so its output appears twice.
 
@@ -156,14 +164,21 @@ It is a trails defect, tracked upstream, and it is also why nothing in this
 repository passes `--database`: the unflagged command registers both
 configurations and is correct, and it is what a Rails user would run anyway.
 
-`app.json` declares two things: the `predeploy` migration above, and the
-startup healthcheck dokku polls after a deploy (`GET /up`, 12 attempts, 5s
-apart).
+`app.json` declares the startup healthcheck dokku polls after a deploy
+(`GET /up`, 12 attempts, 5s apart); the `Procfile` declares the release task
+above and the `web` process.
+
+`web` is in the Procfile even though the Dockerfile's `CMD` says the same
+thing. A Procfile takes precedence over `CMD` for the process types it names,
+and dokku's process docs warn that an app whose Procfile declares no `web` has
+"the process count for every process type set to zero" under
+`ps:scale --clear`. The duplication is one line and removes the question;
+the two have to be kept in step, and both say so.
 
 The healthcheck alone cannot catch an unmigrated hub — `/up` reads no row, so
 a container with `HUB_DATABASE_URL` set and no tables answers it green and
 then 500s with `relation "repositories" does not exist` on `/dashboard` and
-every page under `/:owner`. That is what the predeploy is for; it is the
+every page under `/:owner`. That is what the release task is for; it is the
 reason this is a deploy step and not a runbook entry.
 
 ## Deploying
