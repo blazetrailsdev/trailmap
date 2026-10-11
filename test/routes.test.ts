@@ -8,6 +8,7 @@ import { FleetController } from "../app/controllers/fleet-controller.js";
 import { HealthController } from "../app/controllers/health-controller.js";
 import { HomeController } from "../app/controllers/home-controller.js";
 import { MutationsController } from "../app/controllers/mutations-controller.js";
+import { ProbesController } from "../app/controllers/probes-controller.js";
 import { PanesController } from "../app/controllers/panes-controller.js";
 import { ReadModelsController } from "../app/controllers/read-models-controller.js";
 import { RfcPagesController } from "../app/controllers/rfc-pages-controller.js";
@@ -38,6 +39,7 @@ for (const controller of [
   HomeController,
   MutationsController,
   PanesController,
+  ProbesController,
   ReadModelsController,
   RfcPagesController,
   StoriesController,
@@ -87,6 +89,19 @@ describe("config/routes", () => {
 
     expect(match?.route.controller).toBe("health");
     expect(match?.route.action).toBe("show");
+  });
+
+  it("routes the readiness and deep probes beside it, to probes", () => {
+    const routes = routeSet();
+
+    expect(recognize(routes, "GET", "/up/ready").route).toEqual({
+      controller: "probes",
+      action: "ready",
+    });
+    expect(recognize(routes, "GET", "/up/deep").route).toEqual({
+      controller: "probes",
+      action: "deep",
+    });
   });
 
   it("routes the plural list paths to the same page controllers", () => {

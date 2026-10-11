@@ -39,6 +39,12 @@ Trails.application!.routes().draw(function () {
   this.root("home#index");
   this.get("up", { to: "health#show" });
 
+  // The two probes beside `/up`, which stays the only one a supervisor polls.
+  // `ready` opens the database and the tasks checkout; `deep` computes a ready
+  // queue. Both are loopback-only (ProbesController).
+  this.get("up/ready", { to: "probes#ready" });
+  this.get("up/deep", { to: "probes#deep" });
+
   // The fleet dashboard, ported from ringo's `/`. It is NOT trailmap's root:
   // ringo keeps serving `/` until this is verified against the live fleet, and
   // moving trailmap's own landing page out from under `/` before then would
