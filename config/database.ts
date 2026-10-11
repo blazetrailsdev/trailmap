@@ -150,3 +150,56 @@ export function tasksDatabaseConfig(): Record<string, unknown> {
 export function hasTasksDatabase(): boolean {
   return Boolean(env.TASKS_DATABASE);
 }
+
+/**
+ * The trails stats database, read-only.
+ *
+ * A THIRD connection, and the third adapter in this process: the task domain
+ * is better-sqlite3 (`tasksDatabaseConfig`), the hub is PostgreSQL
+ * (`hubDatabaseConfig`), and this one is `node-sqlite` — Node's built-in
+ * `node:sqlite`, which trails registers under that adapter name. Two drivers
+ * for one engine in one process is deliberate: nothing about this connection
+ * needs better-sqlite3's native build, and running the second driver in an
+ * application is the only way anyone finds out whether it works outside
+ * trails' own suite.
+ *
+ * Like `tasksDatabaseConfig` and unlike the `hub` entry, this is NOT one of
+ * the environment keys above. `trails db` must never migrate or drop it: it is
+ * filled by the nightly stats-sync cron on the host (ringo's `/crons`), its
+ * schema is that cron's, and trailmap only reads it.
+ *
+ * `readonly: true` reaches the driver's open flag, so a write is refused by
+ * SQLite itself rather than by a convention someone can forget. It is a
+ * stronger guarantee than marking the models `readonly` and it costs nothing:
+ * there is no trailmap code that should ever write here.
+ *
+ * WAL, and the cron writes while we read — so the busy timeout from
+ * `docs/write-protocol.md` applies for the same reason it does on `tasks.db`.
+ * Note that a read-only connection to a WAL database still needs to create the
+ * `-shm` file, so the DIRECTORY has to be writable even though the file is not
+ * written; ringo's README records the same requirement for its own mount.
+ *
+ * `pool: 1` because this answers one page. The rollup query reads 60k rows per
+ * comparison table and there is no reason for two of them to be in flight.
+ */
+export function statsDatabaseConfig(): Record<string, unknown> {
+  const database = env.STATS_DB;
+  if (!database) {
+    throw new Error(
+      "STATS_DB is not set. Point it at the trails stats database " +
+        "(~/github/blazetrailsdev/stats.db, the one the nightly stats-sync cron fills).",
+    );
+  }
+  return {
+    adapter: "node-sqlite",
+    database,
+    readonly: true,
+    pool: 1,
+    timeout: writeProtocol.busyTimeoutMs,
+  };
+}
+
+/** Whether `STATS_DB` names a database to read. */
+export function hasStatsDatabase(): boolean {
+  return Boolean(env.STATS_DB);
+}

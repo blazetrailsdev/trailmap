@@ -10,6 +10,14 @@ import { RepositorySetting } from "./repository-setting.js";
 import { RepositoryCollaborator } from "./repository-collaborator.js";
 import { Setting } from "./setting.js";
 import { Hub } from "./hub.js";
+import { PullRequest } from "./pull-request.js";
+import {
+  ApiCallArgsStat,
+  ApiCallsStat,
+  ApiCompareStat,
+  ApiComparePrivatesStat,
+  TestCompareStat,
+} from "./compare-stats.js";
 import { registerRfcAutoClose } from "./rfc-close.js";
 
 // Association targets are named by STRING (`belongsTo("rfc")`,
@@ -32,7 +40,26 @@ const MODELS = [Rfc, Story, StoryDep, StoryRfcDep, StoryPath, StoryPackage, Even
  */
 const HUB_MODELS = [Owner, Repository, RepositorySetting, RepositoryCollaborator, Setting];
 
-registerModel([...MODELS, ...HUB_MODELS]);
+/**
+ * The models on the THIRD connection — the read-only trails stats database
+ * (app/models/stats.ts).
+ *
+ * A separate list for the same reason `HUB_MODELS` is one: reflecting these
+ * needs the stats connection, which `config/initializers/stats-database.ts`
+ * establishes and a process without `STATS_DB` never has. Unlike the hub,
+ * that is a supported way to run — the parity page says the source is missing
+ * and every other page is unaffected.
+ */
+const STATS_MODELS = [
+  PullRequest,
+  ApiCompareStat,
+  ApiComparePrivatesStat,
+  TestCompareStat,
+  ApiCallsStat,
+  ApiCallArgsStat,
+];
+
+registerModel([...MODELS, ...HUB_MODELS, ...STATS_MODELS]);
 
 // Arms the RFC auto-close (see ./rfc-close.ts). Registered here rather than
 // in story.ts so the rule can import the models it queries without an import
@@ -65,6 +92,20 @@ export async function loadModelSchemas(): Promise<void> {
  */
 export async function loadHubSchemas(): Promise<void> {
   await Promise.all(HUB_MODELS.map((model) => model.loadSchema()));
+}
+
+/**
+ * The same warm-up for the stats models, on the stats connection.
+ *
+ * AWAITING it is the whole point, and this connection is the one where
+ * forgetting would show: `loadSchema()` is asynchronous, `columnNames()` is
+ * not, and the parity page asks `columnNames()` which comparison runs this
+ * database can chart. An unreflected model answers that with an empty list, so
+ * a missed `await` here would not raise — it would come up with an empty run
+ * picker, no chart, and nothing in the log.
+ */
+export async function loadStatsSchemas(): Promise<void> {
+  await Promise.all(STATS_MODELS.map((model) => model.loadSchema()));
 }
 
 /**
@@ -116,3 +157,13 @@ export {
   type CollaboratorRole,
 } from "./repository-collaborator.js";
 export { Setting } from "./setting.js";
+export { Stats } from "./stats.js";
+export { PullRequest } from "./pull-request.js";
+export { CompareRun } from "./compare-run.js";
+export {
+  ApiCompareStat,
+  ApiComparePrivatesStat,
+  TestCompareStat,
+  ApiCallsStat,
+  ApiCallArgsStat,
+} from "./compare-stats.js";

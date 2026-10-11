@@ -15,6 +15,7 @@ import { RepoProjectsController } from "../../app/controllers/repo-projects-cont
 import { RepoPullsController } from "../../app/controllers/repo-pulls-controller.js";
 import { RepoSettingsController } from "../../app/controllers/repo-settings-controller.js";
 import { RepoWikiController } from "../../app/controllers/repo-wiki-controller.js";
+import { ParityGraphsController } from "../../app/controllers/parity-graphs-controller.js";
 
 /**
  * Every page controller's view directory is the one the implicit lookup asks
@@ -50,6 +51,7 @@ const PAGE_CONTROLLERS = [
   RepoWikiController,
   RepoInsightsController,
   RepoSettingsController,
+  ParityGraphsController,
 ];
 
 /** The two directories that back no controller: layouts and shared partials. */

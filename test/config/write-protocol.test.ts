@@ -4,6 +4,7 @@ import { tasksDatabaseConfig } from "../../config/database.js";
 import { ringoBusyTimeoutPragma, tableOwners, tablesOwnedBy, writeProtocol } from "../../config/write-protocol.js";
 import * as models from "../../app/models/index.js";
 import { Hub } from "../../app/models/hub.js";
+import { Stats } from "../../app/models/stats.js";
 
 /**
  * The write protocol, enforced rather than promised: every table has exactly
@@ -39,15 +40,21 @@ describe("write protocol", () => {
   });
 
   it("maps trailmap's models only onto trailmap-owned tables", () => {
-    // The models on the SHARED SQLITE FILE only. `Hub`'s subtree
-    // (app/models/hub.ts) is a Postgres database that ringo has no handle on
-    // and no migrations for, so the one-writer-per-table protocol has nothing
-    // to say about its tables — and `tableOwners` lists the tables of
-    // `db/schema.ts`, which is the shared file's schema.
+    // The models on the SHARED SQLITE FILE only, which is what `tableOwners`
+    // lists the tables of (`db/schema.ts`). Two subtrees are not on it and the
+    // one-writer-per-table protocol has nothing to say about either:
+    //
+    // - `Hub` (app/models/hub.ts) is a Postgres database that ringo has no
+    //   handle on and no migrations for.
+    // - `Stats` (app/models/stats.ts) is the stats database the nightly sync
+    //   cron owns. trailmap's connection to it is READ-ONLY at the driver, so
+    //   it cannot be a second writer to anything even in principle.
+    const excluded = [Hub, Stats];
     const mapped = Object.values(models)
       .filter(
         (model) =>
-          typeof model === "function" && !(model.prototype instanceof Hub) && model !== Hub,
+          typeof model === "function" &&
+          !excluded.some((base) => model === base || model.prototype instanceof base),
       )
       .map((model) => (model as { _tableName?: string })._tableName)
       .filter((name): name is string => typeof name === "string");
