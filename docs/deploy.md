@@ -148,8 +148,13 @@ obvious recipe are wrong here, and each fails differently:
   gives an address the host can reach.)
 
 Seeds are NOT part of the release task: they are first-time setup, and
-`db/seeds.ts` is idempotent but noisy — `trails db seed` runs it once per
-configured database, so its output appears twice.
+`db/seeds.ts` is idempotent, so running it again is harmless.
+
+It used to print its output TWICE, because `trails db seed` loaded the file
+once per configured database. trails#8768 fixed that — Rails loads
+`db/seeds.rb` once, through the seed loader — so one run is now one load. The
+`db reset` and `db setup` paths always seeded once, since both narrow to
+`--database primary` before fanning out.
 
 **Never `pnpm exec trails db migrate --database hub`.** That flag narrows the
 registered database configurations to the one targeted, and

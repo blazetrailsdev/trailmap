@@ -13,6 +13,20 @@ import { hasHubDatabase } from "../config/database.js";
  * Idempotent, because this is also how a box's repo list is refreshed after
  * `FLEET_REPO_PATHS` changes. `importFleetRepos` upserts and never deletes;
  * see the note on it.
+ *
+ * NOTHING HERE ESTABLISHES A CONNECTION, and that is deliberate. `trails db
+ * seed` boots the application before it imports this file (trails#8768), so
+ * `config/initializers/hub-database.ts` has already run
+ * `Hub.establishConnection` and `loadHubSchemas` — which is why
+ * `Owner.findByLogin` below reaches Postgres rather than falling through to
+ * the SQLite primary. This file used to do that work a second time by hand,
+ * and then undo it with `Hub.removeConnection()` so the command could exit.
+ * Re-adding either is a regression, not a fix.
+ *
+ * The `hasHubDatabase()` guard is reachable only under `NODE_ENV=test` now:
+ * everywhere else the hub initializer THROWS when `HUB_DATABASE_URL` is
+ * unset, so the application never boots and this file is never imported. It
+ * stays because the test environment legitimately has no hub.
  */
 if (!hasHubDatabase()) {
   console.log("HUB_DATABASE_URL is not set — nothing to seed.");
