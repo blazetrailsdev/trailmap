@@ -59,6 +59,13 @@ export class ProbesController extends ApplicationController {
    * The queue is the unscoped one `GET /stories/ready` answers and the spawn
    * loop consumes, across every repository: the canary asks whether THAT queue
    * can be computed, not one repository's slice of it.
+   *
+   * It does not hold the pool's one connection across the ranking — each of
+   * its six queries leases and returns it — so a `ready` arriving meanwhile is
+   * not refused by the checkout timeout. It IS delayed: SQLite here is
+   * synchronous and the ranking is CPU on the one thread, so everything else
+   * the process serves waits roughly `latency_ms`. Eight at once held `ready`
+   * for eight seconds, still 200. One caller, one at a time.
    */
   async deep(): Promise<void> {
     const started = performance.now();
