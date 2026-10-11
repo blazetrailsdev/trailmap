@@ -1,7 +1,7 @@
 import { env } from "@blazetrails/ruby-compat";
 import { hasHubDatabase, hubDatabaseConfig } from "../database.js";
 import { Hub } from "../../app/models/hub.js";
-import { loadHubSchemas } from "../../app/models/index.js";
+import { loadHubSchemas, missingHubTables } from "../../app/models/index.js";
 
 /**
  * Connect the owner/repository hierarchy to the `hub` Postgres database.
@@ -29,6 +29,16 @@ import { loadHubSchemas } from "../../app/models/index.js";
  * `test` is the one environment that legitimately has none: most of the suite
  * never touches the hub, and the tests that do skip loudly when the variable is
  * unset (test/support/hub-schema.ts).
+ *
+ * An UNMIGRATED hub fails here too, for the same reason and with the same
+ * remedy. A URL that points at a database with no tables is not a connection
+ * problem — it connects, `loadHubSchemas` reflects happily, `GET /up` reads no
+ * row and answers green — and the application then 500s with `relation
+ * "repositories" does not exist` on `/dashboard` and every page under
+ * `/:owner`. That is what trailmap#48 shipped and what the Procfile's
+ * `release` task stops happening on a deploy; this stops it happening at all,
+ * including when a database is replaced underneath a container that is
+ * already running.
  */
 export async function connectToHubDatabase(): Promise<void> {
   if (!hasHubDatabase()) {
@@ -41,6 +51,17 @@ export async function connectToHubDatabase(): Promise<void> {
   }
   await Hub.establishConnection(hubDatabaseConfig());
   await loadHubSchemas();
+
+  const missing = await missingHubTables();
+  if (missing.length > 0) {
+    throw new Error(
+      `HUB_DATABASE_URL names a database without the hub schema (no ${missing.join(", ")}). ` +
+        "Migrate it — in the app container, because pnpm is not in the runtime image:\n" +
+        "  dokku run trailmap node_modules/.bin/tsx " +
+        "node_modules/@blazetrails/trailties/bin/trails.js db migrate\n" +
+        "See docs/deploy.md. Deploys do this themselves (Procfile release task).",
+    );
+  }
 }
 
 await connectToHubDatabase();
