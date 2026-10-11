@@ -253,6 +253,17 @@ key and is never renamed. `tier1.migration-head` is `/up/ready`'s `migrations`
 check: it compares the `schema_migrations` head against the last version under
 `db/migrate` in the running image and names both when they differ.
 
+**A database that is AHEAD fails the deploy too, and that is intended.** The
+tasks CLI migrates the same `tasks.db`, so the head can move without a trailmap
+release. The release just deployed is then reading columns it was not written
+for, which is the failure the check exists to catch, and a deploy that reports
+success over it would be the silent case again. The message says which side is
+behind ("the database is ahead of this release"); the fix is to deploy a
+trailmap that carries the migration, not to re-run the deploy.
+
+Tiers 1 and 2 need `jq` on the box. A host without it fails
+`tier1.jq-installed` by name rather than a probe assertion.
+
 By hand:
 
 ```sh

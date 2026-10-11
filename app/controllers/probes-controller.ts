@@ -133,16 +133,20 @@ export class ProbesController extends ApplicationController {
    *
    * - it cannot drift. A generated constant is a second copy of the directory
    *   and something has to regenerate it; this is the directory.
-   * - it is what Rails does. `ActiveRecord::Migration::CheckPending` asks
-   *   `migration_context.needs_migration?`, which reads the files
-   *   (activerecord/lib/active_record/migration.rb:1241,1317).
+   * - it is where Rails reads it. `MigrationContext#migrations` lists the
+   *   files (activerecord/lib/active_record/migration.rb:1303-1317), and
+   *   `CheckPending` (:648) reaches it per request through
+   *   `pool.migration_context.open.pending_migrations` (:758-770).
    * - the image ships `db/migrate` already, because the release task runs it.
    *
    * The cost is one directory listing per probe, of a directory with a handful
    * of entries.
    *
-   * The two heads are compared for EQUALITY rather than asked for pending
-   * versions: this database is also migrated by the tasks CLI
+   * The two heads are compared for EQUALITY, which is deliberately MORE than
+   * Rails asks of the same list. `needs_migration?` is `pending_migration_versions.size > 0`,
+   * and that is `migrations.collect(&:version) - get_all_versions`
+   * (migration.rb:1295-1301): files with no row, so a database that is ahead
+   * passes it. This database is also migrated by the tasks CLI
    * (config/database.ts), so it can be AHEAD of a trailmap that has not been
    * redeployed, and that is the same wrong-columns failure from the other side.
    *

@@ -15,6 +15,7 @@ const LOOPBACK = { Host: "127.0.0.1" };
  */
 const [PREVIOUS, HEAD] = getFs()
   .readdirSync("db/migrate")
+  .filter((file) => /^\d+_/.test(file))
   .map((file) => Number(file.split("_")[0]))
   .sort((a, b) => a - b)
   .slice(-2) as [number, number];

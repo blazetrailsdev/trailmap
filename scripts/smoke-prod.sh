@@ -52,6 +52,9 @@ fail() {
 # $contentType are set. A request that never connected reads as status 000.
 fetch() {
   local out
+  # Cleared first: a request that never connected writes no body, and the last
+  # request's body must not be read as this one's.
+  rm -f "$work/body"
   out=$(curl -s -m "$TIMEOUT" -o "$work/body" -w '%{http_code} %{content_type}' \
     ${2:+-H "Host: $2"} "$1") || true
   status="${out%% *}"
@@ -101,6 +104,10 @@ tier0() {
 }
 
 tier1() {
+  # deploy.sh gates on this tier and needed no jq before it did. Without the
+  # guard a host missing it fails the migration head with a message about the
+  # probe, which is the wrong thing to go and look at.
+  command -v jq >/dev/null || { fail tier1.jq-installed "jq is not on PATH"; return; }
   # One request, two assertions: the migration head is the check /up/ready
   # exists for (RFC 0143), so it has a row of its own rather than being one
   # name in a list of failing checks.
@@ -123,7 +130,11 @@ tier1() {
   # block, which `requireLoopback` treats as disqualifying and answers 404 to.
   # Only a guarded endpoint can prove that, so one is asked for by name.
   fetch "$LOOPBACK/stories/ready"
-  if [ "$status" = "404" ]; then
+  if [ "$status" = "000" ]; then
+    # Nothing answered, so nothing was shown about the guard either way. A
+    # PASS here would be a row saying the API was not refused.
+    fail tier1.loopback-api-not-refused "/stories/ready did not answer"
+  elif [ "$status" = "404" ]; then
     fail tier1.loopback-api-not-refused "/stories/ready answered 404" \
       "the loopback API answered 404 for /stories/ready. That is
   requireLoopback refusing the request because it arrived carrying proxy
@@ -309,6 +320,16 @@ CURL
   healthy
   can _backlog 200 text/html '<main class="site-main"><h1>Something went wrong</h1>'
   expect "a page answering 200 without its heading is caught" 2 1 tier2.page-backlog
+
+  rm -f "$fake"/*.head "$fake"/*.body
+  cat >"$fake/bin/curl" <<'CURL'
+#!/usr/bin/env bash
+# Nothing is listening: no body written, curl's own status 000, exit 7.
+echo "000 "
+exit 7
+CURL
+  expect "a host where nothing answers fails every tier 1 assertion, reading no stale body" 1 1 \
+    tier1.up-ready,tier1.migration-head,tier1.loopback-api-not-refused,tier1.loopback-api-serving,tier1.public-vhost-redirects
 
   if "$0" --tier 9 >/dev/null 2>&1; then
     echo "self-test FAILED: an unknown tier exited 0" >&2
