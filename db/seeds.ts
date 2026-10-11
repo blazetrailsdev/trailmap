@@ -2,11 +2,9 @@ import { Owner } from "../app/models/owner.js";
 import { Repository } from "../app/models/repository.js";
 import { RepositorySetting } from "../app/models/repository-setting.js";
 import { RepositoryCollaborator } from "../app/models/repository-collaborator.js";
-import { Hub } from "../app/models/hub.js";
 import { CONTENT_REPO } from "../app/models/concerns/repo-scope.js";
 import { env } from "@blazetrails/ruby-compat";
-import { loadHubSchemas } from "../app/models/index.js";
-import { hasHubDatabase, hubDatabaseConfig } from "../config/database.js";
+import { hasHubDatabase } from "../config/database.js";
 
 /**
  * The `hub` database's seeds: the owner and the repositories the fleet works
@@ -19,13 +17,6 @@ import { hasHubDatabase, hubDatabaseConfig } from "../config/database.js";
 if (!hasHubDatabase()) {
   console.log("HUB_DATABASE_URL is not set — nothing to seed.");
 } else {
-  // `trails db seed` runs this file against the PRIMARY pool and loads no
-  // initializers, so `config/initializers/hub-database.ts` has not run and
-  // `Hub` has no connection — every query below would fall through to the
-  // SQLite primary and fail on "no such table: owners". Establish it here.
-  await Hub.establishConnection(hubDatabaseConfig());
-  await loadHubSchemas();
-
   // `createBang`, not `create`, everywhere below: `create` answers an UNSAVED
   // record when a validation fails, so a seed run against a schema the models
   // have outgrown would print "seeded" and leave an empty database.
@@ -98,9 +89,4 @@ if (!hasHubDatabase()) {
     `seeded ${owner.login}: ${known.length} repositories, ` +
       `${imported.length} from FLEET_REPO_PATHS`,
   );
-
-  // Hand the hub pool back. `trails db seed` knows only about the primary
-  // connection, so the one established above keeps its sockets — and the
-  // process — alive after the seeds finish, and the command never exits.
-  await Hub.removeConnection();
 }
