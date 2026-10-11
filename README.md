@@ -52,12 +52,23 @@ Set both up with:
 
 ```sh
 dokku postgres:create trailmap-hub-dev                    # once, on the box
-HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub-dev --dsn)" pnpm db:migrate
-HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub-dev --dsn)" pnpm db:seed
+
+# `--dsn` names the service by its DOCKER hostname, which only resolves on the
+# network the service shares with a container — not from a host checkout. Swap
+# in the address the host can reach.
+HUB_DEV_URL="$(dokku postgres:info trailmap-hub-dev --dsn \
+  | sed "s|@dokku-postgres-trailmap-hub-dev:|@$(dokku postgres:info trailmap-hub-dev --internal-ip):|")"
+
+HUB_DATABASE_URL="$HUB_DEV_URL" pnpm db:migrate
+HUB_DATABASE_URL="$HUB_DEV_URL" pnpm db:seed
 ```
 
 `pnpm db:migrate` with no `--database` flag migrates both. Do not pass one —
 `docs/deploy.md` explains what `--database hub` does to a fresh database.
+
+That is the DEVELOPMENT recipe, and it is host-side on purpose. Production is
+neither: `pnpm` is not in the runtime image and the hub is migrated by a dokku
+`predeploy` script. See `docs/deploy.md`.
 
 ## Requirements
 
