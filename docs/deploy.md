@@ -237,7 +237,23 @@ PR #1 image, and it is the property that transition was evidence of.
 
 ### After every deploy
 
-`scripts/deploy.sh` runs both of these itself and fails on either. By hand:
+`scripts/deploy.sh` gates on `scripts/smoke-prod.sh --tier 0 --tier 1` and fails
+on any assertion in either. The suite is the same one that runs between
+deploys, so the deploy gate and the schedule cannot drift apart:
+
+```sh
+./scripts/smoke-prod.sh --tier 0   # /up on loopback
+./scripts/smoke-prod.sh --tier 1   # /up/ready, the migration head, the loopback API, the public vhost
+./scripts/smoke-prod.sh --tier 2   # every read verb and page, by shape
+```
+
+Each assertion prints `PASS` or `FAIL`, a stable name
+(`tier1.public-vhost-redirects`) and a detail, tab-separated; the name is the
+key and is never renamed. `tier1.migration-head` is `/up/ready`'s `migrations`
+check: it compares the `schema_migrations` head against the last version under
+`db/migrate` in the running image and names both when they differ.
+
+By hand:
 
 ```sh
 # SSO protection has come off a redeploy on sibling apps. Verify, and re-apply

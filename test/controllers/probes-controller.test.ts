@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { getChildProcess, getFs, setEnv, type FsAdapter } from "@blazetrails/ruby-compat";
+import { MigrationContext } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "../models/schema.js";
 import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 import { HealthController } from "../../app/controllers/health-controller.js";
@@ -7,6 +8,16 @@ import { ProbesController } from "../../app/controllers/probes-controller.js";
 import { controllerTestCase } from "../support/controller-test-case.js";
 
 const LOOPBACK = { Host: "127.0.0.1" };
+
+/**
+ * The last two versions under `db/migrate`, read off the file names rather
+ * than asked of `MigrationContext`, which is the thing under test.
+ */
+const [PREVIOUS, HEAD] = getFs()
+  .readdirSync("db/migrate")
+  .map((file) => Number(file.split("_")[0]))
+  .sort((a, b) => a - b)
+  .slice(-2) as [number, number];
 
 async function getJson(
   action: string,
@@ -71,7 +82,14 @@ describe("GET /up/ready", () => {
     expect(status).toBe(200);
     expect(body.status).toBe("ok");
     expect(body.failing).toEqual([]);
-    expect(Object.keys(body.checks)).toEqual(["database", "stories", "checkout", "git_identity"]);
+    expect(Object.keys(body.checks)).toEqual([
+      "database",
+      "stories",
+      "migrations",
+      "checkout",
+      "git_identity",
+    ]);
+    expect(body.checks.migrations).toEqual({ ok: true, expected: HEAD, actual: HEAD });
     expect(body.checks.stories).toEqual({ ok: true, count: 2 });
     expect(body.checks.checkout).toEqual({ ok: true, dir: tasksDir });
   });
@@ -107,6 +125,39 @@ describe("GET /up/ready", () => {
     expect(status).toBe(503);
     expect(body.failing).toEqual(["stories"]);
     expect(body.checks.stories).toEqual({ ok: false, count: 0, error: "the stories table is empty" });
+  });
+
+  // The un-migrated database is a real one: the last migration is rolled back,
+  // not a row deleted, and then run again so the suite ends where it began.
+  it("goes red naming both versions when the last migration did not run", async () => {
+    const context = Story.connectionPool().migrationContext;
+    await context.rollback();
+    try {
+      const { status, body } = await getJson("ready");
+
+      expect(status).toBe(503);
+      expect(body.failing).toEqual(["migrations"]);
+      expect(body.checks.migrations).toEqual({
+        ok: false,
+        expected: HEAD,
+        actual: PREVIOUS,
+        error: `schema_migrations is at ${PREVIOUS}, and db/migrate expects ${HEAD}: a migration did not run`,
+      });
+    } finally {
+      await context.migrate();
+    }
+    expect((await getJson("ready")).status).toBe(200);
+  });
+
+  it("goes red when the database is ahead of the release", async () => {
+    vi.spyOn(MigrationContext.prototype, "currentVersion").mockResolvedValue(HEAD + 1);
+    const { status, body } = await getJson("ready");
+
+    expect(status).toBe(503);
+    expect(body.failing).toEqual(["migrations"]);
+    expect(body.checks.migrations.error).toBe(
+      `schema_migrations is at ${HEAD + 1}, and db/migrate expects ${HEAD}: the database is ahead of this release`,
+    );
   });
 
   it("goes red on an unwritable checkout alone", async () => {

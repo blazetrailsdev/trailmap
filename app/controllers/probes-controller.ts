@@ -45,6 +45,7 @@ export class ProbesController extends ApplicationController {
     const checks: Record<string, Check> = {
       database,
       stories: this.checkStories(database),
+      migrations: await this.check(() => this.checkMigrations()),
       checkout: await this.check(() => this.checkCheckout()),
       git_identity: await this.check(() => this.checkGitIdentity()),
     };
@@ -119,6 +120,53 @@ export class ProbesController extends ApplicationController {
     if (!database.ok) return { ok: false, error: "not counted: the database check failed" };
     const count = Number(database.stories);
     return count > 0 ? { ok: true, count } : { ok: false, count, error: "the stories table is empty" };
+  }
+
+  /**
+   * A deploy replaces the container. If a migration did not run, every page
+   * still renders and every other check here stays green, while the ready
+   * queue ranks over columns that are not what the code expects.
+   *
+   * The head the code expects is READ FROM `db/migrate`, on every request, by
+   * the pool's own `MigrationContext` — the object `trails db migrate` asks
+   * for the same list. It is not baked in at build time, for three reasons:
+   *
+   * - it cannot drift. A generated constant is a second copy of the directory
+   *   and something has to regenerate it; this is the directory.
+   * - it is what Rails does. `ActiveRecord::Migration::CheckPending` asks
+   *   `migration_context.needs_migration?`, which reads the files
+   *   (activerecord/lib/active_record/migration.rb:1241,1317).
+   * - the image ships `db/migrate` already, because the release task runs it.
+   *
+   * The cost is one directory listing per probe, of a directory with a handful
+   * of entries.
+   *
+   * The two heads are compared for EQUALITY rather than asked for pending
+   * versions: this database is also migrated by the tasks CLI
+   * (config/database.ts), so it can be AHEAD of a trailmap that has not been
+   * redeployed, and that is the same wrong-columns failure from the other side.
+   *
+   * It asks `Story`'s pool, so it is the database the queue is read from. The
+   * hub has its own history (`db/hub-migrate`) and its own guard at boot.
+   */
+  private async checkMigrations(): Promise<Check> {
+    const context = Story.connectionPool().migrationContext;
+    const expected = context.migrations.at(-1)?.version ?? null;
+    const actual = (await context.currentVersion()) || null;
+    const versions = { expected, actual };
+    if (expected === null) {
+      return { ok: false, ...versions, error: `no migrations found under ${context.migrationsPaths}` };
+    }
+    if (actual === expected) return { ok: true, ...versions };
+    return {
+      ok: false,
+      ...versions,
+      error:
+        `schema_migrations is at ${actual ?? "no version"}, and db/migrate expects ${expected}: ` +
+        (actual !== null && actual > expected
+          ? "the database is ahead of this release"
+          : "a migration did not run"),
+    };
   }
 
   /**
