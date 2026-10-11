@@ -83,6 +83,16 @@ Trails.application!.routes().draw(function () {
   this.get("stories", { to: "stories#index" });
   this.get("stories/:id", { to: "stories#show" });
 
+  // The parity graphs, ported from ringo's `/graphs/parity`. Two routes, not
+  // one with content negotiation: the page is a static document and the data
+  // is parameterised, so they are not two representations of one resource.
+  // `parity_graphs` is the controller PATH the autoloader keys
+  // `parity-graphs-controller.ts` by, as `read_models` is below — a camelCase
+  // spelling here is a 404 at dispatch. The data route comes FIRST only for
+  // readability; the patterns cannot collide.
+  this.get("graphs/parity/data", { to: "parity_graphs#data" });
+  this.get("graphs/parity", { to: "parity_graphs#show" });
+
   // The read-models ringo consumes whole, replacing the `index.json` and
   // `events.json` it used to unmarshal from disk.
   // `read_models` is the controller PATH the autoloader keys
