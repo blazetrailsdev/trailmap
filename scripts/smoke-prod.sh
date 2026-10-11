@@ -77,7 +77,9 @@ json() {
 
 # page <name> <path> <heading> [<id>] — 200, HTML, inside the layout, with its
 # heading. A show page's heading is its title, which this cannot know, so it
-# is recognised by the id it was asked for appearing in the body instead.
+# is recognised by the id it was asked for, in the element the show views
+# render it in. Anywhere in the body would not do: the not-found view echoes
+# the id too, and a short id turns up in prose and links.
 page() {
   fetch "$LOOPBACK$2"
   if [ "$status" != "200" ]; then
@@ -88,8 +90,8 @@ page() {
     fail "$1" "$2 rendered outside the layout"
   elif ! grep -Eq "<h1[^>]*>$3" "$work/body"; then
     fail "$1" "$2 rendered without its heading" "$2 has no <h1> starting \"$3\""
-  elif [ -n "${4:-}" ] && ! grep -Fq "$4" "$work/body"; then
-    fail "$1" "$2 rendered without naming $4"
+  elif [ -n "${4:-}" ] && ! grep -Fq "<span class=\"id\">$4</span>" "$work/body"; then
+    fail "$1" "$2 rendered without naming $4 as its id"
   else
     pass "$1" "$2 200"
   fi
@@ -262,8 +264,8 @@ healthy() {
   can _rfcs 200 text/html "${html}RFCs</h1>"
   can _backlog 200 text/html "${html}Backlog</h1>"
   can _graphs_parity 200 text/html "${html}Parity over time</h1>"
-  can _story_story-a 200 text/html "${html}A story</h1><code>story-a</code>"
-  can _rfc_rfc-r 200 text/html "${html}An RFC</h1><code>rfc-r</code>"
+  can _story_story-a 200 text/html "${html}A story</h1><span class=\"id\">story-a</span>"
+  can _rfc_rfc-r 200 text/html "${html}An RFC</h1><span class=\"id\">rfc-r</span>"
 }
 
 selfTest() {
@@ -333,7 +335,7 @@ CURL
   expect "a page answering 200 without its heading is caught" 2 1 tier2.page-backlog
 
   healthy
-  can _story_story-a 200 text/html '<main class="site-main"><h1>Not found</h1>'
+  can _story_story-a 200 text/html '<main class="site-main"><h1>Not found</h1><p>No story in the index has the id <code>story-a</code>.</p>'
   expect "a show page answering 200 for something else is caught" 2 1 tier2.page-story
 
   # A PATH holding what the script needs and no jq, rather than a flag the
