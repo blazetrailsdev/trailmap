@@ -249,6 +249,17 @@ dokku sso:protect trailmap   # only if it answered 200
 
 curl -s http://127.0.0.1:8080/up             # expected: {"status":"ok"}
 curl -s http://127.0.0.1:8080/stories/ready  # a guarded endpoint, see below
+
+# Readiness: 200 with every check named, or 503 with `failing` naming the red
+# ones — the database opens, it holds stories, the tasks checkout is writable
+# and git has an identity there. Loopback-only, like the rest of the API.
+curl -s http://127.0.0.1:8080/up/ready | jq
+# The domain itself: a real ready queue, its row count and latency. Expensive
+# by design — for the canary, never for a supervisor, and never in parallel:
+# while it ranks, every other request (`/up/ready` included) waits about its
+# `latency_ms`. They are delayed, not failed, so give a `/up/ready` poller a
+# timeout comfortably above one `deep`.
+curl -s http://127.0.0.1:8080/up/deep | jq
 ```
 
 `/up` is UNGUARDED, so a 200 from it proves only that the listener is up. The
