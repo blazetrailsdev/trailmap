@@ -75,7 +75,9 @@ json() {
   fi
 }
 
-# page <name> <path> <heading> — 200, HTML, inside the layout, with its heading.
+# page <name> <path> <heading> [<id>] — 200, HTML, inside the layout, with its
+# heading. A show page's heading is its title, which this cannot know, so it
+# is recognised by the id it was asked for appearing in the body instead.
 page() {
   fetch "$LOOPBACK$2"
   if [ "$status" != "200" ]; then
@@ -86,6 +88,8 @@ page() {
     fail "$1" "$2 rendered outside the layout"
   elif ! grep -Eq "<h1[^>]*>$3" "$work/body"; then
     fail "$1" "$2 rendered without its heading" "$2 has no <h1> starting \"$3\""
+  elif [ -n "${4:-}" ] && ! grep -Fq "$4" "$work/body"; then
+    fail "$1" "$2 rendered without naming $4"
   else
     pass "$1" "$2 200"
   fi
@@ -104,10 +108,12 @@ tier0() {
 }
 
 tier1() {
-  # deploy.sh gates on this tier and needed no jq before it did. Without the
-  # guard a host missing it fails the migration head with a message about the
-  # probe, which is the wrong thing to go and look at.
-  command -v jq >/dev/null || { fail tier1.jq-installed "jq is not on PATH"; return; }
+  # deploy.sh gates on this tier and needed no jq before it did. Only the
+  # migration head needs it, so a host without one fails that by name and
+  # still runs the four assertions that are a status code — a scheduled run
+  # reports the same five rows either way.
+  local hasJq=1
+  command -v jq >/dev/null || { hasJq=0; fail tier1.jq-installed "jq is not on PATH"; }
   # One request, two assertions: the migration head is the check /up/ready
   # exists for (RFC 0143), so it has a row of its own rather than being one
   # name in a list of failing checks.
@@ -116,9 +122,11 @@ tier1() {
     pass tier1.up-ready "/up/ready 200"
   else
     fail tier1.up-ready "/up/ready answered $status, not 200" \
-      "/up/ready answered $status. Failing checks: $(jq -c '.failing' "$work/body" 2>/dev/null || echo unreadable). $(cat "$work/body")"
+      "/up/ready answered $status. Failing checks: $(jq -c '.failing' "$work/body" 2>/dev/null || echo unreadable). $(cat "$work/body" 2>/dev/null)"
   fi
-  if [ "$(jq -r '.checks.migrations.ok' "$work/body" 2>/dev/null)" = "true" ]; then
+  if [ "$hasJq" = 0 ]; then
+    fail tier1.migration-head "not read: jq is not on PATH"
+  elif [ "$(jq -r '.checks.migrations.ok' "$work/body" 2>/dev/null)" = "true" ]; then
     pass tier1.migration-head "schema_migrations at $(jq -r '.checks.migrations.actual' "$work/body")"
   else
     fail tier1.migration-head \
@@ -158,6 +166,9 @@ tier1() {
   fetch "$PUBLIC_ORIGIN/" "$HOSTNAME_PUBLIC"
   case "$status" in
     30*) pass tier1.public-vhost-redirects "$HOSTNAME_PUBLIC $status" ;;
+    000) fail tier1.public-vhost-redirects "$HOSTNAME_PUBLIC did not answer" \
+      "nothing answered for $HOSTNAME_PUBLIC on ${PUBLIC_ORIGIN#http://}. That is nginx
+  down or not listening, and says nothing about SSO either way." ;;
     *) fail tier1.public-vhost-redirects "$HOSTNAME_PUBLIC answered $status, not 30*" \
       "the public hostname answered $status instead of redirecting to
   auth — the dashboard is being served without SSO. Re-apply with
@@ -191,13 +202,13 @@ tier2() {
 
   if [ -n "$id" ]; then
     json tier2.stories-show "/stories/$id" "$story and .id == \"$id\""
-    page tier2.page-story "/story/$id" ""
+    page tier2.page-story "/story/$id" "" "$id"
   else
     fail tier2.stories-show "no story id to ask for: /stories named none"
     fail tier2.page-story "no story id to ask for: /stories named none"
   fi
   if [ -n "$rfc" ]; then
-    page tier2.page-rfc "/rfc/$rfc" ""
+    page tier2.page-rfc "/rfc/$rfc" "" "$rfc"
   else
     fail tier2.page-rfc "no rfc id to ask for: /index named none"
   fi
@@ -218,7 +229,7 @@ tier2() {
 # expect <label> <tier> <want exit> <name that must FAIL, or "">
 expect() {
   local out status=0
-  out="$(PATH="$fake/bin:$PATH" SMOKE_FAKE="$fake" "$0" --tier "$2" 2>/dev/null)" || status=$?
+  out="$(PATH="$fake/bin:${basePath:-$PATH}" SMOKE_FAKE="$fake" "$0" --tier "$2" 2>/dev/null)" || status=$?
   local failing; failing="$(printf '%s\n' "$out" | awk -F'\t' '$1 == "FAIL" { print $2 }' | paste -sd, -)"
   if [ "$status" != "$3" ] || [ "$failing" != "$4" ]; then
     echo "self-test FAILED: $1 — exit $status (want $3), failing [$failing] (want [$4])" >&2
@@ -233,7 +244,7 @@ expect() {
 can() { printf '%s %s\n' "$2" "$3" >"$fake/$1.head"; printf '%s' "$4" >"$fake/$1.body"; }
 
 healthy() {
-  local s='{"id":"a","rfc":"r","status":"ready","raw_status":"ready","deps":[]}'
+  local s='{"id":"story-a","rfc":"rfc-r","status":"ready","raw_status":"ready","deps":[]}'
   local html='<main class="site-main"><h1 class="page-title">'
   can _up 200 application/json '{"status":"ok"}'
   can _up_ready 200 application/json '{"status":"ok","failing":[],"checks":{"migrations":{"ok":true,"expected":7,"actual":7}}}'
@@ -242,8 +253,8 @@ healthy() {
   can _stories_ready 200 application/json "[$s]"
   can _stories_next-bundle 200 application/json "{\"stories\":[$s],\"bundle_total_loc\":1,\"max_loc\":2}"
   can _stories_touching 200 application/json '[]'
-  can _stories_a 200 application/json "$s"
-  can _index 200 application/json "{\"rfcs\":[{\"id\":\"r\",\"status\":\"active\"}],\"stories\":[$s]}"
+  can _stories_story-a 200 application/json "$s"
+  can _index 200 application/json "{\"rfcs\":[{\"id\":\"rfc-r\",\"status\":\"active\"}],\"stories\":[$s]}"
   can _events 200 application/json '{"events":[{"at":"t","verb":"claim","story":"a"}]}'
   can _graphs_parity_data 200 application/json '{"error":"STATS_DB is not set"}'
   can _ 200 text/html "${html}trailmap</h1>"
@@ -251,8 +262,8 @@ healthy() {
   can _rfcs 200 text/html "${html}RFCs</h1>"
   can _backlog 200 text/html "${html}Backlog</h1>"
   can _graphs_parity 200 text/html "${html}Parity over time</h1>"
-  can _story_a 200 text/html "${html}A story</h1>"
-  can _rfc_r 200 text/html "${html}An RFC</h1>"
+  can _story_story-a 200 text/html "${html}A story</h1><code>story-a</code>"
+  can _rfc_rfc-r 200 text/html "${html}An RFC</h1><code>rfc-r</code>"
 }
 
 selfTest() {
@@ -320,6 +331,23 @@ CURL
   healthy
   can _backlog 200 text/html '<main class="site-main"><h1>Something went wrong</h1>'
   expect "a page answering 200 without its heading is caught" 2 1 tier2.page-backlog
+
+  healthy
+  can _story_story-a 200 text/html '<main class="site-main"><h1>Not found</h1>'
+  expect "a show page answering 200 for something else is caught" 2 1 tier2.page-story
+
+  # A PATH holding what the script needs and no jq, rather than a flag the
+  # script reads: the guard is `command -v`, so that is what has to miss.
+  healthy
+  mkdir -p "$fake/nojq"
+  for tool in bash mktemp rm cat grep; do ln -sf "$(command -v "$tool")" "$fake/nojq/$tool"; done
+  basePath="$fake/nojq"
+  expect "a host without jq fails by name and still runs the status assertions" 1 1 \
+    tier1.jq-installed,tier1.migration-head
+  can public 200 text/html ''
+  expect "a host without jq still names a dashboard served without SSO" 1 1 \
+    tier1.jq-installed,tier1.migration-head,tier1.public-vhost-redirects
+  unset basePath
 
   rm -f "$fake"/*.head "$fake"/*.body
   cat >"$fake/bin/curl" <<'CURL'
