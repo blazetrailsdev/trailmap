@@ -97,6 +97,16 @@ jobs:
       # because it stopped looking.
       - run: ./scripts/check-nginx-sigil.sh --self-test
 
+  # The production smoke suite cannot run here: it asserts against the live
+  # application, whose API binds to loopback on the box. What CI can hold is
+  # that the suite still DETECTS each regression, by name, against a canned
+  # curl — a suite that passes because it stopped looking is worse than none.
+  smoke-prod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/smoke-prod.sh --self-test
+
   boot:
     runs-on: ubuntu-latest
     # The same service as `test`, for a different reason:

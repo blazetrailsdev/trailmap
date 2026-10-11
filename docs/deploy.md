@@ -237,7 +237,34 @@ PR #1 image, and it is the property that transition was evidence of.
 
 ### After every deploy
 
-`scripts/deploy.sh` runs both of these itself and fails on either. By hand:
+`scripts/deploy.sh` gates on `scripts/smoke-prod.sh --tier 0 --tier 1` and fails
+on any assertion in either. The suite is the same one that runs between
+deploys, so the deploy gate and the schedule cannot drift apart:
+
+```sh
+./scripts/smoke-prod.sh --tier 0   # /up on loopback
+./scripts/smoke-prod.sh --tier 1   # /up/ready, the migration head, the loopback API, the public vhost
+./scripts/smoke-prod.sh --tier 2   # every read verb and page, by shape
+```
+
+Each assertion prints `PASS` or `FAIL`, a stable name
+(`tier1.public-vhost-redirects`) and a detail, tab-separated; the name is the
+key and is never renamed. `tier1.migration-head` is `/up/ready`'s `migrations`
+check: it compares the `schema_migrations` head against the last version under
+`db/migrate` in the running image and names both when they differ.
+
+**A database that is AHEAD fails the deploy too, and that is intended.** The
+tasks CLI migrates the same `tasks.db`, so the head can move without a trailmap
+release. The release just deployed is then reading columns it was not written
+for, which is the failure the check exists to catch, and a deploy that reports
+success over it would be the silent case again. The message says which side is
+behind ("the database is ahead of this release"); the fix is to deploy a
+trailmap that carries the migration, not to re-run the deploy.
+
+Tiers 1 and 2 need `jq` on the box. A host without it fails
+`tier1.jq-installed` by name rather than a probe assertion.
+
+By hand:
 
 ```sh
 # SSO protection has come off a redeploy on sibling apps. Verify, and re-apply

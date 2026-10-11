@@ -95,42 +95,20 @@ fi
 # The two audiences of the one listener, checked separately, because each has
 # failed on its own: SSO has come off a redeploy on sibling apps, and the JSON
 # API has been 404ed by forwarding headers added in front of it.
-upStatus=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/up || true)
-[ "$upStatus" = "200" ] ||
-  fail "the loopback listener answered $upStatus for /up, not 200. The app is
-  not reachable on 127.0.0.1:8080 at all; see the loopback block in
-  nginx.conf.sigil."
-
-# /up is UNGUARDED, so a 200 there says nothing about the thing that has
-# actually broken twice: nginx setting X-Forwarded-* in front of the loopback
-# block, which `requireLoopback` treats as disqualifying and answers 404 to.
-# Only a guarded endpoint can prove that, so one is asked for by name.
-apiStatus=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/stories/ready || true)
-[ "$apiStatus" != "404" ] ||
-  fail "the loopback API answered 404 for /stories/ready. That is
-  requireLoopback refusing the request because it arrived carrying proxy
-  provenance — nginx is setting X-Forwarded-For or X-Forwarded-Proto in front
-  of the loopback \`server\` block; see nginx.conf.sigil."
-[ "$apiStatus" = "200" ] ||
-  fail "/stories/ready answered $apiStatus, not 200. It is past
-  requireLoopback — a 404 would mean it was not — but the endpoint is not
-  serving. A 500 is the release without its database: check
-  \`dokku storage:report $APP\` for the tasks checkout mount and
-  \`dokku config:show $APP\` for TASKS_DATABASE and TASKS_DIR; see
-  docs/deploy.md."
-
-publicStatus=$(curl -s -o /dev/null -w '%{http_code}' \
-  -H "Host: $HOSTNAME_PUBLIC" http://127.0.0.1/ || true)
-case "$publicStatus" in
-  30*) ;;
-  *) fail "the public hostname answered $publicStatus instead of redirecting to
-  auth — the dashboard is being served without SSO. Re-apply with
-  \`dokku sso:protect $APP\` and find out why the injection did not run." ;;
-esac
+#
+# Those assertions live in smoke-prod.sh now, as tiers 0 and 1, so that they
+# also run between deploys (RFC 0143). The gate here is "tiers 0 and 1 pass":
+# /up on loopback, /up/ready and its migration head, /stories/ready answering
+# 200 rather than requireLoopback's 404, and the public vhost answering 30*.
+# Each failure is printed there by name with what to do about it.
+smoke="$(TRAILMAP_HOSTNAME="$HOSTNAME_PUBLIC" "$(dirname "$0")/smoke-prod.sh" --tier 0 --tier 1)" ||
+  fail "the release is running and did not pass the smoke suite:
+$smoke"
+echo "$smoke"
 
 # The box is the only machine with a btwhooks checkout, so it is the only place
 # the vendored ringo snapshot can be checked for staleness (CI cannot see
 # btwhooks at all). A warning, never a failure: bumping the pin is its own PR.
 (cd "$(dirname "$0")/.." && pnpm ringo:pin) || true
 
-echo "==> deployed: $before -> $after; /up 200, /stories/ready $apiStatus, public vhost $publicStatus."
+echo "==> deployed: $before -> $after; smoke tiers 0 and 1 pass."
