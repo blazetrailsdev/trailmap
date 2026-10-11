@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { getChildProcess, getFs, setEnv } from "@blazetrails/ruby-compat";
+import { getChildProcess, getFs, setEnv, type FsAdapter } from "@blazetrails/ruby-compat";
 import { migrateScratchDatabase } from "../models/schema.js";
 import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 import { HealthController } from "../../app/controllers/health-controller.js";
@@ -52,6 +52,7 @@ beforeAll(async () => {
 afterEach(() => {
   vi.restoreAllMocks();
   setEnv("TASKS_DIR", tasksDir);
+  setEnv("TASKS_DATABASE", undefined);
 });
 
 afterAll(() => {
@@ -88,6 +89,17 @@ describe("GET /up/ready", () => {
     expect(body.checks.git_identity.ok).toBe(true);
   });
 
+  // The pool keeps the file open, so the query still succeeds after the file
+  // is moved aside; only the path can show it. Seen live, not inferred.
+  it("goes red when the database file has been moved aside, though queries still answer", async () => {
+    setEnv("TASKS_DATABASE", `${tasksDir}/.git/moved-aside.db`);
+    const { status, body } = await getJson("ready");
+
+    expect(status).toBe(503);
+    expect(body.failing).toEqual(["database", "stories"]);
+    expect(body.checks.database.error).toMatch(/moved-aside\.db is gone/);
+  });
+
   it("goes red on an empty stories table alone", async () => {
     vi.spyOn(Story, "count").mockResolvedValue(0);
     const { status, body } = await getJson("ready");
@@ -118,16 +130,85 @@ describe("GET /up/ready", () => {
     expect(getFs().readdirSync(tasksDir)).toEqual([".git"]);
   });
 
+  // `user.useConfigOnly` is what makes this deterministic: without it git
+  // guesses an address from the hostname, and whether that guess is acceptable
+  // depends on the machine running the suite.
+  function anonymousCheckout(): string {
+    const dir = checkout();
+    dirs.push(dir);
+    git(dir, "config", "--unset", "user.email");
+    git(dir, "config", "user.useConfigOnly", "true");
+    return dir;
+  }
+
   it("goes red on a missing git identity alone", async () => {
-    const anonymous = checkout();
-    dirs.push(anonymous);
-    git(anonymous, "config", "--unset", "user.email");
-    setEnv("TASKS_DIR", anonymous);
+    setEnv("TASKS_DIR", anonymousCheckout());
     const { status, body } = await getJson("ready");
 
     expect(status).toBe(503);
     expect(body.failing).toEqual(["git_identity"]);
-    expect(body.checks.git_identity.error).toBe(`git has no user.email in ${anonymous}`);
+    expect(body.checks.git_identity.error).toMatch(/^GIT_AUTHOR_IDENT: .*no email was given/s);
+  });
+
+  it("accepts an identity the environment supplies, as a commit would", async () => {
+    setEnv("TASKS_DIR", anonymousCheckout());
+    setEnv("GIT_AUTHOR_EMAIL", "author@example.test");
+    setEnv("GIT_COMMITTER_EMAIL", "committer@example.test");
+    try {
+      const { status, body } = await getJson("ready");
+
+      expect(status).toBe(200);
+      expect(body.checks.git_identity).toEqual({ ok: true });
+    } finally {
+      setEnv("GIT_AUTHOR_EMAIL", undefined);
+      setEnv("GIT_COMMITTER_EMAIL", undefined);
+    }
+  });
+
+  it("names the committer when only the author has an identity", async () => {
+    setEnv("TASKS_DIR", anonymousCheckout());
+    setEnv("GIT_AUTHOR_EMAIL", "author@example.test");
+    try {
+      const { body } = await getJson("ready");
+
+      expect(body.failing).toEqual(["git_identity"]);
+      expect(body.checks.git_identity.error).toMatch(/^GIT_COMMITTER_IDENT: /);
+    } finally {
+      setEnv("GIT_AUTHOR_EMAIL", undefined);
+    }
+  });
+
+  it("reads a checkout whose path the shell would split or expand", async () => {
+    const awkward = getFs().mkdtempSync!("/tmp/trailmap probes $HOME 'q' ");
+    dirs.push(awkward);
+    git(awkward, "init", "--quiet");
+    git(awkward, "config", "user.name", "Probe");
+    git(awkward, "config", "user.email", "probe@example.test");
+    setEnv("TASKS_DIR", awkward);
+    const { status, body } = await getJson("ready");
+
+    expect(status).toBe(200);
+    expect(body.checks.checkout.dir).toBe(awkward);
+  });
+
+  it("names the leftover when the probe directory cannot be removed", async () => {
+    vi.spyOn(getFs() as Required<FsAdapter>, "rmdir").mockRejectedValue(new Error("EBUSY: resource busy"));
+    const { status, body } = await getJson("ready");
+
+    expect(status).toBe(503);
+    expect(body.failing).toEqual(["checkout"]);
+    expect(body.checks.checkout.error).toMatch(/^left .*\.up-ready-\w+ behind: EBUSY/);
+  });
+
+  it("names the check that raised rather than answering a bare 500", async () => {
+    vi.spyOn(getFs() as Required<FsAdapter>, "mkdtemp").mockImplementation(() => {
+      throw new Error("adapter exploded");
+    });
+    const { status, body } = await getJson("ready");
+
+    expect(status).toBe(503);
+    expect(body.failing).toEqual(["checkout"]);
+    expect(body.checks.checkout.error).toBe("adapter exploded");
   });
 
   it("names both checkout checks when no checkout is configured", async () => {
