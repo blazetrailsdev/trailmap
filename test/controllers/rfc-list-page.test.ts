@@ -156,7 +156,7 @@ describe("RfcPagesController#index", () => {
   // The page counts statuses; it has no use for the records. Loading them is
   // what made every tab take a second against 11,000 stories.
   it("counts stories without instantiating them", async () => {
-    const built = vi.spyOn(Story, "_instantiate");
+    const built = vi.spyOn(Story, "_loadFromSql");
     try {
       await index("closed");
       expect(built).not.toHaveBeenCalled();

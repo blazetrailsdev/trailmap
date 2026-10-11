@@ -189,7 +189,7 @@ describe("StoryPagesController#index", () => {
   // The page ranks from four plucked columns and loads records only for the
   // rows it draws. Loading every story was two and a half seconds a request.
   it("builds a record for each row it shows and for no other story", async () => {
-    const built = vi.spyOn(Story, "_instantiate");
+    const built = vi.spyOn(Story, "_loadFromSql");
     try {
       const { body } = await index("blocked");
       const rows = body.split('class="item-row"').length - 1;

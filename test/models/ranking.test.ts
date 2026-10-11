@@ -124,7 +124,7 @@ describe("Story.rankingOutline", () => {
 
   it("builds no Story", async () => {
     await seed("one", "0136-trailmap", "ready");
-    const built = vi.spyOn(Story, "_instantiate");
+    const built = vi.spyOn(Story, "_loadFromSql");
     try {
       await Story.rankingOutline();
       expect(built).not.toHaveBeenCalled();
