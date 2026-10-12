@@ -19,6 +19,7 @@ import {
   sidebarSection,
   storyStateLabel,
   text,
+  trailmapStoryPill,
 } from "../../scripts/page-extract.js";
 
 /**
@@ -188,6 +189,26 @@ describe("extractRingoStory / extractTrailmapStory", () => {
 
   it("does not read a dep out of the story's own document", () => {
     expect(extractTrailmapStory(trailmapStory).rfcDeps).toEqual(["0002-y"]);
+  });
+});
+
+describe("trailmapStoryPill", () => {
+  // The fold `extractTrailmapStory` applies is what the snapshot gate cannot
+  // see through; this is the same pill before it.
+  it("reads the status unfolded, where the folded fact says only Open", () => {
+    const pill = trailmapStoryPill(trailmapStory);
+
+    expect(pill).not.toBe("");
+    expect(pill).not.toBe("Open");
+    expect(storyStateLabel(pill)).toBe(extractTrailmapStory(trailmapStory).status);
+  });
+
+  it("tells apart two statuses the fold makes equal", () => {
+    const page = (status: string) => `<span class="state s-${status}">${status}</span>`;
+
+    expect(trailmapStoryPill(page("ready"))).toBe("ready");
+    expect(trailmapStoryPill(page("in-progress"))).toBe("in-progress");
+    expect(trailmapStoryPill("<p>no pill</p>")).toBe("");
   });
 });
 
