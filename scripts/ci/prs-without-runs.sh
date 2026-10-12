@@ -14,9 +14,13 @@ set -euo pipefail
 : "${REPO:?REPO is not set}"
 cutoff="$(date -u -d "${MINUTES:-10} minutes ago" +%Y-%m-%dT%H:%M:%SZ)"
 
-# The head commit's date as well as the PR's: a push restarts the wait.
+# The head commit's date as well as the PR's: a push restarts the wait. Drafts
+# count, because CI runs on them. A fork's PR does not: this token cannot
+# comment on it. Saying it ONCE is the caller's job (pr-watchdog.yml greps the
+# PR's comments for its marker before posting).
 gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" \
-  --jq '.[] | "\(.number) \(.head.sha) \(.created_at)"' |
+  --jq '.[] | select(.head.repo.full_name == .base.repo.full_name)
+        | "\(.number) \(.head.sha) \(.created_at)"' |
 while read -r number sha created; do
   [[ "$created" < "$cutoff" ]] || continue
   pushed="$(gh api "repos/$REPO/commits/$sha" --jq '.commit.committer.date')"

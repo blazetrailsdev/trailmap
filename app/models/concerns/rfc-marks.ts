@@ -42,6 +42,12 @@ function spawnSource(detail: string | null): string {
   }
 }
 
+/** The UTC day, as ringo's `rfcMarkDay` (rfcmarks.go:304): `at` carries offsets. */
+function utcDay(at: string): string {
+  const ms = Date.parse(at);
+  return Number.isNaN(ms) ? at.slice(0, 10) : new Date(ms).toISOString().slice(0, 10);
+}
+
 /** `events` in the order they happened. */
 export function collectRfcMarks(
   known: ReadonlySet<string>,
@@ -63,11 +69,13 @@ export function collectRfcMarks(
     if (rfc === null || !known.has(rfc)) continue;
     if (e.verb === "new") {
       bump(running, rfc);
-      const day = e.at.slice(0, 10);
+      const day = utcDay(e.at);
       if (!firstDay.has(rfc)) firstDay.set(rfc, day);
       if (firstDay.get(rfc) === day) bump(firstBurst, rfc);
     } else if (e.verb === "spawn" && !e.storyId) {
       const source = spawnSource(e.detail);
+      // A spawn with no readable source IS counted, as in ringo
+      // (rfcmarks.go:254): only the RFC-refine paths spawn against an RFC.
       if (source !== "" && !REFINE_SOURCES.includes(source)) continue;
       const marks = refines.get(rfc) ?? [];
       const count = running.get(rfc) ?? 0;

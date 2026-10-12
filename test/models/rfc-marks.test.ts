@@ -51,6 +51,24 @@ describe("collectRfcMarks", () => {
     );
   });
 
+  it("groups the first burst by UTC day, whatever offset the event carries", () => {
+    const marks = collectRfcMarks(known, storyRfc, [
+      event("2026-09-01T23:30:00-04:00", "new", "c", "r2"),
+      event("2026-09-02T01:00:00Z", "new", "d", "r2"),
+    ]);
+
+    expect(marks.get("r2")![0]!.count).toBe(2);
+  });
+
+  it("counts an RFC-scoped spawn whose source cannot be read as a refinement", () => {
+    const marks = collectRfcMarks(known, storyRfc, [
+      event("2026-09-02T10:00:00Z", "spawn", null, "r1"),
+      { ...event("2026-09-03T10:00:00Z", "spawn", null, "r1"), detail: "not json" },
+    ]);
+
+    expect(marks.get("r1")!.at(-1)).toMatchObject({ kind: "refine", count: 3, reps: 2 });
+  });
+
   it("ignores a spawn for a story, and an RFC-scoped one that is not a refinement", () => {
     const marks = collectRfcMarks(known, storyRfc, [
       event("2026-09-02T10:00:00Z", "spawn", "a", "r1", "rfc-refine"),

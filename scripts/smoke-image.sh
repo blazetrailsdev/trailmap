@@ -66,6 +66,10 @@ fail() {
 
 echo "smoke-image: GET /up"
 curl -fsS "http://127.0.0.1:$port/up" | grep -q '"status":"ok"' || fail "/up is not green"
+# Under the deployed hostname too: Vite, which production no longer mounts,
+# answered 403 to a Host it had not been told about (vite.config.ts).
+curl -fsS -H 'Host: trailmap.deanoftech.com' "http://127.0.0.1:$port/up" >/dev/null ||
+  fail "/up refused the deployed Host"
 
 # The stylesheet the page links, from the runtime stage's own public/.
 echo "smoke-image: GET /rfcs and its stylesheet"
@@ -82,5 +86,9 @@ echo "smoke-image: docker stop is a clean exit, not a kill"
 started=$SECONDS
 docker stop -t 30 "$name" >/dev/null
 [ $((SECONDS - started)) -lt 15 ] || fail "the container ignored SIGTERM for $((SECONDS - started))s"
+# 143 is 128 + SIGTERM: the server ended ON the signal it was sent, which is
+# what the framework's handler does today. 137 is the kill this guards against.
+code="$(docker inspect -f '{{.State.ExitCode}}' "$name")"
+case "$code" in 0|143) ;; *) fail "the stopped container exited $code, not 0 or 143" ;; esac
 
 echo "smoke-image: ok"

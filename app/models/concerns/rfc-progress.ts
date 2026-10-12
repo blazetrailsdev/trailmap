@@ -135,7 +135,9 @@ export function rfcStoryCounts(statuses: readonly (string | null)[]): RfcStoryCo
  * flight, with drafts or blocked stories still waiting. ringo labels it
  * "needs refine" by asking its spawn trigger (`stalledActiveRFCs`,
  * `webhook/rfcautorefine.go`); the fact is one about the story set, so here it
- * is counted from the statuses. What the loop then does about it — its
+ * is counted from the statuses. Like ringo's count (rfcautorefine.go:78) a
+ * `ready` story is ready whatever its deps: a story waiting on a dep is not
+ * work a refinement would create. What the loop then does about it — its
  * cooldown, the RFC it never refines — stays the loop's.
  */
 export function rfcStalled(rfcStatus: string | null, statuses: readonly (string | null)[]): boolean {

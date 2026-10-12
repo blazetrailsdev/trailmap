@@ -22,7 +22,9 @@
  * `action_controller.set_helpers_path` and the `helper(":all")` it triggers;
  * vitest cannot boot the application (scripts/app-helpers-probe.ts says why,
  * and proves the booted half), so the suite defines the same methods through
- * the same public `helper`, in its block form.
+ * the same public `helper`, in its block form. A deliberate, temporary stand-in:
+ * trails story `controller-tests-cannot-reach-app-helpers-without-booting`
+ * (RFC 0142) tracks deleting it.
  *
  * Request headers go on the request before the call, as rack env keys, which
  * is where the framework's own tests put them: `headers` here is the
