@@ -5,26 +5,18 @@
  * structs that parsed those files are reused verbatim against these responses.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { Request, Response } from "@blazetrails/actionpack";
 import { migrateScratchDatabase } from "../models/schema.js";
 import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 import { ReadModelsController } from "../../app/controllers/read-models-controller.js";
+import { controllerTestCase } from "../support/controller-test-case.js";
 
 async function get(
   action: string,
   headers: Record<string, string> = {},
 ): Promise<{ status: number; body: any }> {
-  const request = new Request({
-    REQUEST_METHOD: "GET",
-    PATH_INFO: `/${action}`,
-    HTTP_HOST: "127.0.0.1",
-    ...Object.fromEntries(
-      Object.entries(headers).map(([k, v]) => [`HTTP_${k.toUpperCase().replace(/-/g, "_")}`, v]),
-    ),
-  });
-  const response = new Response();
-  await new ReadModelsController().dispatch(action, request, response);
-  return { status: response.status, body: JSON.parse(String(response.body)) };
+  const tc = await controllerTestCase(ReadModelsController, { Host: "127.0.0.1", ...headers });
+  await tc.get(action);
+  return { status: tc.response.status, body: JSON.parse(tc.response.body) };
 }
 
 beforeAll(async () => {

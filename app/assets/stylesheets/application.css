@@ -343,6 +343,7 @@ ul { margin: 0 0 10px 20px; }
 .tag.prog, .tag.next, .tag.queue { color: var(--accent); border-color: var(--accent); }
 .tag.prio { color: var(--fg); font-variant-numeric: tabular-nums; }
 .tag.icebox { background: var(--surface); }
+.tag.stalled { color: var(--yellow); border-color: var(--yellow); }
 .row-aside { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
 /*
@@ -356,14 +357,19 @@ ul { margin: 0 0 10px 20px; }
  * the row can spare up to ringo's 400px: full size on a wide screen, and on a
  * narrow one every bar shrinks together and stays in proportion. `min-width`
  * on the track is what lets it shrink at all -- a flex item will not go below
- * its content otherwise. ringo's history ticks over the bar are left out: they
- * are a cache over its event stream, which is not in this database.
+ * its content otherwise. The history ticks sit on the track at the same
+ * percentage scale: the origin in full ink, each refinement fainter.
  * The segment hues come from the same variables as `.badge.s-*`, so the bar
  * and the badges cannot disagree about what a status looks like.
  */
 .sbarwrap { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
 .sbarcap { font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 62px; }
-.sbartrack { display: block; flex: 1; min-width: 0; max-width: 400px; }
+.sbartrack { display: block; flex: 1; min-width: 0; max-width: 400px; position: relative; }
+.sbartrack .tick {
+  position: absolute; top: 50%; width: 2px; height: 16px; border-radius: 1px;
+  transform: translate(-50%, -50%); background: var(--fg);
+}
+.sbartrack .tick.refine { height: 12px; background: var(--muted); opacity: 0.65; }
 .sbar {
   display: flex; height: 6px; border-radius: 999px; overflow: hidden;
   min-width: 26px; max-width: 100%; box-sizing: border-box;
@@ -491,6 +497,44 @@ ul { margin: 0 0 10px 20px; }
 .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 .card-title { font-weight: 600; }
 .field-note, .field-status { color: var(--muted); font-size: 12px; }
+
+/* The queue, the relayed questions and the usage bars -- ringo's own rules,
+   on the shell's tokens. */
+.btn-red { background: var(--red); border-color: transparent; color: #fff; }
+.queued { color: var(--yellow); font-size: 12px; }
+.queued-row { padding: 5px 16px 5px 40px; font-size: 12px; border-top: 1px solid var(--border); background: var(--surface); }
+.ask-panel { border-left: 3px solid var(--purple); }
+.ask-q { padding: 12px 0; border-top: 1px solid var(--border); }
+.ask-q:first-child { border-top: none; padding-top: 0; }
+.ask-who { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.ask-text { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.ask-hdr { font-size: 11px; text-transform: uppercase; color: var(--purple); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-right: 6px; }
+.ask-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ask-opt { border: 1px solid var(--border); background: var(--surface); color: var(--fg); border-radius: 6px; padding: 5px 11px; font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.ask-opt:hover { border-color: var(--purple); }
+.ask-opt:disabled { opacity: 0.6; cursor: default; }
+.ask-opt .d { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; max-width: 320px; }
+.ask-free { display: flex; gap: 6px; }
+.ask-free input { flex: 1; }
+.usage-bar + .usage-bar { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; }
+.usage-bar.stale { opacity: 0.7; }
+.usage-bar.stale .bar-fill { background: var(--muted); }
+.usage-head { display: flex; align-items: baseline; justify-content: space-between; }
+.usage-agent { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); font-weight: 600; }
+.usage-meta, .usage-col-label, .usage-extra, .bar-label { font-size: 12px; color: var(--muted); }
+.usage-cols { display: flex; gap: 16px; }
+.usage-col { flex: 1; min-width: 0; }
+.usage-cols + .usage-col { margin-top: 8px; }
+.bar-container { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; height: 16px; position: relative; margin: 5px 0 3px; }
+.bar-container.week { margin-top: 18px; }
+.bar-fill { height: 100%; border-radius: 4px; }
+.bar-fill.green { background: var(--green); }
+.bar-fill.yellow { background: var(--yellow); }
+.bar-fill.red { background: var(--red); }
+.bar-marker { position: absolute; top: 0; height: 100%; width: 2px; background: var(--fg); opacity: 0.7; }
+.day-marker { position: absolute; top: 0; height: 100%; width: 1px; background: var(--border); }
+.day-marker span { position: absolute; top: -15px; font-size: 9px; color: var(--muted); transform: translateX(-50%); }
+.bar-label { display: flex; justify-content: space-between; }
 
 /*
  * The CI-fixer card carries the fixer's yellow left edge -- and a RED one while

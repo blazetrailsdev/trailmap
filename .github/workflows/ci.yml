@@ -145,6 +145,19 @@ jobs:
           node-version-file: .node-version
       - run: ./scripts/smoke-boot.sh
 
+  # THE IMAGE. `boot` proves the checkout starts; the deploy runs the image, and
+  # a broken Dockerfile step, a file `.dockerignore` kept out of the context or
+  # a runtime stage missing what the build stage had passes every other job.
+  # The script brings its own Postgres and network, so there is no service here.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image from this commit
+        run: docker build -t trailmap:ci .
+      - name: The built image migrates, serves /up and its stylesheet, and stops cleanly
+        run: ./scripts/smoke-image.sh trailmap:ci
+
   # scripts/dashboard-e2e.ts, in the Chrome the runner image carries.
   dashboard-e2e:
     runs-on: ubuntu-latest

@@ -15,13 +15,21 @@ import {
   activeFixers,
   anyFailedSpawn,
   broadcastButtons,
+  askCards,
+  askSummary,
+  claudeUsage,
+  codexUsage,
   controlOutcome,
   controlRequest,
+  drainStatus,
   fixerCards,
   fixerSummary,
   mainCIByRepo,
   mainCITitle,
+  pokeButton,
   prRow,
+  queueCard,
+  redPanes,
   reconnectDelay,
   pullFailLabel,
   pullFailTitle,
@@ -31,6 +39,7 @@ import {
   reviewersByKey,
   sectionId,
   spawnRow,
+  strandedAgents,
   visibleSpawns,
 } from "./fleet-format.js";
 
@@ -75,6 +84,8 @@ let fixers = [];
 let reviewers = null;
 /** The last envelope, so a reviewer answer can repaint without waiting for a frame. */
 let lastEnvelope = null;
+/** The notifications ringo's usage gate is holding, from the usage poll. */
+let queue = [];
 
 function renderCIFixer(list) {
   const panel = byId("ciFixerPanel");
@@ -106,7 +117,7 @@ function renderRepoSections(prs, spawns) {
     byId(id + "-spawnsSection").style.display = section.spawns.length ? "" : "none";
     byId(id + "-spawns").innerHTML = section.spawns.map((s) => spawnRow(s, fixers)).join("");
     byId(id + "-prs").innerHTML = section.prs.length
-      ? section.prs.map((pr) => prRow(pr, fixers, Date.now(), reviewers)).join("")
+      ? section.prs.map((pr) => prRow(pr, fixers, Date.now(), reviewers, queue)).join("")
       : '<div class="list-empty">No open PRs.</div>';
   });
 
@@ -202,6 +213,16 @@ function paint(envelope) {
   fixers = envelope.fixers || [];
   renderCIFixer(fixers);
   renderRepoSections(prs, visibleSpawns(prs, envelope.spawns || []));
+
+  // A button that is mid-request keeps what it says until it is reset.
+  const poke = pokeButton(redPanes(prs, envelope.spawns, reviewers));
+  const pokeBtn = byId("pokeBtn");
+  pokeBtn.style.display = poke.hidden ? "none" : "";
+  pokeBtn.dataset.panes = poke.panes;
+  if (!pokeBtn.disabled) pokeBtn.textContent = poke.label;
+  const stranded = strandedAgents(reviewers);
+  byId("drainCodexField").style.display = stranded.codex ? "" : "none";
+  byId("drainClaudeField").style.display = stranded.claude ? "" : "none";
 
   setDot("tmuxDot", !!envelope.tmuxConnected);
   byId("tmuxPill").classList.toggle("ok", !!envelope.tmuxConnected);
@@ -317,38 +338,8 @@ async function pollReviewers() {
 let nextReviewer = "";
 let audiences = {};
 
-async function readRingo(path) {
-  try {
-    const response = await fetch(readPath + path, { credentials: "same-origin" });
-    return response.ok ? await response.json() : null;
-  } catch {
-    return null;
-  }
-}
-
-async function pollBroadcast() {
-  audiences = (await readRingo("/broadcast/targets")) || audiences;
-  const shown = broadcastButtons(audiences);
-  byId("bcastAll").textContent = shown.all.text;
-  byId("bcastAll").classList.toggle("dim", shown.all.dim);
-  byId("bcastCIRed").textContent = shown.ciRed.text;
-  byId("bcastCIRed").style.display = shown.ciRed.hidden ? "none" : "";
-}
-
-async function pollReviewerConfig() {
-  nextReviewer = ((await readRingo("/reviewer/config")) || {}).next_reviewer || nextReviewer;
-}
-
-const REFRESH = { reviewers: pollReviewers, broadcast: pollBroadcast };
-
-function pollAll() {
-  pollReviewers();
-  pollReviewerConfig();
-  pollBroadcast();
-}
-
-pollAll();
-setInterval(pollAll, REVIEWERS_POLL_MS);
+pollReviewers();
+setInterval(pollReviewers, REVIEWERS_POLL_MS);
 
 // Enter sends to everyone; with Ctrl or Cmd, to the CI-red audience.
 byId("bcastMsg").addEventListener("keydown", (event) => {
@@ -357,6 +348,125 @@ byId("bcastMsg").addEventListener("keydown", (event) => {
   event.preventDefault();
   byId(event.metaKey || event.ctrlKey ? "bcastCIRed" : "bcastAll").click();
 });
+
+// ---------------------------------------------------------------------------
+// Usage and relayed questions -- polled, as ringo's own page fetches them.
+// ---------------------------------------------------------------------------
+
+/** By name, so a control that changed what one reports can re-run it. */
+const polls = {};
+
+function poll(name, everyMs, onAnswer, onFailure = () => {}) {
+  let inFlight = false;
+  polls[name] = async () => {
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      const signal = AbortSignal.timeout(everyMs);
+      const response = await fetch(readPath + "/" + name, { credentials: "same-origin", signal });
+      if (response.ok) onAnswer(await response.json());
+      else onFailure();
+    } catch {
+      onFailure();
+    } finally {
+      inFlight = false;
+    }
+  };
+  polls[name]();
+  setInterval(polls[name], everyMs);
+}
+
+// The reviewer list answers to a control's `refresh` by the same name.
+polls.reviewers = pollReviewers;
+poll("reviewer-config", REVIEWERS_POLL_MS, (cfg) => {
+  nextReviewer = cfg.next_reviewer || nextReviewer;
+});
+poll("broadcast-targets", REVIEWERS_POLL_MS, (counts) => {
+  audiences = counts;
+  const shown = broadcastButtons(audiences);
+  byId("bcastAll").textContent = shown.all.text;
+  byId("bcastAll").classList.toggle("dim", shown.all.dim);
+  byId("bcastCIRed").textContent = shown.ciRed.text;
+  byId("bcastCIRed").style.display = shown.ciRed.hidden ? "none" : "";
+});
+
+function showUsage(id, html, stale) {
+  byId("usageGroup").style.display = "";
+  const block = byId(id);
+  block.style.display = "";
+  block.classList.toggle("stale", stale);
+  block.innerHTML = html;
+}
+
+/*
+ * A failed poll marks what is already drawn stale, so old numbers do not pass
+ * for current ones. A block that has never been drawn stays hidden: ringo
+ * shows an empty Codex shell there, but the only thing to put in it would be
+ * a statement about Codex, and what failed was the relay.
+ */
+const usageStale = (id) => () => byId(id).classList.add("stale");
+
+poll("usage", 60_000, (u) => {
+  showUsage("usageBar", claudeUsage(u), !!u.stale);
+  queue = u.queue || [];
+  byId("queueSection").style.display = queue.length ? "" : "none";
+  byId("queueSection").innerHTML = queueCard(queue);
+  if (lastEnvelope) paint(lastEnvelope);
+}, usageStale("usageBar"));
+
+poll("codex-usage", 60_000, (u) => showUsage("codexUsageBar", codexUsage(u), !!u.stale), usageStale("codexUsageBar"));
+
+// Redrawn only when the questions CHANGE: a repaint erases a half-typed answer.
+let asksShown = "";
+poll("asks", 5_000, (answer) => {
+  const pending = answer.pending || [];
+  byId("askPanel").style.display = pending.length ? "" : "none";
+  if (asksShown === JSON.stringify(pending)) return;
+  asksShown = JSON.stringify(pending);
+  byId("askSummary").textContent = askSummary(pending);
+  byId("askBody").innerHTML = askCards(pending);
+});
+
+// Enter in a free-text answer is its Send button.
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && event.target instanceof Element && event.target.matches(".ask-free input")) {
+    event.target.nextElementSibling.click();
+  }
+});
+
+/*
+ * A drain is a gh round trip and a pane teardown per reviewer, so minutes; ten
+ * of them is a drain that is not going to say it has finished.
+ */
+const DRAIN_POLLS_MAX = 600;
+
+/** A reviewer drain runs in ringo's background; this follows its progress. */
+async function followDrain(request, result) {
+  const status = byId(request.statusId);
+  if (!result.ok) {
+    status.textContent = "error" in result ? "error" : "failed";
+    return;
+  }
+  try {
+    let d = JSON.parse(result.text);
+    for (let polled = 0; ; polled++) {
+      status.textContent = drainStatus(d);
+      if (!d.running) break;
+      if (polled === DRAIN_POLLS_MAX) {
+        status.textContent += " (stopped watching)";
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const signal = AbortSignal.timeout(REVIEWERS_POLL_MS);
+      const response = await fetch(readPath + "/" + request.poll, { credentials: "same-origin", signal });
+      if (!response.ok) break;
+      d = await response.json();
+    }
+    pollReviewers();
+  } catch {
+    status.textContent = "error";
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Manual spawn -- the one control this page carries, and the reason the repo
@@ -389,16 +499,17 @@ byId("spawn").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// The controls -- merge, dismiss, clear failed, respawn fixer, the `+` buttons
-// and broadcast. One listener for all of them: the rows are redrawn on every
-// frame, so a listener bound to a button would be bound to a node that is gone
-// a second later.
+// Controls -- every button with a `data-action`. One listener for all of them:
+// the rows are redrawn on every frame, so a listener bound to a button would
+// be bound to a node that is gone a second later.
 // ---------------------------------------------------------------------------
 
 document.addEventListener("click", async (event) => {
   const button = event.target instanceof Element ? event.target.closest("button[data-action]") : null;
   if (!button || button.disabled) return;
-  const request = controlRequest(button.dataset.action, button.dataset, {
+  // A free-text answer is whatever is in the input beside its button.
+  const data = button.dataset.free ? { ...button.dataset, answer: button.previousElementSibling.value } : button.dataset;
+  const request = controlRequest(button.dataset.action, data, {
     nextReviewer,
     audiences,
     message: byId("bcastMsg").value,
@@ -432,16 +543,23 @@ document.addEventListener("click", async (event) => {
     result = { error: e.message };
   }
 
+  if (request.statusId) {
+    await followDrain(request, result);
+    button.disabled = false;
+    return;
+  }
+
   // Everything the button does next is decided in `controlOutcome`, where it
   // is tested; this only applies it.
   const outcome = controlOutcome(request, result, label);
+  // A beat first: ringo has answered, but its next status is what is wanted.
+  if (outcome.refresh) setTimeout(polls[outcome.refresh], 1000);
   button.disabled = outcome.disabled;
   if (outcome.text !== undefined) button.textContent = outcome.text;
   if (outcome.title !== undefined) button.title = outcome.title;
   if (outcome.alert) window.alert(outcome.alert);
   if (outcome.note !== undefined) byId("bcastNote").textContent = outcome.note;
   if (outcome.clearMessage) byId("bcastMsg").value = "";
-  if (outcome.refresh) REFRESH[outcome.refresh]();
   if (outcome.resetAfterMs) {
     setTimeout(() => {
       button.disabled = false;

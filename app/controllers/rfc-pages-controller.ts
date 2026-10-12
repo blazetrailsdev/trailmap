@@ -1,11 +1,13 @@
 import type { SafeBuffer } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.js";
-import { Rfc, Story } from "../models/index.js";
+import { Event, Rfc, Story } from "../models/index.js";
+import { collectRfcMarks, markTitle, type MarkEvent } from "../models/concerns/rfc-marks.js";
 import { readDocument } from "../models/concerns/document.js";
 import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
 import {
   orderRfcsForIndex,
   orderStoriesForRfc,
+  rfcStalled,
   rfcStoryCounts,
   rfcTerminal,
   storyBarLength,
@@ -57,6 +59,10 @@ export interface RfcRow {
   bar: StatusCount[];
   /** How long the bar is drawn: its story count against every RFC's. */
   barLength: StoryBarLength;
+  /** Active, with nothing ready or in flight: `rfcStalled`. */
+  stalled: boolean;
+  /** The bar's history, as positions along its track. */
+  ticks: { kind: string; pct: number; title: string }[];
   storyTotal: number;
   /** Days since the RFC was written, or null when it is terminal or undated. */
   openDays: number | null;
@@ -92,12 +98,10 @@ export class RfcPagesController extends ApplicationController {
    * needs JavaScript to change what the page shows is exactly the client-side
    * assembly this story removes.
    *
-   * Left behind, for the same reason the show page left ringo's action
-   * buttons: the "needs refine" flag and the bar's history ticks. Both are
-   * ringo's own local state — the stall rule belongs to the spawn trigger and
-   * the ticks are a cache over its event stream — and neither is in this
-   * database. The bar's LENGTH is not one of those: it is a function of the
-   * story counts alone, so it is here (`storyBarLength`).
+   * The two signals the port first left behind are here, each from this
+   * database: "needs refine" is `rfcStalled`, a count of the RFC's statuses,
+   * and the bar's history ticks are `collectRfcMarks`, over the `events`
+   * table. What stays ringo's is the refine BUTTON, a dispatch.
    *
    * The counts are the show page's: `rfcStoryCounts` decides done/total here
    * and there, so an RFC cannot report 12/20 on one page and 12/21 on the
@@ -107,15 +111,21 @@ export class RfcPagesController extends ApplicationController {
     // Two columns, not the records: every figure on this page is a count of
     // statuses, and building 11,000 `Story` objects to read one field from
     // each was the whole second this page took.
-    const [rfcs, statuses] = await Promise.all([
+    const [rfcs, statuses, history] = await Promise.all([
       Rfc.all().toArray(),
-      Story.pluck("rfc_id", "status"),
+      Story.pluck("rfc_id", "status", "id"),
+      // The two verbs the ticks are reconstructed from, oldest first.
+      Event.where({ verb: ["new", "spawn"] })
+        .order({ at: "asc", id: "asc" })
+        .pluck("at", "verb", "story_id", "rfc_id", "detail"),
     ]);
 
     const byRfc = new Map<string, (string | null)[]>();
+    const storyRfc = new Map<string, string>();
     for (const row of statuses) {
       if (!Array.isArray(row)) continue;
-      const [rfcId, status] = row;
+      const [rfcId, status, id] = row;
+      storyRfc.set(String(id), String(rfcId));
       const bucket = byRfc.get(String(rfcId));
       const value = status == null ? null : String(status);
       if (bucket) bucket.push(value);
@@ -131,6 +141,16 @@ export class RfcPagesController extends ApplicationController {
 
     // Over every RFC, not the tab's: the scale must not move when the tab does.
     const barScale = storyBarScale(rfcs.map((rfc) => byRfc.get(rfc.id)?.length ?? 0));
+    const events = history.filter(Array.isArray).map(
+      ([at, verb, storyId, rfcId, detail]): MarkEvent => ({
+        at: String(at),
+        verb: String(verb),
+        storyId: storyId == null ? null : String(storyId),
+        rfcId: rfcId == null ? null : String(rfcId),
+        detail: detail == null ? null : String(detail),
+      }),
+    );
+    const marks = collectRfcMarks(new Set(rfcs.map((rfc) => rfc.id)), storyRfc, events);
 
     const requested = String(this.params.get("status") ?? "");
     const filter = RFC_STATUS_TABS.includes(requested) ? requested : "active";
@@ -149,6 +169,7 @@ export class RfcPagesController extends ApplicationController {
         })),
         rows: shown.map((rfc): RfcRow => {
           const own = byRfc.get(rfc.id) ?? [];
+          const barLength = storyBarLength(own.length, barScale);
           return {
             id: rfc.id,
             title: rfc.title ?? rfc.id,
@@ -158,7 +179,17 @@ export class RfcPagesController extends ApplicationController {
             clusters: rfc.clusters,
             counts: rfcStoryCounts(own),
             bar: storyStatusCounts(own, rfc.status),
-            barLength: storyBarLength(own.length, barScale),
+            barLength,
+            stalled: rfcStalled(rfc.status, own),
+            // A tick at the bar's own end says nothing and smears the tip.
+            ticks: (marks.get(rfc.id) ?? [])
+              .filter((mark) => mark.count > 0)
+              .map((mark) => ({
+                kind: mark.kind,
+                pct: storyBarLength(mark.count, barScale).pct,
+                title: markTitle(mark),
+              }))
+              .filter((tick) => Math.abs(tick.pct - barLength.pct) >= 0.5),
             storyTotal: own.length,
             openDays: rfcTerminal(rfc.status) ? null : daysSince(rfc.created_on),
           };

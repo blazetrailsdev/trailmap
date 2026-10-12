@@ -16,7 +16,7 @@
 # NO `--database` flag. The unflagged command registers both configurations
 # and migrates both; `--database hub` loads the task domain's SQLite schema
 # into Postgres (docs/deploy.md).
-release: node_modules/.bin/tsx node_modules/@blazetrails/trailties/bin/trails.js db migrate
+release: bin/trails db migrate
 
 # `web` is declared even though the Dockerfile's CMD says the same thing, and
 # the duplication is deliberate. A Procfile takes precedence over CMD for the
@@ -24,4 +24,4 @@ release: node_modules/.bin/tsx node_modules/@blazetrails/trailties/bin/trails.js
 # Procfile declares no `web` has "the process count for every process type set
 # to zero" under `ps:scale --clear`. Naming it here costs one line and removes
 # the question entirely. Keep it in step with the Dockerfile.
-web: node_modules/.bin/tsx node_modules/@blazetrails/trailties/bin/trails.js server -b 0.0.0.0 -p 8080
+web: bin/trails server -b 0.0.0.0 -p 8080

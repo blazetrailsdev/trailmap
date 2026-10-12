@@ -79,10 +79,8 @@ dokku postgres:link trailmap-hub trailmap --alias HUB_DATABASE   # → HUB_DATAB
 # Then the schema and the seed rows, IN THE APP CONTAINER — see "Migrating the
 # hub" below for why it cannot be run from a host checkout. NO `--database hub`.
 # After this first time, deploys migrate the hub themselves (Procfile release).
-dokku run trailmap node_modules/.bin/tsx \
-  node_modules/@blazetrails/trailties/bin/trails.js db migrate
-dokku run trailmap node_modules/.bin/tsx \
-  node_modules/@blazetrails/trailties/bin/trails.js db seed
+dokku run trailmap bin/trails db migrate
+dokku run trailmap bin/trails db seed
 ```
 
 `HUB_DATABASE_URL` is as NOT optional as `TASKS_DATABASE`:
@@ -127,8 +125,7 @@ deployment-tasks page names it for migrations.
 To run it by hand — the first deploy, or a repair:
 
 ```sh
-dokku run trailmap node_modules/.bin/tsx \
-  node_modules/@blazetrails/trailties/bin/trails.js db migrate   # both databases
+dokku run trailmap bin/trails db migrate   # both databases
 ```
 
 **Not `pnpm db:migrate`, and not from a host checkout.** Both halves of the
@@ -366,12 +363,38 @@ curl -s http://127.0.0.1:8080/stories/ready  # a guarded endpoint, see below
 # and git has an identity there. Loopback-only, like the rest of the API.
 curl -s http://127.0.0.1:8080/up/ready | jq
 # The domain itself: a real ready queue, its row count and latency. Expensive
-# by design — for the canary, never for a supervisor, and never in parallel:
-# while it ranks, every other request (`/up/ready` included) waits about its
-# `latency_ms`. They are delayed, not failed, so give a `/up/ready` poller a
-# timeout comfortably above one `deep`.
+# by design — for the canary, never for a supervisor. While it ranks, every
+# other request (`/up/ready` included) waits about its `latency_ms`; they are
+# delayed, not failed, so give a `/up/ready` poller a timeout above one `deep`.
+# Overlapping calls share one ranking, and past 5s it answers 503 — see below.
 curl -s http://127.0.0.1:8080/up/deep | jq
 ```
+
+### What bounds `/up/deep`
+
+Measured on 2026-10-12 against the live database (12,682 stories, 144 in the
+queue): one ranking takes 0.7s warm and 1.1–1.3s cold, of which about 0.53s is
+one query, loading every story as a record, and 0.1s is the other five. A
+timer started beside it did not fire once: SQLite is synchronous here, so the
+ranking's `await`s never return to the event loop.
+
+- **One ranking at a time.** A `deep` that arrives while one is in flight
+  awaits that run and answers with its result. Eight overlapping canaries used
+  to hold `/up/ready` for 8.4s; they now cost one ranking.
+- **A 5s bound** (`ProbesController.deepTimeoutMs`): about four times the
+  slowest ranking measured, and SQLite's busy timeout, so a locked database
+  and a slow ranking are red at the same moment. Past it `deep` answers 503
+  with `"error": "timeout: the ready queue took longer than 5000ms"`.
+- **What the bound cannot do** is interrupt the ranking. Nothing in the
+  process runs while it does, the timer included, so a ranking that takes 8s
+  is answered at 8s — red, and naming the timeout, but late. A caller that
+  must not wait sets its own `curl -m`.
+
+The ranking does NOT yield between its six queries, and that was decided
+rather than left: three quarters of the time is the single story load, so
+yielding between queries would still stall everything for half a second at a
+stretch. The cheaper ranking is the one `/backlog` already uses, from plucked columns
+(`Story.rankingOutline`, 0.1s for the same six queries).
 
 `/up` is UNGUARDED, so a 200 from it proves only that the listener is up. The
 thing that has broken twice is `requireLoopback` refusing a request that
@@ -459,9 +482,5 @@ kill -9 "$(docker inspect -f '{{.State.Pid}}' "$(docker ps -q --filter name=trai
   (ES2025); on Node 20 and 22 it throws a `SyntaxError` at import. `ARG
   NODE_VERSION` in the `Dockerfile`, `.node-version` and CI all say the same
   version.
-- **Vite's allowed hosts.** `trails server` mounts the Vite dev server in front
-  of Rack even in the container, and Vite answers 403 to any `Host` it was not
-  told about. The deployed hostname is listed in `vite.config.ts`; a new
-  hostname has to be added there or the deploy fails its healthcheck.
 - **Run as uid 1000.** A commit written as root leaves root-owned objects in
   the bind-mounted tasks checkout that the host's agents cannot then rewrite.

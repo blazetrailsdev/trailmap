@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { migrateScratchDatabase } from "../models/schema.js";
-import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
+import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
 import { controllerTestCase } from "../support/controller-test-case.js";
@@ -163,5 +163,24 @@ describe("RfcPagesController#index", () => {
     } finally {
       built.mockRestore();
     }
+  });
+
+  // Zeta is created inside the test so the fixtures above keep their counts.
+  it("flags a stalled RFC and ticks its bar where a refinement found it", async () => {
+    await Story.create({ id: "zeta-draft", rfc_id: "0200-zeta", status: "draft" });
+    await Story.create({ id: "zeta-later", rfc_id: "0200-zeta", status: "draft" });
+    await Event.create({
+      at: "2026-09-02T10:00:00Z",
+      verb: "spawn",
+      rfc_id: "0200-zeta",
+      detail: '{"source":"rfc-refine"}',
+    });
+    await Event.create({ at: "2026-09-03T10:00:00Z", verb: "new", story_id: "zeta-later" });
+    const { body } = await index();
+    const row = (id: string) => body.split('<div class="item-row">').find((r) => r.includes(`/rfc/${id}"`))!;
+
+    expect(row("0200-zeta")).toContain(">needs refine</span>");
+    expect(row("0200-zeta")).toMatch(/class="tick refine" style="left:[\d.]+%" title="1 story at refinement on 2026-09-02"/);
+    expect(row("0136-trailmap")).not.toContain("needs refine");
   });
 });

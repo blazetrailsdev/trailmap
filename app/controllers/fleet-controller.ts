@@ -126,14 +126,21 @@ export class FleetController extends ApplicationController {
     await this.relayRead("reviewer/list");
   }
 
-  /** `GET /fleet/read/*path`: one of ringo's `FLEET_READS`, relayed the same way. */
+  /**
+   * The page's other reads -- usage, relayed questions, a reviewer drain's
+   * progress -- by the names in `FLEET_READS`, on the same terms as
+   * `reviewers`. `agent` is the one query any of them takes, and only
+   * `drain-status` takes it (`/reviewer/drain-status?agent=codex`); it is
+   * forwarded there alone, and only as a bare word.
+   */
   async read(): Promise<void> {
-    const path = String(this.params.get("path") ?? "");
-    if (!FLEET_READS.includes(path)) {
+    const name = String(this.params.get("name") ?? "");
+    if (!Object.hasOwn(FLEET_READS, name)) {
       await this.render({ plain: "Not a fleet read", status: 404 });
       return;
     }
-    await this.relayRead(path);
+    const agent = String(this.params.get("agent") ?? "");
+    await this.relayRead(FLEET_READS[name] + (name === "drain-status" && /^[a-z]+$/.test(agent) ? `?agent=${agent}` : ""));
   }
 
   private async relayRead(path: string): Promise<void> {

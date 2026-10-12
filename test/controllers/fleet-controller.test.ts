@@ -58,14 +58,14 @@ beforeAll(async () => {
         body,
       });
       const url = new URL(req.url ?? "/", "http://ringo");
-      if (url.pathname === "/broadcast/targets") {
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ all: 3, "ci-red": 1 }));
-        return;
-      }
       if (url.pathname === "/reviewer/list") {
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify(REVIEWERS));
+        return;
+      }
+      if (url.pathname === "/usage-status" || url.pathname === "/reviewer/drain-status") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ asked: url.pathname + url.search }));
         return;
       }
       if (url.pathname === "/reviewer-down/reviewer/list") {
@@ -296,22 +296,33 @@ async function reviewers() {
   return tc.response;
 }
 
+async function read(name: string, params: Record<string, string> = {}) {
+  const tc = await controllerTestCase(FleetController);
+  await tc.get("read", { params: { name, ...params } });
+  return tc.response;
+}
+
 describe("FleetController#read", () => {
-  async function read(path: string) {
-    const tc = await controllerTestCase(FleetController);
-    await tc.get("read", { params: { path } });
-    return tc.response;
-  }
-
-  it("relays a listed read as JSON, and refuses any other path without calling ringo", async () => {
+  it("relays a listed read from the ringo path it names, never cached", async () => {
     setEnv("RINGO_BASE", ringoBaseUrl);
+    const response = await read("usage");
+    expect(JSON.parse(response.body)).toEqual({ asked: "/usage-status" });
+    expect(response.getHeader("Cache-Control")).toContain("no-store");
+  });
 
-    const response = await read("broadcast/targets");
-    expect(response.status).toBe(200);
-    expect(JSON.parse(response.body)).toEqual({ all: 3, "ci-red": 1 });
+  it("forwards the agent a drain's status is asked for, and only as a bare word", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    const asked = async (agent: string) => JSON.parse((await read("drain-status", { agent })).body).asked;
+    expect(await asked("codex")).toBe("/reviewer/drain-status?agent=codex");
+    expect(await asked("codex&x=1")).toBe("/reviewer/drain-status");
+    expect(JSON.parse((await read("usage", { agent: "codex" })).body).asked).toBe("/usage-status");
+  });
 
+  it("refuses a read the page has no use for, without calling ringo", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
     expect((await read("spawnloop/config")).status).toBe(404);
-    expect(received.map((r) => r.url)).toEqual(["/broadcast/targets"]);
+    expect((await read("constructor")).status).toBe(404);
+    expect(received).toEqual([]);
   });
 });
 

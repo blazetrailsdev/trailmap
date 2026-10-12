@@ -63,6 +63,7 @@ beforeAll(async () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  ProbesController.deepTimeoutMs = 5_000;
   setEnv("TASKS_DIR", tasksDir);
   setEnv("TASKS_DATABASE", undefined);
 });
@@ -299,6 +300,57 @@ describe("GET /up/deep", () => {
 
     expect(status).toBe(503);
     expect(body).toEqual({ status: "down", error: "no such table: stories" });
+  });
+
+  it("answers 503 naming the timeout when the queue outruns its bound", async () => {
+    let settle!: (error: Error) => void;
+    vi.spyOn(Story, "rankingIndex").mockReturnValue(new Promise((_, reject) => (settle = reject)));
+    ProbesController.deepTimeoutMs = 20;
+    const { status, body } = await getJson("deep");
+    // The run outlives its caller, and holds the slot until it settles.
+    settle(new Error("abandoned"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(status).toBe(503);
+    expect(body).toEqual({
+      status: "down",
+      error: "timeout: the ready queue took longer than 20ms",
+    });
+  });
+
+  it("answers 503 when a ranking that never yielded finished past the bound", async () => {
+    // Synchronous, as SQLite is here: no timer can fire until it returns.
+    const original = Story.claimable.bind(Story);
+    vi.spyOn(Story, "claimable").mockImplementation(async (opts) => {
+      const until = performance.now() + 30;
+      while (performance.now() < until);
+      return original(opts);
+    });
+    ProbesController.deepTimeoutMs = 10;
+    const { status, body } = await getJson("deep");
+
+    expect(status).toBe(503);
+    expect(body.error).toMatch(/^timeout: /);
+  });
+
+  it("shares one ranking between overlapping requests", async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const original = Story.rankingIndex.bind(Story);
+    const ranking = vi.spyOn(Story, "rankingIndex").mockImplementation(async () => {
+      await held;
+      return original();
+    });
+    const both = Promise.all([getJson("deep"), getJson("deep")]);
+    // Both requests are parked on the one run before it is let go.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    release();
+
+    for (const { status, body } of await both) {
+      expect(status).toBe(200);
+      expect(body.ready.rows).toBe(1);
+    }
+    expect(ranking).toHaveBeenCalledTimes(1);
   });
 
   it("is a 404 from the public hostname", async () => {

@@ -18,6 +18,14 @@
  * a test has no route there, and gets a route set of its own with one
  * catch-all, so nothing a test needs is ever drawn into the application's.
  *
+ * `app/helpers` is handed over here too. At boot that is
+ * `action_controller.set_helpers_path` and the `helper(":all")` it triggers;
+ * vitest cannot boot the application (scripts/app-helpers-probe.ts says why,
+ * and proves the booted half), so the suite defines the same methods through
+ * the same public `helper`, in its block form. A deliberate, temporary stand-in:
+ * trails story `controller-tests-cannot-reach-app-helpers-without-booting`
+ * (RFC 0142) tracks deleting it.
+ *
  * Request headers go on the request before the call, as rack env keys, which
  * is where the framework's own tests put them: `headers` here is the
  * convenience of writing `Host` instead of `HTTP_HOST`.
@@ -26,6 +34,12 @@ import { ActionController, RouteSet } from "@blazetrails/actionpack";
 import { Trails } from "@blazetrails/trailties";
 import "../../config/application.js";
 import "../../config/routes.js";
+import { ApplicationController } from "../../app/controllers/application-controller.js";
+import { ApplicationHelper } from "../../app/helpers/application-helper.js";
+
+ApplicationController.helper(function (this: object, mod?: object) {
+  Object.assign(mod ?? this, ApplicationHelper);
+});
 
 type Controller = Parameters<typeof ActionController.TestCase.tests>[0] & {
   name: string;

@@ -72,6 +72,20 @@ The controls trailmap will forward are an allowlist, `FLEET_CONTROLS` in
 `config/fleet.ts`: a path is added there when a button for it is added to the
 page.
 
+## Usage, the queue and relayed questions
+
+ringo's page fetches these beside the stream, so this one does too, through
+`GET /fleet/read/<name>` (`FleetController#read`). `<name>` is a key of
+`FLEET_READS` in `config/fleet.ts`, never a ringo path: `usage` and
+`codex-usage` every minute, `asks` every five seconds, `drain-status` while a
+reviewer drain runs. The relay is the reviewer list's, timeout and all.
+
+- Not ported: ringo's pause button and its usage-scraper pill.
+- The queue is `queue` in the usage answer, drawn under each PR row.
+- "Agents waiting on you" renders text a MODEL wrote, so every string in
+  `askCards` goes through `esc`. It repaints only when the questions change,
+  so the poll does not erase an answer half typed.
+
 ## The initial paint
 
 The page paints empty and fills in on the first SSE frame, as ringo's does.

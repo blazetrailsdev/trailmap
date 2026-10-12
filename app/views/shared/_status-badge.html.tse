@@ -52,12 +52,7 @@
   ringo renders `s-unknown` for a dep whose RFC is missing
   (`webhook/story.go:551,684`), and a null column reaches here the same way.
 
-  The status normalisation below sits in the template because `app/helpers` is
-  inert in the vendored trails: a controller's `_helpers` never reached the
-  view's scope chain. That was filed from here and is fixed upstream in
-  trails#7558; trailmap still pins `7cece02d`, so it lands here with the pin
-  bump — `bump-vendored-trails-for-testcase-request-bodies` (RFC 0136), which
-  moves this line onto `ApplicationHelper`. The partial stays either way.
+  The normalisation is `statusWord` (`app/helpers/application-helper.ts`).
 %>
-<% const shown = String(status ?? "").trim() || "unknown"; %>
+<% const shown = statusWord(status); %>
 <span class="badge s-<%= shown %>"><%= shown %></span>
