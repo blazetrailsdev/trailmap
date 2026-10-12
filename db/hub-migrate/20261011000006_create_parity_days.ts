@@ -5,11 +5,16 @@ import { Migration } from "@blazetrails/activerecord";
  *
  * A PROJECTION, not a source of truth. The source is the stats database the
  * nightly stats-sync cron fills — a 7 GB SQLite file on the host — and this
- * table is the ~7k-row rollup of it that `/graphs/parity` actually reads:
- * 180,999 raw rows across five tables collapse to one row per (metric,
- * package, day), a 26× shrink. Everything here can be rebuilt from the stats
- * database by `ParityDay.refreshFromStats()`, so a lost row is a refresh away
- * rather than a loss.
+ * table is the rollup of it that `/graphs/parity` actually reads: 180,999 raw
+ * rows across five tables collapse to 14,137 here, one per (metric, package,
+ * day), a 12.9× shrink. Not 26×, which counted distinct (day, package) per
+ * TABLE: four of the eight metrics read `test_compare_stats`, so those rows
+ * are projected once per metric.
+ *
+ * Everything here can be rebuilt from the stats database by
+ * `ParityDay.refreshFromStats()`, which REPLACES each metric's rows rather
+ * than merging into them — so a lost row is a refresh away, and so is a stale
+ * one.
  *
  * The rollup used to run per request, as a window function over that SQLite
  * file: ~930 ms for a three-metric page load, and it only worked where the

@@ -71,10 +71,21 @@ export class ParityDay extends Hub {
    * Rebuild the projection from the stats database.
    *
    * Reads through `CompareRun.dailyRollup` — the window-function Relation that
-   * already produces one row per (package, day) — and writes with `upsertAll`
-   * on the `(metric, package, day)` unique index, so a re-run corrects rows
-   * rather than duplicating them. Upsert rather than insert-what-is-missing
-   * because a day's last merged PR changes when a later PR lands that day.
+   * already produces one row per (package, day) — and replaces that metric's
+   * rows with what it produced, inside ONE TRANSACTION per metric.
+   *
+   * Replace rather than upsert-only, and that is the difference between this
+   * being a rebuild and merely an update. `dailyRollup` is asked for every day
+   * with no `since`, so what it returns IS the complete answer for that
+   * metric; anything else under that metric is an orphan — a package that
+   * stopped being compared, or a day whose rows moved when a PR's merge commit
+   * was reassigned. An upsert leaves those behind forever, including under
+   * `--force`, so "everything here can be rebuilt" would have been false.
+   *
+   * Per metric and in a transaction so a reader never sees a half-replaced
+   * run: Postgres holds the old rows visible until the swap commits, and a
+   * failure part-way leaves that metric exactly as it was rather than mixing
+   * two rollups.
    *
    * The caller is responsible for holding the refresh lock; see the controller.
    */
@@ -113,11 +124,15 @@ export class ParityDay extends Hub {
         };
       });
 
-      for (let i = 0; i < records.length; i += BATCH) {
-        await ParityDay.upsertAll(records.slice(i, i + BATCH), {
-          uniqueBy: ["metric", "package", "day"],
-        });
-      }
+      await ParityDay.transaction(async () => {
+        await ParityDay.where({ metric: metric.key }).deleteAll();
+        // In batches even inside the swap: 2,380 rows for the biggest run
+        // today, but one statement carrying every row is a parameter count
+        // nobody should rely on staying under the limit.
+        for (let i = 0; i < records.length; i += BATCH) {
+          await ParityDay.insertAll(records.slice(i, i + BATCH));
+        }
+      });
       metrics += 1;
       rows += records.length;
     }

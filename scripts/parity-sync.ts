@@ -16,7 +16,12 @@ import { argv, exit } from "@blazetrails/ruby-compat";
 import { Hub } from "../app/models/hub.js";
 import { Stats } from "../app/models/stats.js";
 import { loadHubSchemas, loadStatsSchemas, ParityDay } from "../app/models/index.js";
-import { hasHubDatabase, hasStatsDatabase, hubDatabaseConfig, statsDatabaseConfig } from "../config/database.js";
+import {
+  hasHubDatabase,
+  hasStatsDatabase,
+  hubDatabaseConfig,
+  statsDatabaseConfig,
+} from "../config/database.js";
 import { projectionIsStale, refreshProjectionIfStale } from "../app/models/parity-refresh.js";
 
 const force = argv.includes("--force");
