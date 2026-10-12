@@ -152,18 +152,23 @@ describe("StoriesController", () => {
   // The queue and the serializer read the SAME snapshot: scanning the join
   // tables twice per request is what `rankingIndex` exists to avoid.
   it("loads one ranking index per request", async () => {
-    const rankingIndex = vi.spyOn(Story, "rankingIndex");
+    // The outline is what every snapshot on these paths is built over, so it
+    // counts them — and the index of every record is never asked for.
+    const outline = vi.spyOn(Story, "rankingOutline");
+    const everyRecord = vi.spyOn(Story, "rankingIndex");
 
     await getJson("ready");
-    expect(rankingIndex).toHaveBeenCalledTimes(1);
+    expect(outline).toHaveBeenCalledTimes(1);
 
     // next-bundle is the one that asks the models twice — for the bundle and
     // then for why it was empty — and both reads share the one snapshot.
-    rankingIndex.mockClear();
+    outline.mockClear();
     await getJson("nextBundle", { params: { "max-loc": "5" } });
-    expect(rankingIndex).toHaveBeenCalledTimes(1);
+    expect(outline).toHaveBeenCalledTimes(1);
+    expect(everyRecord).not.toHaveBeenCalled();
 
-    rankingIndex.mockRestore();
+    outline.mockRestore();
+    everyRecord.mockRestore();
   });
 
   it("answers JSON to a client that sends no Accept header", async () => {

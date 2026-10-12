@@ -19,6 +19,8 @@ import {
   summarizeBundle,
 } from "../../app/models/concerns/ranking.js";
 
+import { serializeStories } from "../../app/serializers/story-json.js";
+
 // The RFC auto-close rule reports on stdout; the assertions read rows.
 vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -128,6 +130,52 @@ describe("Story.rankingOutline", () => {
     try {
       await Story.rankingOutline();
       expect(built).not.toHaveBeenCalled();
+    } finally {
+      built.mockRestore();
+    }
+  });
+});
+
+// The JSON read endpoints. Each has to answer exactly as the index of records
+// does, which is what "byte-identical" rests on, without building it.
+describe("Story.claimableIndex", () => {
+  it("answers the queue and the bundle as the index of records does, from the claimable records alone", async () => {
+    await seed("lead", "0136-trailmap", "ready", { cluster: "c1", est_loc: 50, priority: 1 });
+    await seed("mate", "0136-trailmap", "ready", { cluster: "c1", est_loc: 100 });
+    await seed("base", "0136-trailmap", "in-progress", { cluster: "c1", est_loc: 10 });
+    await seed("held", "0136-trailmap", "ready", { cluster: "c1", est_loc: 20 });
+    await StoryDep.create({ story_id: "held", depends_on_id: "base" });
+    await seed("under-draft", "0002-draft", "ready", { cluster: "c1", est_loc: 30 });
+
+    const [full, index] = [await Story.rankingIndex(), await Story.claimableIndex()];
+    const attrs = (stories: Story[]) => stories.map((s) => s.attributes);
+
+    expect(attrs(await Story.claimable({ index }))).toEqual(attrs(await Story.claimable({ index: full })));
+    expect(attrs(await Story.nextBundle({ index, maxLoc: 700 }))).toEqual(
+      attrs(await Story.nextBundle({ index: full, maxLoc: 700 })),
+    );
+    expect(index.stories.map((s) => s.id)).toEqual(full.stories.map((s) => s.id));
+    expect(index.stories.filter((s) => s instanceof Story).map((s) => s.id)).toEqual(["lead", "mate"]);
+  });
+});
+
+describe("Story.rankingRows", () => {
+  it("serializes every story as the index of records does, and builds no Story", async () => {
+    await seed("full", "0136-trailmap", "claimed", {
+      title: "T", cluster: "c1", est_loc: 50, priority: 1, pr: "trailmap#7", assignee: "a",
+      claim_at: "2026-09-01T00:00:00Z", updated_on: "2026-09-01", file_path: "rfcs/x.md",
+    });
+    await seed("bare", "0002-draft", "ready");
+    await StoryPath.create({ story_id: "full", path: "app/x.ts" });
+    const full = await Story.rankingIndex();
+    const built = vi.spyOn(Story, "_loadFromSql");
+    try {
+      const rows = await Story.rankingRows();
+
+      expect(built).not.toHaveBeenCalled();
+      expect(JSON.stringify(serializeStories(rows.stories, rows))).toBe(
+        JSON.stringify(serializeStories(full.stories, full)),
+      );
     } finally {
       built.mockRestore();
     }
