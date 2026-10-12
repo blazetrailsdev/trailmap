@@ -14,7 +14,16 @@ import { refreshProjectionIfStale } from "../models/parity-refresh.js";
  */
 const MAX_PACKAGES = 8;
 
-/** A `?days=` window, as the lower bound the rollup wants. `all` means none. */
+/**
+ * A `?days=` window, as the lower bound the rollup wants. `all` means none.
+ *
+ * `?days=abc`, `0` and `-5` are all "no bound", silently — which is ringo's
+ * own behaviour, not an oversight: `paritySince` (webhook/parity.go) returns
+ * the empty string for `strconv.Atoi` failing or `n <= 0`. Checked rather than
+ * assumed, because the page's default window is 90 days while the endpoint's
+ * is `all`, and a reader meeting that for the first time reasonably suspects a
+ * divergence.
+ */
 function sinceFor(days: string | undefined): string | undefined {
   if (!days || days === "all") return undefined;
   const n = Number(days);
@@ -107,6 +116,18 @@ export class ParityGraphsController extends ApplicationController {
    * The response shape is ringo's, field for field, so the vendored drawing
    * code needs no adaptation and scripts/gate-ringo-parity.ts can diff the two
    * endpoints directly.
+   *
+   * That includes the STATUS: every error below renders `{ error }` with a
+   * 200, which is ringo's `fail` closure exactly — it writes the JSON and
+   * never calls `WriteHeader` (webhook/parity.go). A 400 would read better in
+   * isolation and would be a divergence from the wire contract the vendored
+   * `parity-draw.js` is written against, which checks the `error` key rather
+   * than `response.ok`. The gate diffs bodies and would not catch it.
+   *
+   * The snake_case keys — `metrics_selected`, `gaps_by_metric`,
+   * `unknown_packages`, `max_packages` — are that same contract and are the
+   * one place in this repository where CLAUDE.md's camelCase rule does not
+   * apply: they are ringo's JSON field names, read by ringo's own code.
    */
   async data(): Promise<void> {
     // NO `STATS_DB` CHECK. The page serves from `parity_days`, which is the
