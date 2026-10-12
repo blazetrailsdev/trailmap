@@ -87,9 +87,9 @@ export function rfcStateLabel(status: string): string {
  * in-progress all onto "Open". Comparing in ringo's vocabulary therefore
  * cannot catch a ready/in-progress mix-up — but comparing in trailmap's
  * cannot be done at all, because ringo's page never printed the raw status to
- * extract. The story list on the RFC page is where the fine-grained status is
- * checked: ringo prints the bare status there (`<span class="badge s-...">`),
- * so nothing is left unproven by this coarser pill.
+ * extract. The story list on the RFC page is where ringo did print the bare
+ * status (`<span class="badge s-...">`), and {@link trailmapStoryPill} is how
+ * the snapshot gate holds the story page to it.
  */
 export function storyStateLabel(status: string): string {
   switch (status) {
@@ -175,6 +175,20 @@ export function extractTrailmapStory(html: string): StoryPageFacts {
     // whose link is to /rfc/<id>, which is exactly what this picks out.
     rfcDeps: hrefIds(rows, "rfc"),
   };
+}
+
+/**
+ * The status trailmap's story pill wears, UNFOLDED — the class is the value,
+ * as it is for a row badge ({@link badgeStatuses}).
+ *
+ * {@link extractTrailmapStory} folds this through {@link storyStateLabel} to
+ * meet ringo's recording, and the fold hides a move between `ready`, `draft`,
+ * `claimed` and `in-progress`. The snapshot gate reads it raw as well and
+ * holds it against the badge the parent RFC's recorded row wears for the same
+ * story, which ringo did print unfolded.
+ */
+export function trailmapStoryPill(html: string): string {
+  return /class="state s-([a-z-]+)"/.exec(html)?.[1] ?? "";
 }
 
 /**

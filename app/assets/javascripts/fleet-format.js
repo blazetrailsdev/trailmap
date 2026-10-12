@@ -135,6 +135,43 @@ export function reviewersByKey(list) {
 }
 
 /**
+ * What a settled reviewer poll does to the page's state. `result` is
+ * `{ ok, status, body }` for an answered request -- `body` the parsed JSON of
+ * a 2xx, the text of anything else -- and `{ error }` for one that never got
+ * an answer, a timeout included. `previous` is the last outcome, starting
+ * from `{ reviewers: null, ok: true }`.
+ *
+ * Returns `{ reviewers, ok, warn? }`:
+ *
+ * - `reviewers` is replaced only by an ARRAY. Every failure keeps the last
+ *   answer, which before the first success is `null`: unanswered, and
+ *   `reviewerLine` draws nothing for it. An answered-but-empty list is `{}`,
+ *   the only thing that produces the "nobody is reviewing this" dash.
+ * - `warn` is the reason, present on the poll that FAILED AFTER A SUCCESS and
+ *   on no other, so a relay that stays down is reported once rather than every
+ *   thirty seconds, and a recovery re-arms it.
+ */
+export function reviewersPollOutcome(result, previous) {
+  let reason;
+  if ("error" in result) {
+    reason = result.error;
+  } else if (!result.ok) {
+    reason = (result.status + " " + String(result.body ?? "")).trim();
+  } else {
+    // `reviewersByKey` refuses a body that is not an array, by name, so a
+    // ringo answering `{}` is reported as what it was.
+    try {
+      return { reviewers: reviewersByKey(result.body), ok: true };
+    } catch (error) {
+      reason = error.message;
+    }
+  }
+  const outcome = { reviewers: previous.reviewers, ok: false };
+  if (previous.ok) outcome.warn = reason;
+  return outcome;
+}
+
+/**
  * The reviewer row of a PR's pane mini-table, right below the worker's.
  *
  * Three states, all of them worth a row: a reviewer with a live pane (agent,

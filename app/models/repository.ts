@@ -2,7 +2,7 @@ import { ConnectionNotDefined } from "@blazetrails/activerecord";
 import { Hub } from "./hub.js";
 import { Owner } from "./owner.js";
 import { RepositorySetting } from "./repository-setting.js";
-import type { RepositoryCollaborator } from "./repository-collaborator.js";
+import { RepositoryCollaborator } from "./repository-collaborator.js";
 import { fleetRepos, type FleetRepo } from "../../config/fleet.js";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 
@@ -98,6 +98,27 @@ export class Repository extends Hub {
    */
   nameWithOwner(): string {
     return `${this.owner?.login ?? String(this.owner_id)}/${this.name}`;
+  }
+
+  /**
+   * Whether `viewer` may see this repository at all — THE visibility rule,
+   * and the only copy of it: `RepoController` asks before serving any tab and
+   * `OwnersController` before listing a row.
+   *
+   * A public repository is everyone's, a `null` viewer included. A private one
+   * is readable by its owner and by anyone with a `repository_collaborators`
+   * row for it, whatever the role: `read` is the least a row can say. The
+   * role is not consulted, so a public repository costs no query.
+   */
+  async isReadableBy(viewer: Owner | null): Promise<boolean> {
+    if (this.visibility === "public") return true;
+    if (viewer === null) return false;
+    if (viewer.id === this.owner_id) return true;
+    const row = await RepositoryCollaborator.findBy({
+      repository_id: this.id,
+      owner_id: viewer.id,
+    });
+    return row != null;
   }
 
   /**

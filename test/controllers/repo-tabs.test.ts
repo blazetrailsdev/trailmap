@@ -44,8 +44,9 @@ async function get(
   controller: Parameters<typeof controllerTestCase>[0],
   action: string,
   params: Record<string, string>,
+  headers: Record<string, string> = {},
 ): Promise<{ status: number; body: string }> {
-  const tc = await controllerTestCase(controller);
+  const tc = await controllerTestCase(controller, headers);
   await tc.get(action, { params });
   return { status: tc.response.status, body: tc.response.body };
 }
@@ -348,5 +349,72 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     } finally {
       await repo!.settings!.update({ issues_enabled: true });
     }
+  });
+
+  // `Remote-User` is what Authelia's proxy sets (`concerns/viewer.ts`); a
+  // request without it is anonymous.
+  describe("a private repository", () => {
+    const VAULT = { owner: "blazetrailsdev", repo: "vault" };
+    const as = (login: string) => ({ "Remote-User": login });
+
+    beforeAll(async () => {
+      const org = await Owner.findByLogin("blazetrailsdev");
+      const vault = await Repository.create({ owner_id: org!.id, name: "vault", visibility: "private" });
+      await RepositorySetting.create({ repository_id: vault.id });
+      const collaborator = await Owner.create({ login: "reader", kind: "user" });
+      await Owner.create({ login: "stranger", kind: "user" });
+      await RepositoryCollaborator.create({
+        repository_id: vault.id,
+        owner_id: collaborator.id,
+        role: "read",
+      });
+    });
+
+    it("404s the code tab for an anonymous viewer, and serves it to a collaborator", async () => {
+      await expect(get(RepoCodeController, "show", VAULT)).rejects.toThrow(RecordNotFound);
+
+      const { status, body } = await get(RepoCodeController, "show", VAULT, as("reader"));
+      expect(status).toBe(200);
+      expect(body).toContain("vault");
+    });
+
+    // A tab besides code, and the one a per-action check would most likely
+    // have been written in: the rule is `RepoController`'s, not an action's.
+    it("refuses every tab the same way, not only code", async () => {
+      await expect(get(RepoSettingsController, "show", VAULT)).rejects.toThrow(RecordNotFound);
+      await expect(get(RepoIssuesController, "index", VAULT)).rejects.toThrow(RecordNotFound);
+
+      const settings = await get(RepoSettingsController, "show", VAULT, as("reader"));
+      expect(settings.status).toBe(200);
+    });
+
+    it("404s a signed-in viewer who is neither the owner nor a collaborator", async () => {
+      await expect(get(RepoCodeController, "show", VAULT, as("stranger"))).rejects.toThrow(
+        RecordNotFound,
+      );
+      // Signed in, and nobody the hub has a row for: anonymous.
+      await expect(get(RepoCodeController, "show", VAULT, as("ghost"))).rejects.toThrow(
+        RecordNotFound,
+      );
+    });
+
+    it("serves it to its owner with no collaborator row", async () => {
+      const { status } = await get(RepoCodeController, "show", VAULT, as("blazetrailsdev"));
+
+      expect(status).toBe(200);
+    });
+
+    it("leaves it off the owner page for a viewer who cannot read it", async () => {
+      const link = 'href="/blazetrailsdev/vault"';
+      const page = { owner: "blazetrailsdev" };
+
+      const anonymous = await get(OwnersController, "show", page);
+      expect(anonymous.body).not.toContain(link);
+      // The public ones are still everyone's.
+      expect(anonymous.body).toContain('href="/blazetrailsdev/trails"');
+      expect((await get(OwnersController, "show", page, as("stranger"))).body).not.toContain(link);
+
+      expect((await get(OwnersController, "show", page, as("reader"))).body).toContain(link);
+    });
   });
 });

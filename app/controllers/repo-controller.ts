@@ -2,6 +2,7 @@ import type { AbstractController } from "@blazetrails/actionpack";
 import { RecordNotFound } from "@blazetrails/activerecord";
 import { ApplicationController } from "./application-controller.js";
 import { Repository } from "../models/repository.js";
+import { viewerOf } from "./concerns/viewer.js";
 import { ALL_TABS_ENABLED, type TabSwitches } from "../models/repository-setting.js";
 
 /** One entry of the tab bar. */
@@ -26,12 +27,10 @@ export interface RepoTab {
  *
  * A subclass declares its own `tab`, and the `beforeAction` below uses it for
  * both the switch check and which entry of the bar is marked active. A missing
- * repository, a missing owner and a disabled tab are all 404s: the three are
- * indistinguishable from the outside, which is one less thing for a reader —
- * or a test — to have to tell apart.
- *
- * `visibility` is NOT one of the things checked here, and the docblock below
- * says why.
+ * repository, a missing owner, a repository the viewer may not read and a
+ * disabled tab are all 404s: the four are indistinguishable from the outside,
+ * which is one less thing for a reader — or a test — to have to tell apart,
+ * and for a private repository is the point.
  */
 export class RepoController extends ApplicationController {
   /** The tab this controller serves. Overridden by every subclass. */
@@ -72,35 +71,33 @@ const TAB_LABELS: ReadonlyArray<[string, string, string]> = [
 ];
 
 /**
- * Resolve `:owner`/`:repo` into the record, refuse a tab that is switched off,
- * and build the tab bar.
+ * Resolve `:owner`/`:repo` into the record, refuse a repository the viewer may
+ * not read and a tab that is switched off, and build the tab bar.
  *
- * An unknown owner, an unknown repository and a disabled tab all raise
- * `RecordNotFound`, which the ActiveRecord trailtie maps to 404
+ * An unknown owner, an unknown repository, an unreadable one and a disabled
+ * tab all raise `RecordNotFound`, which the ActiveRecord trailtie maps to 404
  * (`rescueResponses`, trailties/active-record.ts). Raising rather than
  * rendering is what keeps this a before-action at all: it has no template of
  * its own to render, and naming one here would be the `template:` argument this
  * codebase does not use.
  *
- * All three are the same status on purpose: there is one way to fail to reach
+ * All four are the same status on purpose: there is one way to fail to reach
  * a page here, so there is one status.
  *
- * `visibility: private` is deliberately NOT enforced, and this is the place a
- * reader would expect it to be. trailmap has no viewer identity — no sessions,
- * no login, nothing that distinguishes a collaborator from a stranger — so the
- * only enforcement available is to hide the repository from everyone,
- * including the one operator who could change the column back. Until there is
- * authentication to enforce it against, `visibility` is a column the pages
- * DISPLAY and nothing more.
- * `enforce-repository-visibility-against-a-viewer` (RFC 0136) tracks making
- * it mean something, against the `repository_collaborators` rows that already
- * carry the roles.
+ * VISIBILITY IS ENFORCED HERE, once, for all eight tabs — a subclass cannot
+ * serve a repository this refused, because it never gets `this.repo`. The
+ * viewer is whoever Authelia signed in (`concerns/viewer.ts`) and the rule is
+ * `Repository#isReadableBy`: public, or owned by the viewer, or shared with
+ * them through a `repository_collaborators` row. A private repository answers
+ * 404 and not 403 because a 403 confirms to a stranger that it exists, and its
+ * message is the unknown repository's for the same reason.
  */
 async function loadRepository(
   controller: AbstractController.AbstractController,
 ): Promise<boolean> {
   const base = controller as unknown as RepoController & {
     params: { get(key: string): unknown };
+    request: { getHeader(key: string): unknown };
   };
   const tab = (controller.constructor as typeof RepoController).tab;
 
@@ -108,7 +105,9 @@ async function loadRepository(
   const name = String(base.params.get("repo") ?? "");
   const repo = login === "" || name === "" ? null : await Repository.findByNwo(login, name);
 
-  if (repo === null) throw new RecordNotFound(`No repository ${login}/${name}`);
+  if (repo === null || !(await repo.isReadableBy(await viewerOf(base.request)))) {
+    throw new RecordNotFound(`No repository ${login}/${name}`);
+  }
   if (!switchesOf(repo).enabled(tab)) {
     throw new RecordNotFound(`${login}/${name} has its ${tab} tab turned off`);
   }

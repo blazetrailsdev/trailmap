@@ -103,6 +103,26 @@ describe("ReadModelsController", () => {
     });
   });
 
+  // The action plucks columns instead of building records, for the 59k-row
+  // live table. This is the response the records produced, key for key and in
+  // key order, so the faster path cannot drift from the shape ringo parses.
+  it("serves the bytes the Event records would have", async () => {
+    const tc = await controllerTestCase(ReadModelsController, { Host: "127.0.0.1" });
+    await tc.get("events");
+
+    const records = await Event.order({ at: "asc", id: "asc" }).toArray();
+    const fromRecords = records.map((event) => ({
+      at: String(event.at),
+      verb: event.verb,
+      story: event.story_id ?? null,
+      rfc: event.rfc_id ?? null,
+      pr: event.pr ?? null,
+      actor: event.actor ?? null,
+      detail: event.detail ?? null,
+    }));
+    expect(tc.response.body).toBe(JSON.stringify({ events: fromRecords }));
+  });
+
   it("is a 404 for anything arriving through the proxy", async () => {
     const { status } = await get("index", { "X-Forwarded-Host": "127.0.0.1" });
 

@@ -29,9 +29,17 @@
  * Pages are rendered in-process through `ActionController.TestCase`, the way
  * `pnpm gate:lists` renders its tabs — no server, no ports, nothing to boot.
  *
+ * THE STORY PILL is checked twice, because the recording alone cannot hold it.
+ * ringo's pill folded `ready`, `draft`, `claimed` and `in-progress` onto
+ * "Open", so the recorded story fact is blind to a move between them. The RFC
+ * recording is not: its row badges are the bare status. So each story page's
+ * raw pill must also equal the badge its parent RFC's recorded row wears —
+ * `rowBadges` and `pillProblem` below.
+ *
  * `--self-test` proves the gate still detects a difference: it perturbs one
- * recorded fact in memory and requires the replay to go red on it. Nothing is
- * written to the fixture in either mode.
+ * recorded fact in memory, and one rendered pill WITHIN the Open fold, and
+ * requires the replay to go red on each. Nothing is written to the fixture in
+ * either mode.
  */
 import { ActionController } from "@blazetrails/actionpack";
 import { Base, MigrationContext } from "@blazetrails/activerecord";
@@ -44,6 +52,7 @@ import {
   diffFacts,
   extractTrailmapRfc,
   extractTrailmapStory,
+  trailmapStoryPill,
   type RfcPageFacts,
   type StoryPageFacts,
 } from "./page-extract.js";
@@ -138,6 +147,9 @@ async function main(args: readonly string[]): Promise<number> {
   }
   console.log(`ok  rfc (${rfcs.length} pages)`);
 
+  const badges = rowBadges(rfcs);
+  const bentPill = selfTest ? compared.find((r) => OPEN_FOLD.includes(badges.get(r.id) ?? "")) : undefined;
+  const pillProblems: string[] = [];
   for (const record of compared) {
     const rendered = await page(StoryPagesController, record.id);
     problems.push(
@@ -145,7 +157,13 @@ async function main(args: readonly string[]): Promise<number> {
         diffFacts<StoryPageFacts>(factsOf(record), extractTrailmapStory(rendered.html)),
       ),
     );
+    if (rendered.status !== 200) continue;
+    const pill = trailmapStoryPill(rendered.html);
+    pillProblems.push(
+      ...pillProblem(record.id, record === bentPill ? otherOpenStatus(pill) : pill, badges),
+    );
   }
+  problems.push(...pillProblems);
   // ringo had no page for these, and trailmap has one. The recording says they
   // were exempt, not that they matched — so what is checked is the divergence
   // itself: trailmap must still SERVE the page ringo hid.
@@ -168,12 +186,16 @@ async function main(args: readonly string[]): Promise<number> {
   console.log(`all differences: ${report}`);
 
   if (selfTest) {
-    if (problems.length > 0) {
-      console.log("\nself-test: the gate still goes red on a difference.");
-      return 0;
+    if (problems.length === pillProblems.length) {
+      console.error("\nSELF-TEST FAILED — a perturbed recording replayed clean.");
+      return 1;
     }
-    console.error("\nSELF-TEST FAILED — a perturbed recording replayed clean.");
-    return 1;
+    if (bentPill === undefined || !pillProblems.some((p) => p.startsWith(`/story/${bentPill.id}:`))) {
+      console.error("\nSELF-TEST FAILED — a story pill moved inside ringo's Open fold, unnoticed.");
+      return 1;
+    }
+    console.log("\nself-test: the gate still goes red on a difference, and on a pill moved within Open.");
+    return 0;
   }
   if (problems.length === 0) {
     console.log(
@@ -193,6 +215,38 @@ async function main(args: readonly string[]): Promise<number> {
 function describe(where: string, status: number, diff: () => string[]): string[] {
   if (status !== 200) return [`${where}: ringo had this page and trailmap answered ${status}`];
   return diff().map((problem) => `${where}: ${problem}`);
+}
+
+/** The statuses ringo's story pill folded onto "Open" (`storyStateLabel`). */
+const OPEN_FOLD = ["ready", "draft", "claimed", "in-progress"];
+
+/** A different member of the fold: the move the folded comparison cannot see. */
+function otherOpenStatus(status: string): string {
+  return status === "ready" ? "in-progress" : "ready";
+}
+
+/**
+ * Story id → the badge its row wears on the recorded RFC page. This is ringo
+ * stating the story's effective status UNFOLDED, and the only place it did.
+ */
+function rowBadges(rfcs: readonly RfcRecord[]): Map<string, string> {
+  const badges = new Map<string, string>();
+  for (const rfc of rfcs) {
+    rfc.stories.forEach((id, i) => badges.set(id, rfc.storyStatuses[i] ?? ""));
+  }
+  return badges;
+}
+
+/**
+ * The story page's pill against its recorded row badge. A story no recorded
+ * RFC lists is a problem too: it would otherwise be a page checked only to the
+ * fold's resolution, silently.
+ */
+function pillProblem(id: string, pill: string, badges: ReadonlyMap<string, string>): string[] {
+  const badge = badges.get(id);
+  if (badge === undefined) return [`/story/${id}: no recorded RFC row to check its status pill against`];
+  if (pill === badge) return [];
+  return [`/story/${id}: status pill is "${pill}", and its recorded RFC row wears "${badge}"`];
 }
 
 /**
