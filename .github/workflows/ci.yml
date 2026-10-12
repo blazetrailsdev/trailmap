@@ -271,6 +271,21 @@ jobs:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
           TASKS_CLI: ${{ github.workspace }}/tasks
         run: pnpm gate
+      # The tests that only run with TASKS_DATABASE set. `test` has no tasks
+      # database, so there they skip — and three of them rotted unseen. This
+      # job already has one, so they run here on every PR.
+      #
+      # NOT test/serializers/story-json.test.ts, the fourth: it diffs against
+      # the `index.json` the CLI publishes beside a live checkout, which is
+      # untracked and so does not exist here. It still runs only on the box.
+      - name: The live-database tests, against the ingested database
+        env:
+          TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
+        run: >-
+          pnpm exec vitest run
+          test/initializers/tasks-database.test.ts
+          test/models/tasks-database-config.test.ts
+          test/models/tasks-database.test.ts
 
       # The two ringo gates. Both run ringo's OWN code — the list pages'
       # browser scripts and ringo's `core` Go package, vendored verbatim under

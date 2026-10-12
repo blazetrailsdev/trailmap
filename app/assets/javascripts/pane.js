@@ -11,6 +11,7 @@ import {
   atBottom,
   initialState,
   noticeText,
+  pollDelay,
   screenStep,
   screenUrl,
   shouldPoll,
@@ -64,7 +65,10 @@ async function fetchScreen() {
       cache: "no-store",
       signal: AbortSignal.timeout(POLL_MS * 2),
     });
-    if (!response.ok) return { error: (await response.text()).slice(0, 200) || "HTTP " + response.status };
+    if (!response.ok) {
+      const error = (await response.text()).slice(0, 200) || "HTTP " + response.status;
+      return { error, status: response.status };
+    }
     return { body: await response.json() };
   } catch (error) {
     return { error: error && error.message ? error.message : String(error) };
@@ -80,7 +84,7 @@ async function poll() {
   state = step.state;
   if (step.html !== null) paintScreen(step.html);
   paintHeader();
-  schedule(POLL_MS);
+  schedule(pollDelay(state));
 }
 
 function schedule(delay) {

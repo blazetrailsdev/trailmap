@@ -17,18 +17,24 @@ Skeleton only. `trails new` output plus vendored framework packages, with a
 root route rendering through a `.tse` template — enough to prove the stack
 boots end to end. No models, no API, no pages yet.
 
-## Two databases, two adapters
+## Two databases, two adapters, and a third connection
 
-trailmap serves from two databases, and they are not the same kind:
+trailmap serves from two databases, and they are not the same kind. A third,
+which it only reads, fills one chart:
 
-| | `primary` | `hub` |
-| --- | --- | --- |
-| Adapter | sqlite3 | **postgresql** |
-| Holds | the task domain — RFCs, stories, events | the owner/repository hierarchy |
-| Pointed at by | `TASKS_DATABASE` (the CLI's live file) | `HUB_DATABASE_URL` |
-| Migrations | `db/migrate` | `db/hub-migrate` |
-| Schema | `db/schema.ts` | `db/hub_schema.ts` |
-| Base class | `ActiveRecord::Base` | `Hub` (`app/models/hub.ts`) |
+| | `primary` | `hub` | stats |
+| --- | --- | --- | --- |
+| Adapter | sqlite3 | **postgresql** | node-sqlite, `readonly: true` |
+| Holds | the task domain — RFCs, stories, events | the owner/repository hierarchy | the trails port's comparison runs, which `/graphs/parity` is projected from |
+| Pointed at by | `TASKS_DATABASE` (the CLI's live file) | `HUB_DATABASE_URL` | `STATS_DB` — **optional**; unset, the page says so |
+| Migrations | `db/migrate` | `db/hub-migrate` | none — the nightly stats-sync cron owns its schema |
+| Schema | `db/schema.ts` | `db/hub_schema.ts` | none |
+| Base class | `ActiveRecord::Base` | `Hub` (`app/models/hub.ts`) | `Stats` (`app/models/stats.ts`) |
+
+`STATS_DB` names a file on the host, so the deployed app needs its DIRECTORY
+bind-mounted, writable, as well as the variable set: a read-only connection to
+a WAL database still creates `-shm` beside it. docs/deploy.md, "The stats
+database", has the two commands and why each is shaped the way it is.
 
 The hub is where `/:owner`, `/:owner/:repo` and the eight tabs under a
 repository come from — the GitHub-shaped hierarchy, which deliberately deviates

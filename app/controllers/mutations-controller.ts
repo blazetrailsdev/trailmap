@@ -1,6 +1,5 @@
 import { ApplicationRecord } from "../models/application-record.js";
-import { ApplicationController } from "./application-controller.js";
-import { requireLoopback } from "./concerns/loopback-only.js";
+import { ApiController } from "./api-controller.js";
 import { Story, STORY_STATUSES, type StoryStatus } from "../models/index.js";
 import { VerbExit } from "../models/verb-exit.js";
 
@@ -33,11 +32,7 @@ import { VerbExit } from "../models/verb-exit.js";
  * than replacing it: an HTTP-only answer would lose the 2/3 distinction that
  * tells a spawn loop "pick another story" from "you lost the race".
  */
-export class MutationsController extends ApplicationController {
-  static {
-    this.beforeAction(requireLoopback);
-  }
-
+export class MutationsController extends ApiController {
   /** `tasks claim <id...> [--assignee NAME]` — assignee defaults to the first id. */
   async claim(): Promise<void> {
     const ids = this.ids();

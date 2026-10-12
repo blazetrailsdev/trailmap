@@ -1,6 +1,5 @@
 import { env, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
-import { ApplicationController } from "./application-controller.js";
-import { requireLoopback } from "./concerns/loopback-only.js";
+import { ApiController } from "./api-controller.js";
 import { Story } from "../models/index.js";
 import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.js";
 import { tasksContentDir } from "../../config/tasks-content.js";
@@ -37,11 +36,7 @@ class DeepTimeout extends Error {
  *
  * Both are loopback-only, like the rest of the JSON API.
  */
-export class ProbesController extends ApplicationController {
-  static {
-    this.beforeAction(requireLoopback);
-  }
-
+export class ProbesController extends ApiController {
   /**
    * The keys are snake_case because they are wire names, like every other
    * JSON body this API answers (`bundle_total_loc`, `exit_code`): the readers
