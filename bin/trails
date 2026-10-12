@@ -1,12 +1,18 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const { status } = spawnSync(
+const child = spawn(
   join(root, "node_modules", ".bin", "tsx"),
   [join(root, "node_modules/@blazetrails/trailties/bin/trails.js"), ...process.argv.slice(2)],
   { stdio: "inherit" },
 );
-process.exit(status ?? 1);
+// Hand a stop on to the command. This process is what a supervisor signals,
+// and PID 1 in a container: left to the default it would die and orphan the
+// server, or, as PID 1, ignore the signal until it was killed.
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.on(signal, () => child.kill(signal));
+}
+child.on("exit", (code, signal) => process.exit(code ?? (signal ? 1 : 0)));

@@ -57,8 +57,7 @@ export async function connectToHubDatabase(): Promise<void> {
     throw new Error(
       `HUB_DATABASE_URL names a database without the hub schema (no ${missing.join(", ")}). ` +
         "Migrate it — in the app container, because pnpm is not in the runtime image:\n" +
-        "  dokku run trailmap node_modules/.bin/tsx " +
-        "node_modules/@blazetrails/trailties/bin/trails.js db migrate\n" +
+        "  dokku run trailmap bin/trails db migrate\n" +
         "See docs/deploy.md. Deploys do this themselves (Procfile release task).",
     );
   }

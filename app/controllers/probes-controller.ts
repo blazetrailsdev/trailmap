@@ -12,6 +12,13 @@ export interface Check {
   [detail: string]: unknown;
 }
 
+/** `deep` ran past its bound. The message is the 503's `error`. */
+class DeepTimeout extends Error {
+  constructor(bound: number) {
+    super(`timeout: the ready queue took longer than ${bound}ms`);
+  }
+}
+
 /**
  * `/up/ready` and `/up/deep` — the two probes beside `/up`.
  *
@@ -65,19 +72,65 @@ export class ProbesController extends ApplicationController {
    * its six queries leases and returns it — so a `ready` arriving meanwhile is
    * not refused by the checkout timeout. It IS delayed: SQLite here is
    * synchronous and the ranking is CPU on the one thread, so everything else
-   * the process serves waits roughly `latency_ms`. Eight at once held `ready`
-   * for eight seconds, still 200. One caller, one at a time.
+   * the process serves waits roughly `latency_ms`.
+   *
+   * Two things keep that from compounding:
+   *
+   * - ONE RUN AT A TIME. A `deep` arriving while one is in flight awaits the
+   *   same run and answers with its result (`sharedQueue`), so overlapping
+   *   canaries cost one ranking, not one each. Eight at once used to hold
+   *   `ready` for 8.4s.
+   * - A BOUND, `deepTimeoutMs`. Past it the answer is 503 naming the timeout.
+   *   docs/deploy.md has the measurement it was chosen from, and what the
+   *   bound can and cannot do: nothing in the process can interrupt a ranking
+   *   that never yields, so a slow one is answered late, and red.
    */
   async deep(): Promise<void> {
     const started = performance.now();
+    const bound = ProbesController.deepTimeoutMs;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const index = await Story.rankingIndex();
-      const rows = await Story.claimable({ index });
+      const rows = await Promise.race([
+        this.sharedQueue(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new DeepTimeout(bound)), bound);
+        }),
+      ]);
       const latencyMs = Math.round(performance.now() - started);
-      await this.render({ json: { status: "ok", ready: { rows: rows.length, latency_ms: latencyMs } } });
+      if (latencyMs > bound) throw new DeepTimeout(bound);
+      await this.render({ json: { status: "ok", ready: { rows, latency_ms: latencyMs } } });
     } catch (e) {
       await this.render({ json: { status: "down", error: (e as Error).message }, status: 503 });
+    } finally {
+      clearTimeout(timer);
     }
+  }
+
+  /** The bound on one `deep`, in milliseconds. docs/deploy.md says why 5s. */
+  static deepTimeoutMs = 5_000;
+
+  private static inFlight: Promise<number> | null = null;
+
+  /**
+   * The ready queue's row count, from the run in flight if there is one. The
+   * slot is cleared when the run settles, whichever way, and not when a caller
+   * gives up on it: a run that outlived its bound is still running, and a
+   * second one beside it is the stacking this exists to stop.
+   */
+  private sharedQueue(): Promise<number> {
+    const probes = ProbesController;
+    if (probes.inFlight === null) {
+      const run = (async () => {
+        const index = await Story.rankingIndex();
+        return (await Story.claimable({ index })).length;
+      })();
+      const clear = () => {
+        if (probes.inFlight === run) probes.inFlight = null;
+      };
+      run.then(clear, clear);
+      probes.inFlight = run;
+    }
+    return probes.inFlight;
   }
 
   /**
