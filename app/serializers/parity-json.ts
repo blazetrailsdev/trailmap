@@ -1,10 +1,4 @@
-import type { CompareRun } from "../models/compare-run.js";
-import {
-  type ParityMetric,
-  denominatorColumn,
-  isNativeMetric,
-  numeratorColumn,
-} from "../models/parity-metric.js";
+import type { ParityDay } from "../models/parity-day.js";
 
 /** One package's standing at the end of one day, as the chart reads it. */
 export interface ParityPoint {
@@ -24,64 +18,47 @@ export interface ParitySeries {
 }
 
 /**
- * A rollup row's numerator, denominator and percent under one metric.
+ * Group projected rows into one series per package.
  *
- * `matched` and `total` are the metric's columns, not the table's: for the
- * assertion metrics the denominator is `matched` and the mismatching ones come
- * off the numerator, so a row's "matched" here is smaller than its `matched`
- * column.
+ * A PURE MAPPING, with no arithmetic left in it. The rows arrive already
+ * measured: `matched`, `total` and `percent` are the metric's numbers, worked
+ * out by `measureRow` when the projection was built (app/models/parity-day.ts).
  *
- * The percent of a NATIVE metric is the `percent` column CI wrote, read rather
- * than recomputed — it is the authoritative number and recomputing it would
- * let trailmap and CI disagree in the last decimal. A derived metric has no
- * such column, so it is computed and rounded to one decimal, which is the
- * precision CI writes, so both kinds of line read at the same precision.
- */
-function measure(
-  row: Record<string, unknown>,
-  metric: ParityMetric,
-): { matched: number; total: number; percent: number } {
-  const num = Number(row[numeratorColumn(metric)] ?? 0);
-  const den = Number(row[denominatorColumn(metric)] ?? 0);
-  const sub = metric.sub === undefined ? 0 : Number(row[metric.sub] ?? 0);
-  const matched = num - sub;
-  if (isNativeMetric(metric)) {
-    return { matched, total: den, percent: Number(row.percent ?? 0) };
-  }
-  // `Math.round(1000 * x) / 10` rather than toFixed: one decimal, as a number.
-  const percent = den > 0 ? Math.round((1000 * matched) / den) / 10 : 0;
-  return { matched, total: den, percent };
-}
-
-/**
- * Group rollup rows into one series per package, in the order the caller asked
- * for the packages.
+ * That measurement used to happen here, on raw comparison rows on their way
+ * out. It moved because the rows now come from `parity_days`, where it has
+ * already been applied — and applying it twice is not a no-op: the assertion
+ * metrics use `matched` as their DENOMINATOR, so a second pass divides a
+ * number by itself and reports 100%.
  *
- * The order is load-bearing and not cosmetic: the page assigns a colour per
- * package from its position in this list, so a series order that depended on
- * which packages happened to have rows would repaint the chart whenever a
- * filter changed.
+ * The package ORDER is load-bearing rather than cosmetic: the page assigns a
+ * colour per package from its position in the list it asked for, so a series
+ * order that followed the rows would repaint the chart whenever a filter
+ * changed. Hence the caller's `packages`, not the rows' own order.
+ *
+ * The shape is a cross-repo contract — the code consuming it is ringo's,
+ * vendored verbatim (vendor/ringo/parity-draw.js), and
+ * scripts/gate-ringo-parity.ts diffs this output against ringo's own endpoint
+ * point for point.
  */
 export function serializeParitySeries(
-  rows: CompareRun[],
-  metric: ParityMetric,
+  rows: ParityDay[],
+  metricKey: string,
   packages: string[],
-  gaps: string[],
 ): ParitySeries[] {
   const byPackage = new Map<string, ParityPoint[]>();
+
   for (const row of rows) {
-    const record = row as unknown as Record<string, unknown>;
-    const { matched, total, percent } = measure(record, metric);
     const point: ParityPoint = {
-      date: String(record.day),
-      pr: Number(record.pr_number ?? 0),
-      percent,
-      matched,
-      total,
+      date: String(row.day),
+      pr: Number(row.pr_number ?? 0),
+      percent: Number(row.percent ?? 0),
+      matched: Number(row.matched ?? 0),
+      total: Number(row.total ?? 0),
     };
-    if (gaps.length > 0) {
-      point.gaps = Object.fromEntries(gaps.map((gap) => [gap, Number(record[gap] ?? 0)]));
-    }
+    // Omitted rather than empty when the run has no counters, which is what
+    // ringo's JSON does for the derived metrics.
+    if (row.gaps != null && Object.keys(row.gaps).length > 0) point.gaps = row.gaps;
+
     const points = byPackage.get(row.package);
     if (points) points.push(point);
     else byPackage.set(row.package, [point]);
@@ -89,5 +66,5 @@ export function serializeParitySeries(
 
   return packages
     .filter((pkg) => byPackage.has(pkg))
-    .map((pkg) => ({ metric: metric.key, package: pkg, points: byPackage.get(pkg)! }));
+    .map((pkg) => ({ metric: metricKey, package: pkg, points: byPackage.get(pkg)! }));
 }
