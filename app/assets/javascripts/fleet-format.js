@@ -873,12 +873,12 @@ const usageHead = (agent, meta) =>
 
 function weeklyBar(u, now, right) {
   const elapsed = weekElapsedPercent(u.weeklyResets, u.weeklyResetsAt, now);
-  const diff = Number(u.weeklyPercent) - elapsed;
+  const diff = clamp(u.weeklyPercent) - elapsed;
   return usageBar({
     label: "Weekly (" + esc(formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now)) + ")",
     percent: u.weeklyPercent,
     color: weeklyPaceColor(diff),
-    left: Number(u.weeklyPercent) + "%",
+    left: clamp(u.weeklyPercent) + "%",
     right: right(elapsed, diff),
     week: '<div class="bar-marker" style="left:' + elapsed + '%"></div>' + dayMarkers(u.weeklyResets, u.weeklyResetsAt, now),
   });
@@ -889,7 +889,7 @@ function sessionBar(u, now, right) {
     label: "Session (" + esc(formatClockLabel(u.sessionResets, u.sessionResetsAt, now)) + ")",
     percent: u.sessionPercent,
     color: barColor(u.sessionPercent),
-    left: Number(u.sessionPercent) + "%",
+    left: clamp(u.sessionPercent) + "%",
     right,
   });
 }

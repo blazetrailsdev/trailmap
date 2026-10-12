@@ -1210,5 +1210,7 @@ describe("the usage helpers", () => {
     expect(weekly).toContain("<span>50% of week elapsed</span>");
     expect(codexUsage({ sessionPercent: 10, weeklyPercent: 40, planType: "<pro>" }, noon)).toContain("<span> &middot; &lt;pro&gt;</span>");
     expect(codexUsage({ sessionPercent: -1, weeklyPercent: -1 }, noon)).toContain("No limits reported yet");
+    // A scraper with nothing yet sends no percents: zero, not "NaN%".
+    expect(claudeUsage({}, noon)).not.toMatch(/NaN|undefined/);
   });
 });
