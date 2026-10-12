@@ -492,11 +492,6 @@ ul { margin: 0 0 10px 20px; }
 .card-title { font-weight: 600; }
 .field-note, .field-status { color: var(--muted); font-size: 12px; }
 
-/*
- * The CI-fixer card carries the fixer's yellow left edge -- and a RED one while
- * the spawn loop is paused on a red main, which is the state the whole card
- * exists to make unmissable.
- */
 /* The queue, the relayed questions and the usage bars -- ringo's own rules,
    on the shell's tokens. */
 .btn-red { background: var(--red); border-color: transparent; color: #fff; }
@@ -535,6 +530,11 @@ ul { margin: 0 0 10px 20px; }
 .day-marker span { position: absolute; top: -15px; font-size: 9px; color: var(--muted); transform: translateX(-50%); }
 .bar-label { display: flex; justify-content: space-between; }
 
+/*
+ * The CI-fixer card carries the fixer's yellow left edge -- and a RED one while
+ * the spawn loop is paused on a red main, which is the state the whole card
+ * exists to make unmissable.
+ */
 .ci-fixer { border-left: 3px solid var(--yellow); }
 .ci-fixer.paused { border-left-color: var(--red); }
 .fixer-repo { padding: 10px 0; border-top: 1px solid var(--border); }

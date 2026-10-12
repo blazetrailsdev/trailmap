@@ -357,10 +357,12 @@ export function controlRequest(action, data) {
       };
     case "dismiss":
       return { path: "/spawnloop/dismiss", body: { branch: data.branch }, quiet: true };
-    // `sendOne`: ringo answers 200 either way and says which in the body.
+    // `sendOne` (`dashboard.go:1902`). ringo answers 200 either way and says
+    // which in the body, so `accepted` is what makes it a success. ringo leaves
+    // the button dead on "fail"; here a refusal gives it back.
     case "send-one": {
-      const report = (text) => (parsed(text).sent ? "sent" : "fail");
-      return { path: "/drain-one", body: { pr: Number(data.pr) }, busy: "...", report, failed: "fail", errored: "fail", refresh: "usage" };
+      const accepted = (text) => !!parsed(text).sent;
+      return { path: "/drain-one", body: { pr: Number(data.pr) }, busy: "...", accepted, done: "sent", failed: "fail", errored: "fail", refresh: "usage" };
     }
     case "drain":
       return { path: "/drain", body: null, quiet: true, refresh: "usage" };
@@ -385,7 +387,7 @@ export function controlRequest(action, data) {
       const answer = String(data.answer || "").trim();
       if (!answer) return null;
       const errorAlert = (message) => "Failed to send answer: " + message;
-      return { path: "/ask/answer", body: { id: data.id, answer }, refresh: "asks", failureAlert: (text) => text, errorAlert };
+      return { path: "/ask/answer", body: { id: data.id, answer }, done: "sent", refresh: "asks", failureAlert: (text) => text, errorAlert };
     }
     case "clear-failed":
       return { path: "/spawnloop/dismiss-failed", body: null, quiet: true };
@@ -423,7 +425,8 @@ const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  */
 export function controlOutcome(request, result, label) {
   const answered = !("error" in result);
-  const succeeded = answered && result.ok;
+  // A 200 is not always a yes: `accepted` reads the body of one that says no.
+  const succeeded = answered && result.ok && (!request.accepted || request.accepted(result.text));
   const outcome = { disabled: succeeded || (!request.quiet && !!request.resetAfterMs) };
   if (answered && request.refresh) outcome.refresh = request.refresh;
   if (request.quiet) return outcome;
@@ -626,7 +629,7 @@ const MESSAGE_KINDS = [
   ["merge conflicts", "merge conflict"],
 ];
 
-/** What a held-back notification is about, from ringo's own wording (`msgType`). */
+/** What a held-back notification is about: ringo's `msgType` (`dashboard.go:1882`). */
 export const messageKind = (message) =>
   (MESSAGE_KINDS.find(([says]) => String(message || "").includes(says)) || ["", "notification"])[1];
 
@@ -660,7 +663,8 @@ export function queueCard(queue) {
   );
 }
 
-/** Every pane drawn red (API error, stuck retry): who a poke would reach. */
+/** Every pane drawn red (API error, stuck retry): who a poke would reach.
+ * ringo's `collectRedPanes` (`dashboard.go:2243`), field names and all. */
 export function redPanes(prs, spawns, reviewers) {
   const red = new Set();
   (prs || []).forEach((pr) => pr.paneStatus === "error" && pr.pane && red.add(pr.pane));
@@ -681,7 +685,7 @@ export function pokeButton(panes) {
 /**
  * Which agent's reviewers can be drained onto the other: one with a pane on
  * its limit banner and a review still owed. With both out there is nowhere to
- * drain to, so neither is offered (`updateDrainFields`).
+ * drain to, so neither is offered (`updateDrainFields`, `dashboard.go:927`).
  */
 export function strandedAgents(reviewers) {
   const on = (agent) =>
@@ -753,6 +757,7 @@ const HOUR = 3600000;
 const WEEK_HOURS = 168;
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** ringo's thresholds (`dashboard.go:1371`). */
 export function barColor(percent) {
   if (percent >= 85) return "red";
   if (percent >= 60) return "yellow";
@@ -761,7 +766,8 @@ export function barColor(percent) {
 
 /**
  * The weekly bar is coloured by PACE: `diff` is percent used minus percent of
- * the week gone. As hours, green within 6 of pace, yellow within 18.
+ * the week gone. As hours, green within 6 of pace, yellow within 18
+ * (`dashboard.go:1379`).
  */
 export function weeklyPaceColor(diff) {
   const hours = (Math.abs(diff) / 100) * WEEK_HOURS;

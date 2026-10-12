@@ -315,6 +315,7 @@ describe("FleetController#read", () => {
     const asked = async (agent: string) => JSON.parse((await read("drain-status", { agent })).body).asked;
     expect(await asked("codex")).toBe("/reviewer/drain-status?agent=codex");
     expect(await asked("codex&x=1")).toBe("/reviewer/drain-status");
+    expect(JSON.parse((await read("usage", { agent: "codex" })).body).asked).toBe("/usage-status");
   });
 
   it("refuses a read the page has no use for, without calling ringo", async () => {

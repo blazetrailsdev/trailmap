@@ -1029,7 +1029,8 @@ describe("the queue", () => {
     const one = controlRequest("send-one", { pr: "7" });
     expect([one.path, one.body]).toEqual(["/drain-one", { pr: 7 }]);
     expect(controlOutcome(one, { ok: true, text: '{"sent":true}' }, "send")).toEqual({ disabled: true, text: "sent", refresh: "usage" });
-    expect(controlOutcome(one, { ok: true, text: '{"sent":false}' }, "send").text).toBe("fail");
+    // A 200 that says no is a refusal: the button comes back to be tried again.
+    expect(controlOutcome(one, { ok: true, text: '{"sent":false}' }, "send")).toEqual({ disabled: false, text: "fail", refresh: "usage" });
     expect(controlOutcome(one, { error: "offline" }, "send")).toEqual({ disabled: false, text: "fail" });
 
     const all = controlRequest("drain", {});
@@ -1122,7 +1123,7 @@ describe("the relayed questions", () => {
   it("posts an option or free text to ringo's relay, and nothing empty", () => {
     const request = controlRequest("answer-ask", { id: "a1", answer: "  in my own words " });
     expect([request.path, request.body]).toEqual(["/ask/answer", { id: "a1", answer: "in my own words" }]);
-    expect(controlOutcome(request, { ok: true, text: "" }, "Send")).toMatchObject({ disabled: true, refresh: "asks" });
+    expect(controlOutcome(request, { ok: true, text: "" }, "Send")).toEqual({ disabled: true, text: "sent", refresh: "asks" });
     expect(controlOutcome(request, { ok: false, text: "gone" }, "Send")).toMatchObject({ disabled: false, alert: "gone" });
     expect(controlRequest("answer-ask", { id: "a1", free: "1", answer: "  " })).toBeNull();
   });

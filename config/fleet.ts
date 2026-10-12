@@ -65,7 +65,6 @@ export const FLEET_CONTROL_PATH = "/fleet/control";
 /** Where the fleet page polls for the reviewer of each open PR. */
 export const FLEET_REVIEWERS_PATH = "/fleet/reviewers";
 
-/** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
 /**
  * The rest of what the page reads from ringo outside the stream, by the name
  * the page asks for it under (`/fleet/read/usage`) and the ringo path that
@@ -81,6 +80,7 @@ export const FLEET_READS: Readonly<Record<string, string>> = {
   "drain-status": "reviewer/drain-status",
 };
 
+/** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
 export const FLEET_PANE_PATH = "/fleet/pane";
 
 /**

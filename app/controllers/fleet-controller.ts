@@ -129,8 +129,9 @@ export class FleetController extends ApplicationController {
   /**
    * The page's other reads -- usage, relayed questions, a reviewer drain's
    * progress -- by the names in `FLEET_READS`, on the same terms as
-   * `reviewers`. `agent` is the one query any of them takes
-   * (`/reviewer/drain-status?agent=codex`), forwarded only as a bare word.
+   * `reviewers`. `agent` is the one query any of them takes, and only
+   * `drain-status` takes it (`/reviewer/drain-status?agent=codex`); it is
+   * forwarded there alone, and only as a bare word.
    */
   async read(): Promise<void> {
     const name = String(this.params.get("name") ?? "");
@@ -139,7 +140,7 @@ export class FleetController extends ApplicationController {
       return;
     }
     const agent = String(this.params.get("agent") ?? "");
-    await this.relayRead(FLEET_READS[name] + (/^[a-z]+$/.test(agent) ? `?agent=${agent}` : ""));
+    await this.relayRead(FLEET_READS[name] + (name === "drain-status" && /^[a-z]+$/.test(agent) ? `?agent=${agent}` : ""));
   }
 
   private async relayRead(path: string): Promise<void> {

@@ -362,8 +362,16 @@ function showUsage(id, html, stale) {
   const block = byId(id);
   block.style.display = "";
   block.classList.toggle("stale", stale);
-  if (html) block.innerHTML = html;
+  block.innerHTML = html;
 }
+
+/*
+ * A failed poll marks what is already drawn stale, so old numbers do not pass
+ * for current ones. A block that has never been drawn stays hidden: ringo
+ * shows an empty Codex shell there, but the only thing to put in it would be
+ * a statement about Codex, and what failed was the relay.
+ */
+const usageStale = (id) => () => byId(id).classList.add("stale");
 
 poll("usage", 60_000, (u) => {
   showUsage("usageBar", claudeUsage(u), !!u.stale);
@@ -371,12 +379,9 @@ poll("usage", 60_000, (u) => {
   byId("queueSection").style.display = queue.length ? "" : "none";
   byId("queueSection").innerHTML = queueCard(queue);
   if (lastEnvelope) paint(lastEnvelope);
-});
+}, usageStale("usageBar"));
 
-// A failed poll marks the block stale rather than retiring it.
-poll("codex-usage", 60_000, (u) => showUsage("codexUsageBar", codexUsage(u), !!u.stale), () =>
-  showUsage("codexUsageBar", byId("codexUsageBar").innerHTML ? "" : codexUsage({ sessionPercent: -1, weeklyPercent: -1 }), true),
-);
+poll("codex-usage", 60_000, (u) => showUsage("codexUsageBar", codexUsage(u), !!u.stale), usageStale("codexUsageBar"));
 
 // Redrawn only when the questions CHANGE: a repaint erases a half-typed answer.
 let asksShown = "";
@@ -396,6 +401,12 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+/*
+ * A drain is a gh round trip and a pane teardown per reviewer, so minutes; ten
+ * of them is a drain that is not going to say it has finished.
+ */
+const DRAIN_POLLS_MAX = 600;
+
 /** A reviewer drain runs in ringo's background; this follows its progress. */
 async function followDrain(request, result) {
   const status = byId(request.statusId);
@@ -404,11 +415,17 @@ async function followDrain(request, result) {
     return;
   }
   try {
-    for (let d = JSON.parse(result.text); ; ) {
+    let d = JSON.parse(result.text);
+    for (let polled = 0; ; polled++) {
       status.textContent = drainStatus(d);
       if (!d.running) break;
+      if (polled === DRAIN_POLLS_MAX) {
+        status.textContent += " (stopped watching)";
+        break;
+      }
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const response = await fetch(readPath + "/" + request.poll, { credentials: "same-origin" });
+      const signal = AbortSignal.timeout(REVIEWERS_POLL_MS);
+      const response = await fetch(readPath + "/" + request.poll, { credentials: "same-origin", signal });
       if (!response.ok) break;
       d = await response.json();
     }
