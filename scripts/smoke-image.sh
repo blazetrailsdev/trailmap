@@ -65,7 +65,7 @@ fail() {
 }
 
 echo "smoke-image: GET /up"
-curl -fsS "http://127.0.0.1:$port/up" | grep -q '"status":"ok"' || fail "/up is not green"
+curl -fsS -o /dev/null "http://127.0.0.1:$port/up" || fail "/up is not green"
 # Under the deployed hostname too: Vite, which production no longer mounts,
 # answered 403 to a Host it had not been told about (vite.config.ts).
 curl -fsS -H 'Host: trailmap.deanoftech.com' "http://127.0.0.1:$port/up" >/dev/null ||

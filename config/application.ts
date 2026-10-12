@@ -1,5 +1,5 @@
 import { Logger } from "@blazetrails/activesupport";
-import { stdout } from "@blazetrails/ruby-compat";
+import { env, stdout } from "@blazetrails/ruby-compat";
 import { Application } from "@blazetrails/trailties";
 
 // Load the framework trailties this application uses — Rails' `require
@@ -15,6 +15,14 @@ export class Trailmap extends Application {
   static {
     // Initialize configuration defaults for originally generated trails version.
     this.config.loadDefaults("8.0");
+
+    // trailmap's own settings, read from the environment ONCE, here. Their
+    // readers (config/fleet.ts, config/tasks-content.ts) take them from
+    // `config.x` and never from `env`, so a test or a console sets the
+    // setting rather than the process's environment. `TASKS_DATABASE` is NOT
+    // here: config/database.ts owns it, and is its only reader.
+    this.config.x.fleet.repoPaths = env.FLEET_REPO_PATHS;
+    this.config.x.tasks.dir = env.TASKS_DIR;
 
     // Log to STDOUT, as Rails' production template does, in every environment:
     // without a logger the framework installs a NullLogger, and what the

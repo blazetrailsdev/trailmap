@@ -357,25 +357,12 @@ function show(value: unknown): string {
 /**
  * One row of `/rfcs`.
  *
- * The PROGRESS BAR is not a field here, and that is the one row value this
- * gate deliberately does not compare. ringo paints its bar from a
- * `story_status` map its server computes and this gate does not have —
- * `ringoRfcs` (gate-ringo-lists.ts) assembles ringo's rows from the RFC
- * columns and its vendored `core.StoryCounts`, and passes no `story_status`, so
- * ringo's side draws no segments to read. Its markup would not be readable
- * here anyway: ringo's segments are `<i class="ready">`, not a badge or a
- * label, so `labelsOf`'s `s-` skip never saw them.
- *
- * That matters more since trailmap's bar became effective-status
- * (`storyStatusCounts`, which now takes the parent RFC's status): a `ready`
- * story under a draft RFC is in the draft segment here, and whether ringo's
- * server agrees is UNKNOWN to this gate rather than proven equal. It is a
- * deliberate divergence under the one status rule
- * (`app/views/shared/_status-badge`) and it is uncompared, which is why it is
- * written down here instead of left to be inferred from an absent field. The
- * done/total headline beside the bar IS compared, as `progress`, and is
- * invariant under the override — `ready` and `draft` are both `open` to
- * `rfcStoryCounts`.
+ * The PROGRESS BAR is not a field here, because the offline list gate cannot
+ * paint ringo's: its bar is drawn from a `story_status` map only ringo's
+ * server computes. It is compared by the LIVE gate instead — `pnpm gate:pages`,
+ * `compareBars` in page-equivalence.ts, from {@link trailmapRfcBars} — which
+ * also settled what trailmap#22 could only record as unknown: ringo's
+ * `story_status` is the EFFECTIVE status, as trailmap's bar is.
  */
 export interface RfcListRow {
   id: string;
@@ -555,6 +542,44 @@ export function ringoRfcRows(html: string): RfcListRow[] {
 /** trailmap's `/rfcs` rows, in page order. */
 export function trailmapRfcRows(html: string): RfcListRow[] {
   return rowsOf(html, "item-row").map((row) => rfcRow(row, TRAILMAP_ROW));
+}
+
+/**
+ * Each `/rfcs` row's progress bar as trailmap draws it: `status → count` per
+ * RFC id, read from the segments' `seg s-<status>` class and `<count> <status>`
+ * title. An RFC with no stories draws no bar and maps to `{}`.
+ */
+export function trailmapRfcBars(html: string): Map<string, Record<string, number>> {
+  const rows = rowsOf(html, "item-row");
+  if (rows.length === 0) throw new Error("no rows extracted — the page's markup has changed");
+  return new Map(
+    rows.map((row) => {
+      const id = decodeURIComponent(hrefIds(row, "rfc")[0] ?? "");
+      const segments = [...row.matchAll(/class="seg s-([a-z-]+)"[^>]*title="(\d+) /g)];
+      // The row states its own total beside the bar: segments that do not add
+      // up to it mean this pattern stopped matching the template.
+      const stated = Number(/class="sbarcap">(\d+) /.exec(row)?.[1] ?? 0);
+      const drawn = segments.reduce((sum, m) => sum + Number(m[2]), 0);
+      if (id === "" || drawn !== stated) {
+        throw new Error(`/rfcs row "${id}": ${drawn} stories in segments, ${stated} stated — the row's markup has changed`);
+      }
+      return [id, Object.fromEntries(segments.map((m) => [m[1]!, Number(m[2])]))];
+    }),
+  );
+}
+
+/**
+ * A bar as one comparable string: its non-zero counts, by status, with `ready`
+ * and `blocked` folded into one — the known difference `compareBars`
+ * (page-equivalence.ts) states.
+ */
+export function barKey(bar: Record<string, number>): string {
+  const counts: Record<string, number> = {};
+  for (const [status, count] of Object.entries(bar)) {
+    const key = status === "ready" || status === "blocked" ? "ready+blocked" : status;
+    if (count > 0) counts[key] = (counts[key] ?? 0) + count;
+  }
+  return Object.keys(counts).sort().map((status) => `${counts[status]} ${status}`).join(" · ");
 }
 
 /** ringo's `/backlog` rows, in page order. */

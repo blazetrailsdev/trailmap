@@ -236,6 +236,39 @@ export class Story extends ApplicationRecord {
   }
 
   /**
+   * The outline, with a RECORD in place of every claimable story and of no
+   * other: `claimable()` and `nextBundle()` return only claimable stories, and
+   * `nextBundleIn` reads `est_loc` and `cluster` of nothing else. The caller
+   * ranks again over this, and that pass is the one that answers, so a story
+   * no longer claimable by the second read is dropped, not served.
+   */
+  static async claimableIndex(): Promise<RankingIndex> {
+    const outline = await Story.rankingOutline();
+    const ids = new Set(claimableIn(outline).map((story) => story.id));
+    const records = new Map((await Story.where({ id: [...ids] }).toArray()).map((s) => [s.id, s]));
+    // A claimable story deleted between the two reads has no record, and is
+    // dropped: left as an outline row it would be served with four columns.
+    const stories = outline.stories.filter((s) => !ids.has(s.id) || records.has(s.id));
+    // The cast is the method's contract: only the claimable entries are records.
+    return { ...outline, stories: stories.map((s) => records.get(s.id) ?? s) as Story[] };
+  }
+
+  /**
+   * The whole snapshot as plucked ROWS — every published column, as plain
+   * objects — for `/stories.json` and `/index.json`. Typed as `Story` because
+   * every reader on that path reads columns only; a row is NOT a record.
+   */
+  static async rankingRows(): Promise<RankingIndex> {
+    const rows = await Story.pluck(...SERIALIZED_COLUMNS);
+    return rankingIndexOver(
+      rows.map(
+        (row) =>
+          Object.fromEntries(pluckedRow(row).map((value, at) => [SERIALIZED_COLUMNS[at], value])) as unknown as Story,
+      ),
+    );
+  }
+
+  /**
    * The ready queue: `ready`, under an ACTIVE RFC, every dep resolved, ordered
    * by effective priority. Deliberately NOT `ready()` — that static is
    * enum-generated and means only `status = 'ready'`, a much weaker condition;
@@ -496,6 +529,12 @@ export class Story extends ApplicationRecord {
     });
   }
 }
+
+/** The story columns `serializeStory` (app/serializers/story-json.ts) reads. */
+const SERIALIZED_COLUMNS = [
+  "id", "rfc_id", "title", "status", "cluster", "priority", "updated_on", "est_loc", "pr",
+  "claim_at", "assignee", "blocked_by", "closed_reason", "file_path",
+] as const;
 
 /**
  * Everything the queue reads besides the stories themselves. The join tables

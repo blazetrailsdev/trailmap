@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { setX } from "../support/config-x.js";
 import { setEnv } from "@blazetrails/ruby-compat";
 import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash } from "../../config/fleet.js";
 
@@ -8,20 +9,19 @@ import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX,
  * the sort of input a page assertion only ever exercises the happy path of.
  */
 afterEach(() => {
-  setEnv("FLEET_REPO_PATHS", undefined);
+  setX("fleet", "repoPaths", undefined);
   setEnv("RINGO_BASE", undefined);
 });
 
 describe("fleetRepos", () => {
   it("parses `owner/repo=path` pairs", () => {
-    setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails=/srv/trails");
+    setX("fleet", "repoPaths", "blazetrailsdev/trails=/srv/trails");
 
     expect(fleetRepos()).toEqual([{ name: "blazetrailsdev/trails", path: "/srv/trails" }]);
   });
 
   it("sorts by name, so the list does not reorder between requests", () => {
-    setEnv(
-      "FLEET_REPO_PATHS",
+    setX("fleet", "repoPaths",
       "blazetrailsdev/trails=/srv/trails,blazetrailsdev/tasks=/srv/tasks,blazetrailsdev/trailmap=/srv/trailmap",
     );
 
@@ -33,7 +33,7 @@ describe("fleetRepos", () => {
   });
 
   it("tolerates the spacing a hand-written list actually has", () => {
-    setEnv("FLEET_REPO_PATHS", " blazetrailsdev/tasks = /srv/tasks , blazetrailsdev/trails=/srv/trails ");
+    setX("fleet", "repoPaths", " blazetrailsdev/tasks = /srv/tasks , blazetrailsdev/trails=/srv/trails ");
 
     expect(fleetRepos()).toEqual([
       { name: "blazetrailsdev/tasks", path: "/srv/tasks" },
@@ -42,13 +42,13 @@ describe("fleetRepos", () => {
   });
 
   it("splits on the FIRST `=`, so a path containing one survives", () => {
-    setEnv("FLEET_REPO_PATHS", "acme/app=/srv/a=b");
+    setX("fleet", "repoPaths", "acme/app=/srv/a=b");
 
     expect(fleetRepos()).toEqual([{ name: "acme/app", path: "/srv/a=b" }]);
   });
 
   it("drops an entry with no `=`, or with either side empty", () => {
-    setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails,=/srv/nameless,acme/app=,acme/ok=/srv/ok");
+    setX("fleet", "repoPaths", "blazetrailsdev/trails,=/srv/nameless,acme/app=,acme/ok=/srv/ok");
 
     expect(fleetRepos()).toEqual([{ name: "acme/ok", path: "/srv/ok" }]);
   });
@@ -56,7 +56,7 @@ describe("fleetRepos", () => {
   it("is empty when the variable is unset or blank", () => {
     expect(fleetRepos()).toEqual([]);
 
-    setEnv("FLEET_REPO_PATHS", "   ");
+    setX("fleet", "repoPaths", "   ");
     expect(fleetRepos()).toEqual([]);
   });
 });
@@ -80,8 +80,11 @@ describe("FLEET_CONTROLS", () => {
       "reviewer/drain-claude",
       "reviewer/drain-codex",
       "spawn",
+      "spawnloop/config",
       "spawnloop/dismiss",
       "spawnloop/dismiss-failed",
+      "spawnloop/skip",
+      "spawnloop/spawn-now",
       "worker/spawn",
     ]);
   });

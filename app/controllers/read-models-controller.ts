@@ -33,7 +33,7 @@ export class ReadModelsController extends ApplicationController {
    * queue without changing its membership.
    */
   async index(): Promise<void> {
-    const snapshot = await Story.rankingIndex();
+    const snapshot = await Story.rankingRows();
     const rfcs = await Rfc.order({ id: "asc" }).toArray();
     await this.render({
       json: { rfcs: serializeRfcs(rfcs), stories: serializeStories(snapshot.stories, snapshot) },

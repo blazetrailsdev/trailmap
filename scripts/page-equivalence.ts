@@ -49,6 +49,7 @@ import { Base } from "@blazetrails/activerecord";
 import { argv, Dir, env, exit, getFs } from "@blazetrails/ruby-compat";
 import { tasksDatabaseConfig } from "../config/database.js";
 import { Rfc, Story, loadModelSchemas } from "../app/models/index.js";
+import { storyStatusCounts } from "../app/models/concerns/rfc-progress.js";
 import {
   ROWS_FILE,
   SNAPSHOT_FILE,
@@ -64,7 +65,9 @@ import {
   extractRingoStory,
   extractTrailmapRfc,
   extractTrailmapStory,
+  barKey,
   ringoNotFound,
+  trailmapRfcBars,
   type RfcPageFacts,
   type StoryPageFacts,
 } from "./page-extract.js";
@@ -95,6 +98,8 @@ const REPORT_FILE = "tmp/page-equivalence-problems.txt";
  * README, "Re-recording the show-page snapshot".
  */
 const RECORD = argv.includes("--record");
+/** `--self-test=bar`: only the `/rfcs` bar, with trailmap's side deliberately wrong. */
+const BAR_SELF_TEST = argv.includes("--self-test=bar");
 
 interface Fetched {
   html: string;
@@ -133,8 +138,41 @@ async function main(): Promise<number> {
   console.log(`trailmap: ${trailmapBase}`);
   console.log(`${rfcIds.length} RFCs, ${storyIds.length} stories\n`);
 
+  if (BAR_SELF_TEST) {
+    // The fault: `storyStatusCounts` handed "active" for every RFC.
+    const wrong = new Map(
+      rfcs.map((r) => {
+        const own = stories.filter((s) => s.rfc_id === r.id).map((s) => s.status);
+        return [r.id, Object.fromEntries(storyStatusCounts(own, "active").map((c) => [c.status, c.count]))];
+      }),
+    );
+    const red = await compareBars(ringoBase, rfcIds, wrong);
+    (await Base.leaseConnection()).disconnectBang();
+    if (red.length > 0) {
+      console.log(`SELF-TEST OK: the wrong RFC status turned the bar gate red (${red[0]})`);
+      return 0;
+    }
+    console.error("SELF-TEST FAILED: the bar was built from the wrong RFC status and the gate stayed green");
+    return 1;
+  }
+
   const problems: string[] = [];
   const records: PageRecord[] = [];
+  const bars = new Map<string, Record<string, number>>();
+  for (const tab of [...new Set(rfcs.map((r) => String(r.status)))]) {
+    const url = `${trailmapBase}/rfcs?status=${encodeURIComponent(tab)}`;
+    const first = (await get(url)).html;
+    const pages = Number.parseInt(/class="pager" data-pages="(\d+)"/.exec(first)?.[1] ?? "1", 10);
+    for (let page = 1; page <= pages; page++) {
+      const html = page === 1 ? first : (await get(`${url}&page=${page}`)).html;
+      try {
+        for (const [id, bar] of trailmapRfcBars(html)) bars.set(id, bar);
+      } catch (error) {
+        problems.push(`/rfcs bar: ${url} page ${page}: ${(error as Error).message}`);
+      }
+    }
+  }
+  problems.push(...(await compareBars(ringoBase, rfcIds, bars)));
   problems.push(
     ...(await compareAll("rfc", rfcIds, async (id) => {
       // ringo's story list lives on its stories TAB; its default tab is the
@@ -235,6 +273,40 @@ async function main(): Promise<number> {
     console.error(`  … and ${problems.length - REPORTED} more`);
   }
   return 1;
+}
+
+/**
+ * THE `/rfcs` PROGRESS BAR: status and count per RFC, trailmap's segments
+ * against the `story_status` ringo's server hands its own page
+ * (`/spawnloop/rfcs`, which `storyBar` draws one segment per entry from).
+ *
+ * ringo's map is the EFFECTIVE status — its index applies the parent-RFC
+ * override on load (`effectiveStoryStatus`, webhook/tasksdb.go) — so the one
+ * status rule (`app/views/shared/_status-badge`) agrees with it.
+ *
+ * ONE KNOWN DIFFERENCE, stated rather than tolerated silently: since btwhooks
+ * `6a18453` ringo also draws a `ready` story with unfinished deps as `blocked`
+ * (`markDepBlocked`). trailmap does not port that yet
+ * (`show-dep-held-ready-stories-as-blocked`, RFC 0136), so the two are
+ * compared as ONE count (`barKey`). The override still crosses that line:
+ * `ready` to `draft` leaves the folded count.
+ */
+async function compareBars(
+  ringoBase: string,
+  rfcIds: readonly string[],
+  trailmap: ReadonlyMap<string, Record<string, number>>,
+): Promise<string[]> {
+  const response = await get(`${ringoBase}/spawnloop/rfcs`);
+  if (response.status !== 200) return [`/rfcs bar: ringo answered ${response.status} for /spawnloop/rfcs`];
+  const rows = (JSON.parse(response.html) as { rfcs: { id: string; story_status?: Record<string, number> }[] }).rfcs;
+  const ringo = new Map(rows.map((r) => [r.id, r.story_status ?? {}]));
+  const problems: string[] = [];
+  for (const id of rfcIds) {
+    const [left, right] = [ringo.get(id), trailmap.get(id)].map((bar) => bar && barKey(bar));
+    if (left !== right) problems.push(`/rfcs bar ${id}: ringo=${left ?? "no row"} trailmap=${right ?? "no row"}`);
+  }
+  console.log(`ok  /rfcs bar (${rfcIds.length} rfcs, ${problems.length} differences)`);
+  return problems;
 }
 
 /** Every id of one kind, `CONCURRENCY` at a time, with a progress line. */

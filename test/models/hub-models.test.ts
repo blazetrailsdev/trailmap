@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { setX } from "../support/config-x.js";
 import { setEnv } from "@blazetrails/ruby-compat";
 import {
   connectHubTestDatabase,
@@ -152,7 +153,7 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
     });
 
     it("imports FLEET_REPO_PATHS, updates the checkout path, and deletes nothing", async () => {
-      setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails=/checkout/trails");
+      setX("fleet", "repoPaths", "blazetrailsdev/trails=/checkout/trails");
       expect((await Repository.importFleetRepos()).map((r) => r.name)).toEqual(["trails"]);
       expect((await Repository.findByNwo("blazetrailsdev", "trails"))?.checkout_path).toBe(
         "/checkout/trails",
@@ -160,7 +161,7 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
       // It created the owner it needed, as an organization.
       expect((await Owner.findByLogin("blazetrailsdev"))?.kind).toBe("organization");
 
-      setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails=/moved/trails");
+      setX("fleet", "repoPaths", "blazetrailsdev/trails=/moved/trails");
       await Repository.importFleetRepos();
       expect((await Repository.findByNwo("blazetrailsdev", "trails"))?.checkout_path).toBe(
         "/moved/trails",
@@ -169,7 +170,7 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
 
       // A repo missing from the variable is NOT removed: the variable lists
       // what one box offers, which is a subset of what the hub knows.
-      setEnv("FLEET_REPO_PATHS", "");
+      setX("fleet", "repoPaths", "");
       await Repository.importFleetRepos();
       expect(await Repository.count()).toBe(1);
     });
@@ -358,7 +359,7 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
 
   describe("Repository.spawnChoices", () => {
     it("is the environment's entries when the hub holds no checkout", async () => {
-      setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails=/checkout/trails");
+      setX("fleet", "repoPaths", "blazetrailsdev/trails=/checkout/trails");
 
       expect(await Repository.spawnChoices()).toEqual([
         { name: "blazetrailsdev/trails", path: "/checkout/trails" },
@@ -366,7 +367,7 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
     });
 
     it("lets a row OVERRIDE the environment entry of the same name", async () => {
-      setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails=/stale/trails");
+      setX("fleet", "repoPaths", "blazetrailsdev/trails=/stale/trails");
       const owner = await Owner.createBang({ login: "blazetrailsdev", kind: "organization" });
       await Repository.createBang({
         owner_id: owner.id,
@@ -383,8 +384,7 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
       // The all-or-nothing version dropped this one the moment any row
       // existed, so adding a repo to FLEET_REPO_PATHS did nothing until
       // someone reseeded.
-      setEnv(
-        "FLEET_REPO_PATHS",
+      setX("fleet", "repoPaths",
         "blazetrailsdev/trails=/checkout/trails,blazetrailsdev/ringo=/checkout/ringo",
       );
       const owner = await Owner.createBang({ login: "blazetrailsdev", kind: "organization" });
@@ -405,8 +405,7 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
       // so `FLEET_REPO_PATHS` never decided the order. The dashboard's first
       // `<option>` is the default spawn target, and on an env-only box it must
       // be the same repository after this change as before it.
-      setEnv(
-        "FLEET_REPO_PATHS",
+      setX("fleet", "repoPaths",
         "blazetrailsdev/zebra=/checkout/zebra,blazetrailsdev/alpha=/checkout/alpha",
       );
 
@@ -419,7 +418,7 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
     });
 
     it("sorts a row-only entry in with the environment's, not after them", async () => {
-      setEnv("FLEET_REPO_PATHS", "blazetrailsdev/zebra=/checkout/zebra");
+      setX("fleet", "repoPaths", "blazetrailsdev/zebra=/checkout/zebra");
       const owner = await Owner.createBang({ login: "blazetrailsdev", kind: "organization" });
       await Repository.createBang({
         owner_id: owner.id,
@@ -434,7 +433,7 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
     });
 
     it("leaves out a row with no checkout, and an archived one", async () => {
-      setEnv("FLEET_REPO_PATHS", "");
+      setX("fleet", "repoPaths", "");
       const owner = await Owner.createBang({ login: "blazetrailsdev", kind: "organization" });
       await Repository.createBang({ owner_id: owner.id, name: "trails" });
       await Repository.createBang({
@@ -452,7 +451,7 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
     it("raises rather than reporting success on a name the model refuses", async () => {
       // `createBang`, not `create`: `create` answers an unsaved record, and
       // the seeds then printed "seeded" over a database with nothing in it.
-      setEnv("FLEET_REPO_PATHS", "blazetrailsdev/not a repo name=/checkout/x");
+      setX("fleet", "repoPaths", "blazetrailsdev/not a repo name=/checkout/x");
 
       await expect(Repository.importFleetRepos()).rejects.toThrow();
     });

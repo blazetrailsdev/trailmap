@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setX } from "../support/config-x.js";
 import { ActionController } from "@blazetrails/actionpack";
 import { setEnv } from "@blazetrails/ruby-compat";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
@@ -62,6 +63,7 @@ describe("DashboardController", () => {
     expect(body).toContain('data-control-path="/fleet/control"');
     expect(body).toContain('data-reviewers-path="/fleet/reviewers"');
     expect(body).toContain('data-read-path="/fleet/read"');
+    expect(body).toContain('id="slControls"');
     expect(body).not.toContain("ringo.example.com");
   });
 
@@ -88,7 +90,7 @@ describe("DashboardController", () => {
   });
 
   it("renders the repo options from configuration, sorted by name", async () => {
-    setEnv("FLEET_REPO_PATHS", "blazetrailsdev/trails=/srv/trails, blazetrailsdev/tasks=/srv/tasks");
+    setX("fleet", "repoPaths", "blazetrailsdev/trails=/srv/trails, blazetrailsdev/tasks=/srv/tasks");
     try {
       const body = await index();
 
@@ -96,7 +98,7 @@ describe("DashboardController", () => {
       expect(body).toContain('<option value="/srv/trails">blazetrailsdev/trails</option>');
       expect(body.indexOf("/srv/tasks")).toBeLessThan(body.indexOf("/srv/trails"));
     } finally {
-      setEnv("FLEET_REPO_PATHS", undefined);
+      setX("fleet", "repoPaths", undefined);
     }
   });
 

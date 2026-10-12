@@ -355,7 +355,7 @@ curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' \
 # expected: 302 https://auth.deanoftech.com/?rd=https://trailmap.deanoftech.com/
 dokku sso:protect trailmap   # only if it answered 200
 
-curl -s http://127.0.0.1:8080/up             # expected: {"status":"ok"}
+curl -s http://127.0.0.1:8080/up             # expected: 200 (the framework's green page)
 curl -s http://127.0.0.1:8080/stories/ready  # a guarded endpoint, see below
 
 # Readiness: 200 with every check named, or 503 with `failing` naming the red

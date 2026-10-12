@@ -130,7 +130,7 @@ export function hasHubDatabase(): boolean {
  * failing somewhere further in.
  */
 export function tasksDatabaseConfig(): Record<string, unknown> {
-  const database = env.TASKS_DATABASE;
+  const database = tasksDatabasePath();
   if (!database) {
     throw new Error(
       "TASKS_DATABASE is not set. Point it at the CLI's tasks.db " +
@@ -148,7 +148,12 @@ export function tasksDatabaseConfig(): Record<string, unknown> {
 
 /** Whether `TASKS_DATABASE` names a database to read. */
 export function hasTasksDatabase(): boolean {
-  return Boolean(env.TASKS_DATABASE);
+  return tasksDatabasePath() !== undefined;
+}
+
+/** The path `TASKS_DATABASE` names, trimmed: the one read all three share. */
+export function tasksDatabasePath(): string | undefined {
+  return env.TASKS_DATABASE?.trim() || undefined;
 }
 
 /**
