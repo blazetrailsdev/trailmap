@@ -44,9 +44,9 @@ pnpm exec trails-tsc-views build --views app/views
 # `config/initializers/hub-database.ts` refuses to boot without it. That is
 # also why there is no `--database` flag here — see the note on the CI step
 # that prepares the hub schema.
-trails="node_modules/@blazetrails/trailties/bin/trails.js"
-pnpm exec tsx "$trails" db create
-pnpm exec tsx "$trails" db migrate
+trails="bin/trails"
+"$trails" db create
+"$trails" db migrate
 export TASKS_DATABASE="$work/storage/development.sqlite3"
 export TASKS_DIR="$work"
 
@@ -61,7 +61,7 @@ export NODE_ENV=production
 export SECRET_KEY_BASE=smoke-boot-not-a-secret
 
 port=8123
-pnpm exec tsx "$trails" server -b 127.0.0.1 -p "$port" &
+"$trails" server -b 127.0.0.1 -p "$port" &
 server=$!
 # Wait for the server to actually exit before removing its tree. The Vite dev
 # server writes into node_modules/.vite as it shuts down, so a `kill` followed
@@ -234,7 +234,7 @@ expect_status "a handshake with no origin" 404 "$(socket_status)"
 echo "smoke-boot: a production server with no SECRET_KEY_BASE must not answer /up"
 nosecret_port=8124
 env -u SECRET_KEY_BASE -u SECRET_KEY_BASE_DUMMY \
-  pnpm exec tsx "$trails" server -b 127.0.0.1 -p "$nosecret_port" > "$work/no-secret.log" 2>&1 &
+  "$trails" server -b 127.0.0.1 -p "$nosecret_port" > "$work/no-secret.log" 2>&1 &
 nosecret=$!
 trap 'kill "$server" "$nosecret" 2>/dev/null || true; wait "$server" "$nosecret" 2>/dev/null || true; rm -rf "$work"' EXIT
 # A process that has EXITED is not a server that failed to answer. It is

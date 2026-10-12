@@ -343,6 +343,7 @@ ul { margin: 0 0 10px 20px; }
 .tag.prog, .tag.next, .tag.queue { color: var(--accent); border-color: var(--accent); }
 .tag.prio { color: var(--fg); font-variant-numeric: tabular-nums; }
 .tag.icebox { background: var(--surface); }
+.tag.stalled { color: var(--yellow); border-color: var(--yellow); }
 .row-aside { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
 /*
@@ -356,14 +357,19 @@ ul { margin: 0 0 10px 20px; }
  * the row can spare up to ringo's 400px: full size on a wide screen, and on a
  * narrow one every bar shrinks together and stays in proportion. `min-width`
  * on the track is what lets it shrink at all -- a flex item will not go below
- * its content otherwise. ringo's history ticks over the bar are left out: they
- * are a cache over its event stream, which is not in this database.
+ * its content otherwise. The history ticks sit on the track at the same
+ * percentage scale: the origin in full ink, each refinement fainter.
  * The segment hues come from the same variables as `.badge.s-*`, so the bar
  * and the badges cannot disagree about what a status looks like.
  */
 .sbarwrap { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
 .sbarcap { font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 62px; }
-.sbartrack { display: block; flex: 1; min-width: 0; max-width: 400px; }
+.sbartrack { display: block; flex: 1; min-width: 0; max-width: 400px; position: relative; }
+.sbartrack .tick {
+  position: absolute; top: 50%; width: 2px; height: 16px; border-radius: 1px;
+  transform: translate(-50%, -50%); background: var(--fg);
+}
+.sbartrack .tick.refine { height: 12px; background: var(--muted); opacity: 0.65; }
 .sbar {
   display: flex; height: 6px; border-radius: 999px; overflow: hidden;
   min-width: 26px; max-width: 100%; box-sizing: border-box;

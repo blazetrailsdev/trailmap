@@ -24,6 +24,7 @@
           <a class="row-title" href="/rfc/<%= row.id %>"><%= row.title %></a>
           <% if (row.priority !== null) { %><span class="tag prio" title="RFC priority (lower = sooner)">P<%= row.priority %></span><% } %>
           <% if (row.counts.total > 0) { %><span class="tag prog" title="stories done / total"><%= row.counts.done %>/<%= row.counts.total %> done</span><% } %>
+          <% if (row.stalled) { %><span class="tag stalled" title="no story ready and none in flight: nothing here can be picked up">needs refine</span><% } %>
           <% for (const cluster of row.clusters) { %><span class="tag"><%= cluster %></span><% } %>
           <% if (row.supersededBy) { %><span class="tag">&rarr; <%= row.supersededBy %></span><% } %>
         </span>
@@ -37,6 +38,7 @@
               <span class="sbar" style="width:<%= row.barLength.pct %>%">
                 <% for (const seg of row.bar) { %><span class="seg s-<%= seg.status %>" style="width:<%= seg.pct %>%" title="<%= seg.count %> <%= seg.status %>"></span><% } %>
               </span>
+              <% for (const tick of row.ticks) { %><i class="tick <%= tick.kind %>" style="left:<%= tick.pct %>%" title="<%= tick.title %>"></i><% } %>
             </span>
             <% if (row.barLength.clamped) { %><span class="sbarmore" title="longer than the scale — see the count">&rsaquo;</span><% } %>
           </div>

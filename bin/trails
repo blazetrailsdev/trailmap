@@ -1,12 +1,29 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { constants } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const { status } = spawnSync(
+const child = spawn(
   join(root, "node_modules", ".bin", "tsx"),
   [join(root, "node_modules/@blazetrails/trailties/bin/trails.js"), ...process.argv.slice(2)],
   { stdio: "inherit" },
 );
-process.exit(status ?? 1);
+// Hand a stop on to the command. This process is what a supervisor signals,
+// and PID 1 in a container: left to the default it would die and orphan the
+// server, or, as PID 1, ignore the signal until it was killed. Ctrl-C in a
+// terminal reaches the child twice, from the group and from here; tsx relays
+// both and the server stops on the first. The generator owes the same file:
+// trails story `generated-bin-trails-does-not-forward-signals` (RFC 0142).
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.on(signal, () => child.kill(signal));
+}
+// A child a signal ended is reported the shell's way, 128 + its number, so a
+// supervisor can tell a kill from a failure. A CLI that cannot be started at
+// all (no node_modules/.bin/tsx) is 127, with the reason.
+child.on("error", (error) => {
+  console.error(`bin/trails: ${error.message}`);
+  process.exit(127);
+});
+child.on("exit", (code, signal) => process.exit(code ?? 128 + constants.signals[signal]));

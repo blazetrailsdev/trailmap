@@ -68,4 +68,4 @@ EXPOSE 8080
 # Keep in step with `web` in the Procfile, which takes precedence over this on
 # a dokku deploy. This CMD is what `docker run` uses — CI's boot job, and
 # anyone running the image by hand.
-CMD ["node_modules/.bin/tsx", "node_modules/@blazetrails/trailties/bin/trails.js", "server", "-b", "0.0.0.0", "-p", "8080"]
+CMD ["./bin/trails", "server", "-b", "0.0.0.0", "-p", "8080"]

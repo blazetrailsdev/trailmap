@@ -142,7 +142,7 @@ pnpm exec trails-tsc-views build --views app/views
 TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db \
 TASKS_DIR=~/github/blazetrailsdev/tasks \
 HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub-dev --dsn)" \
-  pnpm exec tsx node_modules/@blazetrails/trailties/bin/trails.js server
+  bin/trails server
 ```
 
 Both database variables are required: each one's initializer refuses to boot

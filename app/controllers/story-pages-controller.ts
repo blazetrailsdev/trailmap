@@ -113,10 +113,14 @@ export class StoryPagesController extends ApplicationController {
    * page that ordered the queue its own way would be advertising a pick order
    * no agent actually follows.
    *
-   * Left behind: the refine button (a write, and ringo's own dispatch), the
-   * loop-enabled indicator and the over-LOC label. The last is not an
-   * omission of taste — the ceiling is `sl.cfg.MaxLOC`, ringo's own
-   * configuration, and it is not in this database to read.
+   * Left behind: the refine button (a write, and ringo's own dispatch), and
+   * two facts about the LOOP rather than the work — whether it is running,
+   * and the over-LOC label, whose ceiling is `sl.cfg.MaxLOC`. Neither is in
+   * this database, and ringo's two sources for them cannot be read while a
+   * page renders: `/spawnloop/config` computes the next bundle and took
+   * 2.0–2.4s (measured 2026-10-12), and `/spawnloop/backlog` is 3MB. They
+   * are carried when the loop's configuration has a cheap, named home, and
+   * not as a number copied here.
    */
   async index(): Promise<void> {
     // The OUTLINE, not the records: the queue's order and every tab's count
