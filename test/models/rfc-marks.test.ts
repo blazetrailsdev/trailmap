@@ -64,6 +64,11 @@ describe("collectRfcMarks", () => {
       event("2026-09-02 00:30:00", "new", "d", "r2"),
     ]);
     expect(bare.get("r2")![0]!.count).toBe(1);
+    // Shaped like RFC 3339 and not a date: the string's own day, never a throw.
+    const impossible = collectRfcMarks(known, storyRfc, [
+      event("2026-13-45T00:00:00Z", "new", "c", "r2"),
+    ]);
+    expect(impossible.get("r2")![0]!.count).toBe(1);
   });
 
   it("counts an RFC-scoped spawn whose source cannot be read as a refinement", () => {
