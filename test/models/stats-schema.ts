@@ -14,11 +14,14 @@ import { loadStatsSchemas } from "../../app/models/index.js";
  * `node-sqlite` rather than `sqlite3`, because that is the adapter the stats
  * connection runs on and the point of these tests is the query it executes.
  * Not `readonly`, because a fixture has to be written before it can be read.
+ *
+ * `database` is a FILE for the parity gate's fixture mode, which has ringo's Go
+ * read the same rows from another process; the tests keep `:memory:`.
  */
-export async function createScratchStatsDatabase(): Promise<void> {
+export async function createScratchStatsDatabase(database = ":memory:"): Promise<void> {
   await Stats.establishConnection({
     adapter: "node-sqlite",
-    database: ":memory:",
+    database,
     pool: 1,
   });
 

@@ -103,7 +103,9 @@ describe("StoryPagesController", () => {
     const { status, body } = await show("ordered-deps");
 
     expect(status).toBe(200);
-    expect([...body.matchAll(/href="\/story\/([^"]+)"/g)].map((m) => m[1])).toEqual([
+    // The "Depends on" box only; the graph boxes above it link stories too.
+    const depBox = body.slice(body.indexOf('<span class="count">Depends on</span>'));
+    expect([...depBox.matchAll(/href="\/story\/([^"]+)"/g)].map((m) => m[1])).toEqual([
       "z-dep",
       "a-dep",
     ]);
@@ -180,6 +182,16 @@ describe("StoryPagesController", () => {
 
     expect(status).toBe(200);
     expect(body).toContain("No document.");
+  });
+
+  it("shows what blocks the story and what it blocks, with each status", async () => {
+    const { body } = await show("serve-the-read-verbs-as-json");
+
+    const blocks = body.slice(body.indexOf('<span class="count">Blocks '), body.indexOf("Document</h2>"));
+    expect(blocks).toContain('href="/story/render-the-rfc-and-story-show-pages"');
+    expect(blocks).toContain('<span class="badge s-claimed">claimed</span>');
+    // Nothing blocks it, so that box is not drawn at all.
+    expect(body).not.toContain('<span class="count">Blocked by ');
   });
 
   it("answers 404 for an unknown id, and says which id", async () => {

@@ -14,6 +14,7 @@ import {
 } from "../models/concerns/backlog.js";
 import { daysSince } from "../models/concerns/elapsed.js";
 import { pagerFor, requestedPage } from "../models/concerns/pager.js";
+import { depGraphFor } from "../models/concerns/dep-graph.js";
 
 /**
  * Rows to a page. A hundred is a screenful of scanning with the page still
@@ -244,7 +245,7 @@ export class StoryPagesController extends ApplicationController {
     const story = id === "" ? null : await Story.findBy({ id });
     if (story === null) {
       await this.renderPage(
-        { id, story: null, rfc: null, deps: [], rfcDeps: [], packages: [], inherited: false },
+        { id, story: null, rfc: null, deps: [], rfcDeps: [], packages: [], inherited: false, graph: null },
         404,
       );
       return;
@@ -279,10 +280,11 @@ export class StoryPagesController extends ApplicationController {
     // The dep statuses and the document are independent of each other, and the
     // document read is disk. Issued together so the page costs one round of
     // waiting rather than three.
-    const [deps, rfcDeps, doc] = await Promise.all([
+    const [deps, rfcDeps, doc, graph] = await Promise.all([
       storyStatusesFor(depRows.map((row) => row.depends_on_id)),
       rfcStatusesFor(rfcDepRows.map((row) => row.rfc_id)),
       readDocument(story.file_path),
+      depGraphFor(id),
     ]);
 
     await this.renderPage(
@@ -297,6 +299,7 @@ export class StoryPagesController extends ApplicationController {
         shownStatus: effectiveStoryStatus(rfc?.status ?? null, story.status) ?? "",
         deps,
         rfcDeps,
+        graph,
         packages,
         inherited,
         body: doc.markdown === "" ? null : renderMarkdown(doc.markdown),

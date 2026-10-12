@@ -22,6 +22,33 @@
         <p class="note"><strong>Closed:</strong> <%= story.closed_reason %></p>
       <% } %>
 
+      <% if (graph !== null && (graph.blockedBy.length > 0 || graph.blocks.length > 0)) { %>
+        <%# Above the "Depends on" box, never inside it: the page gates read
+            that box from its header to the Document heading as ringo's list. %>
+        <% for (const side of [
+          { title: "Blocked by", note: "everything this story waits on", nodes: graph.blockedBy },
+          { title: "Blocks", note: "everything waiting on this story", nodes: graph.blocks },
+        ]) { %>
+          <% if (side.nodes.length > 0) { %>
+            <div class="box dep-graph">
+              <div class="box-header">
+                <span class="count"><%= side.title %> <span class="n"><%= side.nodes.length %></span></span>
+                <span class="muted"><%= side.note %>, transitively<% if (graph.cyclic) { %> · this story is in a dependency cycle<% } %></span>
+              </div>
+              <% for (const node of side.nodes) { %>
+                <div class="item-row" style="padding-left: <%= 16 + (node.depth - 1) * 20 %>px">
+                  <%= render({ partial: "shared/status-badge", locals: { status: node.status } }) %>
+                  <span class="row-main">
+                    <a class="row-title" href="/story/<%= node.id %>"><%= node.title ?? node.id %></a>
+                    <div class="row-meta"><%= node.id %><% if (node.via !== null) { %> · via <%= node.via %><% } %></div>
+                  </span>
+                </div>
+              <% } %>
+            </div>
+          <% } %>
+        <% } %>
+      <% } %>
+
       <% if (deps.length > 0 || rfcDeps.length > 0) { %>
         <div class="box">
           <div class="box-header"><span class="count">Depends on</span></div>

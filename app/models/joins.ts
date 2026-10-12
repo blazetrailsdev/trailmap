@@ -1,9 +1,13 @@
 import { ApplicationRecord } from "./application-record.js";
+import type { Story } from "./story.js";
 
 /** Self-referential join: `story_id` depends on `depends_on_id`. */
 export class StoryDep extends ApplicationRecord {
   declare story_id: string;
   declare depends_on_id: string;
+  /** Loaded by `includes`; null when the id names no story. */
+  declare story: Story | null;
+  declare dependsOn: Story | null;
 
   static {
     this.belongsTo("story");

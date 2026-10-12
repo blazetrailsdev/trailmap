@@ -203,6 +203,15 @@ grep -q '/spawnloop/' "$out/parity-draw.js" &&
 cleanupParity
 trap - EXIT
 
+# The module files ringo's parity handler compiles against, whole. The parity
+# gate (scripts/ringo-parity-answers.sh) builds db/parity.go — the handler, as
+# vendored above — into a throwaway module, and it needs ringo's own pin of
+# modernc.org/sqlite to be the SQLite that answers. Unlike go/go.mod these
+# carry the requires, and no header: go.sum has no comment syntax.
+mkdir -p "$out/parity"
+show go.mod > "$out/parity/go.mod"
+show go.sum > "$out/parity/go.sum"
+
 printf '%s\n' "$commit" > "$out/PIN"
-(cd "$out" && { echo rfcs-draw.js; echo backlog-draw.js; echo parity.css; echo parity-draw.js; echo core.wasm; find go db -type f | LC_ALL=C sort; } | xargs sha256sum) > "$out/SHA256"
+(cd "$out" && { echo rfcs-draw.js; echo backlog-draw.js; echo parity.css; echo parity-draw.js; echo core.wasm; find go db parity -type f | LC_ALL=C sort; } | xargs sha256sum) > "$out/SHA256"
 echo "vendored ringo $commit -> $out"

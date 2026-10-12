@@ -87,3 +87,19 @@ ringo must not drop a webhook event because trailmap is busy or redeploying.
   than dropped, since the migration that adds the column is the one running.
 - **ringo restarting while events are queued**: GitHub redelivers anything that
   was not acknowledged, which is why the acknowledgement follows the commit.
+
+ringo implements this in `webhook/taskswrite.go` (btwhooks `0eeb2e1`):
+`tasksWriter.Commit` queues a transaction and returns once it is committed,
+retrying `SQLITE_BUSY`, `SQLITE_LOCKED` and the schema errors (`no such column`,
+`no such table`, `has no column named`) on that backoff, and `AckAfterCommit`
+answers 503 for a delivery whose row is not yet on disk. A write whose sender
+gave up stays queued and still commits, so GitHub's redelivery finds the row
+there: **a write must be idempotent, keyed by the delivery id.** Its test holds
+an exclusive lock past the real busy timeout and finds the event written after
+release.
+
+It has no caller yet, and deliberately no `sql.Open`: the writable DSN is
+`tasksWriteDSN` (`file:<path>?mode=rw&_pragma=busy_timeout(5000)`), and the
+story that gives ringo its first table opens it in the same change that adds
+the table to `tableOwners`, which is when the test below starts allowing a
+writable handle.
