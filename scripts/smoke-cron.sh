@@ -14,9 +14,10 @@
 #
 #   Overlap.  A tier that outlives its cadence would be started again on top of
 #             itself, and a hung one would stack up for as long as it hung. Each
-#             tier is given less time than its cadence and killed at the end of
-#             it, and takes a lock first: a run that finds the lock held writes
-#             that it was skipped and leaves.
+#             tier is given less time than its cadence, told that deadline so
+#             it can fail by name what it had no time for, and killed if it
+#             runs on regardless. It takes a lock first: a run that finds the
+#             lock held writes that it was skipped and leaves.
 #   Silence.  Cron's only report is mail. Every run appends a block to a log
 #             ringo parses, so a red tier is a red row on /crons.
 #   Whose environment.  Cron's PATH is not an agent's, and tier 2 exists to
@@ -51,16 +52,36 @@ cadence() {
   esac
 }
 
-crontab() {
+# The path is quoted: the entry is read by sh, and a checkout under a directory
+# with a space in its name would otherwise install a line that runs nothing.
+printCrontab() {
   cat <<CRON
 # trailmap production smoke (RFC 0143). Tier 0 is every 30s, and cron counts in
 # minutes, so it has two entries half a minute apart. TRAILMAP_URL is set here
 # only until agents get it from their own shell (RFC 0136 phase G).
-* * * * * $here/smoke-cron.sh 0
-* * * * * sleep 30; $here/smoke-cron.sh 0
-* * * * * $here/smoke-cron.sh 1
-*/5 * * * * TRAILMAP_URL=${TRAILMAP_URL:-http://127.0.0.1:8080} $here/smoke-cron.sh 2
+* * * * * '$here/smoke-cron.sh' 0
+* * * * * sleep 30; '$here/smoke-cron.sh' 0
+* * * * * '$here/smoke-cron.sh' 1
+*/5 * * * * TRAILMAP_URL=${TRAILMAP_URL:-http://127.0.0.1:8080} '$here/smoke-cron.sh' 2
 CRON
+}
+
+# record <log> <block> — appends one block, and cuts a log past its size back to
+# its newest half. Under a lock of its own: a skipped run appends while the run
+# it was skipped for may be cutting, and a block written between that run's
+# read and its replace would be lost. The cut is moved into place, so a reader
+# never finds the log half written.
+record() {
+  local log="$1" block="$2"
+  (
+    flock 8
+    cat "$block" >>"$log"
+    if [ "$(stat -c %s "$log")" -gt "$LOG_MAX_BYTES" ]; then
+      # From the first header in the kept half, so the log never opens mid-block.
+      tail -c "$((LOG_MAX_BYTES / 2))" "$log" | sed -n '/^=== [0-9T:+-]*Z\{0,1\} ===$/,$p' >"$log.cut"
+      mv "$log.cut" "$log"
+    fi
+  ) 8>"$log.lock"
 }
 
 run() {
@@ -73,29 +94,42 @@ run() {
   block="$(mktemp)"
   trap 'rm -f "$block"' EXIT
 
-  exec 9>"$LOG_DIR/smoke-tier$tier.lock"
+  # Checked, because a lock file that cannot be opened makes `flock` fail too,
+  # and that would be logged as an overlap — to a log that cannot be written.
+  if ! exec 9>"$LOG_DIR/smoke-tier$tier.lock"; then
+    echo "smoke-cron: cannot write in $LOG_DIR, so tier $tier was not run and nothing was logged" >&2
+    exit 3
+  fi
   printf '=== %s ===\n' "$(date -Iseconds)" >"$block"
   if ! flock -n 9; then
     echo "[smoke-cron] skipped: the last tier $tier run is still going" >>"$block"
-    cat "$block" >>"$log"
+    record "$log" "$block"
     exit 0
   fi
 
-  # One request may not take the whole budget, or the first hung assertion
-  # would be the only one the run reports. The lock is closed for the suite: a
-  # child that outlived the kill must not go on holding it.
+  # The suite is told when to stop, five seconds before it would be killed: it
+  # gives each request only what is left, and fails by name whatever it had no
+  # time for. The kill is for a suite that does not stop anyway. The lock is
+  # closed for the suite: a child that outlived the kill must not hold it.
   local started=$SECONDS code=0
-  TRAILMAP_SMOKE_TIMEOUT="${TRAILMAP_SMOKE_TIMEOUT:-$((budget / 2))}" \
-    timeout -k 5 "$budget" "$LOGIN_SHELL" -lc "exec '$SUITE' --tier $tier" >>"$block" 2>&1 9>&- || code=$?
-  [ "$code" != 124 ] || echo "[smoke-cron] killed: tier $tier ran past its ${budget}s budget" >>"$block"
+  # bash announces a child that died of KILL — `timeout` dies of it itself
+  # once it has sent it — on the stderr of the shell that waited, and anything
+  # this script prints is mail from cron. So a subshell does the waiting, with
+  # its stderr discarded. The `exit` is what makes it wait: without a command
+  # after it, bash runs `timeout` AS the subshell, and the announcement comes
+  # from this shell instead.
+  (
+    TRAILMAP_SMOKE_DEADLINE="${TRAILMAP_SMOKE_DEADLINE:-$((budget - 5))}" \
+      timeout -k 5 "$budget" "$LOGIN_SHELL" -lc "exec '$SUITE' --tier $tier" >>"$block" 2>&1 9>&-
+    exit "$?"
+  ) 2>/dev/null || code=$?
+  # 124 is a suite that died of the TERM, 137 one that needed the KILL.
+  case "$code" in
+    124 | 137) echo "[smoke-cron] killed: tier $tier ran past its ${budget}s budget" >>"$block" ;;
+  esac
   echo "[smoke-cron] exit=$code duration=$((SECONDS - started))s" >>"$block"
 
-  cat "$block" >>"$log"
-  if [ "$(stat -c %s "$log")" -gt "$LOG_MAX_BYTES" ]; then
-    # From the first header in the kept half, so the log never opens mid-block.
-    tail -c "$((LOG_MAX_BYTES / 2))" "$log" | sed -n '/^=== [0-9T:+-]*Z\{0,1\} ===$/,$p' >"$block"
-    cat "$block" >"$log"
-  fi
+  record "$log" "$block"
   exit "$code"
 }
 
@@ -128,7 +162,11 @@ selfTest() {
   selfFailed=0
   cat >"$fake/suite" <<'SUITE'
 #!/usr/bin/env bash
-# SMOKE_FAKE_SLEEP holds the run open; SMOKE_FAKE_FAIL fails its one assertion.
+# SMOKE_FAKE_SLEEP holds the run open, SMOKE_FAKE_DEAF does so ignoring TERM,
+# and SMOKE_FAKE_FAIL fails the one assertion. SMOKE_FAKE_MARK is touched once
+# the run is under way, which is after the wrapper took its lock.
+[ -z "${SMOKE_FAKE_DEAF:-}" ] || trap '' TERM
+[ -z "${SMOKE_FAKE_MARK:-}" ] || touch "$SMOKE_FAKE_MARK"
 sleep "${SMOKE_FAKE_SLEEP:-0}"
 if [ -n "${SMOKE_FAKE_FAIL:-}" ]; then
   printf 'FAIL\ttier0.up-loopback\t/up answered 502, not 200\n'
@@ -148,10 +186,16 @@ SUITE
     $'[smoke-cron] killed: tier 0 ran past its 1s budget\n[smoke-cron] exit=124' \
     SMOKE_FAKE_SLEEP=30 TRAILMAP_SMOKE_BUDGET=1
 
+  expect "a tier deaf to TERM is logged as killed too" 137 \
+    $'[smoke-cron] killed: tier 0 ran past its 1s budget\n[smoke-cron] exit=137' \
+    SMOKE_FAKE_DEAF=1 SMOKE_FAKE_SLEEP=30 TRAILMAP_SMOKE_BUDGET=1
+
   # The overlap itself: a run holding the lock, and a second started under it.
+  # The second waits for the first to say it is running, not for a guess at
+  # how long that takes.
   env TRAILMAP_SMOKE_SUITE="$fake/suite" TRAILMAP_SMOKE_LOG_DIR="$fake" TRAILMAP_SMOKE_SHELL=/bin/sh \
-    SMOKE_FAKE_SLEEP=3 "$0" 0 &
-  sleep 1
+    SMOKE_FAKE_SLEEP=3 SMOKE_FAKE_MARK="$fake/running" "$0" 0 &
+  until [ -e "$fake/running" ]; do sleep 0.1; done
   expect "a tier started under a running one is skipped, not stacked" 0 \
     "[smoke-cron] skipped: the last tier 0 run is still going"
   wait
@@ -172,13 +216,22 @@ SUITE
   local entries
   entries="$("$0" --crontab | grep -v '^#')"
   if [ "$(printf '%s\n' "$entries" | wc -l)" = 4 ] &&
-    [ "$(printf '%s\n' "$entries" | grep -c "^\* \* \* \* \* \(sleep 30; \)\{0,1\}$here/smoke-cron.sh 0\$")" = 2 ] &&
-    printf '%s\n' "$entries" | grep -q "^\* \* \* \* \* $here/smoke-cron.sh 1\$" &&
-    printf '%s\n' "$entries" | grep -q "^\*/5 \* \* \* \* TRAILMAP_URL=[^ ]* $here/smoke-cron.sh 2\$"; then
+    [ "$(printf '%s\n' "$entries" | grep -c "^\* \* \* \* \* \(sleep 30; \)\{0,1\}'$here/smoke-cron.sh' 0\$")" = 2 ] &&
+    printf '%s\n' "$entries" | grep -q "^\* \* \* \* \* '$here/smoke-cron.sh' 1\$" &&
+    printf '%s\n' "$entries" | grep -q "^\*/5 \* \* \* \* TRAILMAP_URL=[^ ]* '$here/smoke-cron.sh' 2\$"; then
     echo "self-test ok: --crontab prints tier 0 twice a minute, tier 1 every minute, tier 2 every 5"
   else
     echo "self-test FAILED: --crontab printed:" >&2
     echo "$entries" >&2
+    selfFailed=1
+  fi
+
+  local status=0
+  TRAILMAP_SMOKE_LOG_DIR="$fake/no-such-directory" "$0" 0 >/dev/null 2>"$fake/out" || status=$?
+  if [ "$status" = 3 ] && grep -q "cannot write in $fake/no-such-directory" "$fake/out"; then
+    echo "self-test ok: a log directory that cannot be written is its own failure, not an overlap"
+  else
+    echo "self-test FAILED: an unwritable log directory exited $status and said [$(cat "$fake/out")]" >&2
     selfFailed=1
   fi
 
@@ -193,7 +246,7 @@ SUITE
 
 case "${1:-}" in
   --self-test) selfTest ;;
-  --crontab) crontab ;;
+  --crontab) printCrontab ;;
   [0-9]) run "$1" ;;
   *) echo "usage: scripts/smoke-cron.sh <tier> | --crontab | --self-test" >&2; exit 2 ;;
 esac

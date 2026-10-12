@@ -36,7 +36,7 @@ import {
   repoSectionScaffold,
   repoSections,
   repoSectionsKey,
-  reviewersByKey,
+  reviewersPollOutcome,
   sectionId,
   spawnLoopControls,
   spawnLoopView,
@@ -278,16 +278,20 @@ connect(0);
 const REVIEWERS_POLL_MS = 30_000;
 
 /*
- * Whether the last poll worked, so a failing relay is reported ONCE rather
- * than on every poll -- and reported at all. Keeping the rows is the
- * policy; saying nothing about why would make a stale reviewer column
- * indistinguishable from a current one.
+ * The poll's state between ticks: the last answer, and whether the last poll
+ * worked. What a settled poll does to it -- keep or replace the answer, warn
+ * or stay quiet -- is `reviewersPollOutcome`'s decision, tested there. What is
+ * left here is carrying it out.
  */
-let reviewersPollOk = true;
+let reviewerPoll = { reviewers, ok: true };
 
-function reviewersPollFailed(reason) {
-  if (reviewersPollOk) console.warn("fleet: the reviewer list is stale --", reason);
-  reviewersPollOk = false;
+function reviewersSettled(result) {
+  reviewerPoll = reviewersPollOutcome(result, reviewerPoll);
+  reviewers = reviewerPoll.reviewers;
+  if ("warn" in reviewerPoll) console.warn("fleet: the reviewer list is stale --", reviewerPoll.warn);
+  // Repaint from the last frame, so the reviewer rows appear on a cold load
+  // without waiting for the next one (the race ringo's own page notes).
+  if (reviewerPoll.ok && lastEnvelope) paint(lastEnvelope);
 }
 
 /*
@@ -309,22 +313,12 @@ async function pollReviewers() {
       // before the next tick rather than holding a dead request forever.
       signal: AbortSignal.timeout(REVIEWERS_POLL_MS),
     });
-    if (!response.ok) {
-      // The relay answers with ringo's own status and text, so this is the
-      // reason itself, not a guess at one.
-      reviewersPollFailed(response.status + " " + (await response.text()).trim());
-      return;
-    }
-    // `reviewersByKey` refuses a body that is not an array, by name, so a
-    // ringo answering `{}` is reported as what it was rather than as a
-    // generic iteration failure.
-    reviewers = reviewersByKey(await response.json());
-    reviewersPollOk = true;
-    // Repaint from the last frame, so the reviewer rows appear on a cold load
-    // without waiting for the next one (the race ringo's own page notes).
-    if (lastEnvelope) paint(lastEnvelope);
+    // The relay answers a failure with ringo's own status and text, so the
+    // body is read as text there: it is the reason itself, not a guess at one.
+    const body = response.ok ? await response.json() : await response.text();
+    reviewersSettled({ ok: response.ok, status: response.status, body });
   } catch (error) {
-    reviewersPollFailed(error instanceof Error ? error.message : String(error));
+    reviewersSettled({ error: error instanceof Error ? error.message : String(error) });
   } finally {
     reviewersInFlight = false;
   }

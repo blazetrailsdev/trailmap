@@ -36,6 +36,7 @@ import {
   reviewerLine,
   workerLine,
   reviewersByKey,
+  reviewersPollOutcome,
   rfcSpawnRow,
   row,
   sectionId,
@@ -218,6 +219,60 @@ describe("reviewerKey", () => {
     const entry = { owner: "o", repo: "r", pr: 3, agent: "claude" };
 
     expect(reviewersByKey([entry])[reviewerKey("o", "r", 3)]).toBe(entry);
+  });
+});
+
+describe("reviewersPollOutcome", () => {
+  const unanswered = { reviewers: null, ok: true };
+  const entry = { owner: "o", repo: "r", pr: 3, agent: "claude" };
+  const answered = reviewersPollOutcome({ ok: true, status: 200, body: [entry] }, unanswered);
+  const pr = { owner: "o", repo: "r", pr: 3 };
+
+  it("leaves the state unknown on a 503, and warns once with ringo's reason", () => {
+    const failed = reviewersPollOutcome({ ok: false, status: 503, body: "ringo is down\n" }, unanswered);
+
+    expect(failed).toEqual({ reviewers: null, ok: false, warn: "503 ringo is down" });
+    // Unknown is not empty: no dash, because nothing said nobody is reviewing.
+    expect(reviewerLine(pr, failed.reviewers)).toBe("");
+  });
+
+  it("does not warn again while the relay stays down", () => {
+    const first = reviewersPollOutcome({ error: "The operation timed out." }, answered);
+    const second = reviewersPollOutcome({ ok: false, status: 502, body: "" }, first);
+
+    expect(first.warn).toBe("The operation timed out.");
+    expect(second).toEqual({ reviewers: answered.reviewers, ok: false });
+  });
+
+  it("keeps the last answer through a failure", () => {
+    const failed = reviewersPollOutcome({ error: "Failed to fetch" }, answered);
+
+    expect(failed.reviewers[reviewerKey("o", "r", 3)]).toBe(entry);
+  });
+
+  it("re-arms the warning on a recovery", () => {
+    const down = reviewersPollOutcome({ ok: false, status: 503, body: "" }, answered);
+    const up = reviewersPollOutcome({ ok: true, status: 200, body: [entry] }, down);
+
+    expect(up).toEqual({ reviewers: answered.reviewers, ok: true });
+    expect(reviewersPollOutcome({ ok: false, status: 503, body: "" }, up).warn).toBe("503");
+  });
+
+  it("refuses a body that is not an array, by type", () => {
+    const refused = reviewersPollOutcome({ ok: true, status: 200, body: {} }, unanswered);
+
+    expect(refused).toEqual({
+      reviewers: null,
+      ok: false,
+      warn: "the reviewer list is not an array: object",
+    });
+  });
+
+  it("produces the dash from an empty list, and from nothing else", () => {
+    const empty = reviewersPollOutcome({ ok: true, status: 200, body: [] }, unanswered);
+
+    expect(empty).toEqual({ reviewers: {}, ok: true });
+    expect(reviewerLine(pr, empty.reviewers)).toContain("—");
   });
 });
 

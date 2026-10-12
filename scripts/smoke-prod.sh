@@ -35,6 +35,10 @@ LOOPBACK="${TRAILMAP_LOOPBACK:-http://127.0.0.1:8080}"
 PUBLIC_ORIGIN="${TRAILMAP_PUBLIC_ORIGIN:-http://127.0.0.1}"
 HOSTNAME_PUBLIC="${TRAILMAP_HOSTNAME:-trailmap.deanoftech.com}"
 TIMEOUT="${TRAILMAP_SMOKE_TIMEOUT:-30}"
+# Seconds from the start by which the suite must have finished, when whoever
+# runs it will kill it (scripts/smoke-cron.sh). Unset, there is no deadline.
+DEADLINE="${TRAILMAP_SMOKE_DEADLINE:-}"
+LATE="not run: the suite's ${DEADLINE}s deadline had passed"
 # The canary's worktree: made once with `scripts/start-worktree.sh smoke-canary`,
 # so it has the path and the `tasks` link every agent's worktree has.
 WORKTREE="${TRAILMAP_SMOKE_WORKTREE:-$HOME/github/blazetrailsdev/worktrees/smoke-canary}"
@@ -52,14 +56,28 @@ fail() {
   failed=1
 }
 
+# allowance — sets $allowed, the seconds the next call may take: $TIMEOUT, or
+# what is left before the deadline when that is less. False when nothing is
+# left, and the caller then fails BY NAME instead of making the call: a hung
+# verb costs its own allowance, not the rows of every assertion after it.
+allowance() {
+  allowed="$TIMEOUT"
+  [ -n "$DEADLINE" ] || return 0
+  [ "$((DEADLINE - SECONDS))" -ge "$allowed" ] || allowed="$((DEADLINE - SECONDS))"
+  [ "$allowed" -gt 0 ]
+}
+
 # fetch <url> [<Host header>] — the body lands in $work/body, and $status and
-# $contentType are set. A request that never connected reads as status 000.
+# $contentType are set. A request that never connected reads as status 000,
+# and so does one there was no time left to make, which also sets $late.
 fetch() {
   local out
   # Cleared first: a request that never connected writes no body, and the last
   # request's body must not be read as this one's.
   rm -f "$work/body"
-  out=$(curl -s -m "$TIMEOUT" -o "$work/body" -w '%{http_code} %{content_type}' \
+  late="" status=000 contentType=""
+  allowance || { late=1; return; }
+  out=$(curl -s -m "$allowed" -o "$work/body" -w '%{http_code} %{content_type}' \
     ${2:+-H "Host: $2"} "$1") || true
   status="${out%% *}"
   contentType="${out#* }"
@@ -69,7 +87,9 @@ fetch() {
 # json <name> <path> <jq filter> — 200, and a body the filter answers `true` for.
 json() {
   fetch "$LOOPBACK$2"
-  if [ "$status" != "200" ]; then
+  if [ -n "$late" ]; then
+    fail "$1" "$LATE"
+  elif [ "$status" != "200" ]; then
     fail "$1" "$2 answered $status, not 200"
   elif [ "$(jq -r "$3" "$work/body" 2>/dev/null)" != "true" ]; then
     fail "$1" "$2 answered 200 without the expected shape" \
@@ -86,7 +106,9 @@ json() {
 # the id too, and a short id turns up in prose and links.
 page() {
   fetch "$LOOPBACK$2"
-  if [ "$status" != "200" ]; then
+  if [ -n "$late" ]; then
+    fail "$1" "$LATE"
+  elif [ "$status" != "200" ]; then
     fail "$1" "$2 answered $status, not 200"
   elif [[ "$contentType" != text/html* ]]; then
     fail "$1" "$2 answered ${contentType:-no content type}, not text/html"
@@ -241,31 +263,61 @@ tier2() {
 }
 
 # cli <name> <jq filter> <verb> [<arg> ...] — the installed binary, run where an
-# agent runs it, exiting 0 with a stdout the filter answers `true` for. `-s`
-# reads the whole stdout as one JSON string when it is not JSON (`where`).
+# agent runs it, exiting 0 with a stdout the filter answers `true` for. `where`
+# is the one verb whose stdout is not JSON, so it alone is read raw (`-Rs`, the
+# whole stdout as one string); every other verb has to print JSON to pass.
 #
 # Stdout goes to a FILE. Through a pipe the CLI loses everything past 64KiB
 # (story tasks-cli-json-truncates-through-a-pipe), and that is a bug with a
 # story, not a deployment fault this suite should be red about every 5 minutes.
 cli() {
-  local name="$1" filter="$2" code=0
+  local name="$1" filter="$2" code=0 how=-r
   shift 2
+  [ "$1" != where ] || how=-Rsr
   if [ -n "$cliSkip" ]; then
     fail "$name" "not run: $cliSkip"
     return
   fi
-  (cd "$WORKTREE" && timeout "$TIMEOUT" tasks "$@") >"$work/stdout" 2>"$work/stderr" || code=$?
+  allowance || { fail "$name" "$LATE"; return; }
+  (cd "$WORKTREE" && timeout "$allowed" tasks "$@") >"$work/stdout" 2>"$work/stderr" || code=$?
   if [ "$code" != 0 ]; then
     fail "$name" "tasks $* exited $code" \
       "\`tasks $*\` exited $code from $WORKTREE: $(tail -n 3 "$work/stderr" | tr '\n' ' ')"
-  elif [ "$(jq -r "$filter" "$work/stdout" 2>/dev/null)" != "true" ] &&
-    [ "$(jq -Rsr "$filter" "$work/stdout" 2>/dev/null)" != "true" ]; then
+  elif [ "$(jq "$how" "$filter" "$work/stdout" 2>/dev/null)" != "true" ]; then
     fail "$name" "tasks $* exited 0 without the expected stdout" \
       "\`tasks $*\` exited 0, but its stdout does not satisfy: $filter"
   else
     pass "$name" "tasks $* ok"
   fi
 }
+
+# readyDiffers — sets $differs to why `tasks ready --json` and /stories/ready do
+# not name the same stories in the same order, or to nothing when they do.
+#
+# Every way of not having an answer is a reason of its own. Comparing two
+# `jq ... 2>/dev/null` outputs was not: a CLI that exited non-zero and an API
+# body that was not an array both printed nothing, and nothing equals nothing.
+readyDiffers() {
+  local code=0 cliIds apiIds
+  local ids='if type == "array" and all(.[]; type == "object" and (.id | type) == "string") then [.[].id] else error("not ids") end'
+  allowance || { differs="$LATE"; return; }
+  (cd "$WORKTREE" && timeout "$allowed" tasks ready --json) >"$work/stdout" 2>/dev/null || code=$?
+  fetch "$LOOPBACK/stories/ready"
+  if [ "$code" != 0 ]; then
+    differs="tasks ready --json exited $code"
+  elif [ "$status" != "200" ]; then
+    differs="/stories/ready answered $status, not 200"
+  elif ! cliIds="$(jq -c "$ids" "$work/stdout" 2>/dev/null)"; then
+    differs="tasks ready --json did not print an array of stories with ids"
+  elif ! apiIds="$(jq -c "$ids" "$work/body" 2>/dev/null)"; then
+    differs="/stories/ready did not answer an array of stories with ids"
+  elif [ "$cliIds" != "$apiIds" ]; then
+    differs="$DIFFERENT"
+  else
+    differs=""
+  fi
+}
+DIFFERENT="tasks ready --json and /stories/ready name different stories"
 
 # What breaks for an agent is not the endpoint. It is TRAILMAP_URL, PATH, where
 # the binary was installed and which checkout it resolves — none of which a
@@ -327,23 +379,18 @@ tier2Cli() {
     where
   cli tier2.cli-ready "$stories" ready --json
   # Phase G's own verification, run continuously: the verb prints what the API
-  # answers. Ids in queue order are the part the spawn loop acts on. Asked
-  # twice before it is believed, because a claim landing between the two reads
-  # is a difference too.
+  # answers. Ids in queue order are the part the spawn loop acts on. A
+  # DIFFERENCE is asked about twice before it is believed, because a claim
+  # landing between the two reads is one too; a side with no answer is not.
   if [ -z "$cliSkip" ]; then
-    local same=0
-    for _ in 1 2; do
-      (cd "$WORKTREE" && timeout "$TIMEOUT" tasks ready --json) >"$work/stdout" 2>/dev/null
-      fetch "$LOOPBACK/stories/ready"
-      if [ "$(jq -c '[.[].id]' "$work/stdout" 2>/dev/null)" = "$(jq -c '[.[].id]' "$work/body" 2>/dev/null)" ]; then
-        same=1
-        break
-      fi
-    done
-    if [ "$same" = 1 ]; then
+    readyDiffers
+    [ "$differs" != "$DIFFERENT" ] || readyDiffers
+    if [ -z "$differs" ]; then
       pass tier2.cli-ready-matches-api "tasks ready --json names the stories /stories/ready does"
+    elif [ "$differs" != "$DIFFERENT" ]; then
+      fail tier2.cli-ready-matches-api "$differs"
     else
-      fail tier2.cli-ready-matches-api "tasks ready --json and /stories/ready name different stories" \
+      fail tier2.cli-ready-matches-api "$DIFFERENT" \
         "\`tasks ready --json\` and $LOOPBACK/stories/ready named different
   stories, twice. The CLI and the application are not reading one queue."
     fi
@@ -366,11 +413,13 @@ tier2Cli() {
 # so what is exercised is the real argument parsing, the real exit status and
 # the real output — not functions called from inside a harness.
 
-# expect <label> <tier> <want exit> <name that must FAIL, or "">
+# expect <label> <tier> <want exit> <name that must FAIL, or ""> [<env> ...]
 expect() {
-  local out status=0
-  out="$(PATH="$fake/bin:${basePath:-$PATH}" SMOKE_FAKE="$fake" TRAILMAP_URL="${cannedUrl-http://127.0.0.1:8080}" \
-    TRAILMAP_SMOKE_WORKTREE="$fake/worktree" "$0" --tier "$2" 2>/dev/null)" || status=$?
+  local out status=0 label="$1" tier="$2" want="$3" names="$4"
+  shift 4
+  out="$(env PATH="$fake/bin:${basePath:-$PATH}" SMOKE_FAKE="$fake" TRAILMAP_URL="${cannedUrl-http://127.0.0.1:8080}" \
+    TRAILMAP_SMOKE_WORKTREE="$fake/worktree" "$@" "$0" --tier "$tier" 2>/dev/null)" || status=$?
+  set -- "$label" "$tier" "$want" "$names"
   local failing; failing="$(printf '%s\n' "$out" | awk -F'\t' '$1 == "FAIL" { print $2 }' | paste -sd, -)"
   if [ "$status" != "$3" ] || [ "$failing" != "$4" ]; then
     echo "self-test FAILED: $1 — exit $status (want $3), failing [$failing] (want [$4])" >&2
@@ -388,6 +437,7 @@ cliCan() { printf '%s\n' "$2" >"$fake/tasks.$1"; }
 can() { printf '%s %s\n' "$2" "$3" >"$fake/$1.head"; printf '%s' "$4" >"$fake/$1.body"; }
 
 healthy() {
+  rm -f "$fake"/tasks.*.exit "$fake/tasks.hang"
   local s='{"id":"story-a","rfc":"rfc-r","status":"ready","raw_status":"ready","deps":[]}'
   local html='<main class="site-main"><h1 class="page-title">'
   # A parity endpoint that is actually serving: the picker names a run and a
@@ -451,9 +501,12 @@ CURL
   cat >"$fake/bin/tasks" <<'TASKS'
 #!/usr/bin/env bash
 # Answers from $SMOKE_FAKE/tasks.<verb>; a verb with nothing canned fails the
-# way the real one does.
+# way the real one does. `tasks.<verb>.exit` is the status to leave with after
+# printing, and `tasks.hang` makes every verb hang.
+[ ! -e "$SMOKE_FAKE/tasks.hang" ] || exec sleep 60
 [ -f "$SMOKE_FAKE/tasks.$1" ] || { echo "error: unknown command \"$1\"" >&2; exit 1; }
 cat "$SMOKE_FAKE/tasks.$1"
+exit "$(cat "$SMOKE_FAKE/tasks.$1.exit" 2>/dev/null || echo 0)"
 TASKS
   chmod +x "$fake/bin/curl" "$fake/bin/tasks"
   mkdir -p "$fake/worktree/tasks"
@@ -533,6 +586,36 @@ TASKS
   healthy
   cliCan ready '[]'
   expect "a CLI naming a different queue from the API is caught" 2 1 tier2.cli-ready-matches-api
+
+  # The three ways the comparison used to pass with a side that had no answer:
+  # each of these leaves the OTHER side saying exactly what a healthy one does.
+  healthy
+  echo 3 >"$fake/tasks.ready.exit"
+  expect "a CLI that names the queue and exits non-zero does not match the API" 2 1 \
+    tier2.cli-ready,tier2.cli-ready-matches-api
+
+  healthy
+  can _stories_ready 500 application/json "$(cat "$fake/_stories_ready.body")"
+  expect "an API that names the queue under a 500 does not match the CLI" 2 1 \
+    tier2.stories-ready,tier2.cli-ready-matches-api
+
+  healthy
+  cliCan ready '{"error":"ranking failed"}'
+  can _stories_ready 200 application/json '{"error":"ranking failed"}'
+  expect "two sides that are both not a list of stories do not match" 2 1 \
+    tier2.stories-ready,tier2.cli-ready,tier2.cli-ready-matches-api
+
+  # A hung binary under a deadline: each verb costs its own allowance, the ones
+  # there was no time for fail by name, and the suite is out before the kill.
+  healthy
+  touch "$fake/tasks.hang"
+  local hungAt=$SECONDS
+  expect "a hung tasks still gets a row for every verb, inside the deadline" 2 1 "$cliRows" \
+    TRAILMAP_SMOKE_TIMEOUT=1 TRAILMAP_SMOKE_DEADLINE=4
+  if [ "$((SECONDS - hungAt))" -gt 6 ]; then
+    echo "self-test FAILED: the hung run took $((SECONDS - hungAt))s against a 4s deadline" >&2
+    selfFailed=1
+  fi
 
   healthy
   cliCan next-bundle 'no ready stories'

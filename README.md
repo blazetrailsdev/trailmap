@@ -285,6 +285,19 @@ incremental one never did. With the rows pinned, what CI proves is what the
 four defects the live gate found were all about: how trailmap ORDERS, RANKS and
 LABELS a fixed set of rows.
 
+**What the story page's status pill is and is not verified against.** ringo's
+story pill folded `ready`, `draft`, `claimed` and `in-progress` onto one word,
+"Open", so the recorded story fact pins that pill to a quarter of its
+resolution — trailmap#22 changed which status the story page shows, and the
+replay stayed green across every page, because both statuses were "Open". The
+recording cannot be widened (below), so the gate cross-checks instead: each
+story page's raw pill must equal the badge its parent RFC's RECORDED row wears
+for that story, which ringo printed unfolded. That holds the pill to the
+effective status for every story page the gate compares, and `--self-test`
+moves one pill within the fold and requires red. It is still not ringo's story
+page saying so — ringo never did — and the stories recorded as `exempt` (pages
+ringo hid) are checked for being served, not for their pill.
+
 **Re-recording is deliberate, and a diff to either file is reviewed as a change
 to what the pages say.** It is legitimate in exactly two cases:
 

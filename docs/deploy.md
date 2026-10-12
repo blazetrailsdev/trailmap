@@ -183,6 +183,20 @@ then 500s with `relation "repositories" does not exist` on `/dashboard` and
 every page under `/:owner`. That is what the release task is for; it is the
 reason this is a deploy step and not a runbook entry.
 
+## Who the viewer is
+
+`sso:protect` is also trailmap's only notion of a viewer. Authelia's proxy sets
+`Remote-User` on every request it lets through, and trailmap reads it as an
+`Owner` login (`app/controllers/concerns/viewer.ts`). That is what a `private`
+repository is enforced against: its tabs 404, and its row is left off the owner
+page, for anyone who is not its owner or a `repository_collaborators` row.
+
+So before a repository is made private, the person who should still see it
+needs an `owners` row whose `login` is their Authelia username, and — unless
+that row owns the repository — a collaborator row. Loopback carries no
+`Remote-User` and is anonymous: the CLI, ringo and the smoke suite see public
+repositories only. With SSO off, so is everyone.
+
 ## The stats database
 
 `/graphs/parity` charts the trails port's convergence out of the stats database
@@ -306,8 +320,11 @@ deploys, so the deploy gate and the schedule cannot drift apart:
 
 Tiers 0 to 2 run from the host crontab, every 30 seconds, every minute and
 every 5 minutes. `scripts/smoke-cron.sh <tier>` is what cron runs: it takes a
-per-tier lock, so a slow tier is skipped rather than stacked; kills a tier ten
-seconds short of its cadence; and appends each run to
+per-tier lock, so a slow tier is skipped rather than stacked; tells the suite
+its deadline (`TRAILMAP_SMOKE_DEADLINE`, five seconds before the kill), so a
+hung verb costs one allowance and everything it left no time for fails by name;
+kills a tier ten seconds short of its cadence if it runs on anyway; and appends
+each run to
 `~/github/blazetrailsdev/smoke-tier<N>.log`, which ringo reads into three rows
 on `/crons`. A red row there is the report. Cron's own is mail nobody reads.
 
