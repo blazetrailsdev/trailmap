@@ -38,6 +38,9 @@ describe("DashboardController", () => {
 
     expect(body).toContain('id="repoSections"');
     expect(body).toContain('id="ciFixerPanel"');
+    for (const id of ["queueSection", "askBody", "usageBar", "codexUsageBar", "pokeBtn", "drainCodexStatus", "drainClaudeField"]) {
+      expect(body).toContain(`id="${id}"`);
+    }
     expect(body).toContain('id="mainCIPills"');
     expect(body).toContain('id="pullFailPill"');
     expect(body).toContain('id="agentPills"');
@@ -58,6 +61,7 @@ describe("DashboardController", () => {
     expect(body).toContain('data-socket-path="/fleet/socket"');
     expect(body).toContain('data-control-path="/fleet/control"');
     expect(body).toContain('data-reviewers-path="/fleet/reviewers"');
+    expect(body).toContain('data-read-path="/fleet/read"');
     expect(body).not.toContain("ringo.example.com");
   });
 

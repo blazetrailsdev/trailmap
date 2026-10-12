@@ -1,5 +1,5 @@
 import { ApplicationController } from "./application-controller.js";
-import { FLEET_CONTROLS, isPaneId, isScreenHash } from "../../config/fleet.js";
+import { FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash } from "../../config/fleet.js";
 import { Setting } from "../models/setting.js";
 import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.js";
 
@@ -123,6 +123,27 @@ export class FleetController extends ApplicationController {
    * keep in step.
    */
   async reviewers(): Promise<void> {
+    await this.relayRead("reviewer/list");
+  }
+
+  /**
+   * The page's other reads -- usage, relayed questions, a reviewer drain's
+   * progress -- by the names in `FLEET_READS`, on the same terms as
+   * `reviewers`. `agent` is the one query any of them takes, and only
+   * `drain-status` takes it (`/reviewer/drain-status?agent=codex`); it is
+   * forwarded there alone, and only as a bare word.
+   */
+  async read(): Promise<void> {
+    const name = String(this.params.get("name") ?? "");
+    if (!Object.hasOwn(FLEET_READS, name)) {
+      await this.render({ plain: "Not a fleet read", status: 404 });
+      return;
+    }
+    const agent = String(this.params.get("agent") ?? "");
+    await this.relayRead(FLEET_READS[name] + (name === "drain-status" && /^[a-z]+$/.test(agent) ? `?agent=${agent}` : ""));
+  }
+
+  private async relayRead(path: string): Promise<void> {
     const base = await Setting.ringoBase();
     if (base === null) {
       await this.render({ plain: "no ringo origin is configured", status: 503 });
@@ -131,7 +152,7 @@ export class FleetController extends ApplicationController {
 
     this.noStore();
     try {
-      const response = await fetch(`${base}/reviewer/list`, {
+      const response = await fetch(`${base}/${path}`, {
         signal: AbortSignal.timeout(REVIEWERS_TIMEOUT_MS),
       });
       const text = await response.text();

@@ -1,6 +1,7 @@
 import { ApplicationController } from "./application-controller.js";
 import {
   FLEET_CONTROL_PATH,
+  FLEET_READ_PATH,
   FLEET_REVIEWERS_PATH,
   FLEET_SOCKET_PATH,
 } from "../../config/fleet.js";
@@ -28,6 +29,7 @@ export class DashboardController extends ApplicationController {
         socketPath: FLEET_SOCKET_PATH,
         controlPath: FLEET_CONTROL_PATH,
         reviewersPath: FLEET_REVIEWERS_PATH,
+        readPath: FLEET_READ_PATH,
         relayConfigured: (await Setting.ringoBase()) !== null,
       },
     });

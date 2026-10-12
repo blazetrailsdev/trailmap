@@ -63,6 +63,11 @@ beforeAll(async () => {
         res.end(JSON.stringify(REVIEWERS));
         return;
       }
+      if (url.pathname === "/usage-status" || url.pathname === "/reviewer/drain-status") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ asked: url.pathname + url.search }));
+        return;
+      }
       if (url.pathname === "/reviewer-down/reviewer/list") {
         res.writeHead(500);
         res.end("reviewer store is unavailable");
@@ -290,6 +295,36 @@ async function reviewers() {
   await tc.get("reviewers");
   return tc.response;
 }
+
+async function read(name: string, params: Record<string, string> = {}) {
+  const tc = await controllerTestCase(FleetController);
+  await tc.get("read", { params: { name, ...params } });
+  return tc.response;
+}
+
+describe("FleetController#read", () => {
+  it("relays a listed read from the ringo path it names, never cached", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    const response = await read("usage");
+    expect(JSON.parse(response.body)).toEqual({ asked: "/usage-status" });
+    expect(response.getHeader("Cache-Control")).toContain("no-store");
+  });
+
+  it("forwards the agent a drain's status is asked for, and only as a bare word", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    const asked = async (agent: string) => JSON.parse((await read("drain-status", { agent })).body).asked;
+    expect(await asked("codex")).toBe("/reviewer/drain-status?agent=codex");
+    expect(await asked("codex&x=1")).toBe("/reviewer/drain-status");
+    expect(JSON.parse((await read("usage", { agent: "codex" })).body).asked).toBe("/usage-status");
+  });
+
+  it("refuses a read the page has no use for, without calling ringo", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    expect((await read("spawnloop/config")).status).toBe(404);
+    expect((await read("constructor")).status).toBe(404);
+    expect(received).toEqual([]);
+  });
+});
 
 describe("FleetController#reviewers", () => {
   it("relays ringo's reviewer list, as JSON that is never cached", async () => {
