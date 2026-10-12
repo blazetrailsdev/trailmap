@@ -9,6 +9,8 @@ import {
   type ParityMetric,
 } from "../models/parity-metric.js";
 import { serializeParitySeries, type ParitySeries } from "../serializers/parity-json.js";
+import { ParityDay } from "../models/parity-day.js";
+import { refreshProjectionIfStale } from "../models/parity-refresh.js";
 
 /**
  * How many packages one request may chart.
@@ -111,6 +113,8 @@ export class ParityGraphsController extends ApplicationController {
       return;
     }
 
+    await refreshProjectionIfStale();
+
     // The picker only offers runs this database can actually chart, and only
     // charts the selected ones that survive that test — the stats schema is
     // the sync cron's, so trailmap can be older or newer than it.
@@ -126,11 +130,13 @@ export class ParityGraphsController extends ApplicationController {
     // The package list is the union over the selected runs, in canonical
     // order, because the page assigns a colour per package from it and a
     // package charted under one run must keep its colour under the others.
+    // From the PROJECTION, not the comparison tables: this used to be a
+    // `DISTINCT package` over 60k rows, per metric, per request.
     const perMetric = new Map<string, Set<string>>();
     const union = new Set<string>();
     for (const metric of chartable) {
       const names = new Set(
-        (await metric.model.distinct().pluck("package")).filter(
+        (await ParityDay.where({ metric: metric.key }).distinct().pluck("package")).filter(
           (name): name is string => typeof name === "string" && name.length > 0,
         ),
       );
@@ -149,15 +155,23 @@ export class ParityGraphsController extends ApplicationController {
     const unknown = requested.filter((pkg) => !kept.includes(pkg));
 
     const since = sinceFor(param("days"));
+
+    // One run at a time, deliberately. The page may have eight on the chart and
+    // these are eight independent indexed reads, so Rails' `load_async` — fire
+    // them all, then consume — is the obvious shape and was what this did.
+    //
+    // It is NOT USED because `loadAsync` is broken in the vendored trails:
+    // only the FIRST call in the process returns rows and every later one
+    // silently answers an empty set, whatever order they are consumed in.
+    // Charting two runs lost the second, which is how it was found — the ringo
+    // gate caught it. Reported upstream; the reads here are a few milliseconds
+    // against a 14k-row table, so sequential costs nothing worth having.
     const series: ParitySeries[] = [];
     for (const metric of chartable) {
       const want = kept.filter((pkg) => perMetric.get(metric.key)?.has(pkg));
       if (want.length === 0) continue;
-      const gaps = gapsByMetric[metric.key] ?? [];
-      const rows = await metric.model
-        .dailyRollup({ packages: want, since, columns: [...metricColumns(metric), ...gaps] })
-        .toArray();
-      series.push(...serializeParitySeries(rows, metric, want, gaps));
+      const rows = await ParityDay.forChart(metric.key, want, since).toArray();
+      series.push(...serializeParitySeries(rows, metric.key, want));
     }
 
     await this.render({
