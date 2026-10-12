@@ -1,6 +1,6 @@
 import { Migration } from "@blazetrails/activerecord";
 
-export class AddIndexFields extends Migration {
+export class AddIndexFields extends Migration.get(8) {
   async change() {
     // Fields index.json carries that the first cut of the schema missed.
     //

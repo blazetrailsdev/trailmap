@@ -11,8 +11,9 @@
 // It's strongly recommended that you check this file into your version control system.
 
 import { Schema } from "@blazetrails/activerecord";
+import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapters/sqlite3-adapter.js";
 
-await Schema.get(8).define({ version: 2026_09_10_000007 }, async (ctx) => {
+await Schema.get(8).define<SQLite3Adapter>({ version: 2026_09_10_000007 }, async (ctx) => {
   await ctx.createTable("events", { force: "cascade" }, (t) => {
     t.string("at", { null: false });
     t.string("verb", { null: false });

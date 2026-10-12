@@ -5,7 +5,7 @@ import { Migration } from "@blazetrails/activerecord";
  * task domain lives in. `pnpm db:migrate` runs both; never pass
  * `--database hub` (see config/database.ts and docs/deploy.md).
  */
-export class CreateOwners extends Migration {
+export class CreateOwners extends Migration.get(8) {
   async change() {
     // A surrogate primary key, unlike `rfcs` and `stories` whose slugs are
     // their natural keys: a login is renameable, and renaming a primary key

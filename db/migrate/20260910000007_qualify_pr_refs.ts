@@ -10,7 +10,7 @@ import { Migration } from "@blazetrails/activerecord";
  * changes the column type, because trailmap never migrates that database
  * (config/database.ts) — only its own.
  */
-export class QualifyPrRefs extends Migration {
+export class QualifyPrRefs extends Migration.get(8) {
   async up() {
     await this.changeColumn("stories", "pr", "string");
     await this.changeColumn("events", "pr", "string");

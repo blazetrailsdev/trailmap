@@ -13,7 +13,7 @@ import { Migration } from "@blazetrails/activerecord";
  * standing in for one — so the database refuses a duplicate pair whatever the
  * application believes.
  */
-export class CreateRepositoryCollaborators extends Migration {
+export class CreateRepositoryCollaborators extends Migration.get(8) {
   async change() {
     await this.createTable(
       "repository_collaborators",
