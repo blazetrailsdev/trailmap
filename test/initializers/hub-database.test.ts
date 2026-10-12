@@ -96,8 +96,12 @@ describe("connectToHubDatabase", () => {
       setEnv("HUB_DATABASE_URL", empty);
       await Hub.establishConnection({ adapter: "postgresql", url: empty, pool: 1 });
 
+      // Every table a hub model names, sorted — `missingHubTables` derives the
+      // list from HUB_MODELS rather than a written-out one, so a model added
+      // to the barrel belongs here too.
       expect(await missingHubTables()).toEqual([
         "owners",
+        "parity_days",
         "repositories",
         "repository_collaborators",
         "repository_settings",
