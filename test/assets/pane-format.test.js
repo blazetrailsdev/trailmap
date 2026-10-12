@@ -90,7 +90,9 @@ describe("screenStep", () => {
     expect(failureKind(502)).toBe("unreachable");
     expect(failureKind(500, "boom")).toBe("pane");
     expect(failureKind(503, " no ringo origin is configured\n")).toBe("refused");
-    expect(failureKind(403)).toBe("refused");
+    expect(failureKind(404)).toBe("refused");
+    // Answered, and may answer differently next time: not a refusal.
+    expect(failureKind(429)).toBe("pane");
   });
 
   it("clears the unreachable notice on the next answer", () => {

@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { DebugExceptions } from "@blazetrails/actionpack";
+import { describe, expect, it, onTestFinished } from "vitest";
+import { ActionController, DebugExceptions, ExceptionWrapper } from "@blazetrails/actionpack";
+import { RecordNotFound } from "@blazetrails/activerecord";
 import { ReadModelsController } from "../../app/controllers/read-models-controller.js";
 import { controllerTestCase } from "../support/controller-test-case.js";
 
@@ -9,6 +10,12 @@ const BROWSER_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/
 class FailingReadModelsController extends ReadModelsController {
   override async index(): Promise<void> {
     throw new Error("no such table: stories");
+  }
+}
+
+class MissingReadModelsController extends ReadModelsController {
+  override async index(): Promise<void> {
+    throw new RecordNotFound("no such story");
   }
 }
 
@@ -31,6 +38,25 @@ describe("a 500", () => {
         message: "no such table: stories",
       });
     }
+  });
+
+  // A handler runs before the framework's status mapping, so it must not
+  // answer what that mapping would have: the error is raised again, and under
+  // `ActionController::TestCase` (no middleware) that means it propagates.
+  it("leaves an error the framework maps to another status alone", async () => {
+    // The ActiveRecord trailtie adds this mapping at boot, which vitest does
+    // not do (test/support/controller-test-case.ts says why).
+    const key = "ActiveRecord::RecordNotFound";
+    ExceptionWrapper.rescueResponses[key] = ":not_found";
+    onTestFinished(() => void delete ExceptionWrapper.rescueResponses[key]);
+    expect(new ExceptionWrapper(new RecordNotFound("no such story")).statusCode).toBe(404);
+
+    const tc = await controllerTestCase(MissingReadModelsController, { Host: "127.0.0.1" });
+    await expect(tc.get("index")).rejects.toThrow(RecordNotFound);
+
+    // One with a mapping of actionpack's own, which needs no boot at all.
+    const missing = new ActionController.ParameterMissing("id");
+    expect(new ExceptionWrapper(missing).statusCode).toBe(400);
   });
 
   // The middleware every page's error reaches, as the vendored build ships it.

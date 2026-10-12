@@ -39,21 +39,22 @@ export const initialState = () => ({
  * and one of them a different cadence:
  *
  *   unreachable  502/504, or no answer: ringo is down or slow. Transient.
- *   pane         ringo's own 5xx, 503 above all: ringo was reached, and tmux
- *                was not. Transient.
+ *   pane         any other status, ringo's 503 above all: ringo was reached,
+ *                and tmux was not (or it is busy: 408, 429). Transient.
  *   refused      404/400, and the relay's unconfigured 503: no such endpoint,
  *                a bad request, or no ringo to ask. Retrying will not fix it.
  */
 export function failureKind(status, error = "") {
   if (!status || status === 502 || status === 504) return "unreachable";
   if (status === 503 && error.trim() === NO_ORIGIN) return "refused";
-  return status >= 500 ? "pane" : "refused";
+  return status === 400 || status === 404 ? "refused" : "pane";
 }
 
 /**
  * Fold one poll into the state. `outcome` is `{ body }` for an answer from
- * ringo or `{ error, status }` for anything else (ringo down, a timeout, a
- * failure status from the relay; `status` is absent when nothing answered). Returns the next state and, only when the screen actually
+ * ringo or `{ error, status }` for anything else (ringo down, a timeout,
+ * a failure status from the relay); `status` is absent when nothing
+ * answered. Returns the next state and, only when the screen actually
  * changed, the `html` to put on the page -- `null` means leave the DOM alone,
  * which is every case but one.
  */

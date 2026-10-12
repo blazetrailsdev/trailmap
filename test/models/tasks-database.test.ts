@@ -6,9 +6,10 @@ import { RFC_STATUSES, Rfc, Story, loadModelSchemas } from "../../app/models/ind
 /**
  * Spot-check the moved models against the LIVE database the CLI writes.
  *
- * Skipped unless `TASKS_DATABASE` points at a `tasks.db` — the file lives in
- * another repo's checkout, so CI has no copy of it and there is nothing here
- * worth faking. Run it as:
+ * Skipped unless `TASKS_DATABASE` points at a `tasks.db`. CI's `test` job has
+ * none, so it skips there; the `gate` job ingests the content repo into one
+ * and runs this file against it, which is why nothing here may depend on a
+ * fact only the box's database holds. Locally:
  *
  *     TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db pnpm test
  */
@@ -30,7 +31,9 @@ withLiveDatabase("the live tasks database", () => {
   });
 
   it("reads a story and traverses it back to its RFC", async () => {
-    const story = await Story.findBy({ id: "move-task-models-into-trailmap" });
+    // Any story of the RFC, not one by name: a story can be renamed or
+    // removed, and the traversal is what is under test.
+    const story = await Story.findBy({ rfc_id: "0136-trailmap" });
     expect(story).not.toBeNull();
     expect(story!.rfc_id).toBe("0136-trailmap");
     const rfc = await story!.rfc;
