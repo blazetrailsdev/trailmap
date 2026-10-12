@@ -77,10 +77,11 @@ function escapeLike(value: string): string {
  * The relations the scope rule selects: one on `pr LIKE 'repo#%'`, plus the
  * unattributed stories when `repo` is the content repo.
  *
- * ONE definition of the rule, used by the list, the count and the single-story
- * lookup alike. Each of those needs a different projection — eight columns, an
- * integer, one row — and before this they each re-derived the predicate, which
- * is how `storyForRepo` ended up scanning the whole list to find one id.
+ * ONE definition of the rule, used by the list and the single-story lookup
+ * alike. Each needs a different projection — eight columns, one row — and
+ * before this they each re-derived the predicate, which is how `storyForRepo`
+ * ended up scanning the whole list to find one id. `openCountsByRepo` is the
+ * same rule as a grouping key, and the tests hold the two together.
  */
 function scopeRelations(repo: string) {
   const relations = [Story.where("pr LIKE ? ESCAPE '\\'", `${escapeLike(repo)}#%`)];
@@ -96,21 +97,22 @@ export async function storiesForRepo(repo: string): Promise<ScopedStory[]> {
 }
 
 /**
- * How many of `repo`'s stories are still open.
+ * How many of each repository's stories are still open, in ONE query.
  *
- * A COUNT, which is the whole point: the owner page wants one integer per
- * repository and used to get it by plucking eight columns of every story the
- * repo has — nine thousand rows on `trails` — and filtering in JavaScript.
+ * The owner page wants one integer per repository. Grouped rather than a
+ * count per repository, so the page costs the same at four repositories and
+ * at four hundred. The grouping key IS the scope rule above, in SQL: the name
+ * in front of `pr`'s `#`, and the content repo for a story with no `pr`.
  *
- * "Open" is everything that is not `done` or `closed`, the same two terminal
- * statuses the issue tabs use.
+ * Every name in `repos` gets an entry — a repository with no open stories
+ * reads 0. "Open" is everything that is not `done` or `closed`, the same two
+ * terminal statuses the issue tabs use.
  */
-export async function openCountForRepo(repo: string): Promise<number> {
-  let open = 0;
-  for (const relation of scopeRelations(repo)) {
-    open += await relation.where("status NOT IN (?, ?)", "done", "closed").count();
-  }
-  return open;
+export async function openCountsByRepo(repos: string[]): Promise<Map<string, number>> {
+  const counted = (await Story.where("status NOT IN (?, ?)", "done", "closed")
+    .group(`CASE WHEN pr IS NULL THEN '${CONTENT_REPO}' ELSE substr(pr, 1, instr(pr, '#') - 1) END`)
+    .count()) as Map<string, number>;
+  return new Map(repos.map((repo) => [repo, counted.get(repo) ?? 0]));
 }
 
 async function pluckScoped(relation: {

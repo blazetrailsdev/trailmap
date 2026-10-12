@@ -1,11 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { Notifications } from "@blazetrails/activesupport";
 import { migrateScratchDatabase } from "./schema.js";
 import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 import {
   CONTENT_REPO,
   eventsForRepo,
   inChunks,
-  openCountForRepo,
+  openCountsByRepo,
   pathsForStories,
   prNumber,
   prRefsOf,
@@ -184,27 +185,39 @@ describe("storyForRepo", () => {
   });
 });
 
-describe("openCountForRepo", () => {
+describe("openCountsByRepo", () => {
+  // `ringo` has no stories at all.
+  const REPOS = ["trails", "trailmap", "ringo", "my_repo", CONTENT_REPO];
+
   it("counts everything that is not done or closed", async () => {
     // `trails` has one done, one done-on-the-same-PR and one in-progress.
-    expect(await openCountForRepo("trails")).toBe(1);
+    expect((await openCountsByRepo(["trails"])).get("trails")).toBe(1);
   });
 
-  it("includes the content repo's unattributed stories", async () => {
-    const scoped = await storiesForRepo(CONTENT_REPO);
-    const open = scoped.filter((s) => s.status !== "done" && s.status !== "closed");
-
-    expect(await openCountForRepo(CONTENT_REPO)).toBe(open.length);
-    expect(await openCountForRepo(CONTENT_REPO)).toBeGreaterThan(0);
-  });
-
-  it("agrees with filtering the list, which is what it replaced", async () => {
-    for (const repo of ["trails", "trailmap", "ringo", CONTENT_REPO]) {
+  it("agrees with filtering each repository's list, unattributed stories included", async () => {
+    const counts = await openCountsByRepo(REPOS);
+    for (const repo of REPOS) {
       const scoped = await storiesForRepo(repo);
       const open = scoped.filter((s) => s.status !== "done" && s.status !== "closed");
 
-      expect([repo, await openCountForRepo(repo)]).toEqual([repo, open.length]);
+      expect([repo, counts.get(repo)]).toEqual([repo, open.length]);
     }
+    expect(counts.get(CONTENT_REPO)).toBeGreaterThan(0);
+  });
+
+  it("reads 0 for a repository with no stories, rather than leaving it out", async () => {
+    expect([...(await openCountsByRepo(["ringo", "nothing"]))]).toEqual([["ringo", 0], ["nothing", 0]]);
+  });
+
+  it("issues one query however many repositories are asked for", async () => {
+    let queries = 0;
+    const subscriber = Notifications.subscribe("sql.active_record", () => queries++);
+    try {
+      await openCountsByRepo(REPOS);
+    } finally {
+      Notifications.unsubscribe(subscriber);
+    }
+    expect(queries).toBe(1);
   });
 });
 
