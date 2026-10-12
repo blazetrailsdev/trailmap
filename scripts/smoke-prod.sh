@@ -397,7 +397,7 @@ healthy() {
   local parity='{"metrics_selected":["api"],"gaps_by_metric":{"api":["missing"]},'
   parity+='"metrics":[{"key":"api","label":"api:compare","gaps":["missing"]}],'
   parity+='"packages":["activerecord"],"unknown_packages":[],"max_packages":8,"series":[]}'
-  can _up 200 application/json '{"status":"ok"}'
+  can _up 200 text/html '<!DOCTYPE html><html><body style="background-color: green"></body></html>'
   can _up_ready 200 application/json '{"status":"ok","failing":[],"checks":{"migrations":{"ok":true,"expected":7,"actual":7}}}'
   can public 302 text/html ''
   can _stories 200 application/json "[$s]"
