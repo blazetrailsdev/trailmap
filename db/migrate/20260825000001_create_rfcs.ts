@@ -1,6 +1,6 @@
 import { Migration } from "@blazetrails/activerecord";
 
-export class CreateRfcs extends Migration {
+export class CreateRfcs extends Migration.get(8) {
   async change() {
     // The RFC slug ("0061-ci-failures") is the natural key — it is what every
     // story's `rfc:` frontmatter field cites — so it is the primary key.

@@ -11,8 +11,9 @@
 // It's strongly recommended that you check this file into your version control system.
 
 import { Schema } from "@blazetrails/activerecord";
+import type { PostgreSQLAdapter } from "@blazetrails/activerecord/connection-adapters/postgresql-adapter.js";
 
-await Schema.get(8).define({ version: 2026_10_10_000005 }, async (ctx) => {
+await Schema.get(8).define<PostgreSQLAdapter>({ version: 2026_10_10_000005 }, async (ctx) => {
   // These are extensions that must be enabled in order to support this database
   await ctx.enableExtension("pg_catalog.plpgsql");
 

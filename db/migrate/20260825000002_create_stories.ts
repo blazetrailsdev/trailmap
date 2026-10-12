@@ -1,6 +1,6 @@
 import { Migration } from "@blazetrails/activerecord";
 
-export class CreateStories extends Migration {
+export class CreateStories extends Migration.get(8) {
   async change() {
     // Story slug is the natural key: what agents type, what PR bodies cite, and
     // what the spawn loop passes around.

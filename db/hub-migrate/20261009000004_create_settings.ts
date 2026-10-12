@@ -9,7 +9,7 @@ import { Migration } from "@blazetrails/activerecord";
  * variable of the same meaning; see `app/models/setting.ts` for why that
  * direction and not the other.
  */
-export class CreateSettings extends Migration {
+export class CreateSettings extends Migration.get(8) {
   async change() {
     // `id: "string", primaryKey: "key"` creates the key column itself, as
     // db/migrate/20260825000005_create_meta.ts does for the same shape.

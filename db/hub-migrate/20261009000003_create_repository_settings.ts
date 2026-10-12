@@ -7,7 +7,7 @@ import { Migration } from "@blazetrails/activerecord";
  * constrained or migrated; a settings table that shipped as `{"issues":true}`
  * in a text column would reproduce exactly that.
  */
-export class CreateRepositorySettings extends Migration {
+export class CreateRepositorySettings extends Migration.get(8) {
   async change() {
     await this.createTable("repository_settings", (t) => {
       t.references("repository", {

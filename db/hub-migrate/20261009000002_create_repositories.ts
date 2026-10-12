@@ -1,6 +1,6 @@
 import { Migration } from "@blazetrails/activerecord";
 
-export class CreateRepositories extends Migration {
+export class CreateRepositories extends Migration.get(8) {
   async change() {
     await this.createTable("repositories", (t) => {
       // `references` gives the column, the index and — Postgres being a
