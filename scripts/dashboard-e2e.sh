@@ -10,8 +10,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 work="$(mktemp -d)"
-ringo=8141 app=8142 cdp=9342
-chrome="${CHROME_BIN:-$(command -v google-chrome || command -v chromium || command -v chromium-browser)}"
+ringo="${E2E_RINGO_PORT:-8141}" app="${E2E_APP_PORT:-8142}" cdp="${E2E_CDP_PORT:-9342}"
+chrome="${CHROME_BIN:-$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)}"
+[ -n "$chrome" ] || { echo "dashboard-e2e: no Chrome on PATH (set CHROME_BIN)" >&2; exit 1; }
 
 pnpm exec trails-tsc-views build --views app/views
 ./scripts/build-assets.sh

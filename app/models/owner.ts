@@ -19,7 +19,6 @@ export type OwnerKind = (typeof OWNER_KINDS)[number];
  * that; the uniqueness index on `login` is what keeps it a key.
  */
 export class Owner extends Hub {
-  static _tableName = "owners";
 
   declare id: number;
   declare login: string;

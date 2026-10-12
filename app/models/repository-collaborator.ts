@@ -13,7 +13,7 @@ export type CollaboratorRole = (typeof COLLABORATOR_ROLES)[number];
  * is the identity: an owner is a collaborator on a repository at most once, so
  * the pair says everything a surrogate `id` would, and a surrogate would add a
  * second way to name the same row. Rails has supported composite keys natively
- * since 7.1 and `_primaryKey` takes the array directly.
+ * since 7.1 and `primaryKey` takes the array directly.
  *
  * What that changes for a caller, and what the tests pin:
  *
@@ -25,8 +25,6 @@ export type CollaboratorRole = (typeof COLLABORATOR_ROLES)[number];
  *   pretending to be the guard.
  */
 export class RepositoryCollaborator extends Hub {
-  static _tableName = "repository_collaborators";
-
   declare repository_id: number;
   declare owner_id: number;
   declare role: CollaboratorRole;

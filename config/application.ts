@@ -1,3 +1,5 @@
+import { Logger } from "@blazetrails/activesupport";
+import { stdout } from "@blazetrails/ruby-compat";
 import { Application } from "@blazetrails/trailties";
 
 // Load the framework trailties this application uses — Rails' `require
@@ -23,6 +25,11 @@ export class Trailmap extends Application {
     // application configuration at runtime, so the cast records a framework
     // typing gap rather than a behaviour change.
     (this.config as unknown as LoadsDefaults).loadDefaults("8.0");
+
+    // Log to STDOUT, as Rails' production template does, in every environment:
+    // without a logger the framework installs a NullLogger, and what the
+    // models report through `Trails.logger` (an RFC auto-closing) is dropped.
+    this.config.logger = new Logger(stdout);
   }
 
   // Configuration for the application, engines, and trailties goes here.

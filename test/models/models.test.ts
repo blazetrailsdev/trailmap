@@ -179,6 +179,13 @@ describe("Rfc's serialized array columns", () => {
       "SELECT packages, clusters FROM rfcs WHERE id = '0010-written'",
     );
     expect(raw).toEqual([['["a","b"]', null]]);
-    expect((await Rfc.findBy({ id: rfc.id }))!.isChanged).toBe(false);
+    const reloaded = (await Rfc.findBy({ id: rfc.id }))!;
+    expect(reloaded.isChanged).toBe(false);
+
+    // Assigning null never reaches the coder's `dump`: the column goes NULL.
+    await reloaded.update({ packages: null as unknown as string[] });
+    expect(
+      await (await Base.leaseConnection()).selectValue("SELECT packages FROM rfcs WHERE id = '0010-written'"),
+    ).toBeNull();
   });
 });

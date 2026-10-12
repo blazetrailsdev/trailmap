@@ -102,7 +102,11 @@ export async function storiesForRepo(repo: string): Promise<ScopedStory[]> {
  * The owner page wants one integer per repository. Grouped rather than a
  * count per repository, so the page costs the same at four repositories and
  * at four hundred. The grouping key IS the scope rule above, in SQL: the name
- * in front of `pr`'s `#`, and the content repo for a story with no `pr`.
+ * in front of `pr`'s `#` — lower-cased, because `scopeRelations`' LIKE is
+ * case-insensitive in SQLite, so `Trails#5` is a story of `trails` there and
+ * must be one here. A story with no `pr` groups under NULL, which is the
+ * content repo's; a `pr` with no `#` groups under '' and is nobody's, as no
+ * `LIKE 'repo#%'` matches it either.
  *
  * Every name in `repos` gets an entry — a repository with no open stories
  * reads 0. "Open" is everything that is not `done` or `closed`, the same two
@@ -110,9 +114,11 @@ export async function storiesForRepo(repo: string): Promise<ScopedStory[]> {
  */
 export async function openCountsByRepo(repos: string[]): Promise<Map<string, number>> {
   const counted = (await Story.where("status NOT IN (?, ?)", "done", "closed")
-    .group(`CASE WHEN pr IS NULL THEN '${CONTENT_REPO}' ELSE substr(pr, 1, instr(pr, '#') - 1) END`)
-    .count()) as Map<string, number>;
-  return new Map(repos.map((repo) => [repo, counted.get(repo) ?? 0]));
+    .group("lower(substr(pr, 1, instr(pr, '#') - 1))")
+    .count()) as Map<string | null, number>;
+  const open = (repo: string): number =>
+    (counted.get(repo.toLowerCase()) ?? 0) + (repo === CONTENT_REPO ? (counted.get(null) ?? 0) : 0);
+  return new Map(repos.map((repo) => [repo, open(repo)]));
 }
 
 async function pluckScoped(relation: {

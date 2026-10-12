@@ -2,7 +2,7 @@ import { ApplicationRecord } from "./application-record.js";
 import { pinTimestampColumns } from "./timestamps.js";
 import { Event } from "./event.js";
 import { Rfc } from "./rfc.js";
-import { TERMINAL, closeRfcIfComplete } from "./rfc-close.js";
+import { closeRfcIfComplete } from "./rfc-close.js";
 import { StoryDep, StoryPackage, StoryPath, StoryRfcDep } from "./joins.js";
 import { VerbExit } from "./verb-exit.js";
 import {
@@ -140,12 +140,18 @@ export class Story extends ApplicationRecord {
       { on: "ingest" },
     );
 
-    // The RFC auto-close (see ./rfc-close.ts). Only a landing can complete an
-    // RFC; skipping the rest keeps a full ingest re-scan from running two
-    // counting queries per story row.
-    this.afterSave(async (story: Story) => {
-      if (TERMINAL.includes(story.status)) await closeRfcIfComplete(story.rfc_id);
-    });
+    // Rails' `after_save :close_rfc_if_complete`. trails refuses a method NAME
+    // here (a string is not a symbol), so the declaration delegates to it.
+    this.afterSave((story: Story) => story.closeRfcIfComplete());
+  }
+
+  /**
+   * The RFC auto-close (see ./rfc-close.ts), as an `afterSave`. Only a landing
+   * can complete an RFC; skipping the rest keeps a full ingest re-scan from
+   * running two counting queries per story row.
+   */
+  async closeRfcIfComplete(): Promise<void> {
+    if (this.isDone() || this.status === "closed") await closeRfcIfComplete(this.rfc_id);
   }
 
   /**

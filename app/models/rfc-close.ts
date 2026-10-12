@@ -36,7 +36,7 @@ import type { StoryStatus } from "./story.js";
 const NEVER_AUTO_CLOSE = new Set(["0061-ci-failures"]);
 
 /** A story in one of these is finished with — it will never move again. */
-export const TERMINAL: readonly StoryStatus[] = ["done", "closed"];
+const TERMINAL: readonly StoryStatus[] = ["done", "closed"];
 
 function nowIso(): string {
   return new Date().toISOString().replace(/\.\d+Z$/, "Z");

@@ -309,10 +309,12 @@ async function pollReviewers() {
 
 /*
  * The two other things the page reads beside the stream, on the same timer:
- * which agent a `+` spawns as a reviewer (ringo's default until it answers),
- * and each broadcast audience's size. A failed read keeps the last answer.
+ * which agent a `+` spawns as a reviewer, and each broadcast audience's size.
+ * A failed read keeps the last answer. Until one lands the agent is unknown
+ * and is not guessed: ringo's page assumes `copilot` (`dashboard.go:814`),
+ * which would assign the wrong reviewer whenever the loop is set to another.
  */
-let nextReviewer = "copilot";
+let nextReviewer = "";
 let audiences = {};
 
 async function readRingo(path) {
@@ -350,7 +352,8 @@ setInterval(pollAll, REVIEWERS_POLL_MS);
 
 // Enter sends to everyone; with Ctrl or Cmd, to the CI-red audience.
 byId("bcastMsg").addEventListener("keydown", (event) => {
-  if (event.key !== "Enter" || event.shiftKey) return;
+  // Not while an IME is composing: that Enter confirms the composition.
+  if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
   event.preventDefault();
   byId(event.metaKey || event.ctrlKey ? "bcastCIRed" : "bcastAll").click();
 });

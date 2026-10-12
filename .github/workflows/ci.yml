@@ -145,23 +145,6 @@ jobs:
           node-version-file: .node-version
       - run: ./scripts/smoke-boot.sh
 
-  # THE SHOW-PAGE SNAPSHOT. `pnpm gate:pages` diffs trailmap's /rfc/<id> and
-  # /story/<id> against ringo's over the whole database; it found four port
-  # defects that hand-verification had missed, and it cannot run here, because
-  # ringo serves from a checkout and a database that exist only on the box.
-  #
-  # It is also about to stop proving anything. `land-the-ringo-read-model-
-  # deletion` moves ringo's loadIndex onto trailmap's own API, after which
-  # ringo's show pages render from data trailmap produced and the gate compares
-  # trailmap against itself — reporting EQUIVALENT forever. It goes circular,
-  # not red, which is worse than losing it: the green check keeps being cited.
-  #
-  # So ringo's answers were recorded while ringo still had its own read model,
-  # and this replays them. Both fixtures were captured in one pass — the facts
-  # ringo stated, and the database rows they were rendered from — so the replay
-  # needs no ringo, no database and no tasks checkout, and what it proves is
-  # what the four defects were about: how trailmap orders, ranks and labels a
-  # fixed set of rows. Re-recording is deliberate; README says when.
   # scripts/dashboard-e2e.ts, in the Chrome the runner image carries.
   dashboard-e2e:
     runs-on: ubuntu-latest
@@ -193,6 +176,23 @@ jobs:
       - run: pnpm db:migrate
       - run: ./scripts/dashboard-e2e.sh
 
+  # THE SHOW-PAGE SNAPSHOT. `pnpm gate:pages` diffs trailmap's /rfc/<id> and
+  # /story/<id> against ringo's over the whole database; it found four port
+  # defects that hand-verification had missed, and it cannot run here, because
+  # ringo serves from a checkout and a database that exist only on the box.
+  #
+  # It is also about to stop proving anything. `land-the-ringo-read-model-
+  # deletion` moves ringo's loadIndex onto trailmap's own API, after which
+  # ringo's show pages render from data trailmap produced and the gate compares
+  # trailmap against itself — reporting EQUIVALENT forever. It goes circular,
+  # not red, which is worse than losing it: the green check keeps being cited.
+  #
+  # So ringo's answers were recorded while ringo still had its own read model,
+  # and this replays them. Both fixtures were captured in one pass — the facts
+  # ringo stated, and the database rows they were rendered from — so the replay
+  # needs no ringo, no database and no tasks checkout, and what it proves is
+  # what the four defects were about: how trailmap orders, ranks and labels a
+  # fixed set of rows. Re-recording is deliberate; README says when.
   page-snapshot:
     runs-on: ubuntu-latest
     steps:

@@ -10,9 +10,13 @@ import { Dir, getFs } from "@blazetrails/ruby-compat";
  *
  * A class with a rule of its own setting `padding`, `display` or `position`
  * lays out a box; an element wearing two of them is two components on one
- * node, unless the pair is listed below as a deliberate modifier. Not seen:
- * the run-time part of a class list (a list is read up to the quote ending
- * its literal), and rules that are not bare `.name` selectors.
+ * node, unless the pair is listed below as a deliberate modifier.
+ *
+ * GREEN DOES NOT MEAN: nothing collides. Only double-quoted `class="`, `cls:`
+ * and `className =` literals are read, each up to the quote that ends it. So
+ * `classList.add/toggle`, single-quoted and template-literal class lists and
+ * the run-time part of a concatenation are invisible, and so is any rule that
+ * is not a bare `.name` selector (`.pcell.unassigned`, `.card .btn`).
  */
 const STYLESHEET = "app/assets/stylesheets/application.css";
 const SOURCES = ["app/views/**/*.tse", "app/assets/javascripts/*.js"];

@@ -351,7 +351,9 @@ export function controlRequest(action, data, page = {}) {
       return {
         ...plus,
         path: "/reviewer/assign",
-        body: { owner: data.owner, repo: data.repo, pr: Number(data.pr), agent: page.nextReviewer, respawn: !!data.respawn },
+        // With no agent known yet, ringo picks the loop's own for a respawn and
+        // refuses anything else by name (`handler.go:1053`), which the `+` shows.
+        body: { owner: data.owner, repo: data.repo, pr: Number(data.pr), agent: page.nextReviewer || "", respawn: !!data.respawn },
         // The list is polled, not streamed, so the new reviewer is fetched.
         refresh: "reviewers",
       };

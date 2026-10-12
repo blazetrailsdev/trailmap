@@ -70,6 +70,11 @@ beforeAll(async () => {
     pr: "myXrepo#1",
   });
 
+  // What the grouped count has to agree with the LIKE about: a `pr` in another
+  // case is still that repository's, and one with no `#` is nobody's.
+  await Story.create({ id: "mixed-case", rfc_id: "0136-trailmap", status: "ready", pr: "Casey#16" });
+  await Story.create({ id: "no-hash", rfc_id: "0136-trailmap", status: "ready", pr: "casey" });
+
   await StoryPath.create({ story_id: "shipped-in-trails", path: "packages/activerecord/a.ts" });
   await StoryPath.create({ story_id: "shipped-in-trails", path: "packages/actionpack/b.ts" });
   await StoryPath.create({ story_id: "newer-in-trails", path: "scripts/c.ts" });
@@ -187,7 +192,7 @@ describe("storyForRepo", () => {
 
 describe("openCountsByRepo", () => {
   // `ringo` has no stories at all.
-  const REPOS = ["trails", "trailmap", "ringo", "my_repo", CONTENT_REPO];
+  const REPOS = ["trails", "trailmap", "ringo", "my_repo", "casey", CONTENT_REPO];
 
   it("counts everything that is not done or closed", async () => {
     // `trails` has one done, one done-on-the-same-PR and one in-progress.
@@ -203,6 +208,8 @@ describe("openCountsByRepo", () => {
       expect([repo, counts.get(repo)]).toEqual([repo, open.length]);
     }
     expect(counts.get(CONTENT_REPO)).toBeGreaterThan(0);
+    // `Casey#16` is casey's, as the LIKE has it; the `#`-less `casey` is not.
+    expect(counts.get("casey")).toBe(1);
   });
 
   it("reads 0 for a repository with no stories, rather than leaving it out", async () => {

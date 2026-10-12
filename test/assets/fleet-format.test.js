@@ -233,6 +233,9 @@ describe("the + buttons on a PR row", () => {
     ]);
     expect(controlRequest("add-reviewer", { owner: "o", repo: "r", pr: "7", respawn: "1" }, page).body.respawn).toBe(true);
 
+    // Before ringo has said who the next reviewer is, none is guessed.
+    expect(controlRequest("add-reviewer", { owner: "o", repo: "r", pr: "7" }, {}).body.agent).toBe("");
+
     const spawn = controlRequest("add-worker", { owner: "o", repo: "r", pr: "7", branch: "a-branch" });
     expect([spawn.path, spawn.body]).toEqual(["/worker/spawn", { owner: "o", repo: "r", pr: 7, branch: "a-branch" }]);
   });
