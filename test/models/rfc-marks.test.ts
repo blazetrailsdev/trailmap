@@ -58,6 +58,12 @@ describe("collectRfcMarks", () => {
     ]);
 
     expect(marks.get("r2")![0]!.count).toBe(2);
+    // No offset: not RFC 3339, so the day is the string's own, as in ringo.
+    const bare = collectRfcMarks(known, storyRfc, [
+      event("2026-09-01 23:30:00", "new", "c", "r2"),
+      event("2026-09-02 00:30:00", "new", "d", "r2"),
+    ]);
+    expect(bare.get("r2")![0]!.count).toBe(1);
   });
 
   it("counts an RFC-scoped spawn whose source cannot be read as a refinement", () => {

@@ -44,8 +44,9 @@ function spawnSource(detail: string | null): string {
 
 /** The UTC day, as ringo's `rfcMarkDay` (rfcmarks.go:304): `at` carries offsets. */
 function utcDay(at: string): string {
-  const ms = Date.parse(at);
-  return Number.isNaN(ms) ? at.slice(0, 10) : new Date(ms).toISOString().slice(0, 10);
+  // RFC 3339 only, as Go's parse is: anything else would be read as local time.
+  if (!/^\d{4}-\d\d-\d\dT.*(Z|[+-]\d\d:\d\d)$/.test(at)) return at.slice(0, 10);
+  return new Date(Date.parse(at)).toISOString().slice(0, 10);
 }
 
 /** `events` in the order they happened. */
