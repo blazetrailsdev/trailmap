@@ -162,6 +162,37 @@ jobs:
   # needs no ringo, no database and no tasks checkout, and what it proves is
   # what the four defects were about: how trailmap orders, ranks and labels a
   # fixed set of rows. Re-recording is deliberate; README says when.
+  # scripts/dashboard-e2e.ts, in the Chrome the runner image carries.
+  dashboard-e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trailmap_hub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - run: ./scripts/dashboard-e2e.sh
+
   page-snapshot:
     runs-on: ubuntu-latest
     steps:
