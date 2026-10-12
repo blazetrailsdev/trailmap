@@ -1,9 +1,10 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { setX } from "../support/config-x.js";
 import { getChildProcess, getFs, setEnv, type FsAdapter } from "@blazetrails/ruby-compat";
+import { controllerConstants } from "@blazetrails/actionpack";
 import { MigrationContext } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "../models/schema.js";
 import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { HealthController } from "../../app/controllers/health-controller.js";
 import { ProbesController } from "../../app/controllers/probes-controller.js";
 import { controllerTestCase } from "../support/controller-test-case.js";
 
@@ -64,19 +65,19 @@ beforeAll(async () => {
 afterEach(() => {
   vi.restoreAllMocks();
   ProbesController.deepTimeoutMs = 5_000;
-  setEnv("TASKS_DIR", tasksDir);
+  setX("tasks", "dir", tasksDir);
   setEnv("TASKS_DATABASE", undefined);
 });
 
 afterAll(() => {
   for (const dir of dirs) getFs().rmSync(dir, { recursive: true, force: true });
-  setEnv("TASKS_DIR", undefined);
+  setX("tasks", "dir", undefined);
   setEnv("GIT_CONFIG_GLOBAL", undefined);
   setEnv("GIT_CONFIG_NOSYSTEM", undefined);
 });
 
 describe("GET /up/ready", () => {
-  beforeAll(() => setEnv("TASKS_DIR", tasksDir));
+  beforeAll(() => setX("tasks", "dir", tasksDir));
 
   it("answers 200 naming every check", async () => {
     const { status, body } = await getJson("ready");
@@ -195,7 +196,7 @@ describe("GET /up/ready", () => {
   }
 
   it("goes red on a missing git identity alone", async () => {
-    setEnv("TASKS_DIR", anonymousCheckout());
+    setX("tasks", "dir", anonymousCheckout());
     const { status, body } = await getJson("ready");
 
     expect(status).toBe(503);
@@ -204,7 +205,7 @@ describe("GET /up/ready", () => {
   });
 
   it("accepts an identity the environment supplies, as a commit would", async () => {
-    setEnv("TASKS_DIR", anonymousCheckout());
+    setX("tasks", "dir", anonymousCheckout());
     setEnv("GIT_AUTHOR_EMAIL", "author@example.test");
     setEnv("GIT_COMMITTER_EMAIL", "committer@example.test");
     try {
@@ -219,7 +220,7 @@ describe("GET /up/ready", () => {
   });
 
   it("names the committer when only the author has an identity", async () => {
-    setEnv("TASKS_DIR", anonymousCheckout());
+    setX("tasks", "dir", anonymousCheckout());
     setEnv("GIT_AUTHOR_EMAIL", "author@example.test");
     try {
       const { body } = await getJson("ready");
@@ -237,7 +238,7 @@ describe("GET /up/ready", () => {
     git(awkward, "init", "--quiet");
     git(awkward, "config", "user.name", "Probe");
     git(awkward, "config", "user.email", "probe@example.test");
-    setEnv("TASKS_DIR", awkward);
+    setX("tasks", "dir", awkward);
     const { status, body } = await getJson("ready");
 
     expect(status).toBe(200);
@@ -265,7 +266,7 @@ describe("GET /up/ready", () => {
   });
 
   it("names both checkout checks when no checkout is configured", async () => {
-    setEnv("TASKS_DIR", undefined);
+    setX("tasks", "dir", undefined);
     setEnv("TASKS_DATABASE", undefined);
     const { status, body } = await getJson("ready");
 
@@ -366,11 +367,11 @@ describe("GET /up/deep", () => {
 describe("GET /up", () => {
   it("still answers 200 with the database red, from any host", async () => {
     const count = vi.spyOn(Story, "count").mockRejectedValue(new Error("database is locked"));
-    const tc = await controllerTestCase(HealthController, { Host: "trailmap.deanoftech.com" });
+    const health = controllerConstants.get("rails/health") as unknown as typeof ProbesController;
+    const tc = await controllerTestCase(health, { Host: "trailmap.deanoftech.com" });
     await tc.get("show");
 
     expect(tc.response.status).toBe(200);
-    expect(JSON.parse(tc.response.body)).toEqual({ status: "ok" });
     expect(count).not.toHaveBeenCalled();
   });
 });

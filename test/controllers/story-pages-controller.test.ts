@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setX } from "../support/config-x.js";
 import { ActionController } from "@blazetrails/actionpack";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
 import { migrateScratchDatabase } from "../models/schema.js";
@@ -22,7 +23,7 @@ async function show(id: string): Promise<{ status: number; body: string }> {
 
 beforeAll(async () => {
   ApplicationController.prependViewPath("app/views");
-  setEnv("TASKS_DIR", Dir.pwd());
+  setX("tasks", "dir", Dir.pwd());
 
   await migrateScratchDatabase();
   await loadModelSchemas();

@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setX } from "../support/config-x.js";
 import { ActionController } from "@blazetrails/actionpack";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
 import { migrateScratchDatabase } from "../models/schema.js";
@@ -17,7 +18,7 @@ beforeAll(async () => {
   ApplicationController.prependViewPath("app/views");
   // The document lives on disk, not in the database: `ingest` stores the path
   // and leaves the body in the checkout. This repo stands in for one.
-  setEnv("TASKS_DIR", Dir.pwd());
+  setX("tasks", "dir", Dir.pwd());
 
   await migrateScratchDatabase();
   await loadModelSchemas();

@@ -5,7 +5,6 @@ import "../config/application.js";
 import "../config/routes.js";
 import { DashboardController } from "../app/controllers/dashboard-controller.js";
 import { FleetController } from "../app/controllers/fleet-controller.js";
-import { HealthController } from "../app/controllers/health-controller.js";
 import { HomeController } from "../app/controllers/home-controller.js";
 import { MutationsController } from "../app/controllers/mutations-controller.js";
 import { ProbesController } from "../app/controllers/probes-controller.js";
@@ -35,7 +34,6 @@ import { RESERVED_OWNER_NAMES } from "../config/routes.js";
 for (const controller of [
   DashboardController,
   FleetController,
-  HealthController,
   HomeController,
   MutationsController,
   PanesController,
@@ -84,10 +82,12 @@ describe("config/routes", () => {
     expect(match?.route.action).toBe("index");
   });
 
-  it("routes the health endpoint to health#show", () => {
+  // The framework's controller, which `@blazetrails/trailties` registers
+  // itself: it is deliberately absent from the list above.
+  it("routes the health endpoint to rails/health#show", () => {
     const match = recognize(routeSet(), "GET", "/up");
 
-    expect(match?.route.controller).toBe("health");
+    expect(match?.route.controller).toBe("rails/health");
     expect(match?.route.action).toBe("show");
   });
 
@@ -291,7 +291,7 @@ describe("config/routes", () => {
   it("leaves every reserved top-level path with its own controller", () => {
     const routes = routeSet();
     const pages: [string, string][] = [
-      ["/up", "health"],
+      ["/up", "rails/health"],
       ["/dashboard", "dashboard"],
       ["/rfcs", "rfc_pages"],
       ["/backlog", "story_pages"],

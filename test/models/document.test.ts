@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { setX } from "../support/config-x.js";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
 import { readDocument, stripFrontmatter } from "../../app/models/concerns/document.js";
 import { tasksContentDir } from "../../config/tasks-content.js";
@@ -29,26 +30,26 @@ describe("stripFrontmatter", () => {
 
 describe("tasksContentDir", () => {
   it("derives the checkout from the database path when TASKS_DIR is unset", () => {
-    setEnv("TASKS_DIR", undefined);
-    setEnv("TASKS_DATABASE", "/srv/tasks/.git/tasks.db");
+    setX("tasks", "dir", undefined);
+    setX("tasks", "database", "/srv/tasks/.git/tasks.db");
     expect(tasksContentDir()).toBe("/srv/tasks");
   });
 
   it("prefers TASKS_DIR, without a trailing slash", () => {
-    setEnv("TASKS_DIR", "/srv/elsewhere/");
+    setX("tasks", "dir", "/srv/elsewhere/");
     expect(tasksContentDir()).toBe("/srv/elsewhere");
   });
 
   it("names no directory when neither variable does", () => {
-    setEnv("TASKS_DIR", undefined);
-    setEnv("TASKS_DATABASE", undefined);
+    setX("tasks", "dir", undefined);
+    setX("tasks", "database", undefined);
     expect(tasksContentDir()).toBeNull();
   });
 });
 
 describe("readDocument", () => {
   it("reads a file relative to the tasks checkout", async () => {
-    setEnv("TASKS_DIR", Dir.pwd());
+    setX("tasks", "dir", Dir.pwd());
 
     const doc = await readDocument("README.md");
 
@@ -57,7 +58,7 @@ describe("readDocument", () => {
   });
 
   it("returns the read failure as a value, so the page can still render", async () => {
-    setEnv("TASKS_DIR", Dir.pwd());
+    setX("tasks", "dir", Dir.pwd());
 
     const doc = await readDocument("rfcs/nope/stories/gone.md");
 
@@ -66,8 +67,8 @@ describe("readDocument", () => {
   });
 
   it("says which document it could not place when no checkout is configured", async () => {
-    setEnv("TASKS_DIR", undefined);
-    setEnv("TASKS_DATABASE", undefined);
+    setX("tasks", "dir", undefined);
+    setX("tasks", "database", undefined);
 
     const doc = await readDocument("rfcs/0136-trailmap/index.md");
 

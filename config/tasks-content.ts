@@ -14,15 +14,19 @@
  * demanding both is deliberate: the deployment sets `TASKS_DATABASE` today,
  * and a page that 500s for want of an unset variable nobody has heard of is
  * worse than one that finds the file.
+ *
+ * Both are read as `config.x.tasks`, which config/application.ts fills from
+ * the environment at boot.
  */
-import { env } from "@blazetrails/ruby-compat";
+import { Trails } from "@blazetrails/trailties";
 
 /** The tasks checkout, or null when neither variable names one. */
 export function tasksContentDir(): string | null {
-  const dir = env.TASKS_DIR?.trim();
+  const tasks = Trails.application!.config.x.tasks as { dir?: string; database?: string };
+  const dir = tasks.dir?.trim();
   if (dir) return dir.replace(/\/+$/, "");
 
-  const db = env.TASKS_DATABASE?.trim();
+  const db = tasks.database?.trim();
   if (!db) return null;
   const match = /^(.*)\/\.git\/[^/]+$/.exec(db);
   return match ? match[1]! : null;

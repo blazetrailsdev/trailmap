@@ -78,7 +78,7 @@ for _ in $(seq 1 60); do
 done
 
 echo "smoke-boot: GET /up"
-curl -fsS "http://127.0.0.1:$port/up" | grep -q '"status":"ok"'
+curl -fsS -o /dev/null "http://127.0.0.1:$port/up"
 
 echo "smoke-boot: GET /"
 curl -fsS "http://127.0.0.1:$port/" | grep -qi "<html"

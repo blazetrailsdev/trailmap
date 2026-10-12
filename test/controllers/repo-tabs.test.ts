@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { setX } from "../support/config-x.js";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
 import { RecordNotFound } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "../models/schema.js";
@@ -59,7 +60,7 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     ApplicationController.prependViewPath("app/views");
     // The wiki reads the content tree off disk; this repo stands in for one,
     // as it does in the RFC page's test.
-    setEnv("TASKS_DIR", Dir.pwd());
+    setX("tasks", "dir", Dir.pwd());
 
     await migrateScratchDatabase();
     await loadModelSchemas();

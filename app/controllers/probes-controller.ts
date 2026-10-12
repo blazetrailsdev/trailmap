@@ -22,7 +22,7 @@ class DeepTimeout extends Error {
 /**
  * `/up/ready` and `/up/deep` — the two probes beside `/up`.
  *
- * `/up` (HealthController) answers "did the process boot", touches no
+ * `/up` (the framework's `rails/health`) answers "did the process boot", touches no
  * dependency, and feeds the restart policy. It cannot see a process-up
  * failure: a database that will not open, an empty backlog after a failed
  * ingest, a tasks checkout the container cannot write. These probes can, and
