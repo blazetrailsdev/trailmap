@@ -300,6 +300,9 @@ ul { margin: 0 0 10px 20px; }
 .item-row { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; align-items: flex-start; gap: 8px; }
 .item-row:first-child { border-top: none; }
 .box-header + .item-row { border-top: none; }
+/* The story page's transitive graph: two boxes stacked above "Depends on". */
+.dep-graph { margin-bottom: 16px; }
+.dep-graph .box-header { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .item-row:hover { background: var(--hover); }
 
 /*

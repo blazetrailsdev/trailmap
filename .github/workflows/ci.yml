@@ -332,6 +332,56 @@ jobs:
           TASKS_DIR: ${{ github.workspace }}/tasks
         run: pnpm gate:markdown --self-test
 
+  # THE PARITY-GRAPH GATE, over a fixture. /graphs/parity/data is a port of
+  # ringo's /spawnloop/parity, and the live comparison needs a running ringo
+  # and the multi-gigabyte stats.db, so it only ever ran on the box. Here both
+  # sides read one small stats database the gate writes: ringo's is ringo's own
+  # handler, compiled from vendor/ringo/db/parity.go at the pin, and trailmap's
+  # goes through the Postgres projection as production does — hence the
+  # service. Reverting either defect the live gate found (gap columns looked up
+  # by table; one select list for every table) turns this red.
+  parity-gate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trailmap_hub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      HUB_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: vendor/ringo/go/.go-version
+          cache: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec trails-tsc-views build --views app/views
+      # No `--database hub` — see the note on the test job.
+      - name: Prepare the hub schema
+        env:
+          HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+        run: pnpm db:migrate
+      - name: /graphs/parity/data == ringo's /spawnloop/parity, point for point
+        run: pnpm gate:parity --fixture
+      - name: The parity gate still goes red on a changed point
+        run: pnpm gate:parity --fixture --self-test
+
   # Ported from trails' Preflight job. CLAUDE.md forbids Claude attribution in
   # commits and PR bodies here exactly as it does there, and trailmap is a
   # separate repo with its own merge button — so the rule was unenforced until

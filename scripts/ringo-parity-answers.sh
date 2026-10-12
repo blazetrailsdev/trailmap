@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#
+# ringo's answers to /spawnloop/parity, from ringo's own handler at the
+# vendored pin, with no ringo running.
+#
+#     STATS_DB=<file> ./scripts/ringo-parity-answers.sh '<query string>' ...
+#
+# Prints one JSON document per query, one per line. The handler is
+# vendor/ringo/db/parity.go, which scripts/vendor-ringo.sh vendors whole for
+# the write-protocol test; this compiles that same file rather than a second
+# copy, in a throwaway module made of it, ringo's go.mod and go.sum
+# (vendor/ringo/parity) and the driver and shim in scripts/ringo-parity.
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+mkdir -p "$work/webhook"
+cp "$root/vendor/ringo/parity/go.mod" "$root/vendor/ringo/parity/go.sum" "$work/"
+cp "$root/vendor/ringo/db/parity.go" "$root/scripts/ringo-parity/shim.go" "$work/webhook/"
+cp "$root/scripts/ringo-parity/main.go" "$work/"
+
+cd "$work"
+# -mod=mod: the module needs only what parity.go imports, and ringo's go.mod
+# requires more than that; go.sum still pins every byte that is downloaded.
+go run -mod=mod . "$@"
