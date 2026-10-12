@@ -44,7 +44,10 @@
   because the only status the override rewrites is `ready`→`draft` and both
   sides of that are `open` there. The bar is different: it has a `ready`
   segment and a `draft` segment, so the override moves a story between them
-  and it must.
+  and it must. ringo's bar agrees — its `story_status` is the effective status
+  too — and `pnpm gate:pages` holds the two equal (`compareBars`). The one
+  stated difference is that ringo also draws a dep-held `ready` story as
+  `blocked`, which trailmap does not port yet.
 
   ── ──────────────────────────────────────────────────────────────────────
 
