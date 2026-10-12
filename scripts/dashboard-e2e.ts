@@ -68,7 +68,8 @@ await new Promise<void>((resolve) => ringo.listen(Number(env.E2E_RINGO_PORT), "1
 
 /** Poll `probe` until it answers something truthy; a throw counts as "not yet". */
 async function until<T>(what: string, probe: () => Promise<T | false | null | undefined>): Promise<T> {
-  for (let attempt = 0; attempt < 300; attempt++) {
+  // A minute: a cold runner has taken more than thirty seconds to start Chrome.
+  for (let attempt = 0; attempt < 600; attempt++) {
     const value = await probe().catch(() => null);
     if (value) return value;
     await new Promise((resolve) => setTimeout(resolve, 100));

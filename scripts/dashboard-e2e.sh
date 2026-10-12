@@ -22,9 +22,10 @@ NODE_ENV=production SECRET_KEY_BASE=dashboard-e2e-not-a-secret \
   RINGO_BASE="http://127.0.0.1:$ringo" TASKS_DATABASE="$work/tasks.sqlite3" \
   setsid pnpm exec tsx node_modules/@blazetrails/trailties/bin/trails.js server -b 127.0.0.1 -p "$app" >"$work/server.log" 2>&1 &
 server=$!
-setsid "$chrome" --headless=new --no-sandbox --disable-gpu --remote-debugging-port="$cdp" \
+# `--disable-dev-shm-usage`: a CI runner's /dev/shm is small enough to crash Chrome at start.
+setsid "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --remote-debugging-port="$cdp" \
   --user-data-dir="$work/chrome" about:blank >"$work/chrome.log" 2>&1 &
 trap 'kill -- "-$server" "-$!" 2>/dev/null || true; wait 2>/dev/null || true; rm -rf "$work" || true' EXIT
 
 E2E_RINGO_PORT="$ringo" E2E_APP="http://127.0.0.1:$app" E2E_CDP="http://127.0.0.1:$cdp" \
-  pnpm exec tsx scripts/dashboard-e2e.ts || { tail -20 "$work/server.log" >&2; exit 1; }
+  pnpm exec tsx scripts/dashboard-e2e.ts || { tail -20 "$work/server.log" "$work/chrome.log" >&2; exit 1; }
