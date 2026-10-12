@@ -233,11 +233,11 @@ export class Story extends Base {
    */
   static async claimableIndex(): Promise<RankingIndex> {
     const outline = await Story.rankingOutline();
-    const ids = claimableIn(outline).map((story) => story.id);
-    const records = new Map((await Story.where({ id: ids }).toArray()).map((s) => [s.id, s]));
+    const ids = new Set(claimableIn(outline).map((story) => story.id));
+    const records = new Map((await Story.where({ id: [...ids] }).toArray()).map((s) => [s.id, s]));
     // A claimable story deleted between the two reads has no record, and is
     // dropped: left as an outline row it would be served with four columns.
-    const stories = outline.stories.filter((s) => !ids.includes(s.id) || records.has(s.id));
+    const stories = outline.stories.filter((s) => !ids.has(s.id) || records.has(s.id));
     // The cast is the method's contract: only the claimable entries are records.
     return { ...outline, stories: stories.map((s) => records.get(s.id) ?? s) as Story[] };
   }

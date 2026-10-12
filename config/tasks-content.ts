@@ -15,8 +15,7 @@
  * and a page that 500s for want of an unset variable nobody has heard of is
  * worse than one that finds the file.
  *
- * `TASKS_DIR` is `config.x.tasks.dir`, which config/application.ts fills from
- * the environment at boot; the database path is config/database.ts's.
+ * `TASKS_DIR` is `config.x.tasks.dir`; the database path is config/database.ts's.
  */
 import { Trails } from "@blazetrails/trailties";
 import { tasksDatabasePath } from "./database.js";

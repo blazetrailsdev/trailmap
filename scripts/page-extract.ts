@@ -550,13 +550,14 @@ export function trailmapRfcRows(html: string): RfcListRow[] {
  * title. An RFC with no stories draws no bar and maps to `{}`.
  */
 export function trailmapRfcBars(html: string): Map<string, Record<string, number>> {
+  const rows = rowsOf(html, "item-row");
+  if (rows.length === 0) throw new Error("no rows extracted — the page's markup has changed");
   return new Map(
-    rowsOf(html, "item-row").map((row) => {
+    rows.map((row) => {
       const id = decodeURIComponent(hrefIds(row, "rfc")[0] ?? "");
       const segments = [...row.matchAll(/class="seg s-([a-z-]+)"[^>]*title="(\d+) /g)];
-      // The row states its own total beside the bar. Segments that do not add
-      // up to it mean this pattern stopped matching the template, and that is
-      // said here, not left to read as a difference from ringo.
+      // The row states its own total beside the bar: segments that do not add
+      // up to it mean this pattern stopped matching the template.
       const stated = Number(/class="sbarcap">(\d+) /.exec(row)?.[1] ?? 0);
       const drawn = segments.reduce((sum, m) => sum + Number(m[2]), 0);
       if (id === "" || drawn !== stated) {

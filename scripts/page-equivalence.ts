@@ -165,9 +165,11 @@ async function main(): Promise<number> {
     const pages = Number.parseInt(/class="pager" data-pages="(\d+)"/.exec(first)?.[1] ?? "1", 10);
     for (let page = 1; page <= pages; page++) {
       const html = page === 1 ? first : (await get(`${url}&page=${page}`)).html;
-      const rows = trailmapRfcBars(html);
-      if (rows.size === 0) problems.push(`/rfcs bar: no rows extracted from ${url} page ${page} — its markup has changed`);
-      for (const [id, bar] of rows) bars.set(id, bar);
+      try {
+        for (const [id, bar] of trailmapRfcBars(html)) bars.set(id, bar);
+      } catch (error) {
+        problems.push(`/rfcs bar: ${url} page ${page}: ${(error as Error).message}`);
+      }
     }
   }
   problems.push(...(await compareBars(ringoBase, rfcIds, bars)));

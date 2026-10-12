@@ -542,6 +542,7 @@ function renderSpawnLoop(state) {
   const view = spawnLoopView(state);
   const toggle = byId("slToggle");
   toggle.disabled = false;
+  toggle.title = "Start or pause the spawn loop";
   toggle.textContent = view.toggle;
   toggle.dataset.enabled = String(view.enabled);
   toggle.classList.toggle("btn-green", !view.enabled);
@@ -560,10 +561,7 @@ function renderSpawnLoop(state) {
   byId("slBundleList").style.display = view.bundleList ? "" : "none";
 }
 
-function loopWritten(state) {
-  loopWrittenAt = performance.now();
-  renderSpawnLoop(state);
-}
+const loopWritten = (state) => ((loopWrittenAt = performance.now()), renderSpawnLoop(state));
 
 byId("slControls").innerHTML = spawnLoopControls();
 // Until ringo has said whether the loop runs, a click cannot know which way to toggle.
@@ -584,4 +582,6 @@ byId("spawnLoopPanel").addEventListener("change", async (event) => {
 });
 poll("spawn-loop", 15000, (state, started) => {
   if (started >= loopWrittenAt) renderSpawnLoop(state);
+}, () => {
+  if (byId("slToggle").disabled) byId("slToggle").title = "ringo has not answered for the loop's state yet";
 });

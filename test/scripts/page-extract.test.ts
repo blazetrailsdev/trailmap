@@ -431,9 +431,9 @@ describe("trailmapRfcBars / barKey", () => {
   const withBar = trailmapRfcRow.replace("</span></div>", `${cap}${seg("done", 3)}${seg("in-progress", 1)}</span></div>`);
 
   it("says the markup changed when a row's segments do not add up to the total it states", () => {
-    expect(() => trailmapRfcBars(withBar.replace(/class="seg s-done"/, 'class="segment done"'))).toThrow(
-      /1 stories in segments, 4 stated/,
-    );
+    const renamed = withBar.replace(/class="seg s-done"/, 'class="segment done"');
+    expect(() => trailmapRfcBars(renamed)).toThrow(/1 stories in segments, 4 stated/);
+    expect(() => trailmapRfcBars("<html></html>")).toThrow(/no rows extracted/);
   });
 
   it("reads each row's segments by RFC id, and an RFC with no stories as an empty bar", () => {
