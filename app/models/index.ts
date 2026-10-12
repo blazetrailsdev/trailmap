@@ -9,6 +9,7 @@ import { Repository } from "./repository.js";
 import { RepositorySetting } from "./repository-setting.js";
 import { RepositoryCollaborator } from "./repository-collaborator.js";
 import { Setting } from "./setting.js";
+import { ParityDay } from "./parity-day.js";
 import { Hub } from "./hub.js";
 import { PullRequest } from "./pull-request.js";
 import {
@@ -37,7 +38,17 @@ const MODELS = [Rfc, Story, StoryDep, StoryRfcDep, StoryPath, StoryPackage, Even
  * is shared — that is process-global constant resolution, not a connection —
  * so `hasOne("settings")` resolves whether or not the database is reachable.
  */
-const HUB_MODELS = [Owner, Repository, RepositorySetting, RepositoryCollaborator, Setting];
+const HUB_MODELS = [
+  Owner,
+  Repository,
+  RepositorySetting,
+  RepositoryCollaborator,
+  Setting,
+  // The parity projection. On the hub because it is Postgres data, even
+  // though it is DERIVED from the stats database on a third connection —
+  // see app/models/parity-day.ts.
+  ParityDay,
+];
 
 /**
  * The models on the THIRD connection — the read-only trails stats database
@@ -151,6 +162,7 @@ export {
   type CollaboratorRole,
 } from "./repository-collaborator.js";
 export { Setting } from "./setting.js";
+export { ParityDay, measureRow } from "./parity-day.js";
 export { Stats } from "./stats.js";
 export { PullRequest } from "./pull-request.js";
 export { CompareRun } from "./compare-run.js";

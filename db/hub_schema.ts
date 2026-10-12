@@ -13,7 +13,7 @@
 import { Schema } from "@blazetrails/activerecord";
 import type { PostgreSQLAdapter } from "@blazetrails/activerecord/connection-adapters/postgresql-adapter.js";
 
-await Schema.get(8).define<PostgreSQLAdapter>({ version: 2026_10_10_000005 }, async (ctx) => {
+await Schema.get(8).define<PostgreSQLAdapter>({ version: 2026_10_11_000006 }, async (ctx) => {
   // These are extensions that must be enabled in order to support this database
   await ctx.enableExtension("pg_catalog.plpgsql");
 
@@ -26,6 +26,24 @@ await Schema.get(8).define<PostgreSQLAdapter>({ version: 2026_10_10_000005 }, as
     t.datetime("updated_at", { null: false });
     t.index("lower((login)::text)", { name: "index_owners_on_lower_login", unique: true });
     t.index(["kind"], { name: "index_owners_on_kind" });
+  });
+
+  await ctx.createTable("parity_days", { force: "cascade" }, (t) => {
+    t.string("metric", { null: false });
+    t.string("package", { null: false });
+    t.date("day", { null: false });
+    t.integer("pr_number", { null: false });
+    t.integer("matched", { null: false });
+    t.integer("total", { null: false });
+    t.decimal("percent", { precision: 5, scale: 2, null: false });
+    t.jsonb("gaps");
+    t.datetime("created_at", { null: false });
+    t.datetime("updated_at", { null: false });
+    t.index(["metric", "day"], { name: "index_parity_days_on_metric_and_day" });
+    t.index(["metric", "package", "day"], { name: "index_parity_days_on_metric_and_package_and_day", unique: true });
+    t.checkConstraint("matched <= total", { name: "parity_days_matched_within_total" });
+    t.checkConstraint("percent >= 0::numeric AND percent <= 100::numeric", { name: "parity_days_percent_is_a_percentage" });
+    t.checkConstraint("total >= 0 AND matched >= 0", { name: "parity_days_counts_are_not_negative" });
   });
 
   await ctx.createTable("repositories", { force: "cascade" }, (t) => {

@@ -49,6 +49,10 @@ const HUB_TABLES = [
   "repository_settings",
   "repository_collaborators",
   "settings",
+  // A projection rather than state, but it is truncated like the rest: a run
+  // left behind by another file's refresh would make this file's row counts
+  // wrong, and the hub test database is shared.
+  "parity_days",
 ] as const;
 
 /**
