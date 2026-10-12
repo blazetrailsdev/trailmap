@@ -66,6 +66,21 @@ export const FLEET_CONTROL_PATH = "/fleet/control";
 export const FLEET_REVIEWERS_PATH = "/fleet/reviewers";
 
 /** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
+/**
+ * The rest of what the page reads from ringo outside the stream, by the name
+ * the page asks for it under (`/fleet/read/usage`) and the ringo path that
+ * answers. An allowlist for the reason `FLEET_CONTROLS` is one: the relay
+ * reaches ringo's whole origin, and the page needs these and nothing else.
+ */
+export const FLEET_READ_PATH = "/fleet/read";
+
+export const FLEET_READS: Readonly<Record<string, string>> = {
+  usage: "usage-status",
+  "codex-usage": "codex-usage-status",
+  asks: "ask/list",
+  "drain-status": "reviewer/drain-status",
+};
+
 export const FLEET_PANE_PATH = "/fleet/pane";
 
 /**
@@ -104,4 +119,10 @@ export const FLEET_CONTROLS: readonly string[] = [
   "spawnloop/dismiss",
   "spawnloop/dismiss-failed",
   "ci-fixer/spawn",
+  "drain",
+  "drain-one",
+  "poke-stalled",
+  "ask/answer",
+  "reviewer/drain-codex",
+  "reviewer/drain-claude",
 ];

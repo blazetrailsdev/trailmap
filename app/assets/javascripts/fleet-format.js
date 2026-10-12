@@ -316,8 +316,9 @@ export const anyFailedSpawn = (spawns) => spawns.some((s) => s.status === "faile
 /**
  * What a control does: where it posts in ringo, what it sends, what it asks
  * first, and what its button says while and after. `null` for a button that is
- * not a control. Ported from `mergePR`, `dismissSpawn`, `clearFailedSpawns` and
- * `respawnFixer` (`webhook/dashboard.go`), whose requests these are.
+ * not a control, or one with nothing to send. Ported from the functions of
+ * `webhook/dashboard.go` whose requests these are: `mergePR`, `dismissSpawn`,
+ * `clearFailedSpawns`, `respawnFixer`, and the ones named at their cases.
  *
  * `quiet` is ringo's distinction between the two families: dismissing just
  * disables the button and lets the next frame remove the row, while merge and
@@ -356,6 +357,36 @@ export function controlRequest(action, data) {
       };
     case "dismiss":
       return { path: "/spawnloop/dismiss", body: { branch: data.branch }, quiet: true };
+    // `sendOne`: ringo answers 200 either way and says which in the body.
+    case "send-one": {
+      const report = (text) => (parsed(text).sent ? "sent" : "fail");
+      return { path: "/drain-one", body: { pr: Number(data.pr) }, busy: "...", report, failed: "fail", errored: "fail", refresh: "usage" };
+    }
+    case "drain":
+      return { path: "/drain", body: null, quiet: true, refresh: "usage" };
+    case "poke": {
+      const panes = String(data.panes || "").split(",").filter(Boolean);
+      if (!panes.length) return null;
+      const report = (text) => "poked " + plural((parsed(text).poked || []).length, "agent");
+      // The result lingers three seconds, then the next frame recounts.
+      return { path: "/poke-stalled", body: { panes }, busy: "poking…", report, failed: "poke failed", errored: "poke failed", resetAfterMs: 3000 };
+    }
+    // `drainReviewers`. ringo answers 202 at once and drains in the background,
+    // so the click only starts it: `statusId` names where `drainStatus` goes
+    // and `poll` the read that reports progress.
+    case "drain-reviewers": {
+      const to = { codex: "Claude", claude: "Codex" }[data.from];
+      if (!to) return null;
+      const confirm = "Kill every stranded " + data.from + " reviewer pane and re-assign those PRs to " + to + "?";
+      return { path: "/reviewer/drain-" + data.from, body: null, confirm, statusId: data.status, poll: "drain-status?agent=" + data.from };
+    }
+    // `answerAsk` and `answerAskFree`: both send prose, and nothing empty.
+    case "answer-ask": {
+      const answer = String(data.answer || "").trim();
+      if (!answer) return null;
+      const errorAlert = (message) => "Failed to send answer: " + message;
+      return { path: "/ask/answer", body: { id: data.id, answer }, refresh: "asks", failureAlert: (text) => text, errorAlert };
+    }
     case "clear-failed":
       return { path: "/spawnloop/dismiss-failed", body: null, quiet: true };
     default:
@@ -363,13 +394,21 @@ export function controlRequest(action, data) {
   }
 }
 
+/** A JSON answer, or `{}` for one that is not: ringo's errors are plain text. */
+function parsed(text) {
+  try { return JSON.parse(text) || {}; } catch { return {}; }
+}
+
+const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
+
 /**
  * What the button shows once its request has settled. `result` is
  * `{ ok, text }` for an answered request and `{ error }` for one that never
  * got an answer; `label` is what the button said before the click.
  *
- * Returns `{ disabled, text?, title?, alert?, resetAfterMs? }`. A missing
- * `text` leaves the button's text alone.
+ * Returns `{ disabled, text?, title?, alert?, resetAfterMs?, refresh? }`. A
+ * missing `text` leaves the button's text alone; `refresh` names the read to
+ * poll again, because an answered control changed what it reports.
  *
  * Three families, as in ringo, with two of its holes closed:
  *
@@ -385,15 +424,17 @@ export function controlRequest(action, data) {
 export function controlOutcome(request, result, label) {
   const answered = !("error" in result);
   const succeeded = answered && result.ok;
-  if (request.quiet) return { disabled: succeeded };
+  const outcome = { disabled: succeeded || (!request.quiet && !!request.resetAfterMs) };
+  if (answered && request.refresh) outcome.refresh = request.refresh;
+  if (request.quiet) return outcome;
 
   const said = answered ? result.text : result.error;
-  const outcome = { disabled: succeeded || !!request.resetAfterMs };
-  if (succeeded) outcome.text = request.done;
+  if (succeeded) outcome.text = request.report ? request.report(result.text) : request.done;
   else if (answered) outcome.text = request.failed || label;
   else outcome.text = request.errored || label;
   if (request.titled) outcome.title = said;
-  if (!succeeded) outcome.alert = (answered ? request.failureAlert : request.errorAlert)(said);
+  const alert = answered ? request.failureAlert : request.errorAlert;
+  if (!succeeded && alert) outcome.alert = alert(said);
   if (request.resetAfterMs) outcome.resetAfterMs = request.resetAfterMs;
   return outcome;
 }
@@ -520,7 +561,7 @@ export function spawnRow(s, fixers = [], now = Date.now()) {
 }
 
 /** One PR row. */
-export function prRow(pr, fixers = [], now = Date.now(), reviewers = null) {
+export function prRow(pr, fixers = [], now = Date.now(), reviewers = null, queue = []) {
   const url = "https://github.com/" + pr.owner + "/" + pr.repo + "/pull/" + pr.pr;
   const labels =
     (isFixerPR(fixers, pr) ? FIXER_BADGE + " " : "") +
@@ -545,7 +586,7 @@ export function prRow(pr, fixers = [], now = Date.now(), reviewers = null) {
   // a draft, yellow while waiting on an answer, green open otherwise.
   const merged = !!pr.merged;
   const draft = !merged && !!pr.draft;
-  return row({
+  return queuedUnder(pr, queue, row({
     icon: merged ? "merge" : "pr",
     iconCls: merged ? "merged" : draft ? "draft" : pr.paneStatus === "waiting" ? "waiting" : "",
     title:
@@ -570,7 +611,341 @@ export function prRow(pr, fixers = [], now = Date.now(), reviewers = null) {
     // reading the merge. ringo renders it unconditionally too
     // (`dashboard.go:1335`).
     panes: paneLine(WORK_EMOJI, pr.pane, pr.paneStatus) + reviewerLine(pr, reviewers),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// The queue, and the stalled and the stranded
+// ---------------------------------------------------------------------------
+
+const MESSAGE_KINDS = [
+  ["Copilot reviewed", "copilot review"],
+  ["CI failed", "CI failure"],
+  ["has been merged", "merge"],
+  ["has been opened", "PR opened"],
+  ["merge conflicts", "merge conflict"],
+];
+
+/** What a held-back notification is about, from ringo's own wording (`msgType`). */
+export const messageKind = (message) =>
+  (MESSAGE_KINDS.find(([says]) => String(message || "").includes(says)) || ["", "notification"])[1];
+
+/**
+ * A PR row with the notifications ringo's usage gate is holding for it under
+ * it, each with a button that sends it now. The entries are Go structs.
+ */
+export function queuedUnder(pr, queue, html) {
+  return (
+    html +
+    (queue || [])
+      .filter((q) => q.Owner === pr.owner && q.Repo === pr.repo && q.PR === pr.pr)
+      .map(
+        (q) =>
+          '<div class="queued-row"><span class="queued">queued: </span>' +
+          '<span class="muted">' + messageKind(q.Message) + "</span> " +
+          control("send-one", { pr: pr.pr }, { cls: "btn btn-sm btn-green", title: "Send this to the pane now", label: "send" }) +
+          "</div>",
+      )
+      .join("")
+  );
+}
+
+/** The queue card: how many are held, and the button that sends them all. '' when none. */
+export function queueCard(queue) {
+  if (!queue || !queue.length) return "";
+  return (
+    '<div class="card-head"><span class="queued">' + queue.length + " queued</span>" +
+    control("drain", {}, { cls: "btn btn-sm", title: "Send every queued notification now", label: "Send All" }) +
+    "</div>"
+  );
+}
+
+/** Every pane drawn red (API error, stuck retry): who a poke would reach. */
+export function redPanes(prs, spawns, reviewers) {
+  const red = new Set();
+  (prs || []).forEach((pr) => pr.paneStatus === "error" && pr.pane && red.add(pr.pane));
+  (spawns || []).forEach((s) => s.pane_status === "error" && s.pane && red.add(s.pane));
+  Object.values(reviewers || {}).forEach((e) => e && e.pane_status === "error" && e.pane_id && red.add(e.pane_id));
+  return [...red];
+}
+
+/** The poke button for those panes: hidden with nobody to poke, and it says how many. */
+export function pokeButton(panes) {
+  return {
+    hidden: !panes.length,
+    panes: panes.join(","),
+    label: "👉 poke " + plural(panes.length, "stalled agent"),
+  };
+}
+
+/**
+ * Which agent's reviewers can be drained onto the other: one with a pane on
+ * its limit banner and a review still owed. With both out there is nowhere to
+ * drain to, so neither is offered (`updateDrainFields`).
+ */
+export function strandedAgents(reviewers) {
+  const on = (agent) =>
+    Object.values(reviewers || {}).some((e) => e && e.agent === agent && e.blocked_by_usage && e.review_owed);
+  const codex = on("codex");
+  const claude = on("claude");
+  return { codex: codex && !claude, claude: claude && !codex };
+}
+
+/** One answer from a drain, running or finished, as its status line. */
+export function drainStatus(d) {
+  if (d.running) return "draining " + (d.done || 0) + "/" + (d.total || 0) + "...";
+  if (!d.total) return "nothing to drain";
+  const count = (list, word) => ((list || []).length ? ", " + list.length + " " + word : "");
+  return (d.drained || []).length + " moved" + count(d.cleaned, "cleaned") + count(d.skipped, "skipped");
+}
+
+/*
+ * "Agents waiting on you": an agent's AskUserQuestion, parked by a hook. The
+ * one panel whose text a MODEL wrote, so every string goes through `esc`, in
+ * text and attributes alike. ringo's second escaper is for what it pastes
+ * into inline `onclick` JavaScript; a `data-` attribute is only an attribute.
+ */
+
+export const askSummary = (pending) => plural(pending.length, "agent") + " blocked, waiting for an answer";
+
+/** A picked option sends its label, under its question when several were asked. */
+export function askAnswer(ask, question, label) {
+  return (ask.questions || []).length > 1 ? question.question + " → " + label : label;
+}
+
+export function askCards(pending, now = Date.now()) {
+  return pending
+    .map((a) => {
+      const questions = (a.questions || [])
+        .map((q) => {
+          const options = (q.options || [])
+            .map((o) =>
+              control("answer-ask", { id: a.id, answer: askAnswer(a, q, o.label) }, {
+                cls: "ask-opt",
+                title: "Answer with this option",
+                label: esc(o.label) + (o.description ? '<span class="d">' + esc(o.description) + "</span>" : ""),
+              }),
+            )
+            .join("");
+          return (
+            '<div class="ask-text">' + (q.header ? '<span class="ask-hdr">' + esc(q.header) + "</span> " : "") +
+            esc(q.question) + "</div>" + (options ? '<div class="ask-opts">' + options + "</div>" : "")
+          );
+        })
+        .join("");
+      return (
+        '<div class="ask-q"><div class="ask-who"><strong>' + esc(a.label) + "</strong>" +
+        (a.pane ? "<code>" + esc(a.pane) + "</code>" : "") +
+        "<span>" + timeAgo(a.at, now) + "</span></div>" + questions +
+        '<div class="ask-free"><input type="text" class="ctl" placeholder="…or answer in your own words">' +
+        control("answer-ask", { id: a.id, free: 1 }, { cls: "btn btn-sm", title: "Send your own answer", label: "Send" }) +
+        "</div></div>"
+      );
+    })
+    .join("");
+}
+
+// ---------------------------------------------------------------------------
+// Usage
+// ---------------------------------------------------------------------------
+
+const HOUR = 3600000;
+const WEEK_HOURS = 168;
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export function barColor(percent) {
+  if (percent >= 85) return "red";
+  if (percent >= 60) return "yellow";
+  return "green";
+}
+
+/**
+ * The weekly bar is coloured by PACE: `diff` is percent used minus percent of
+ * the week gone. As hours, green within 6 of pace, yellow within 18.
+ */
+export function weeklyPaceColor(diff) {
+  const hours = (Math.abs(diff) / 100) * WEEK_HOURS;
+  if (hours <= 6) return "green";
+  if (hours <= 18) return "yellow";
+  return "red";
+}
+
+/**
+ * The next reset a label names, or null: absolute ("Thu 3:00 PM", in the
+ * viewer's zone) or a duration ("in 5 days, 3 hours", codex's "in 3d 4h").
+ * Verbose units are tried first, so "5 days" never also matches the "d" rule.
+ */
+export function parseResetDate(s, now = Date.now()) {
+  if (!s) return null;
+  const abs = /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)\w*\s+(\d+):(\d+)\s*(AM|PM)$/i.exec(s);
+  if (abs) {
+    const day = DAYS.findIndex((d) => d.toLowerCase() === abs[1].slice(0, 3).toLowerCase());
+    let hour = parseInt(abs[2], 10);
+    const pm = abs[4].toUpperCase() === "PM";
+    if (pm && hour !== 12) hour += 12;
+    if (!pm && hour === 12) hour = 0;
+    const reset = new Date(now);
+    reset.setHours(hour, parseInt(abs[3], 10), 0, 0);
+    let ahead = (day - reset.getDay() + 7) % 7;
+    if (ahead === 0 && reset.getTime() <= now) ahead = 7;
+    reset.setDate(reset.getDate() + ahead);
+    return reset;
+  }
+  const unit = (verbose, short) => {
+    const m = s.match(verbose) || s.match(short);
+    return m ? parseInt(m[1], 10) : 0;
+  };
+  const hours =
+    unit(/(\d+)\s*day/, /(\d+)\s*d\b/) * 24 + unit(/(\d+)\s*h(?:ou)?r/, /(\d+)\s*h\b/) +
+    unit(/(\d+)\s*min/, /(\d+)\s*m\b/) / 60;
+  return hours > 0 ? new Date(now + hours * HOUR) : null;
+}
+
+/**
+ * `at`, the reset as epoch millis, wins: the string carries no zone, so the
+ * scraper's UTC "Tue 6:00 PM" would be read as 6PM in the VIEWER's.
+ */
+export const resetDate = (s, at, now = Date.now()) => (at ? new Date(at) : parseResetDate(s, now));
+
+function clock(d) {
+  return (d.getHours() % 12 || 12) + ":" + String(d.getMinutes()).padStart(2, "0") + (d.getHours() >= 12 ? " PM" : " AM");
+}
+
+/** "Wed 1:20 PM" when a reset time can be derived; the raw label, or "?", when not. */
+export function formatResetLabel(s, at, now = Date.now()) {
+  const d = resetDate(s, at, now);
+  return d ? DAYS[d.getDay()] + " " + clock(d) : s || "?";
+}
+
+/** The same without the day: a session window is short enough that it is noise. */
+export function formatClockLabel(s, at, now = Date.now()) {
+  const d = resetDate(s, at, now);
+  return d ? clock(d) : s || "?";
+}
+
+export function hoursUntilReset(s, at, now = Date.now()) {
+  const d = resetDate(s, at, now);
+  return d ? Math.max(0, (d.getTime() - now) / HOUR) : null;
+}
+
+export function weekElapsedPercent(weeklyResets, at, now = Date.now()) {
+  const left = hoursUntilReset(weeklyResets, at, now);
+  if (left === null) return 0;
+  return Math.min(100, Math.round((Math.max(0, WEEK_HOURS - left) / WEEK_HOURS) * 100));
+}
+
+/** A tick and a two-letter day at each local midnight of the usage week. */
+export function dayMarkers(weeklyResets, at, now = Date.now()) {
+  const left = hoursUntilReset(weeklyResets, at, now);
+  const start = now - (WEEK_HOURS - (left === null ? WEEK_HOURS : left)) * HOUR;
+  const midnight = new Date(start);
+  midnight.setHours(24, 0, 0, 0);
+  const first = (midnight.getTime() - start) / HOUR;
+  let out = "";
+  for (let d = 0; d < 7 && first + d * 24 < WEEK_HOURS; d++) {
+    const day = DAYS[new Date(midnight.getTime() + d * 24 * HOUR).getDay()].slice(0, 2);
+    out += '<span class="day-marker" style="left:' + ((first + d * 24) / WEEK_HOURS) * 100 + '%"><span>' + day + "</span></span>";
+  }
+  return out;
+}
+
+/** "42% of week elapsed (1d 3h ahead)": how far usage is from the week's pace. */
+export function paceText(elapsed, diff) {
+  const hours = Math.round((Math.abs(diff) / 100) * WEEK_HOURS);
+  const gap = hours >= 24 ? Math.floor(hours / 24) + "d " + (hours % 24) + "h" : hours + "h";
+  return elapsed + "% of week elapsed" + (diff > 0 ? " (" + gap + " ahead)" : diff < 0 ? " (" + gap + " under)" : "");
+}
+
+const clamp = (percent) => Math.max(0, Math.min(100, Number(percent) || 0));
+
+/** One labelled bar. `week` is the pace marker and day ticks of a weekly one. */
+function usageBar({ label, percent, color, left, right = "", week = "" }) {
+  return (
+    '<div class="usage-col"><div class="usage-col-label">' + label + "</div>" +
+    '<div class="bar-container' + (week ? " week" : "") + '">' +
+    '<div class="bar-fill ' + color + '" style="width:' + clamp(percent) + '%"></div>' + week + "</div>" +
+    '<div class="bar-label"><span>' + left + "</span>" + right + "</div></div>"
+  );
+}
+
+const usageHead = (agent, meta) =>
+  '<div class="usage-head"><span class="usage-agent">' + agent + '</span><span class="usage-meta">' + esc(meta) + "</span></div>";
+
+function weeklyBar(u, now, right) {
+  const elapsed = weekElapsedPercent(u.weeklyResets, u.weeklyResetsAt, now);
+  const diff = Number(u.weeklyPercent) - elapsed;
+  return usageBar({
+    label: "Weekly (" + esc(formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now)) + ")",
+    percent: u.weeklyPercent,
+    color: weeklyPaceColor(diff),
+    left: Number(u.weeklyPercent) + "%",
+    right: right(elapsed, diff),
+    week: '<div class="bar-marker" style="left:' + elapsed + '%"></div>' + dayMarkers(u.weeklyResets, u.weeklyResetsAt, now),
   });
+}
+
+function sessionBar(u, now, right) {
+  return usageBar({
+    label: "Session (" + esc(formatClockLabel(u.sessionResets, u.sessionResetsAt, now)) + ")",
+    percent: u.sessionPercent,
+    color: barColor(u.sessionPercent),
+    left: Number(u.sessionPercent) + "%",
+    right,
+  });
+}
+
+/** The Claude block, from ringo's `/usage-status` (`renderUsage`). */
+export function claudeUsage(u, now = Date.now()) {
+  const models = (u.weeklyModels || [])
+    .map((m) =>
+      usageBar({
+        label: esc(m.name) + (m.resets ? " (resets " + esc(formatResetLabel(m.resets, m.resetsAt, now)) + ")" : ""),
+        percent: m.percent,
+        color: barColor(clamp(m.percent)),
+        left: clamp(m.percent) + "%",
+      }),
+    )
+    .join("");
+  const money = (n) => "$" + (Number(n) || 0).toFixed(2);
+  const balance = Number(u.extraBalance) || 0;
+  const extra =
+    u.extraLimit > 0 || u.extraBalance > 0
+      ? '<div class="usage-extra">Extra usage: ' +
+        (u.extraEnabled ? '<span style="color:var(--green)">ON</span>' : "<span>OFF</span>") +
+        " &middot; " + money(u.extraSpent) + " spent &middot; " +
+        '<span style="color:var(--' + (balance < 2 ? "red" : balance < 5 ? "yellow" : "green") + ')">' +
+        money(balance) + " balance</span> &middot; $" + Number(u.extraLimit) + " limit</div>"
+      : "";
+  return (
+    usageHead("Claude", u.lastCheckTime ? "updated " + timeAgo(u.lastCheckTime, now) : "") +
+    '<div class="usage-cols">' +
+    sessionBar(u, now, u.paused ? '<span style="color:var(--red)">MANUAL PAUSE (' + Number(u.queueSize) + " queued)</span>" : "") +
+    '<div class="usage-col">' + models + "</div></div>" +
+    weeklyBar(u, now, (elapsed, diff) =>
+      '<span style="color:var(--' + (diff > 0 ? "yellow" : "green") + ')">' + paceText(elapsed, diff) + "</span>",
+    ) +
+    extra
+  );
+}
+
+/**
+ * The Codex block, from `/codex-usage-status` (`renderCodexUsage`). A percent
+ * below zero is a window Codex did not report, and that bar goes; with both
+ * gone the block says so, and the plan name moves up to the header.
+ */
+export function codexUsage(u, now = Date.now()) {
+  const hasSession = u.sessionPercent >= 0;
+  const hasWeekly = u.weeklyPercent >= 0;
+  const updated = u.lastUpdated ? "updated " + timeAgo(u.lastUpdated, now) : "";
+  const cols =
+    (hasSession ? sessionBar(u, now, u.planType ? "<span> &middot; " + esc(u.planType) + "</span>" : "") : "") +
+    (hasWeekly ? weeklyBar(u, now, (elapsed) => "<span>" + elapsed + "% of week elapsed</span>") : "");
+  return (
+    usageHead("Codex", !hasSession && u.planType ? [u.planType, updated].filter(Boolean).join(" · ") : updated) +
+    (cols
+      ? '<div class="usage-cols">' + cols + "</div>"
+      : '<div class="usage-col-label">No limits reported yet — Codex only publishes them while a session is running.</div>')
+  );
 }
 
 // ---------------------------------------------------------------------------

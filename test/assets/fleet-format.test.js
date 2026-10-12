@@ -41,6 +41,25 @@ import {
   statusClass,
   timeAgo,
   visibleSpawns,
+  askAnswer,
+  askCards,
+  askSummary,
+  barColor,
+  claudeUsage,
+  codexUsage,
+  dayMarkers,
+  drainStatus,
+  formatClockLabel,
+  formatResetLabel,
+  messageKind,
+  paceText,
+  parseResetDate,
+  pokeButton,
+  queueCard,
+  redPanes,
+  strandedAgents,
+  weekElapsedPercent,
+  weeklyPaceColor,
 } from "../../app/assets/javascripts/fleet-format.js";
 
 import { isPaneId } from "../../config/fleet.ts";
@@ -966,5 +985,214 @@ describe("pullFailLabel / pullFailTitle", () => {
     const title = pullFailTitle([{ owner: "o", repo: "r", error: "line one\nline two" }]);
 
     expect(title).toBe("o/r — pull failed\n  line one\n  line two");
+  });
+});
+
+describe("the queue", () => {
+  const pr = { owner: "o", repo: "r", pr: 7, title: "t" };
+  const queue = [
+    { Owner: "o", Repo: "r", PR: 7, Message: "CI failed on o/r#7" },
+    { Owner: "o", Repo: "other", PR: 7, Message: "PR has been merged" },
+  ];
+
+  it("renders under its PR row, with a button that sends that one", () => {
+    const html = prRow(pr, [], NOW, null, queue);
+    expect(html.match(/class="queued-row"/g)).toHaveLength(1);
+    expect(html.indexOf("queued-row")).toBeGreaterThan(html.indexOf("rtitle"));
+    expect(html).toContain("CI failure");
+    expect(html).toContain('data-action="send-one" data-pr="7"');
+    expect(prRow(pr, [], NOW, null)).not.toContain("queued-row");
+  });
+
+  it("names a held notification by what ringo's message says", () => {
+    expect(["Copilot reviewed it", "has been opened", "x", undefined].map(messageKind)).toEqual([
+      "copilot review", "PR opened", "notification", "notification",
+    ]);
+  });
+
+  it("offers Send All only while something is queued", () => {
+    expect(queueCard([])).toBe("");
+    expect(queueCard(queue)).toContain("2 queued");
+    expect(queueCard(queue)).toContain('data-action="drain"');
+  });
+
+  it("posts what ringo's sendOne and drainQueue post, and re-reads usage after", () => {
+    const one = controlRequest("send-one", { pr: "7" });
+    expect([one.path, one.body]).toEqual(["/drain-one", { pr: 7 }]);
+    expect(controlOutcome(one, { ok: true, text: '{"sent":true}' }, "send")).toEqual({ disabled: true, text: "sent", refresh: "usage" });
+    expect(controlOutcome(one, { ok: true, text: '{"sent":false}' }, "send").text).toBe("fail");
+    expect(controlOutcome(one, { error: "offline" }, "send")).toEqual({ disabled: false, text: "fail" });
+
+    const all = controlRequest("drain", {});
+    expect([all.path, all.body]).toEqual(["/drain", null]);
+    expect(controlOutcome(all, { ok: true, text: '{"drained":2}' }, "Send All")).toEqual({ disabled: true, refresh: "usage" });
+  });
+});
+
+describe("the poke button", () => {
+  const prs = [{ pane: "%1", paneStatus: "error" }, { pane: "%2", paneStatus: "working" }, { paneStatus: "error" }];
+  const spawns = [{ pane: "%3", pane_status: "error" }, { pane: "%1", pane_status: "error" }];
+  const reviewers = { "o/r#1": { pane_id: "%4", pane_status: "error" }, "o/r#2": { pane_id: "%5", pane_status: "idle" } };
+
+  it("targets every red pane once, across workers, spawns and reviewers", () => {
+    expect(redPanes(prs, spawns, reviewers)).toEqual(["%1", "%3", "%4"]);
+    expect(redPanes(prs, undefined, null)).toEqual(["%1"]);
+  });
+
+  it("is hidden with nobody stalled, and counts them otherwise", () => {
+    expect(pokeButton([])).toMatchObject({ hidden: true, panes: "" });
+    expect(pokeButton(["%1"])).toEqual({ hidden: false, panes: "%1", label: "👉 poke 1 stalled agent" });
+    expect(pokeButton(["%1", "%3"]).label).toBe("👉 poke 2 stalled agents");
+  });
+
+  it("posts the panes to ringo and reports how many it reached", () => {
+    const request = controlRequest("poke", { panes: "%1,%3" });
+    expect([request.path, request.body]).toEqual(["/poke-stalled", { panes: ["%1", "%3"] }]);
+    expect(controlOutcome(request, { ok: true, text: '{"poked":["%1"]}' }, "poke")).toEqual({ disabled: true, text: "poked 1 agent", resetAfterMs: 3000 });
+    expect(controlOutcome(request, { ok: false, text: "no tmux" }, "poke").text).toBe("poke failed");
+    expect(controlRequest("poke", { panes: "" })).toBeNull();
+  });
+});
+
+describe("draining stranded reviewers", () => {
+  const stuck = (agent) => ({ agent, blocked_by_usage: true, review_owed: true });
+
+  it("offers a drain only off an agent with a stranded review, and only onto one without", () => {
+    expect(strandedAgents({ a: stuck("codex") })).toEqual({ codex: true, claude: false });
+    expect(strandedAgents({ a: stuck("codex"), b: stuck("claude") })).toEqual({ codex: false, claude: false });
+    expect(strandedAgents({ a: { ...stuck("claude"), review_owed: false } })).toEqual({ codex: false, claude: false });
+  });
+
+  it("asks first, posts to the agent's drain and polls its status", () => {
+    const request = controlRequest("drain-reviewers", { from: "codex", status: "drainCodexStatus" });
+    expect([request.path, request.body]).toEqual(["/reviewer/drain-codex", null]);
+    expect(request.confirm).toBe("Kill every stranded codex reviewer pane and re-assign those PRs to Claude?");
+    expect([request.statusId, request.poll]).toEqual(["drainCodexStatus", "drain-status?agent=codex"]);
+    expect(controlRequest("drain-reviewers", { from: "gemini" })).toBeNull();
+  });
+
+  it("says where a drain has got to", () => {
+    expect(drainStatus({ running: true, done: 1, total: 3 })).toBe("draining 1/3...");
+    expect(drainStatus({ total: 0 })).toBe("nothing to drain");
+    expect(drainStatus({ total: 3, drained: [1, 2], skipped: [3] })).toBe("2 moved, 1 skipped");
+  });
+});
+
+describe("the relayed questions", () => {
+  // Markup, and a quote that would close the attribute it is written into.
+  const MARKUP = "<img src=x onerror=alert(1)>";
+  const hostile = MARKUP + 'x" onclick="alert(1)';
+  const second = { question: "Second?", options: [{ label: "Yes" }] };
+  const ask = {
+    id: hostile, label: hostile, pane: hostile, at: minutesAgo(3),
+    questions: [{ header: hostile, question: hostile, options: [{ label: hostile, description: hostile }] }, second],
+  };
+
+  it("escapes every piece of model-authored text, in text and in attributes", () => {
+    const html = askCards([ask], NOW);
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain('" onclick="');
+    // Eleven places: label, pane, header, question, the option's label and
+    // description, the id on both buttons, and the answer's question and label.
+    expect(html.split(esc(hostile)).length - 1).toBe(11);
+  });
+
+  it("renders who is asking, each question's options and a free-text answer", () => {
+    const html = askCards([{ id: "a1", label: "worker", pane: "%9", at: minutesAgo(3), questions: [second] }], NOW);
+    expect(html).toContain("<strong>worker</strong><code>%9</code><span>3m ago</span>");
+    expect(html).toContain('data-action="answer-ask" data-id="a1" data-answer="Yes"');
+    expect(html).toContain('data-action="answer-ask" data-id="a1" data-free="1"');
+    expect(askSummary([ask])).toBe("1 agent blocked, waiting for an answer");
+  });
+
+  it("answers in prose: the label, under its question when there were several", () => {
+    expect(askAnswer(ask, second, "Yes")).toBe("Second? → Yes");
+    expect(askAnswer({ questions: [second] }, second, "Yes")).toBe("Yes");
+  });
+
+  it("posts an option or free text to ringo's relay, and nothing empty", () => {
+    const request = controlRequest("answer-ask", { id: "a1", answer: "  in my own words " });
+    expect([request.path, request.body]).toEqual(["/ask/answer", { id: "a1", answer: "in my own words" }]);
+    expect(controlOutcome(request, { ok: true, text: "" }, "Send")).toMatchObject({ disabled: true, refresh: "asks" });
+    expect(controlOutcome(request, { ok: false, text: "gone" }, "Send")).toMatchObject({ disabled: false, alert: "gone" });
+    expect(controlRequest("answer-ask", { id: "a1", free: "1", answer: "  " })).toBeNull();
+  });
+});
+
+describe("the usage helpers", () => {
+  // Local time, as the labels are: Tuesday 8 September 2026, noon.
+  const noon = new Date(2026, 8, 8, 12, 0).getTime();
+  const HOUR = 3600000;
+  const weeklyResetsAt = noon + 84 * HOUR;
+
+  it("colours a bar by how full it is", () => {
+    expect([0, 59, 60, 84, 85, 100].map(barColor)).toEqual(["green", "green", "yellow", "yellow", "red", "red"]);
+  });
+
+  it("colours the weekly bar by distance from pace, either side", () => {
+    // 6h and 18h of a 168h week are about 3.57% and 10.71%.
+    expect([0, -3.5, 3.6, 10.7, -10.8].map(weeklyPaceColor)).toEqual(["green", "green", "yellow", "yellow", "red"]);
+  });
+
+  it("reads an absolute reset as the next such time, and a duration from now", () => {
+    expect(parseResetDate("Thu 3:00 PM", noon)).toEqual(new Date(2026, 8, 10, 15, 0));
+    expect(parseResetDate("Tuesday 11:00 AM", noon)).toEqual(new Date(2026, 8, 15, 11, 0));
+    expect(parseResetDate("Tue 12:30 AM", noon)).toEqual(new Date(2026, 8, 15, 0, 30));
+    expect(parseResetDate("in 5 days, 3 hours", noon)).toEqual(new Date(noon + 123 * HOUR));
+    expect(parseResetDate("2 hr 30 min", noon)).toEqual(new Date(noon + 2.5 * HOUR));
+    expect(parseResetDate("in 3d 4h", noon)).toEqual(new Date(noon + 76 * HOUR));
+    expect([parseResetDate("", noon), parseResetDate("soon", noon)]).toEqual([null, null]);
+  });
+
+  it("labels a reset from the epoch when there is one, and the string otherwise", () => {
+    const at = new Date(2026, 8, 9, 13, 5).getTime();
+    expect(formatResetLabel("Tue 6:00 PM", at, noon)).toBe("Wed 1:05 PM");
+    expect(formatClockLabel("Tue 6:00 PM", at, noon)).toBe("1:05 PM");
+    expect(formatResetLabel("Thu 3:00 PM", 0, noon)).toBe("Thu 3:00 PM");
+    expect([formatResetLabel("soon", 0, noon), formatClockLabel("", 0, noon)]).toEqual(["soon", "?"]);
+  });
+
+  it("measures how much of the week is gone, and ticks each local midnight of it", () => {
+    expect([weeklyResetsAt, noon - HOUR, 0].map((at) => weekElapsedPercent("", at, noon))).toEqual([50, 100, 0]);
+    // Half gone at Tuesday noon: the week began Saturday at midnight.
+    const html = dayMarkers("", weeklyResetsAt, noon);
+    expect(html.match(/<span>(..)<\/span>/g).map((s) => s.slice(6, 8))).toEqual(["Su", "Mo", "Tu", "We", "Th", "Fr"]);
+    expect(html).toContain('style="left:' + (24 / 168) * 100 + '%"><span>Su');
+  });
+
+  it("says how far usage is from pace", () => {
+    expect(paceText(50, 0)).toBe("50% of week elapsed");
+    expect(paceText(50, 10)).toBe("50% of week elapsed (17h ahead)");
+    expect(paceText(50, -20)).toBe("50% of week elapsed (1d 10h under)");
+  });
+
+  it("draws Claude's session, per-model and weekly bars, the pause and the extra balance", () => {
+    const html = claudeUsage(
+      {
+        sessionPercent: 90, sessionResetsAt: new Date(2026, 8, 8, 14, 0).getTime(),
+        weeklyPercent: 70, weeklyResetsAt, paused: true, queueSize: 2,
+        weeklyModels: [{ name: "<b>Sonnet", percent: 140 }],
+        extraLimit: 50, extraBalance: 1.5, extraSpent: 3, extraEnabled: true,
+        lastCheckTime: new Date(noon - 120000).toISOString(),
+      },
+      noon,
+    );
+    expect(html).toContain("updated 2m ago");
+    expect(html).toContain("Session (2:00 PM)");
+    expect(html).toContain('class="bar-fill red" style="width:90%"');
+    expect(html).toContain("MANUAL PAUSE (2 queued)");
+    expect(html).toContain('&lt;b&gt;Sonnet</div><div class="bar-container"><div class="bar-fill red" style="width:100%"');
+    expect(html).toContain('class="bar-fill red" style="width:70%"></div><div class="bar-marker" style="left:50%">');
+    expect(html).toContain("50% of week elapsed (1d 10h ahead)");
+    expect(html).toContain('$3.00 spent &middot; <span style="color:var(--red)">$1.50 balance</span> &middot; $50 limit');
+  });
+
+  it("drops a window Codex did not report, and says so when it reported neither", () => {
+    const weekly = codexUsage({ sessionPercent: -1, weeklyPercent: 40, weeklyResetsAt, planType: "pro" }, noon);
+    expect(weekly).not.toContain("Session (");
+    expect(weekly).toContain('<span class="usage-meta">pro</span>');
+    expect(weekly).toContain("<span>50% of week elapsed</span>");
+    expect(codexUsage({ sessionPercent: 10, weeklyPercent: 40, planType: "<pro>" }, noon)).toContain("<span> &middot; &lt;pro&gt;</span>");
+    expect(codexUsage({ sessionPercent: -1, weeklyPercent: -1 }, noon)).toContain("No limits reported yet");
   });
 });

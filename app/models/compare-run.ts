@@ -117,6 +117,6 @@ export class CompareRun extends Stats {
       .where({ rn: 1, package: packages })
       .order({ day: "asc" });
     if (since) rollup = rollup.where("day >= ?", since);
-    return rollup as unknown as Relation<CompareRun>;
+    return rollup;
   }
 }

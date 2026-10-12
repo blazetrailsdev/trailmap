@@ -2,7 +2,7 @@
      WebSocket for the event stream, a prefix for the controls, and the
      reviewer list the stream does not carry. On an element rather than in an
      inline <script> so the page needs no inline JavaScript. -->
-<div id="fleetConfig" hidden data-socket-path="<%= socketPath %>" data-control-path="<%= controlPath %>" data-reviewers-path="<%= reviewersPath %>"></div>
+<div id="fleetConfig" hidden data-socket-path="<%= socketPath %>" data-control-path="<%= controlPath %>" data-reviewers-path="<%= reviewersPath %>" data-read-path="<%= readPath %>"></div>
 
 <div class="page-header">
   <h1 class="page-title">Fleet</h1>
@@ -26,12 +26,28 @@
   <span id="agentPills"></span>
 </div>
 
+<div id="queueSection" class="card" style="display:none"></div>
+
+<div id="askPanel" class="card ask-panel" style="display:none">
+  <div class="card-head">
+    <span class="card-title">&#128587; Agents waiting on you</span>
+    <span class="field-note" id="askSummary"></span>
+  </div>
+  <div id="askBody"></div>
+</div>
+
 <div id="ciFixerPanel" class="card ci-fixer" style="display:none">
   <div class="card-head">
     <span class="card-title">&#128657; CI fixer</span>
     <span class="field-note" id="ciFixerSummary"></span>
   </div>
   <div id="ciFixerBody"></div>
+</div>
+
+<div class="card usage-group" id="usageGroup" style="display:none">
+  <div class="card-head"><span class="card-title">Usage</span></div>
+  <div class="usage-bar" id="usageBar" style="display:none"></div>
+  <div class="usage-bar" id="codexUsageBar" style="display:none"></div>
 </div>
 
 <div class="card" id="spawnPanel">
@@ -46,7 +62,15 @@
       <% } %>
     </select>
     <span class="field-status" id="spawnStatus"></span>
+    <button class="btn btn-red btn-sm" id="pokeBtn" data-action="poke" data-panes="" title="Send &quot;keep going&quot; to every red (API-error / stuck-retry) agent" style="display:none;margin-left:auto">poke stalled agents</button>
   </div>
+  <% for (const [from, name] of [["codex", "Codex"], ["claude", "Claude"]]) { %>
+    <div class="card-head" id="drain<%= name %>Field" style="display:none" title="<%= name %> out of usage for a while? Move every <%= from %> reviewer that still owes a review onto the other agent, killing its stranded pane first.">
+      <span class="field-note">Stranded reviewers</span>
+      <button class="btn btn-sm" data-action="drain-reviewers" data-from="<%= from %>" data-status="drain<%= name %>Status">Drain <%= from %></button>
+      <span class="field-status" id="drain<%= name %>Status"></span>
+    </div>
+  <% } %>
   <div class="spawn-form">
     <textarea id="task" class="ctl" placeholder="Enter a task for Claude..." rows="1"></textarea>
     <button id="spawn" class="btn btn-green">Spawn</button>

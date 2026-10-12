@@ -14,13 +14,21 @@ import {
   CLEAR_FAILED_ID,
   activeFixers,
   anyFailedSpawn,
+  askCards,
+  askSummary,
+  claudeUsage,
+  codexUsage,
   controlOutcome,
   controlRequest,
+  drainStatus,
   fixerCards,
   fixerSummary,
   mainCIByRepo,
   mainCITitle,
+  pokeButton,
   prRow,
+  queueCard,
+  redPanes,
   reconnectDelay,
   pullFailLabel,
   pullFailTitle,
@@ -30,6 +38,7 @@ import {
   reviewersByKey,
   sectionId,
   spawnRow,
+  strandedAgents,
   visibleSpawns,
 } from "./fleet-format.js";
 
@@ -37,6 +46,7 @@ const config = document.getElementById("fleetConfig");
 const socketPath = (config && config.dataset.socketPath) || "/fleet/socket";
 const controlPath = (config && config.dataset.controlPath) || "/fleet/control";
 const reviewersPath = (config && config.dataset.reviewersPath) || "/fleet/reviewers";
+const readPath = (config && config.dataset.readPath) || "/fleet/read";
 
 /**
  * Where a control POST goes: trailmap, which forwards it to ringo. `path` is
@@ -73,6 +83,8 @@ let fixers = [];
 let reviewers = null;
 /** The last envelope, so a reviewer answer can repaint without waiting for a frame. */
 let lastEnvelope = null;
+/** The notifications ringo's usage gate is holding, from the usage poll. */
+let queue = [];
 
 function renderCIFixer(list) {
   const panel = byId("ciFixerPanel");
@@ -104,7 +116,7 @@ function renderRepoSections(prs, spawns) {
     byId(id + "-spawnsSection").style.display = section.spawns.length ? "" : "none";
     byId(id + "-spawns").innerHTML = section.spawns.map((s) => spawnRow(s, fixers)).join("");
     byId(id + "-prs").innerHTML = section.prs.length
-      ? section.prs.map((pr) => prRow(pr, fixers, Date.now(), reviewers)).join("")
+      ? section.prs.map((pr) => prRow(pr, fixers, Date.now(), reviewers, queue)).join("")
       : '<div class="list-empty">No open PRs.</div>';
   });
 
@@ -200,6 +212,16 @@ function paint(envelope) {
   fixers = envelope.fixers || [];
   renderCIFixer(fixers);
   renderRepoSections(prs, visibleSpawns(prs, envelope.spawns || []));
+
+  // A button that is mid-request keeps what it says until it is reset.
+  const poke = pokeButton(redPanes(prs, envelope.spawns, reviewers));
+  const pokeBtn = byId("pokeBtn");
+  pokeBtn.style.display = poke.hidden ? "none" : "";
+  pokeBtn.dataset.panes = poke.panes;
+  if (!pokeBtn.disabled) pokeBtn.textContent = poke.label;
+  const stranded = strandedAgents(reviewers);
+  byId("drainCodexField").style.display = stranded.codex ? "" : "none";
+  byId("drainClaudeField").style.display = stranded.claude ? "" : "none";
 
   setDot("tmuxDot", !!envelope.tmuxConnected);
   byId("tmuxPill").classList.toggle("ok", !!envelope.tmuxConnected);
@@ -309,6 +331,94 @@ pollReviewers();
 setInterval(pollReviewers, REVIEWERS_POLL_MS);
 
 // ---------------------------------------------------------------------------
+// Usage and relayed questions -- polled, as ringo's own page fetches them.
+// ---------------------------------------------------------------------------
+
+/** By name, so a control that changed what one reports can re-run it. */
+const polls = {};
+
+function poll(name, everyMs, onAnswer, onFailure = () => {}) {
+  let inFlight = false;
+  polls[name] = async () => {
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      const signal = AbortSignal.timeout(everyMs);
+      const response = await fetch(readPath + "/" + name, { credentials: "same-origin", signal });
+      if (response.ok) onAnswer(await response.json());
+      else onFailure();
+    } catch {
+      onFailure();
+    } finally {
+      inFlight = false;
+    }
+  };
+  polls[name]();
+  setInterval(polls[name], everyMs);
+}
+
+function showUsage(id, html, stale) {
+  byId("usageGroup").style.display = "";
+  const block = byId(id);
+  block.style.display = "";
+  block.classList.toggle("stale", stale);
+  if (html) block.innerHTML = html;
+}
+
+poll("usage", 60_000, (u) => {
+  showUsage("usageBar", claudeUsage(u), !!u.stale);
+  queue = u.queue || [];
+  byId("queueSection").style.display = queue.length ? "" : "none";
+  byId("queueSection").innerHTML = queueCard(queue);
+  if (lastEnvelope) paint(lastEnvelope);
+});
+
+// A failed poll marks the block stale rather than retiring it.
+poll("codex-usage", 60_000, (u) => showUsage("codexUsageBar", codexUsage(u), !!u.stale), () =>
+  showUsage("codexUsageBar", byId("codexUsageBar").innerHTML ? "" : codexUsage({ sessionPercent: -1, weeklyPercent: -1 }), true),
+);
+
+// Redrawn only when the questions CHANGE: a repaint erases a half-typed answer.
+let asksShown = "";
+poll("asks", 5_000, (answer) => {
+  const pending = answer.pending || [];
+  byId("askPanel").style.display = pending.length ? "" : "none";
+  if (asksShown === JSON.stringify(pending)) return;
+  asksShown = JSON.stringify(pending);
+  byId("askSummary").textContent = askSummary(pending);
+  byId("askBody").innerHTML = askCards(pending);
+});
+
+// Enter in a free-text answer is its Send button.
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && event.target instanceof Element && event.target.matches(".ask-free input")) {
+    event.target.nextElementSibling.click();
+  }
+});
+
+/** A reviewer drain runs in ringo's background; this follows its progress. */
+async function followDrain(request, result) {
+  const status = byId(request.statusId);
+  if (!result.ok) {
+    status.textContent = "error" in result ? "error" : "failed";
+    return;
+  }
+  try {
+    for (let d = JSON.parse(result.text); ; ) {
+      status.textContent = drainStatus(d);
+      if (!d.running) break;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await fetch(readPath + "/" + request.poll, { credentials: "same-origin" });
+      if (!response.ok) break;
+      d = await response.json();
+    }
+    pollReviewers();
+  } catch {
+    status.textContent = "error";
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Manual spawn -- the one control this page carries, and the reason the repo
 // list is configuration. It posts to ringo, which owns the spawn loop.
 // ---------------------------------------------------------------------------
@@ -339,15 +449,17 @@ byId("spawn").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Row controls -- merge, dismiss, clear failed, respawn fixer. One listener for
-// all of them: the rows are redrawn on every frame, so a listener bound to a
-// button would be bound to a node that is gone a second later.
+// Controls -- every button with a `data-action`. One listener for all of them:
+// the rows are redrawn on every frame, so a listener bound to a button would
+// be bound to a node that is gone a second later.
 // ---------------------------------------------------------------------------
 
 document.addEventListener("click", async (event) => {
   const button = event.target instanceof Element ? event.target.closest("button[data-action]") : null;
   if (!button || button.disabled) return;
-  const request = controlRequest(button.dataset.action, button.dataset);
+  // A free-text answer is whatever is in the input beside its button.
+  const data = button.dataset.free ? { ...button.dataset, answer: button.previousElementSibling.value } : button.dataset;
+  const request = controlRequest(button.dataset.action, data);
   if (!request) return;
   if (request.confirm && !window.confirm(request.confirm)) return;
 
@@ -372,9 +484,17 @@ document.addEventListener("click", async (event) => {
     result = { error: e.message };
   }
 
+  if (request.statusId) {
+    await followDrain(request, result);
+    button.disabled = false;
+    return;
+  }
+
   // Everything the button does next is decided in `controlOutcome`, where it
   // is tested; this only applies it.
   const outcome = controlOutcome(request, result, label);
+  // A beat first: ringo has answered, but its next status is what is wanted.
+  if (outcome.refresh) setTimeout(polls[outcome.refresh], 1000);
   button.disabled = outcome.disabled;
   if (outcome.text !== undefined) button.textContent = outcome.text;
   if (outcome.title !== undefined) button.title = outcome.title;
