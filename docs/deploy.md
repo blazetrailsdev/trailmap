@@ -302,8 +302,34 @@ deploys, so the deploy gate and the schedule cannot drift apart:
 ```sh
 ./scripts/smoke-prod.sh --tier 0   # /up on loopback
 ./scripts/smoke-prod.sh --tier 1   # /up/ready, the migration head, the loopback API, the public vhost
-./scripts/smoke-prod.sh --tier 2   # every read verb and page, by shape
+./scripts/smoke-prod.sh --tier 2   # every read verb and page, by shape, and the tasks CLI
 ```
+
+### Between deploys
+
+Tiers 0 to 2 run from the host crontab, every 30 seconds, every minute and
+every 5 minutes. `scripts/smoke-cron.sh <tier>` is what cron runs: it takes a
+per-tier lock, so a slow tier is skipped rather than stacked; kills a tier ten
+seconds short of its cadence; and appends each run to
+`~/github/blazetrailsdev/smoke-tier<N>.log`, which ringo reads into three rows
+on `/crons`. A red row there is the report. Cron's own is mail nobody reads.
+
+```sh
+./scripts/start-worktree.sh smoke-canary   # once: the worktree tier 2 runs the CLI from
+./scripts/smoke-cron.sh --crontab          # the four entries; add them with `crontab -e`
+```
+
+Install them from the main checkout, so the entries name a path that outlives
+any worktree. Tier 2's half of this is the `tasks` binary, run from
+`smoke-canary` by the login shell, because what breaks for an agent is `PATH`,
+the installed link and `TRAILMAP_URL` rather than the endpoint. Each has its own
+assertion (`tier2.cli-binary`, `tier2.cli-worktree`, `tier2.cli-trailmap-url`),
+and a verb one of them stopped says which. The crontab entry sets
+`TRAILMAP_URL` until agents get it from their shell (RFC 0136 phase G); delete
+it from the entry then, so the canary reads the value an agent reads.
+
+The schedule moves into trailmap with its own scheduler (story
+`move-the-smoke-schedule-into-trailmap`).
 
 Each assertion prints `PASS` or `FAIL`, a stable name
 (`tier1.public-vhost-redirects`) and a detail, tab-separated; the name is the
