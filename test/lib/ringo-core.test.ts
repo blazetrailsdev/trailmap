@@ -74,7 +74,13 @@ describe("renderPaneLog", () => {
   // Megabytes in, so stdin arrives over many reads and the module grows its
   // memory while the host still holds views into it; and the shape of a real
   // agent log, where nearly every byte is a repaint of rows already drawn.
-  it("replays a multi-megabyte inline-repaint log down to its final rows", async () => {
+  //
+  // ITS OWN TIME LIMIT, because replay is synchronous and CPU-bound: about a
+  // second on an idle machine, and 5-34s measured with every core eight times
+  // oversubscribed, where the default 5s failed it three runs in four. It only
+  // ever timed out; the assertions never failed. The fixture is not shrunk to
+  // fit instead, because megabytes are the property (see above).
+  it("replays a multi-megabyte inline-repaint log down to its final rows", { timeout: 120_000 }, async () => {
     const frame = Array.from({ length: 6 }, (_, i) => `\x1b[38;5;${100 + i}m● step ${i}\x1b[0m ${"x".repeat(40)}\r\n`).join("");
     const repaint = `${frame}\x1b[6A\x1b[J`;
     const kept = 40;

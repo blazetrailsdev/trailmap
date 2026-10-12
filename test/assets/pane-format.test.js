@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   POLL_MS,
+  SLOW_POLL_MS,
   atBottom,
   initialState,
   noticeText,
+  pollDelay,
   screenStep,
   screenUrl,
   shouldPoll,
@@ -64,12 +66,31 @@ describe("screenStep", () => {
     expect(shouldPoll(state, { paused: false, hidden: false })).toBe(true);
   });
 
+  it.each([
+    [502, "ringo is unreachable: ECONNREFUSED", "unreachable"],
+    [504, "ringo did not answer in 3s", "unreachable"],
+    [undefined, "The operation timed out.", "unreachable"],
+    [503, "tmux is not running", "pane"],
+    [503, "no ringo origin is configured", "refused"],
+    [404, "404 page not found", "refused"],
+    [400, "Not a pane id", "refused"],
+  ])("reads a %s (%s) as %s, and never blanks the screen", (status, error, kind) => {
+    const { state, html } = screenStep(shown(), { error, status }, NOW + 1);
+    expect(state.failure).toBe(kind);
+    expect(html).toBeNull();
+    expect(state.hash).toBe(shown().hash);
+    expect(shouldPoll(state, { paused: false, hidden: false })).toBe(true);
+    // Only a failure that asking again cannot fix slows the asking down.
+    expect(pollDelay(state)).toBe(kind === "refused" ? SLOW_POLL_MS : POLL_MS);
+  });
+
   it("clears the unreachable notice on the next answer", () => {
     const down = screenStep(shown(), { error: "down" }, NOW + 1).state;
 
     const { state } = screenStep(down, { body: { exists: true, status: "idle", unchanged: true } }, NOW + 2);
 
     expect(state.unreachable).toBe("");
+    expect(state.failure).toBe("");
   });
 
   it("treats an answer that is not an object as no answer", () => {
@@ -121,6 +142,16 @@ describe("the header", () => {
     expect(noticeText(shown(), { paused: true })).toBe("Paused.");
     expect(noticeText({ ...shown(), unreachable: "timeout" }, { paused: false })).toContain("ringo is unreachable");
     expect(noticeText({ ...shown(), exited: true, unreachable: "x" }, { paused: true })).toContain("showing its last screen");
+    const failed = (failure, unreachable) => noticeText({ ...shown(), failure, unreachable }, { paused: false });
+    expect(failed("unreachable", "ringo did not answer in 3s")).toBe(
+      "ringo is unreachable — retrying. (ringo did not answer in 3s)",
+    );
+    expect(failed("pane", "tmux is not running")).toBe(
+      "ringo answered, but cannot read this pane — retrying. (tmux is not running)",
+    );
+    expect(failed("refused", "404 page not found")).toBe(
+      "ringo refused the request, and retrying will not fix it — asking again every 30s. (404 page not found)",
+    );
     // A pane already gone on the first poll has no last screen to speak of.
     expect(noticeText({ ...initialState(), exited: true }, { paused: false })).toBe("This pane has exited.");
   });

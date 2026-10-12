@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { env } from "@blazetrails/ruby-compat";
+import { writeProtocol } from "../../config/write-protocol.js";
 import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.js";
 
 describe("tasksDatabaseConfig", () => {
@@ -18,6 +19,10 @@ describe("tasksDatabaseConfig", () => {
       adapter: "sqlite3",
       database: env.TASKS_DATABASE,
       pool: 1,
+      // The write protocol (docs/write-protocol.md): the CLI's journal mode
+      // and busy timeout, so trailmap waits on its lock instead of failing.
+      timeout: writeProtocol.busyTimeoutMs,
+      pragmas: { journal_mode: writeProtocol.journalMode },
     });
   });
 });

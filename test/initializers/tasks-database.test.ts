@@ -66,10 +66,13 @@ describe("connectToTasksDatabase", () => {
 
     // Read-write by decision (docs/deploy.md), so what is asserted is WAL and
     // the shared busy timeout from docs/write-protocol.md, not a refused write.
-    expect(String((await Base.leaseConnection()).selectValue("PRAGMA journal_mode"))).toBe(
+    // `selectValue` is async, and `String(promise)` typechecks: unawaited,
+    // this compared "[object Promise]" and failed wherever it actually ran.
+    const connection = await Base.leaseConnection();
+    expect(String(await connection.selectValue("PRAGMA journal_mode"))).toBe(
       writeProtocol.journalMode.toLowerCase(),
     );
-    expect(Number((await Base.leaseConnection()).selectValue("PRAGMA busy_timeout"))).toBe(
+    expect(Number(await connection.selectValue("PRAGMA busy_timeout"))).toBe(
       writeProtocol.busyTimeoutMs,
     );
   });

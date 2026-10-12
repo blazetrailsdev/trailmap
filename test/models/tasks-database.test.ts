@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.js";
-import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
+import { RFC_STATUSES, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 
 /**
  * Spot-check the moved models against the LIVE database the CLI writes.
@@ -23,7 +23,10 @@ withLiveDatabase("the live tasks database", () => {
   it("reads RFCs the CLI wrote", async () => {
     const rfc = await Rfc.findBy({ id: "0136-trailmap" });
     expect(rfc).not.toBeNull();
-    expect(rfc!.status).toBe("active");
+    // Not its status: that is live data, and it moves (draft, active, closed).
+    // What the CLI wrote and will not rewrite is which file the RFC came from.
+    expect(RFC_STATUSES).toContain(rfc!.status);
+    expect(rfc!.file_path).toBe("rfcs/0136-trailmap/README.md");
   });
 
   it("reads a story and traverses it back to its RFC", async () => {

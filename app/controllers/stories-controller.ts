@@ -1,6 +1,5 @@
 import { MimeType } from "@blazetrails/actionpack";
-import { ApplicationController } from "./application-controller.js";
-import { requireLoopback } from "./concerns/loopback-only.js";
+import { ApiController } from "./api-controller.js";
 import { Story } from "../models/index.js";
 import { summarizeBundle, type RankingIndex } from "../models/concerns/ranking.js";
 import { serializeStories } from "../serializers/story-json.js";
@@ -26,11 +25,7 @@ const DEFAULT_MAX_LOC = 250;
  * consumers being replaced (the CLI's `--json` and webhook/tasksdb.go) parse
  * these today, so the shapes are a contract, not a choice.
  */
-export class StoriesController extends ApplicationController {
-  static {
-    this.beforeAction(requireLoopback);
-  }
-
+export class StoriesController extends ApiController {
   /** `tasks list [--status S] [--rfc R] [--cluster C]` */
   async index(): Promise<void> {
     const index = await Story.rankingIndex();

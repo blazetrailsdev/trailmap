@@ -1,5 +1,4 @@
-import { ApplicationController } from "./application-controller.js";
-import { requireLoopback } from "./concerns/loopback-only.js";
+import { ApiController } from "./api-controller.js";
 import { Event, Rfc, Story } from "../models/index.js";
 import { serializeStories } from "../serializers/story-json.js";
 import { serializeRfcs } from "../serializers/rfc-json.js";
@@ -18,11 +17,7 @@ import { serializeRfcs } from "../serializers/rfc-json.js";
  * is a page, and no browser is the audience. The loopback guard still applies,
  * because this is the same API surface.
  */
-export class ReadModelsController extends ApplicationController {
-  static {
-    this.beforeAction(requireLoopback);
-  }
-
+export class ReadModelsController extends ApiController {
   /**
    * `index.json`: every RFC and every story.
    *
