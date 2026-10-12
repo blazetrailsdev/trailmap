@@ -60,6 +60,9 @@ import {
   strandedAgents,
   weekElapsedPercent,
   weeklyPaceColor,
+  hoursUntilReset,
+  queuedUnder,
+  resetDate,
 } from "../../app/assets/javascripts/fleet-format.js";
 
 import { isPaneId } from "../../config/fleet.ts";
@@ -1004,6 +1007,12 @@ describe("the queue", () => {
     expect(prRow(pr, [], NOW, null)).not.toContain("queued-row");
   });
 
+  it("appends only that PR's notifications to the row it is given", () => {
+    expect(queuedUnder(pr, queue, "<row>").match(/^<row><div class="queued-row">.*<\/div>$/)).not.toBeNull();
+    expect(queuedUnder({ ...pr, pr: 8 }, queue, "<row>")).toBe("<row>");
+    expect(queuedUnder(pr, undefined, "<row>")).toBe("<row>");
+  });
+
   it("names a held notification by what ringo's message says", () => {
     expect(["Copilot reviewed it", "has been opened", "x", undefined].map(messageKind)).toEqual([
       "copilot review", "PR opened", "notification", "notification",
@@ -1158,6 +1167,13 @@ describe("the usage helpers", () => {
     const html = dayMarkers("", weeklyResetsAt, noon);
     expect(html.match(/<span>(..)<\/span>/g).map((s) => s.slice(6, 8))).toEqual(["Su", "Mo", "Tu", "We", "Th", "Fr"]);
     expect(html).toContain('style="left:' + (24 / 168) * 100 + '%"><span>Su');
+  });
+
+  it("takes the reset from the epoch over the label, and counts the hours to it", () => {
+    expect(resetDate("Thu 3:00 PM", noon + HOUR, noon)).toEqual(new Date(noon + HOUR));
+    expect(resetDate("in 2h", 0, noon)).toEqual(new Date(noon + 2 * HOUR));
+    expect(resetDate("", 0, noon)).toBeNull();
+    expect([hoursUntilReset("in 2h", 0, noon), hoursUntilReset("", noon - HOUR, noon), hoursUntilReset("", 0, noon)]).toEqual([2, 0, null]);
   });
 
   it("says how far usage is from pace", () => {
