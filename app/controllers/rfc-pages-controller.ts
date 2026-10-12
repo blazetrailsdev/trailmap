@@ -2,7 +2,6 @@ import type { SafeBuffer } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.js";
 import { Event, Rfc, Story } from "../models/index.js";
 import { collectRfcMarks, markTitle, type MarkEvent } from "../models/concerns/rfc-marks.js";
-import { jsonArrayColumn } from "../models/rfc.js";
 import { readDocument } from "../models/concerns/document.js";
 import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
 import {
@@ -177,7 +176,7 @@ export class RfcPagesController extends ApplicationController {
             owner: rfc.owner,
             priority: rfc.priority,
             supersededBy: rfc.superseded_by,
-            clusters: jsonArrayColumn(rfc.clusters),
+            clusters: rfc.clusters,
             counts: rfcStoryCounts(own),
             bar: storyStatusCounts(own, rfc.status),
             barLength,

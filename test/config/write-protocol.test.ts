@@ -56,7 +56,7 @@ describe("write protocol", () => {
           typeof model === "function" &&
           !excluded.some((base) => model === base || model.prototype instanceof base),
       )
-      .map((model) => (model as { _tableName?: string })._tableName)
+      .map((model) => (model as { tableName?: string | null }).tableName)
       .filter((name): name is string => typeof name === "string");
     expect(mapped.length).toBeGreaterThan(0);
     for (const table of mapped) expect(tableOwners[table], table).toBe("trailmap");

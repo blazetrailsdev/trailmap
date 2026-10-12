@@ -31,7 +31,7 @@ beforeAll(async () => {
     id: "0136-trailmap",
     status: "active",
     title: "trailmap",
-    packages: '["trailties"]',
+    packages: ["trailties"],
   });
   await Rfc.create({ id: "0061-ci", status: "closed", title: "CI failures" });
 

@@ -38,7 +38,7 @@ beforeAll(async () => {
     owner: "dean",
     priority: 2,
     created_on: "2026-01-01",
-    clusters: '["pages"]',
+    clusters: ["pages"],
   });
   // Same explicit priority, fewer stories left — the tiebreak ringo applies
   // only when both sides set a priority.

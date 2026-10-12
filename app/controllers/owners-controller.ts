@@ -2,7 +2,7 @@ import { RecordNotFound } from "@blazetrails/activerecord";
 import { ApplicationController } from "./application-controller.js";
 import { Owner } from "../models/owner.js";
 import { Repository } from "../models/repository.js";
-import { openCountForRepo } from "../models/concerns/repo-scope.js";
+import { openCountsByRepo } from "../models/concerns/repo-scope.js";
 
 /**
  * `/:owner` — the owner root, as GitHub's account page is: who this is, and
@@ -14,12 +14,7 @@ import { openCountForRepo } from "../models/concerns/repo-scope.js";
  *
  * Each row carries its repo's open-story count, which is the only number worth
  * putting next to a repository name here: it is what tells you where the work
- * is. It is a COUNT per repository — `openCountForRepo`, not
- * `storiesForRepo(…).filter(…)`, which plucked eight columns of nine thousand
- * `trails` stories per row to arrive at one integer.
- *
- * Still one query per repository, which is fine at four and would not be at
- * four hundred; the day that matters it becomes one grouped query.
+ * is. `openCountsByRepo` answers every row with one grouped query.
  */
 export class OwnersController extends ApplicationController {
   async show(): Promise<void> {
@@ -28,6 +23,7 @@ export class OwnersController extends ApplicationController {
     if (owner === null) throw new RecordNotFound(`No owner ${login}`);
 
     const repos = await Repository.where({ owner_id: owner.id }).order("name").toArray();
+    const openCounts = await openCountsByRepo(repos.map((repo) => repo.name));
     const rows = [];
     for (const repo of repos) {
       rows.push({
@@ -37,7 +33,7 @@ export class OwnersController extends ApplicationController {
         visibility: repo.visibility,
         defaultBranch: repo.default_branch,
         archived: repo.archived,
-        openCount: await openCountForRepo(repo.name),
+        openCount: openCounts.get(repo.name) ?? 0,
       });
     }
 

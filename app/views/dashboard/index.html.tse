@@ -50,6 +50,16 @@
   <div class="usage-bar" id="codexUsageBar" style="display:none"></div>
 </div>
 
+<div class="card">
+  <div class="card-head bcast">
+    <span class="field-note" title="Typed into each agent's pane exactly as if you had typed it there">&#128227; Broadcast to agents</span>
+    <input id="bcastMsg" class="ctl" type="text" placeholder="e.g. main is red — rebase before you push again">
+    <button class="btn btn-sm" id="bcastAll" data-action="broadcast" data-target="all" title="Send to every live worker pane">all</button>
+    <button class="btn btn-sm" id="bcastCIRed" data-action="broadcast" data-target="ci-red" title="Send only to workers whose PR is failing CI" style="display:none">CI red</button>
+    <span class="field-note" id="bcastNote"></span>
+  </div>
+</div>
+
 <div class="card" id="spawnPanel">
   <div class="card-head">
     <span class="card-title">Manual spawn</span>

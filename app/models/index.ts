@@ -18,7 +18,6 @@ import {
   ApiComparePrivatesStat,
   TestCompareStat,
 } from "./compare-stats.js";
-import { registerRfcAutoClose } from "./rfc-close.js";
 
 // Association targets are named by STRING (`belongsTo("rfc")`,
 // `hasMany("deps", { through: "storyDeps", source: "dependsOn" })`). Rails
@@ -60,11 +59,6 @@ const STATS_MODELS = [
 ];
 
 registerModel([...MODELS, ...HUB_MODELS, ...STATS_MODELS]);
-
-// Arms the RFC auto-close (see ./rfc-close.ts). Registered here rather than
-// in story.ts so the rule can import the models it queries without an import
-// cycle back through this barrel.
-registerRfcAutoClose();
 
 /**
  * Force every model's column information to load.

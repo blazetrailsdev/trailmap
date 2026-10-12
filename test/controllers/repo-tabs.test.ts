@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
+import { Notifications } from "@blazetrails/activesupport";
 import { RecordNotFound } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "../models/schema.js";
 import {
@@ -125,6 +126,15 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     expect(body).toContain("Blaze Trails");
     expect(body).toContain('href="/blazetrailsdev/trails"');
     expect(body).toContain('href="/blazetrailsdev/tasks"');
+  });
+
+  it("counts the owner page's open stories in one query, however many repositories", async () => {
+    const queries: string[] = [];
+    const subscriber = Notifications.subscribe("sql.active_record", (event: { payload: { sql?: string } }) => {
+      if (/FROM "stories"/.test(event.payload.sql ?? "")) queries.push(event.payload.sql ?? "");
+    });
+    await get(OwnersController, "show", { owner: "blazetrailsdev" }).finally(() => Notifications.unsubscribe(subscriber));
+    expect(queries).toHaveLength(1);
   });
 
   it("404s an unknown owner", async () => {

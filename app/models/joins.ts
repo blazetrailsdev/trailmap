@@ -1,46 +1,42 @@
-import { Base } from "@blazetrails/activerecord";
+import { ApplicationRecord } from "./application-record.js";
 
 /** Self-referential join: `story_id` depends on `depends_on_id`. */
-export class StoryDep extends Base {
-  static _tableName = "story_deps";
+export class StoryDep extends ApplicationRecord {
   declare story_id: string;
   declare depends_on_id: string;
 
   static {
-    this.belongsTo("story", { foreignKey: "story_id" });
-    this.belongsTo("dependsOn", { className: "Story", foreignKey: "depends_on_id" });
+    this.belongsTo("story");
+    this.belongsTo("dependsOn", { className: "Story" });
   }
 }
 
 /** A story may depend on a whole RFC closing. */
-export class StoryRfcDep extends Base {
-  static _tableName = "story_rfc_deps";
+export class StoryRfcDep extends ApplicationRecord {
   declare story_id: string;
   declare rfc_id: string;
 
   static {
-    this.belongsTo("story", { foreignKey: "story_id" });
-    this.belongsTo("rfc", { foreignKey: "rfc_id" });
+    this.belongsTo("story");
+    this.belongsTo("rfc");
   }
 }
 
 /** Powers `tasks touching <path>`. */
-export class StoryPath extends Base {
-  static _tableName = "story_paths";
+export class StoryPath extends ApplicationRecord {
   declare story_id: string;
   declare path: string;
 
   static {
-    this.belongsTo("story", { foreignKey: "story_id" });
+    this.belongsTo("story");
   }
 }
 
-export class StoryPackage extends Base {
-  static _tableName = "story_packages";
+export class StoryPackage extends ApplicationRecord {
   declare story_id: string;
   declare package: string;
 
   static {
-    this.belongsTo("story", { foreignKey: "story_id" });
+    this.belongsTo("story");
   }
 }
