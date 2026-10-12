@@ -65,6 +65,9 @@ export const FLEET_CONTROL_PATH = "/fleet/control";
 /** Where the fleet page polls for the reviewer of each open PR. */
 export const FLEET_REVIEWERS_PATH = "/fleet/reviewers";
 
+/** The prefix the fleet page reads ringo's other lists under; the rest is ringo's own path. */
+export const FLEET_READ_PATH = "/fleet/read";
+
 /** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
 export const FLEET_PANE_PATH = "/fleet/pane";
 
@@ -104,4 +107,14 @@ export const FLEET_CONTROLS: readonly string[] = [
   "spawnloop/dismiss",
   "spawnloop/dismiss-failed",
   "ci-fixer/spawn",
+  "reviewer/assign",
+  "worker/spawn",
+  "broadcast",
 ];
+
+/**
+ * ringo's read endpoints the fleet page may poll through trailmap, beside the
+ * reviewer list: which agent the next reviewer is, and how many panes each
+ * broadcast audience holds. An allowlist for the reason the controls have one.
+ */
+export const FLEET_READS: readonly string[] = ["reviewer/config", "broadcast/targets"];

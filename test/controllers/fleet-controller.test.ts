@@ -58,6 +58,11 @@ beforeAll(async () => {
         body,
       });
       const url = new URL(req.url ?? "/", "http://ringo");
+      if (url.pathname === "/broadcast/targets") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ all: 3, "ci-red": 1 }));
+        return;
+      }
       if (url.pathname === "/reviewer/list") {
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify(REVIEWERS));
@@ -290,6 +295,25 @@ async function reviewers() {
   await tc.get("reviewers");
   return tc.response;
 }
+
+describe("FleetController#read", () => {
+  async function read(path: string) {
+    const tc = await controllerTestCase(FleetController);
+    await tc.get("read", { params: { path } });
+    return tc.response;
+  }
+
+  it("relays a listed read as JSON, and refuses any other path without calling ringo", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await read("broadcast/targets");
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ all: 3, "ci-red": 1 });
+
+    expect((await read("spawnloop/config")).status).toBe(404);
+    expect(received.map((r) => r.url)).toEqual(["/broadcast/targets"]);
+  });
+});
 
 describe("FleetController#reviewers", () => {
   it("relays ringo's reviewer list, as JSON that is never cached", async () => {

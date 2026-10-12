@@ -145,6 +145,8 @@ describe("config/routes", () => {
 
     const reviewers = recognize(routes, "GET", "/fleet/reviewers");
     expect(reviewers.route).toEqual({ controller: "fleet", action: "reviewers" });
+    const read = recognize(routes, "GET", "/fleet/read/broadcast/targets");
+    expect(read.route).toEqual({ controller: "fleet", action: "read" });
   });
 
   it("routes the singular show-page paths to their page controllers", () => {

@@ -573,6 +573,10 @@ ul { margin: 0 0 10px 20px; }
 .spawn-dismiss:disabled { opacity: 0.6; cursor: default; }
 .repo-heading .spawn-dismiss { margin-left: 8px; vertical-align: middle; }
 .btn-sm { padding: 2px 8px; font-size: 11px; }
+/* The broadcast box: one line, the message taking what the buttons leave. */
+.bcast { margin-bottom: 0; }
+.bcast input.ctl { flex: 1; min-width: 160px; }
+.bcast .btn.dim { opacity: 0.45; }
 
 /*
  * The pane mini-table on a row's right edge: the worker's pane and status dot,
@@ -590,6 +594,13 @@ ul { margin: 0 0 10px 20px; }
  * cell wearing it inherits 32px of padding and a centred line.
  */
 .pcell.unassigned .dash { color: var(--muted); opacity: 0.6; }
+/* The `+` that fills an unassigned pane row: spawn a reviewer, re-attach a worker. */
+.add-pane {
+  background: none; color: var(--muted); border: 1px solid var(--border);
+  border-radius: 4px; padding: 0 5px; font-size: 11px; line-height: 1.4; cursor: pointer;
+}
+.add-pane:hover { color: var(--fg); border-color: var(--muted); }
+.add-pane:disabled { opacity: 0.6; cursor: default; }
 /*
  * The reviewer's agent. Outlined red while it is blocked by its usage limit:
  * the review is owed and nothing will write it until the quota resets, which

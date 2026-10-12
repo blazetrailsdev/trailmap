@@ -56,6 +56,7 @@ Trails.application!.routes().draw(function () {
   // Who is reviewing each open PR, relayed from ringo: the reviewer half of
   // every PR row's pane mini-table, which the event envelope does not carry.
   this.get("fleet/reviewers", { to: "fleet#reviewers" });
+  this.get("fleet/read/*path", { to: "fleet#read" });
 
   // One agent's tmux pane, live and read-only: the page, and the relay it
   // polls for ringo's capture of the screen. `:id` is the pane id without its

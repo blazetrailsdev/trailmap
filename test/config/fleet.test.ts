@@ -69,11 +69,14 @@ describe("fleetRepos", () => {
 describe("FLEET_CONTROLS", () => {
   it("lists exactly the endpoints the page has a button for", () => {
     expect([...FLEET_CONTROLS].sort()).toEqual([
+      "broadcast",
       "ci-fixer/spawn",
       "merge-pr",
+      "reviewer/assign",
       "spawn",
       "spawnloop/dismiss",
       "spawnloop/dismiss-failed",
+      "worker/spawn",
     ]);
   });
 });

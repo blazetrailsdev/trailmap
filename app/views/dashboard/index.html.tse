@@ -2,7 +2,7 @@
      WebSocket for the event stream, a prefix for the controls, and the
      reviewer list the stream does not carry. On an element rather than in an
      inline <script> so the page needs no inline JavaScript. -->
-<div id="fleetConfig" hidden data-socket-path="<%= socketPath %>" data-control-path="<%= controlPath %>" data-reviewers-path="<%= reviewersPath %>"></div>
+<div id="fleetConfig" hidden data-socket-path="<%= socketPath %>" data-control-path="<%= controlPath %>" data-reviewers-path="<%= reviewersPath %>" data-read-path="<%= readPath %>"></div>
 
 <div class="page-header">
   <h1 class="page-title">Fleet</h1>
@@ -32,6 +32,16 @@
     <span class="field-note" id="ciFixerSummary"></span>
   </div>
   <div id="ciFixerBody"></div>
+</div>
+
+<div class="card">
+  <div class="card-head bcast">
+    <span class="field-note" title="Typed into each agent's pane exactly as if you had typed it there">&#128227; Broadcast to agents</span>
+    <input id="bcastMsg" class="ctl" type="text" placeholder="e.g. main is red — rebase before you push again">
+    <button class="btn btn-sm" id="bcastAll" data-action="broadcast" data-target="all" title="Send to every live worker pane">all</button>
+    <button class="btn btn-sm" id="bcastCIRed" data-action="broadcast" data-target="ci-red" title="Send only to workers whose PR is failing CI" style="display:none">CI red</button>
+    <span class="field-note" id="bcastNote"></span>
+  </div>
 </div>
 
 <div class="card" id="spawnPanel">

@@ -14,6 +14,7 @@ import {
   CLEAR_FAILED_ID,
   activeFixers,
   anyFailedSpawn,
+  broadcastButtons,
   controlOutcome,
   controlRequest,
   fixerCards,
@@ -37,6 +38,7 @@ const config = document.getElementById("fleetConfig");
 const socketPath = (config && config.dataset.socketPath) || "/fleet/socket";
 const controlPath = (config && config.dataset.controlPath) || "/fleet/control";
 const reviewersPath = (config && config.dataset.reviewersPath) || "/fleet/reviewers";
+const readPath = (config && config.dataset.readPath) || "/fleet/read";
 
 /**
  * Where a control POST goes: trailmap, which forwards it to ringo. `path` is
@@ -305,8 +307,53 @@ async function pollReviewers() {
   }
 }
 
-pollReviewers();
-setInterval(pollReviewers, REVIEWERS_POLL_MS);
+/*
+ * The two other things the page reads beside the stream, on the same timer:
+ * which agent a `+` spawns as a reviewer (ringo's default until it answers),
+ * and each broadcast audience's size. A failed read keeps the last answer.
+ */
+let nextReviewer = "copilot";
+let audiences = {};
+
+async function readRingo(path) {
+  try {
+    const response = await fetch(readPath + path, { credentials: "same-origin" });
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+async function pollBroadcast() {
+  audiences = (await readRingo("/broadcast/targets")) || audiences;
+  const shown = broadcastButtons(audiences);
+  byId("bcastAll").textContent = shown.all.text;
+  byId("bcastAll").classList.toggle("dim", shown.all.dim);
+  byId("bcastCIRed").textContent = shown.ciRed.text;
+  byId("bcastCIRed").style.display = shown.ciRed.hidden ? "none" : "";
+}
+
+async function pollReviewerConfig() {
+  nextReviewer = ((await readRingo("/reviewer/config")) || {}).next_reviewer || nextReviewer;
+}
+
+const REFRESH = { reviewers: pollReviewers, broadcast: pollBroadcast };
+
+function pollAll() {
+  pollReviewers();
+  pollReviewerConfig();
+  pollBroadcast();
+}
+
+pollAll();
+setInterval(pollAll, REVIEWERS_POLL_MS);
+
+// Enter sends to everyone; with Ctrl or Cmd, to the CI-red audience.
+byId("bcastMsg").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.shiftKey) return;
+  event.preventDefault();
+  byId(event.metaKey || event.ctrlKey ? "bcastCIRed" : "bcastAll").click();
+});
 
 // ---------------------------------------------------------------------------
 // Manual spawn -- the one control this page carries, and the reason the repo
@@ -339,17 +386,27 @@ byId("spawn").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Row controls -- merge, dismiss, clear failed, respawn fixer. One listener for
-// all of them: the rows are redrawn on every frame, so a listener bound to a
-// button would be bound to a node that is gone a second later.
+// The controls -- merge, dismiss, clear failed, respawn fixer, the `+` buttons
+// and broadcast. One listener for all of them: the rows are redrawn on every
+// frame, so a listener bound to a button would be bound to a node that is gone
+// a second later.
 // ---------------------------------------------------------------------------
 
 document.addEventListener("click", async (event) => {
   const button = event.target instanceof Element ? event.target.closest("button[data-action]") : null;
   if (!button || button.disabled) return;
-  const request = controlRequest(button.dataset.action, button.dataset);
+  const request = controlRequest(button.dataset.action, button.dataset, {
+    nextReviewer,
+    audiences,
+    message: byId("bcastMsg").value,
+  });
   if (!request) return;
-  if (request.confirm && !window.confirm(request.confirm)) return;
+  if (request.note) byId("bcastNote").textContent = request.note;
+  if (!request.path) return;
+  if (request.confirm && !window.confirm(request.confirm)) {
+    if (request.note) byId("bcastNote").textContent = "";
+    return;
+  }
 
   const label = button.textContent;
   button.disabled = true;
@@ -379,6 +436,9 @@ document.addEventListener("click", async (event) => {
   if (outcome.text !== undefined) button.textContent = outcome.text;
   if (outcome.title !== undefined) button.title = outcome.title;
   if (outcome.alert) window.alert(outcome.alert);
+  if (outcome.note !== undefined) byId("bcastNote").textContent = outcome.note;
+  if (outcome.clearMessage) byId("bcastMsg").value = "";
+  if (outcome.refresh) REFRESH[outcome.refresh]();
   if (outcome.resetAfterMs) {
     setTimeout(() => {
       button.disabled = false;
