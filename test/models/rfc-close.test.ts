@@ -1,11 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { migrateScratchDatabase } from "./schema.js";
 import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 import { closeRfcIfComplete } from "../../app/models/rfc-close.js";
-
-// The barrel arms the callback at import, so every save below goes through it.
-// Silence the rule's report; the assertions read the rows, not stdout.
-vi.spyOn(console, "log").mockImplementation(() => {});
 
 beforeEach(async () => {
   await migrateScratchDatabase();
@@ -85,7 +81,7 @@ describe("closeRfcIfComplete", () => {
   });
 });
 
-describe("registerRfcAutoClose", () => {
+describe("Story afterSave", () => {
   it("closes the RFC when its last story lands, without the verb asking", async () => {
     await seedRfc("0136-trailmap", ["ready"]);
     const story = await Story.findBy({ id: "0136-trailmap-0" });

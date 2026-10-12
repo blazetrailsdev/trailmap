@@ -23,7 +23,7 @@ Trails.application!.configure(function () {
   this.config.forceSsl = false;
 
   // NOT adopted from `trails new`: `logTags` and the `TaggedLogging` logger,
-  // which the template builds from `process.stdout`. The default logger stays.
+  // which the template builds from `process.stdout`. config/application.ts's stays.
 
   // Change to "debug" to log everything (including potentially personally-identifiable information!)
   this.config.logLevel = env.RAILS_LOG_LEVEL ?? "info";

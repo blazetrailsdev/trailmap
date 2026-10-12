@@ -33,7 +33,7 @@ beforeAll(async () => {
     status: "active",
     title: "trailmap",
     priority: 4,
-    packages: '["activerecord"]',
+    packages: ["activerecord"],
   });
   // A draft RFC ices everything under it: an idea, not yet a plan.
   await Rfc.create({ id: "0900-idea", status: "draft", title: "An idea" });

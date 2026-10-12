@@ -4,6 +4,7 @@ import {
   DEFAULT_REPO,
   anyFailedSpawn,
   control,
+  broadcastButtons,
   controlOutcome,
   controlRequest,
   REV_EMOJI,
@@ -33,6 +34,7 @@ import {
   repoSectionsKey,
   reviewerKey,
   reviewerLine,
+  workerLine,
   reviewersByKey,
   rfcSpawnRow,
   row,
@@ -223,6 +225,97 @@ describe("the mini-table's two labels", () => {
   it("are the emoji ringo uses, which is how a row's two lines are told apart", () => {
     expect(WORK_EMOJI).toBe("💪");
     expect(REV_EMOJI).toBe("📋");
+  });
+});
+
+describe("the + buttons on a PR row", () => {
+  const pr = { owner: "o", repo: "r", pr: 7, branch: "a-branch" };
+
+  it("offers a reviewer where there is none, and a respawn where its pane has gone", () => {
+    const none = reviewerLine(pr, {});
+    expect(none).toContain('class="add-pane" data-action="add-reviewer" data-owner="o" data-repo="r" data-pr="7"');
+    expect(none).not.toContain("data-respawn");
+
+    const gone = reviewerLine(pr, reviewersByKey([{ owner: "o", repo: "r", pr: 7, agent: "codex" }]));
+    expect(gone).toContain('data-pr="7" data-respawn="1"');
+    expect(gone).toContain("agent-chip");
+  });
+
+  it("offers a worker only where there is no pane and the branch is known", () => {
+    expect(workerLine(pr)).toContain('data-action="add-worker" data-owner="o" data-repo="r" data-pr="7" data-branch="a-branch"');
+    expect(workerLine(pr)).toContain('class="pcell unassigned"');
+    expect(workerLine({ ...pr, branch: "" })).toBe("");
+    expect(workerLine({ ...pr, pane: "%4" })).not.toContain("add-worker");
+  });
+
+  it("posts what ringo's spawnReviewer and spawnWorker post", () => {
+    const page = { nextReviewer: "codex" };
+    const assign = controlRequest("add-reviewer", { owner: "o", repo: "r", pr: "7" }, page);
+    expect([assign.path, assign.body]).toEqual([
+      "/reviewer/assign",
+      { owner: "o", repo: "r", pr: 7, agent: "codex", respawn: false },
+    ]);
+    expect(controlRequest("add-reviewer", { owner: "o", repo: "r", pr: "7", respawn: "1" }, page).body.respawn).toBe(true);
+
+    // Before ringo has said who the next reviewer is, none is guessed.
+    expect(controlRequest("add-reviewer", { owner: "o", repo: "r", pr: "7" }, {}).body.agent).toBe("");
+
+    const spawn = controlRequest("add-worker", { owner: "o", repo: "r", pr: "7", branch: "a-branch" });
+    expect([spawn.path, spawn.body]).toEqual(["/worker/spawn", { owner: "o", repo: "r", pr: 7, branch: "a-branch" }]);
+  });
+
+  it("says spawned and stays disabled, or says why on the tooltip and comes back", () => {
+    const assign = controlRequest("add-reviewer", { owner: "o", repo: "r", pr: "7" }, {});
+    expect(controlOutcome(assign, { ok: true, text: "" }, "+")).toEqual({ disabled: true, refresh: "reviewers", text: "spawned", title: "" });
+    expect(controlOutcome(assign, { ok: false, text: "no such PR" }, "+")).toEqual({ disabled: false, refresh: "reviewers", text: "fail", title: "no such PR" });
+    expect(controlOutcome(assign, { error: "offline" }, "+")).toEqual({ disabled: false, text: "err", title: "offline" });
+  });
+});
+
+describe("the broadcast box", () => {
+  const page = { message: "  rebase before you push  ", audiences: { all: 3, "ci-red": 1 } };
+
+  it("labels the buttons with the live counts, and hides CI red at zero", () => {
+    expect(broadcastButtons({ all: 3, "ci-red": 1 })).toEqual({
+      all: { text: "all (3)", dim: false },
+      ciRed: { text: "CI red (1)", hidden: false },
+    });
+    expect(broadcastButtons({})).toEqual({
+      all: { text: "all (0)", dim: true },
+      ciRed: { text: "CI red (0)", hidden: true },
+    });
+  });
+
+  it("sends the trimmed message to the audience, naming its size first", () => {
+    expect(controlRequest("broadcast", { target: "all" }, page)).toEqual({
+      path: "/broadcast",
+      body: { message: "rebase before you push", target: "all" },
+      confirm: "Send to 3 agents?\n\nrebase before you push",
+      note: "sending…",
+      refresh: "broadcast-targets",
+    });
+    expect(controlRequest("broadcast", { target: "ci-red" }, page).confirm).toContain("Send to 1 CI-red agent?");
+  });
+
+  it("sends nothing without a message, and says so for an audience of nobody", () => {
+    expect(controlRequest("broadcast", { target: "all" }, { ...page, message: " " })).toBeNull();
+    expect(controlRequest("broadcast", { target: "ci-red" }, { ...page, audiences: { all: 3 } })).toEqual({
+      note: "no agents in that group",
+    });
+  });
+
+  it("reports what ringo delivered, keeping the message when a pane failed", () => {
+    const request = controlRequest("broadcast", { target: "all" }, page);
+    const sent = (out) => controlOutcome(request, { ok: true, text: JSON.stringify(out) }, "all (3)");
+
+    const kept = { disabled: false, refresh: "broadcast-targets" };
+    expect(sent({ pane_count: 3, sent: [{}, {}, {}] })).toEqual({ ...kept, note: "sent to 3 panes", clearMessage: true });
+    expect(sent({ pane_count: 1, skipped: 2, sent: [{ error: "gone" }] })).toEqual({
+      ...kept,
+      note: "sent to 1 pane (2 pane gone) — 1 failed",
+    });
+    expect(controlOutcome(request, { ok: false, text: "message is required" }, "all (3)").note).toBe("failed: message is required");
+    expect(controlOutcome(request, { error: "offline" }, "all (3)").note).toBe("failed: offline");
   });
 });
 

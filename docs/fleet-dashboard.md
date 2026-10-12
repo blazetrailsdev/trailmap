@@ -17,6 +17,7 @@ fills the page in.
 browser --WebSocket /fleet/socket----> trailmap --GET /events (SSE)--> ringo
 browser --POST /fleet/control/<path>--> trailmap --POST /<path>-------> ringo
 browser --GET  /fleet/reviewers------> trailmap --GET /reviewer/list--> ringo
+browser --GET  /fleet/read/<path>----> trailmap --GET /<path>--------> ringo
 ```
 
 The page opens a WebSocket to trailmap. `FleetController#socket` takes the
@@ -137,10 +138,10 @@ hop ringo's page does not have — it relays once per viewer.
   already holds a socket per viewer.
 - Three states, all of them a row: a live pane; a reviewer pinned to a PR
   whose pane has gone (the agent and a dash, because the assignment outlives
-  the pane); and no reviewer at all. ringo offers a `+` in the last two that
-  spawns or respawns one — this page is read-only and offers none, but it still
-  says which of the three it is, because "nobody is reviewing this" is what a
-  reader most wants to see. A merged PR keeps its line: the merge BUTTON goes
+  the pane); and no reviewer at all. The last two offer ringo's `+`, which
+  spawns or respawns one as the loop's next reviewer (`/reviewer/config`, read
+  through `/fleet/read`, an allowlist: `FLEET_READS`); a worker row with no
+  pane offers the same for the worker. A merged PR keeps its line: the merge BUTTON goes
   because the action is gone, but the reviewer is information, and who reviewed
   a PR is most wanted while reading the merge — which is why ringo renders the
   line unconditionally too (`dashboard.go:1335`).

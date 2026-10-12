@@ -15,7 +15,6 @@ import {
   StoryRfcDep,
   loadModelSchemas,
 } from "../../app/models/index.js";
-import { jsonArrayColumn } from "../../app/models/rfc.js";
 
 beforeAll(async () => {
   await migrateScratchDatabase();
@@ -146,23 +145,47 @@ describe("models", () => {
 });
 
 /**
- * One decoder for the JSON-array columns, shared by the serializer and the
- * story page. The tolerant arms are the point: `ingest` writes text, and a
- * reader that threw on a malformed value would take a page down over a column
- * nothing renders.
+ * The JSON-array columns are `serialize`d on `Rfc`. The tolerant arms are the
+ * point: `ingest` writes text, and a reader that threw on a malformed value
+ * would take a page down over a column nothing renders.
  */
-describe("jsonArrayColumn", () => {
-  it("decodes a stored JSON array", () => {
-    expect(jsonArrayColumn('["activerecord","trailties"]')).toEqual(["activerecord", "trailties"]);
+describe("Rfc's serialized array columns", () => {
+  // Raw SQL, as ingest writes it: `updateAll` would cast through the coder.
+  async function stored(packages: string): Promise<string[]> {
+    await Rfc.findOrCreateBy({ id: "0009-coded", status: "active" });
+    (await Base.leaseConnection()).execute(
+      `UPDATE rfcs SET packages = ${packages} WHERE id = '0009-coded'`,
+    );
+    return (await Rfc.findBy({ id: "0009-coded" }))!.packages;
+  }
+
+  it("decodes a stored JSON array", async () => {
+    expect(await stored(`'["activerecord","trailties"]'`)).toEqual(["activerecord", "trailties"]);
   });
 
-  it("reads an absent column as an empty list", () => {
-    expect(jsonArrayColumn(null)).toEqual([]);
-    expect(jsonArrayColumn("")).toEqual([]);
+  it("reads an absent column as an empty list", async () => {
+    expect(await stored("NULL")).toEqual([]);
+    expect(await stored("''")).toEqual([]);
   });
 
-  it("reads unparseable text, and valid JSON that is not an array, as empty", () => {
-    expect(jsonArrayColumn("not json")).toEqual([]);
-    expect(jsonArrayColumn('{"a":1}')).toEqual([]);
+  it("reads unparseable text, and valid JSON that is not an array, as empty", async () => {
+    expect(await stored("'not json'")).toEqual([]);
+    expect(await stored(`'{"a":1}'`)).toEqual([]);
+  });
+
+  it("writes an array as the text ingest writes, and does not dirty an unset one", async () => {
+    const rfc = await Rfc.create({ id: "0010-written", status: "active", packages: ["a", "b"] });
+    const raw = await (await Base.leaseConnection()).selectRows(
+      "SELECT packages, clusters FROM rfcs WHERE id = '0010-written'",
+    );
+    expect(raw).toEqual([['["a","b"]', null]]);
+    const reloaded = (await Rfc.findBy({ id: rfc.id }))!;
+    expect(reloaded.isChanged).toBe(false);
+
+    // Assigning null never reaches the coder's `dump`: the column goes NULL.
+    await reloaded.update({ packages: null as unknown as string[] });
+    expect(
+      await (await Base.leaseConnection()).selectValue("SELECT packages FROM rfcs WHERE id = '0010-written'"),
+    ).toBeNull();
   });
 });

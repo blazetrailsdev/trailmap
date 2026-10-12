@@ -1,7 +1,8 @@
-import { Base } from "@blazetrails/activerecord";
+import { ApplicationRecord } from "./application-record.js";
 import { pinTimestampColumns } from "./timestamps.js";
 import { Event } from "./event.js";
 import { Rfc } from "./rfc.js";
+import { closeRfcIfComplete } from "./rfc-close.js";
 import { StoryDep, StoryPackage, StoryPath, StoryRfcDep } from "./joins.js";
 import { VerbExit } from "./verb-exit.js";
 import {
@@ -46,9 +47,7 @@ export type StoryStatus = (typeof STORY_STATUSES)[number];
  */
 export const RESOLVED_DEP_STATUSES: readonly StoryStatus[] = ["done", "closed"];
 
-export class Story extends Base {
-  static _tableName = "stories";
-
+export class Story extends ApplicationRecord {
   // ── markdown-owned: written only by `tasks ingest` ──
   declare id: string; // slug
   declare rfc_id: string;
@@ -102,14 +101,14 @@ export class Story extends Base {
     // is not consulted by its own internals.)
     pinTimestampColumns(this, { create: ["created_at", "updated_at"], update: ["updated_at"] });
 
-    this.belongsTo("rfc", { foreignKey: "rfc_id" });
-    this.hasMany("storyDeps", { foreignKey: "story_id", inverseOf: "story" });
+    this.belongsTo("rfc");
+    this.hasMany("storyDeps", { inverseOf: "story" });
     this.hasMany("deps", { through: "storyDeps", source: "dependsOn" });
-    this.hasMany("storyRfcDeps", { foreignKey: "story_id" });
+    this.hasMany("storyRfcDeps");
     this.hasMany("rfcDeps", { through: "storyRfcDeps", source: "rfc" });
-    this.hasMany("paths", { className: "StoryPath", foreignKey: "story_id" });
-    this.hasMany("packages", { className: "StoryPackage", foreignKey: "story_id" });
-    this.hasMany("events", { foreignKey: "story_id" });
+    this.hasMany("paths", { className: "StoryPath" });
+    this.hasMany("packages", { className: "StoryPackage" });
+    this.hasMany("events");
     // Labels are IDENTICAL to stored values, including the hyphen in
     // "in-progress". Rails' enum getter returns the LABEL, while raw SQL
     // returns the stored value — so a label of `inProgress` mapping to
@@ -132,15 +131,27 @@ export class Story extends Base {
     // publishes authored content, so it is where bad content must be refused,
     // while the mutation verbs move one field at a time and would otherwise be
     // made to re-prove — and get stuck behind — a row they did not author.
-    this.validate(
-      (record) => {
-        const story = record as unknown as Story;
+    this.validate<Story>(
+      (story) => {
         for (const message of [...lifecycleErrors(story), ...estLocErrors(story)]) {
           story.errors.add("base", message);
         }
       },
       { on: "ingest" },
     );
+
+    // Rails' `after_save :close_rfc_if_complete`. trails refuses a method NAME
+    // here (a string is not a symbol), so the declaration delegates to it.
+    this.afterSave((story: Story) => story.closeRfcIfComplete());
+  }
+
+  /**
+   * The RFC auto-close (see ./rfc-close.ts), as an `afterSave`. Only a landing
+   * can complete an RFC; skipping the rest keeps a full ingest re-scan from
+   * running two counting queries per story row.
+   */
+  async closeRfcIfComplete(): Promise<void> {
+    if (this.isDone() || this.status === "closed") await closeRfcIfComplete(this.rfc_id);
   }
 
   /**
@@ -306,7 +317,7 @@ export class Story extends Base {
    */
   static async claimAll(ids: string[], assignee: string): Promise<string[]> {
     let lines: string[] = [];
-    await Base.transaction(async () => {
+    await Story.transaction(async () => {
       const found = await Story.findAllOrThrow(ids);
 
       const taken = found.filter((s) => s.assignee !== null && s.assignee !== assignee);
@@ -341,7 +352,7 @@ export class Story extends Base {
 
   static async releaseAll(ids: string[]): Promise<string[]> {
     const lines: string[] = [];
-    await Base.transaction(async () => {
+    await Story.transaction(async () => {
       const found = await Story.findAllOrThrow(ids);
       for (const s of found) {
         if (s.status !== "claimed") {
@@ -365,7 +376,7 @@ export class Story extends Base {
     pr: string | null,
   ): Promise<string[]> {
     const lines: string[] = [];
-    await Base.transaction(async () => {
+    await Story.transaction(async () => {
       const found = await Story.findAllOrThrow(ids);
       for (const s of found) lines.push(await s.markTracking(status, pr));
     });
@@ -396,7 +407,7 @@ export class Story extends Base {
       });
       return `recorded spawn (${source}) for rfc ${opts.rfc}`;
     }
-    await Base.transaction(async () => {
+    await Story.transaction(async () => {
       const found = await Story.findAllOrThrow(ids);
       for (const s of found) await s.recordEvent("spawn", { actor: source, detail });
     });

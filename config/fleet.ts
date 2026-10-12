@@ -82,6 +82,8 @@ export const FLEET_READS: Readonly<Record<string, string>> = {
   "drain-status": "reviewer/drain-status",
   // The loop's state, as the settings panel draws it. Its WRITES are controls.
   "spawn-loop": "spawnloop/config",
+  "reviewer-config": "reviewer/config",
+  "broadcast-targets": "broadcast/targets",
 };
 
 /** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
@@ -126,6 +128,9 @@ export const FLEET_CONTROLS: readonly string[] = [
   "spawnloop/skip",
   "spawnloop/spawn-now",
   "ci-fixer/spawn",
+  "reviewer/assign",
+  "worker/spawn",
+  "broadcast",
   "drain",
   "drain-one",
   "poke-stalled",

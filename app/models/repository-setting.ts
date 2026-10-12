@@ -26,8 +26,6 @@ export type OptionalTab = (typeof OPTIONAL_TABS)[number];
  * repository, and a repository whose settings you cannot reach cannot be fixed.
  */
 export class RepositorySetting extends Hub {
-  static _tableName = "repository_settings";
-
   declare id: number;
   declare repository_id: number;
   declare issues_enabled: boolean;

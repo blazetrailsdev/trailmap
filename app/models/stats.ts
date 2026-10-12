@@ -1,4 +1,4 @@
-import { Base } from "@blazetrails/activerecord";
+import { ApplicationRecord } from "./application-record.js";
 
 /**
  * The base class of everything that lives in the trails stats database — the
@@ -22,7 +22,7 @@ import { Base } from "@blazetrails/activerecord";
  * needs no such join: every row it charts, including the merge dates, is in
  * this one database.
  */
-export class Stats extends Base {
+export class Stats extends ApplicationRecord {
   static {
     // ASSIGNED in a static block, never `static abstractClass = true` — see
     // the long note in app/models/hub.ts. A class field shadows the library's

@@ -14,6 +14,7 @@ import {
   CLEAR_FAILED_ID,
   activeFixers,
   anyFailedSpawn,
+  broadcastButtons,
   askCards,
   askSummary,
   claudeUsage,
@@ -329,8 +330,26 @@ async function pollReviewers() {
   }
 }
 
+/*
+ * The two other things the page reads beside the stream, on the same timer:
+ * which agent a `+` spawns as a reviewer, and each broadcast audience's size.
+ * A failed read keeps the last answer. Until one lands the agent is unknown
+ * and is not guessed: ringo's page assumes `copilot` (`dashboard.go:814`),
+ * which would assign the wrong reviewer whenever the loop is set to another.
+ */
+let nextReviewer = "";
+let audiences = {};
+
 pollReviewers();
 setInterval(pollReviewers, REVIEWERS_POLL_MS);
+
+// Enter sends to everyone; with Ctrl or Cmd, to the CI-red audience.
+byId("bcastMsg").addEventListener("keydown", (event) => {
+  // Not while an IME is composing: that Enter confirms the composition.
+  if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+  event.preventDefault();
+  byId(event.metaKey || event.ctrlKey ? "bcastCIRed" : "bcastAll").click();
+});
 
 // ---------------------------------------------------------------------------
 // Usage and relayed questions -- polled, as ringo's own page fetches them.
@@ -359,6 +378,20 @@ function poll(name, everyMs, onAnswer, onFailure = () => {}) {
   polls[name]();
   setInterval(polls[name], everyMs);
 }
+
+// The reviewer list answers to a control's `refresh` by the same name.
+polls.reviewers = pollReviewers;
+poll("reviewer-config", REVIEWERS_POLL_MS, (cfg) => {
+  nextReviewer = cfg.next_reviewer || nextReviewer;
+});
+poll("broadcast-targets", REVIEWERS_POLL_MS, (counts) => {
+  audiences = counts;
+  const shown = broadcastButtons(audiences);
+  byId("bcastAll").textContent = shown.all.text;
+  byId("bcastAll").classList.toggle("dim", shown.all.dim);
+  byId("bcastCIRed").textContent = shown.ciRed.text;
+  byId("bcastCIRed").style.display = shown.ciRed.hidden ? "none" : "";
+});
 
 function showUsage(id, html, stale) {
   byId("usageGroup").style.display = "";
@@ -498,9 +531,18 @@ document.addEventListener("click", async (event) => {
   if (!button || button.disabled) return;
   // A free-text answer is whatever is in the input beside its button.
   const data = button.dataset.free ? { ...button.dataset, answer: button.previousElementSibling.value } : button.dataset;
-  const request = controlRequest(button.dataset.action, data);
+  const request = controlRequest(button.dataset.action, data, {
+    nextReviewer,
+    audiences,
+    message: byId("bcastMsg").value,
+  });
   if (!request) return;
-  if (request.confirm && !window.confirm(request.confirm)) return;
+  if (request.note) byId("bcastNote").textContent = request.note;
+  if (!request.path) return;
+  if (request.confirm && !window.confirm(request.confirm)) {
+    if (request.note) byId("bcastNote").textContent = "";
+    return;
+  }
 
   const label = button.textContent;
   button.disabled = true;
@@ -524,6 +566,8 @@ document.addEventListener("click", async (event) => {
   if (outcome.title !== undefined) button.title = outcome.title;
   if (outcome.state) loopWritten(outcome.state);
   if (outcome.alert) window.alert(outcome.alert);
+  if (outcome.note !== undefined) byId("bcastNote").textContent = outcome.note;
+  if (outcome.clearMessage) byId("bcastMsg").value = "";
   if (outcome.resetAfterMs) {
     setTimeout(() => {
       button.disabled = false;

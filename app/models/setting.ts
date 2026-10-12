@@ -22,16 +22,6 @@ export interface ResolvedSetting {
  * time without a redeploy.
  */
 export class Setting extends Hub {
-  static _tableName = "settings";
-  // The class-field form is correct HERE and wrong for a composite key (see
-  // the note in app/models/repository-collaborator.ts). What the `primaryKey`
-  // SETTER adds over the field is `_compositePrimaryKey` — whose right value
-  // for a string is the `false` the field leaves in place — and resetting the
-  // attributes builder and predicate builder, which are unbuilt at class
-  // definition time anyway. A single column is genuinely exempt; an array is
-  // not.
-  static _primaryKey = "key";
-
   declare key: string;
   declare value: string | null;
 

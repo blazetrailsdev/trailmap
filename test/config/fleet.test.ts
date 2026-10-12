@@ -70,11 +70,13 @@ describe("FLEET_CONTROLS", () => {
   it("lists exactly the endpoints the page has a button for", () => {
     expect([...FLEET_CONTROLS].sort()).toEqual([
       "ask/answer",
+      "broadcast",
       "ci-fixer/spawn",
       "drain",
       "drain-one",
       "merge-pr",
       "poke-stalled",
+      "reviewer/assign",
       "reviewer/drain-claude",
       "reviewer/drain-codex",
       "spawn",
@@ -83,6 +85,7 @@ describe("FLEET_CONTROLS", () => {
       "spawnloop/dismiss-failed",
       "spawnloop/skip",
       "spawnloop/spawn-now",
+      "worker/spawn",
     ]);
   });
 });
