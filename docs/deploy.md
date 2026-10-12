@@ -186,6 +186,59 @@ then 500s with `relation "repositories" does not exist` on `/dashboard` and
 every page under `/:owner`. That is what the release task is for; it is the
 reason this is a deploy step and not a runbook entry.
 
+## The stats database
+
+`/graphs/parity` charts the trails port's convergence out of the stats database
+the nightly stats-sync cron fills (ringo's `/crons`). trailmap only ever READS
+it: `statsDatabaseConfig()` in `config/database.ts` opens it `readonly: true`,
+which SQLite enforces at the driver.
+
+**`STATS_DB` is OPTIONAL**, and that is the one way it differs from
+`TASKS_DATABASE` and `HUB_DATABASE_URL`. Those two back every page, so
+`config/initializers/*.ts` refuse to boot without them. This one backs a single
+page, on a multi-gigabyte host file most deployments do not have, so
+`config/initializers/stats-database.ts` skips the connection and the page says
+the source is missing. Every other page is unaffected. A deployment with no
+stats database is supported, not broken.
+
+To serve the page, mount the database and name it:
+
+```sh
+# The DIRECTORY, not the file, and writable. SQLite finds `stats.db-wal` and
+# `stats.db-shm` by path, beside the database, and a READ-ONLY connection to a
+# WAL database still maps the `-shm` — so the directory it lives in has to be
+# writable even though trailmap never writes the database itself.
+#
+# Mounting the file alone does not work (the sidecars are not in the mount, and
+# the mount breaks if the writer ever replaces the inode), and neither does
+# linking it into a tidier directory: a symlink is resolved inside the
+# CONTAINER's mount namespace, where the target path does not exist, and a hard
+# link gives readers their own `-shm` while the writer uses the original, which
+# is two shm files for one WAL database.
+#
+# This nests with the tasks mount above, which names the identical host path one
+# level down. Docker orders nested binds by depth and both resolve to the same
+# directory, so it works and the tasks mount becomes redundant — left in place
+# because removing it is a separate change.
+dokku storage:mount trailmap \
+  /home/dean/github/blazetrailsdev:/home/dean/github/blazetrailsdev
+
+dokku config:set --no-restart trailmap \
+  STATS_DB=/home/dean/github/blazetrailsdev/stats.db
+```
+
+A narrower alternative, if mounting the whole directory is unwanted: move
+`stats.db` and its two sidecars into a directory of their own with the cron
+stopped, mount only that, and point ringo at it with its own `STATS_DB`
+(`statsDBPath()` in `webhook/parity.go` defaults to
+`$HOME/github/blazetrailsdev/stats.db` and reads the override). Tidier, at the
+cost of touching ringo's cron.
+
+`scripts/smoke-prod.sh` tier 2 asserts the endpoint is actually serving —
+`tier2.graphs-parity-data` requires the payload to name at least one run and one
+package, because the no-stats answer is `{"error": …}`, which satisfies a looser
+"is an object" check and let the page be dark in production unnoticed.
+
 ## Deploying
 
 ```sh

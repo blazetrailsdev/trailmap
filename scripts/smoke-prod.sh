@@ -198,9 +198,21 @@ tier2() {
   local rfc; rfc="$(jq -r '.rfcs[0].id // empty' "$work/body" 2>/dev/null)"
   json tier2.events "/events" \
     '.events | type == "array" and all(.[]; has("at") and has("verb") and has("story"))'
-  # 200 with an `error` key is this endpoint's answer for an unset STATS_DB,
-  # which is a supported deployment — either shape, but one of the two.
-  json tier2.graphs-parity-data "/graphs/parity/data" 'type == "object" and length > 0'
+  # This USED TO accept either shape, because an unset STATS_DB is a supported
+  # deployment and answers `{"error": …}`. That is true of the application and
+  # was the wrong call for THIS suite: `{"error": …}` is an object of length 1,
+  # so the loose check passed while the page was dark in production for every
+  # deploy since it shipped. smoke-prod is the production suite for one named
+  # app (see APP and TRAILMAP_HOSTNAME above), and that app is meant to serve
+  # this page — so it asserts the page is served, and a deployment that
+  # deliberately runs without stats is one that does not run tier 2.
+  #
+  # A served endpoint names at least one run it can chart and one package to
+  # chart it for. `series` need only be PRESENT: this asks with no `packages=`,
+  # and empty series is the correct answer to that.
+  json tier2.graphs-parity-data "/graphs/parity/data" \
+    '(has("error") | not) and (.metrics | type == "array" and length > 0)
+     and (.packages | type == "array" and length > 0) and has("series")'
 
   if [ -n "$id" ]; then
     json tier2.stories-show "/stories/$id" "$story and .id == \"$id\""
@@ -248,6 +260,13 @@ can() { printf '%s %s\n' "$2" "$3" >"$fake/$1.head"; printf '%s' "$4" >"$fake/$1
 healthy() {
   local s='{"id":"story-a","rfc":"rfc-r","status":"ready","raw_status":"ready","deps":[]}'
   local html='<main class="site-main"><h1 class="page-title">'
+  # A parity endpoint that is actually serving: the picker names a run and a
+  # package. This fixture used to be `{"error":"STATS_DB is not set"}` — the
+  # answer a deployment with no stats database gives — so "healthy" asserted
+  # the page was allowed to be dark.
+  local parity='{"metrics_selected":["api"],"gaps_by_metric":{"api":["missing"]},'
+  parity+='"metrics":[{"key":"api","label":"api:compare","gaps":["missing"]}],'
+  parity+='"packages":["activerecord"],"unknown_packages":[],"max_packages":8,"series":[]}'
   can _up 200 application/json '{"status":"ok"}'
   can _up_ready 200 application/json '{"status":"ok","failing":[],"checks":{"migrations":{"ok":true,"expected":7,"actual":7}}}'
   can public 302 text/html ''
@@ -258,7 +277,7 @@ healthy() {
   can _stories_story-a 200 application/json "$s"
   can _index 200 application/json "{\"rfcs\":[{\"id\":\"rfc-r\",\"status\":\"active\"}],\"stories\":[$s]}"
   can _events 200 application/json '{"events":[{"at":"t","verb":"claim","story":"a"}]}'
-  can _graphs_parity_data 200 application/json '{"error":"STATS_DB is not set"}'
+  can _graphs_parity_data 200 application/json "$parity"
   can _ 200 text/html "${html}trailmap</h1>"
   can _dashboard 200 text/html "${html}Fleet</h1>"
   can _rfcs 200 text/html "${html}RFCs</h1>"
@@ -329,6 +348,17 @@ CURL
   healthy
   can _stories_ready 200 application/json '{"error":"ranking failed"}'
   expect "a read verb answering 200 with the wrong shape is caught" 2 1 tier2.stories-ready
+
+  healthy
+  can _graphs_parity_data 200 application/json '{"error":"STATS_DB is not set"}'
+  expect "a parity endpoint with no stats database is caught" 2 1 \
+    tier2.graphs-parity-data
+
+  healthy
+  can _graphs_parity_data 200 application/json \
+    '{"metrics":[],"packages":[],"series":[],"max_packages":8}'
+  expect "a parity endpoint with a stats database it cannot chart is caught" 2 1 \
+    tier2.graphs-parity-data
 
   healthy
   can _backlog 200 text/html '<main class="site-main"><h1>Something went wrong</h1>'
