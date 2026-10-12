@@ -167,6 +167,21 @@ SUITE
     selfFailed=1
   fi
 
+  # The entries are derived, so hold what they derive to: tier 0 twice a
+  # minute, tiers 1 and 2 on their cadence, each naming this script.
+  local entries
+  entries="$("$0" --crontab | grep -v '^#')"
+  if [ "$(printf '%s\n' "$entries" | wc -l)" = 4 ] &&
+    [ "$(printf '%s\n' "$entries" | grep -c "^\* \* \* \* \* \(sleep 30; \)\{0,1\}$here/smoke-cron.sh 0\$")" = 2 ] &&
+    printf '%s\n' "$entries" | grep -q "^\* \* \* \* \* $here/smoke-cron.sh 1\$" &&
+    printf '%s\n' "$entries" | grep -q "^\*/5 \* \* \* \* TRAILMAP_URL=[^ ]* $here/smoke-cron.sh 2\$"; then
+    echo "self-test ok: --crontab prints tier 0 twice a minute, tier 1 every minute, tier 2 every 5"
+  else
+    echo "self-test FAILED: --crontab printed:" >&2
+    echo "$entries" >&2
+    selfFailed=1
+  fi
+
   if "$0" 3 >/dev/null 2>&1; then
     echo "self-test FAILED: an unscheduled tier exited 0" >&2
     selfFailed=1
