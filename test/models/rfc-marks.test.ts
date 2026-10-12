@@ -36,6 +36,7 @@ describe("collectRfcMarks", () => {
     ]);
 
     expect(marks.get("r2")).toEqual([{ at: null, count: 1, kind: "origin", reps: 1 }]);
+    expect(markTitle(marks.get("r2")![0]!)).toBe("1 story when the RFC was written");
   });
 
   it("folds refinements that found the same count into one tick", () => {
