@@ -6,7 +6,7 @@
  * spawn loop's active set and on the RFC page as live work, and `ready`
  * queried it every pass for stories that no longer existed.
  *
- * The rule is registered as a trails `afterSave` on Story, not bolted onto
+ * The rule is an `afterSave` declared in Story's body, not bolted onto
  * each verb: every path that lands a story — `done`, `close`, `status`, and
  * ingest closing a story whose file was deleted — goes through a record save,
  * so all four get the close for free and none of them can forget it. That is
@@ -14,14 +14,13 @@
  * `Relation#updateAll`: update_all skips callbacks, so a verb written that way
  * is invisible to this rule.
  *
- * Imports the model MODULES rather than the `./index.js` barrel: the
- * barrel is what registers this callback, and going back through it would be
- * an import cycle. Nothing here traverses an association, so it does not need
- * the barrel's registration.
+ * Counts through `rfc.stories` rather than importing `Story`, which imports
+ * this file to declare the callback.
  */
+import { Trails } from "@blazetrails/trailties";
 import { Event } from "./event.js";
 import { Rfc } from "./rfc.js";
-import { Story, type StoryStatus } from "./story.js";
+import type { StoryStatus } from "./story.js";
 
 /**
  * RFCs that must NEVER auto-close, even with an all-terminal backlog.
@@ -37,11 +36,7 @@ import { Story, type StoryStatus } from "./story.js";
 const NEVER_AUTO_CLOSE = new Set(["0061-ci-failures"]);
 
 /** A story in one of these is finished with — it will never move again. */
-const TERMINAL: readonly StoryStatus[] = ["done", "closed"];
-
-function isTerminal(status: StoryStatus): boolean {
-  return TERMINAL.includes(status);
-}
+export const TERMINAL: readonly StoryStatus[] = ["done", "closed"];
 
 function nowIso(): string {
   return new Date().toISOString().replace(/\.\d+Z$/, "Z");
@@ -63,12 +58,9 @@ export async function closeRfcIfComplete(rfcId: string | null | undefined): Prom
 
   // `count()` widens to `number | Map` for grouped relations; these are not
   // grouped, so the narrowing is safe.
-  const total = (await Story.where({ rfc_id: rfcId }).count()) as number;
+  const total = (await rfc.stories.count()) as number;
   if (total === 0) return false;
-  const open = (await Story.where({ rfc_id: rfcId })
-    .where()
-    .not({ status: TERMINAL })
-    .count()) as number;
+  const open = (await rfc.stories.where().not({ status: TERMINAL }).count()) as number;
   if (open > 0) return false;
 
   await rfc.update({ status: "closed", updated_on: new Date().toISOString().slice(0, 10) });
@@ -81,19 +73,6 @@ export async function closeRfcIfComplete(rfcId: string | null | undefined): Prom
     actor: "auto",
     detail: JSON.stringify({ reason: "all stories done or closed", stories: total }),
   });
-  console.log(`closed rfc ${rfcId} — all ${total} stories are done or closed`);
+  Trails.logger?.info(`closed rfc ${rfcId} — all ${total} stories are done or closed`);
   return true;
-}
-
-/**
- * Register the callback. Called once from the models barrel, next to
- * `registerModel`, so importing models is what arms the rule.
- */
-export function registerRfcAutoClose(): void {
-  Story.afterSave(async (story: Story) => {
-    // Only a landing can complete an RFC; skipping the rest keeps a full
-    // ingest re-scan from running two counting queries per story row.
-    if (!isTerminal(story.status)) return;
-    await closeRfcIfComplete(story.rfc_id);
-  });
 }

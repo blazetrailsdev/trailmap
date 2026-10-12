@@ -1,7 +1,6 @@
 import type { SafeBuffer } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.js";
 import { Rfc, Story, StoryDep, StoryPackage, StoryRfcDep } from "../models/index.js";
-import { jsonArrayColumn } from "../models/rfc.js";
 import { readDocument } from "../models/concerns/document.js";
 import { renderMarkdown } from "../helpers/markdown-helper.js";
 import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
@@ -126,7 +125,7 @@ export class StoryPagesController extends ApplicationController {
     const queue = claimableIn(index);
     const rfcs = await Rfc.all().toArray();
 
-    const rfcPackages = new Map(rfcs.map((rfc) => [rfc.id, jsonArrayColumn(rfc.packages)]));
+    const rfcPackages = new Map(rfcs.map((rfc) => [rfc.id, rfc.packages]));
     const queuePos = new Map(queue.map((story, at) => [story.id, at]));
 
     const requested = String(this.params.get("filter") ?? "");
@@ -269,7 +268,7 @@ export class StoryPagesController extends ApplicationController {
     let packages = packageRows.map((row) => row.package);
     let inherited = false;
     if (packages.length === 0 && rfc !== null) {
-      packages = jsonArrayColumn(rfc.packages);
+      packages = rfc.packages;
       inherited = packages.length > 0;
     }
 

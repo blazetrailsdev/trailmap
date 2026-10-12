@@ -38,9 +38,9 @@ beforeAll(async () => {
     priority: 1,
     created_on: "2026-08-25",
     updated_on: "2026-09-05",
-    packages: '["activerecord"]',
-    clusters: "[]",
-    related_rfcs: '["0061-ci-failures"]',
+    packages: ["activerecord"],
+    clusters: [],
+    related_rfcs: ["0061-ci-failures"],
     file_path: "rfcs/0136-trailmap/README.md",
   });
   await Rfc.create({ id: "0002-draft", status: "draft", title: "Draft" });

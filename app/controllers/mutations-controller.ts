@@ -1,4 +1,4 @@
-import { Base } from "@blazetrails/activerecord";
+import { ApplicationRecord } from "../models/application-record.js";
 import { ApplicationController } from "./application-controller.js";
 import { requireLoopback } from "./concerns/loopback-only.js";
 import { Story, STORY_STATUSES, type StoryStatus } from "../models/index.js";
@@ -181,7 +181,7 @@ export class MutationsController extends ApplicationController {
   private async run(body: () => Promise<string[]>): Promise<void> {
     try {
       let lines: string[] = [];
-      await Base.transaction(async () => {
+      await ApplicationRecord.transaction(async () => {
         lines = await body();
       });
       await this.render({ json: { ok: true, lines } });

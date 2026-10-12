@@ -23,9 +23,9 @@ describe("serializeRfc", () => {
       owner: "dean",
       created_on: "2026-08-25",
       updated_on: "2026-09-05",
-      packages: '["activerecord","trailties"]',
-      clusters: '["api"]',
-      related_rfcs: '["0061-ci-failures"]',
+      packages: ["activerecord","trailties"],
+      clusters: ["api"],
+      related_rfcs: ["0061-ci-failures"],
       file_path: "rfcs/0136-trailmap/README.md",
     });
 

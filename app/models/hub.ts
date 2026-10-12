@@ -1,4 +1,4 @@
-import { Base } from "@blazetrails/activerecord";
+import { ApplicationRecord } from "./application-record.js";
 
 /**
  * The base class of everything that lives in the `hub` database — the
@@ -29,7 +29,7 @@ import { Base } from "@blazetrails/activerecord";
  * repo tab does — the repo scope is a `where` on the string the task domain
  * already carries (`stories.pr` is `repo#N`, `story_paths.path` is repo-relative).
  */
-export class Hub extends Base {
+export class Hub extends ApplicationRecord {
   static {
     // ASSIGNED in a static block, never `static abstractClass = true`.
     // `abstractClass` is an accessor pair on the library's class methods whose

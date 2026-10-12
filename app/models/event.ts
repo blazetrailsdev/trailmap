@@ -1,4 +1,4 @@
-import { Base } from "@blazetrails/activerecord";
+import { ApplicationRecord } from "./application-record.js";
 import type { Temporal } from "@blazetrails/date";
 
 /**
@@ -6,9 +6,7 @@ import type { Temporal } from "@blazetrails/date";
  * velocity and RFC burndown charts read this table (via events.json), not
  * `git log`.
  */
-export class Event extends Base {
-  static _tableName = "events";
-
+export class Event extends ApplicationRecord {
   declare id: number;
   declare at: Temporal.Instant | Temporal.PlainDateTime;
   declare verb: string;
@@ -19,7 +17,7 @@ export class Event extends Base {
   declare detail: string | null;
 
   static {
-    this.belongsTo("story", { foreignKey: "story_id", optional: true });
-    this.belongsTo("rfc", { foreignKey: "rfc_id", optional: true });
+    this.belongsTo("story", { optional: true });
+    this.belongsTo("rfc", { optional: true });
   }
 }
