@@ -37,6 +37,8 @@ import {
   repoSectionsKey,
   reviewersByKey,
   sectionId,
+  spawnLoopControls,
+  spawnLoopView,
   spawnRow,
   strandedAgents,
   visibleSpawns,
@@ -471,6 +473,25 @@ byId("spawn").addEventListener("click", async () => {
 // be bound to a node that is gone a second later.
 // ---------------------------------------------------------------------------
 
+/** POST one control to ringo: `{ ok, text }`, or `{ error }` if nothing answered. */
+async function send(request) {
+  try {
+    const response = await fetch(ringoUrl(request.path), {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        ...csrfHeaders(),
+        ...(request.body === null ? {} : { "Content-Type": "application/json" }),
+      },
+      ...(request.body === null ? {} : { body: JSON.stringify(request.body) }),
+    });
+    const text = (await response.text()).trim();
+    return { ok: response.ok, text: text || (response.ok ? "" : response.statusText) };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
 document.addEventListener("click", async (event) => {
   const button = event.target instanceof Element ? event.target.closest("button[data-action]") : null;
   if (!button || button.disabled) return;
@@ -484,22 +505,7 @@ document.addEventListener("click", async (event) => {
   button.disabled = true;
   if (request.busy) button.textContent = request.busy;
 
-  let result;
-  try {
-    const response = await fetch(ringoUrl(request.path), {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        ...csrfHeaders(),
-        ...(request.body === null ? {} : { "Content-Type": "application/json" }),
-      },
-      ...(request.body === null ? {} : { body: JSON.stringify(request.body) }),
-    });
-    const text = (await response.text()).trim();
-    result = { ok: response.ok, text: text || (response.ok ? "" : response.statusText) };
-  } catch (e) {
-    result = { error: e.message };
-  }
+  const result = await send(request);
 
   if (request.statusId) {
     await followDrain(request, result);
@@ -515,6 +521,7 @@ document.addEventListener("click", async (event) => {
   button.disabled = outcome.disabled;
   if (outcome.text !== undefined) button.textContent = outcome.text;
   if (outcome.title !== undefined) button.title = outcome.title;
+  if (outcome.state) renderSpawnLoop(outcome.state);
   if (outcome.alert) window.alert(outcome.alert);
   if (outcome.resetAfterMs) {
     setTimeout(() => {
@@ -523,3 +530,43 @@ document.addEventListener("click", async (event) => {
     }, outcome.resetAfterMs);
   }
 });
+
+// ---------------------------------------------------------------------------
+// The spawn loop's settings. ringo keeps the state; the panel shows its last
+// answer, and every control's answer IS the new state.
+// ---------------------------------------------------------------------------
+
+function renderSpawnLoop(state) {
+  const view = spawnLoopView(state);
+  const toggle = byId("slToggle");
+  toggle.textContent = view.toggle;
+  toggle.dataset.enabled = String(view.enabled);
+  toggle.classList.toggle("btn-green", !view.enabled);
+  toggle.classList.toggle("btn-yellow", view.enabled);
+  // A field being edited is the viewer's, not the poll's.
+  for (const [id, value] of [["slLiveCap", view.liveCap], ["slQueueCap", view.queueCap], ["slStagger", view.interval]]) {
+    if (document.activeElement !== byId(id)) byId(id).value = value;
+  }
+  if (document.activeElement !== byId("slBundle")) byId("slBundle").checked = view.bundleMode;
+  byId("slLiveNow").textContent = view.liveNow;
+  byId("slOpenNow").textContent = view.openNow;
+  byId("slLastSpawn").textContent = view.lastSpawn;
+  byId("slNext").textContent = view.next;
+  byId("slNext").title = view.nextTitle;
+  byId("slSkip").style.display = view.skip ? "" : "none";
+  byId("slBundleList").innerHTML = view.bundleList;
+  byId("slBundleList").style.display = view.bundleList ? "" : "none";
+}
+
+byId("slControls").innerHTML = spawnLoopControls();
+byId("spawnLoopPanel").addEventListener("change", async () => {
+  const request = controlRequest("loop-settings", {
+    liveCap: byId("slLiveCap").value,
+    queueCap: byId("slQueueCap").value,
+    interval: byId("slStagger").value,
+    bundle: byId("slBundle").checked,
+  });
+  const outcome = controlOutcome(request, await send(request), "");
+  if (outcome.state) renderSpawnLoop(outcome.state);
+});
+poll("spawn-loop", 15000, renderSpawnLoop);

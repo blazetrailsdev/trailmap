@@ -355,6 +355,39 @@ export function controlRequest(action, data) {
         failureAlert: (text) => "Respawn failed: " + text,
         errorAlert: (message) => "Respawn failed: " + message,
       };
+    // The loop's panel. Three of the four answer with the loop's new state
+    // (`state`), which the page draws; ringo's `toggleSpawnLoop`,
+    // `setSpawnLoopCap`, `skipNext` and `spawnLoopNow`.
+    case "loop-toggle":
+      return { path: "/spawnloop/config", body: { enabled: data.enabled !== "true" }, state: true };
+    case "loop-settings": {
+      const minutes = parseInt(data.interval, 10);
+      return {
+        path: "/spawnloop/config",
+        // A blank or zero field is left out, so ringo keeps what it has.
+        body: {
+          live_cap: parseInt(data.liveCap, 10) || undefined,
+          queue_cap: parseInt(data.queueCap, 10) || undefined,
+          stagger_seconds: minutes > 0 ? minutes * 60 : undefined,
+          bundle_mode: !!data.bundle,
+        },
+        state: true,
+      };
+    }
+    case "loop-skip":
+      return { path: "/spawnloop/skip", body: null, state: true };
+    case "loop-now":
+      return {
+        path: "/spawnloop/spawn-now",
+        body: null,
+        busy: "spawning…",
+        done: "spawning…",
+        // A tick takes a moment to register: hold the button, and re-read.
+        resetAfterMs: 1500,
+        refresh: "spawn-loop",
+        failureAlert: (text) => "Spawn now failed: " + text,
+        errorAlert: (message) => "Spawn now failed: " + message,
+      };
     case "dismiss":
       return { path: "/spawnloop/dismiss", body: { branch: data.branch }, quiet: true };
     // `sendOne` (`dashboard.go:1902`). ringo answers 200 either way and says
@@ -412,7 +445,7 @@ const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  * missing `text` leaves the button's text alone; `refresh` names the read to
  * poll again, because an answered control changed what it reports.
  *
- * Three families, as in ringo, with two of its holes closed:
+ * Four families, as in ringo, with two of its holes closed:
  *
  * - merge keeps the button disabled for the full reset period on EVERY
  *   outcome, a failed fetch included, then restores it.
@@ -422,6 +455,10 @@ const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  *   removes the row or hides the button. On a refusal or a failed fetch they
  *   come back. ringo leaves them disabled there, and since the row only goes
  *   away on success, that is a dead button with nothing to say why.
+ * - the loop's settings never stay disabled: the control is still there after
+ *   the click, and a success carries the loop's new `state` for the page to
+ *   draw. "spawn now" is the exception, held like merge and then re-read
+ *   (`refresh`), because ringo answers before the tick has registered.
  */
 export function controlOutcome(request, result, label) {
   const answered = !("error" in result);
@@ -430,6 +467,10 @@ export function controlOutcome(request, result, label) {
   const outcome = { disabled: succeeded || (!request.quiet && !!request.resetAfterMs) };
   if (answered && request.refresh) outcome.refresh = request.refresh;
   if (request.quiet) return outcome;
+  if (request.state) {
+    const state = succeeded ? parseState(result.text) : null;
+    return state ? { disabled: false, state } : { disabled: false };
+  }
 
   const said = answered ? result.text : result.error;
   if (succeeded) outcome.text = request.report ? request.report(result.text) : request.done;
@@ -440,6 +481,83 @@ export function controlOutcome(request, result, label) {
   if (!succeeded && alert) outcome.alert = alert(said);
   if (request.resetAfterMs) outcome.resetAfterMs = request.resetAfterMs;
   return outcome;
+}
+
+/** ringo's loop state out of a response body, or null when it is not one. */
+function parseState(text) {
+  try {
+    const state = JSON.parse(text);
+    return state && typeof state === "object" ? state : null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The spawn loop's settings panel
+// ---------------------------------------------------------------------------
+
+/** The panel's buttons, drawn once; `spawnLoopView` says what each shows. */
+export const spawnLoopControls = () =>
+  control("loop-toggle", { enabled: "false" }, {
+    id: "slToggle", cls: "btn btn-green btn-sm", title: "Start or pause the spawn loop", label: "play",
+  }) +
+  control("loop-now", {}, {
+    cls: "btn btn-blue btn-sm", title: "Run one tick now, bypassing caps", label: "spawn now",
+  }) +
+  '<span class="field-note" id="slNext"></span>' +
+  control("loop-skip", {}, {
+    id: "slSkip", cls: "btn btn-sm", title: "Skip the next story", label: "skip", hidden: true,
+  });
+
+/**
+ * What the panel says for one loop state — ringo's `/spawnloop/config` answer.
+ * Ported from `renderSpawnLoop` (`webhook/dashboard.go`).
+ *
+ * Bundle mode fires the WHOLE next-bundle into one worker, so it names no
+ * single story and offers no skip: it summarizes inline and lists every story.
+ */
+export function spawnLoopView(s, now = Date.now()) {
+  const bundle = s.bundle_mode ? s.next_bundle || [] : [];
+  let next = "next: nothing ready";
+  let nextTitle = "";
+  if (s.bundle_mode) {
+    const loc = bundle.reduce((total, story) => total + (story.est_loc || 0), 0);
+    if (bundle.length) {
+      next = "next bundle: " + bundle.length + " stor" + (bundle.length === 1 ? "y" : "ies") +
+        (loc ? " · ~" + loc + " LOC" : "");
+      nextTitle = bundle.map((story) => story.id).join("\n");
+    } else if (s.next_bundle_err) {
+      next = "next bundle: unavailable";
+      nextTitle = s.next_bundle_err;
+    } else {
+      // Also the cold-start state: the first preview fetch is still in flight.
+      next = "next bundle: nothing ready";
+    }
+  } else if (s.next && s.next.id) {
+    next = "next: " + (s.next.title || s.next.id);
+    nextTitle = s.next.id;
+  }
+  return {
+    enabled: !!s.enabled,
+    toggle: s.enabled ? "pause" : "play",
+    liveCap: s.live_cap,
+    queueCap: s.queue_cap,
+    interval: Math.round((s.stagger_seconds || 0) / 60),
+    bundleMode: !!s.bundle_mode,
+    liveNow: "(now: " + (s.live_now || 0) + ")",
+    openNow: "(now: " + (s.open_now || 0) + ")",
+    lastSpawn: s.last_spawn_at ? "(latest: " + timeAgo(s.last_spawn_at, now) + ")" : "",
+    next,
+    nextTitle,
+    skip: !s.bundle_mode && !!(s.next && s.next.id),
+    bundleList: bundle
+      .map((story) =>
+        '<div class="bl-row"><span class="bl-loc">' + (story.est_loc ? story.est_loc + " LOC" : "—") +
+        '</span><span class="bl-title"><a href="/story/' + encodeURIComponent(story.id) +
+        '" title="' + esc(story.id) + '">' + esc(story.title || story.id) + "</a></span></div>")
+      .join(""),
+  };
 }
 
 // ---------------------------------------------------------------------------

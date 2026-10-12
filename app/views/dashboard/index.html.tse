@@ -50,6 +50,29 @@
   <div class="usage-bar" id="codexUsageBar" style="display:none"></div>
 </div>
 
+<div class="card" id="spawnLoopPanel">
+  <div class="card-head">
+    <span class="card-title">Loop</span>
+    <span class="card-head" id="slControls"></span>
+  </div>
+  <div class="card-row">
+    <label class="field">Live cap <span class="field-note" id="slLiveNow"></span>
+      <input id="slLiveCap" class="ctl num" type="number" min="1">
+    </label>
+    <label class="field">Queue cap <span class="field-note" id="slOpenNow"></span>
+      <input id="slQueueCap" class="ctl num" type="number" min="1">
+    </label>
+    <label class="field" title="Minutes between ticks (min 1)">Interval (min)
+      <input id="slStagger" class="ctl num" type="number" min="1" step="1">
+    </label>
+    <label class="field" title="Bundle mode: each tick spawns ONE worker for the whole next-bundle (a PR closing several stories). Off: one worker per single story.">Bundle
+      <input id="slBundle" type="checkbox">
+    </label>
+    <span class="field-note" id="slLastSpawn"></span>
+  </div>
+  <div id="slBundleList" class="bundle-list" style="display:none"></div>
+</div>
+
 <div class="card" id="spawnPanel">
   <div class="card-head">
     <span class="card-title">Manual spawn</span>

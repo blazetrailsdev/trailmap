@@ -8,10 +8,11 @@
  * a `.tse` renders the options from data, and trailmap is a different origin
  * from the Go process that owns the stream.
  *
- * Both come from the environment, so the page is deployable against a fleet
- * whose repo set trailmap does not otherwise know about.
+ * Both are settings, so the page is deployable against a fleet whose repo set
+ * trailmap does not otherwise know about. The repo list is `config.x.fleet`,
+ * which config/application.ts fills from the environment at boot.
  */
-import { env } from "@blazetrails/ruby-compat";
+import { Trails } from "@blazetrails/trailties";
 
 /** One entry of ringo's `RepoPaths`: the `owner/repo` name and its checkout. */
 export interface FleetRepo {
@@ -22,7 +23,8 @@ export interface FleetRepo {
 }
 
 /**
- * The repos the manual spawn control offers, from `FLEET_REPO_PATHS`.
+ * The repos the manual spawn control offers, from `config.x.fleet.repoPaths`
+ * (`FLEET_REPO_PATHS`).
  *
  * Spelled as ringo spells the pairing — `owner/repo=/path/to/checkout`,
  * comma-separated — because the two sides are not derivable from each other
@@ -31,7 +33,7 @@ export interface FleetRepo {
  * bug the port does not have to inherit.
  */
 export function fleetRepos(): FleetRepo[] {
-  const raw = env.FLEET_REPO_PATHS?.trim();
+  const raw = (Trails.application!.config.x.fleet.repoPaths as string | undefined)?.trim();
   if (!raw) return [];
 
   const repos: FleetRepo[] = [];
@@ -78,6 +80,8 @@ export const FLEET_READS: Readonly<Record<string, string>> = {
   "codex-usage": "codex-usage-status",
   asks: "ask/list",
   "drain-status": "reviewer/drain-status",
+  // The loop's state, as the settings panel draws it. Its WRITES are controls.
+  "spawn-loop": "spawnloop/config",
 };
 
 /** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
@@ -118,6 +122,9 @@ export const FLEET_CONTROLS: readonly string[] = [
   "merge-pr",
   "spawnloop/dismiss",
   "spawnloop/dismiss-failed",
+  "spawnloop/config",
+  "spawnloop/skip",
+  "spawnloop/spawn-now",
   "ci-fixer/spawn",
   "drain",
   "drain-one",

@@ -37,6 +37,8 @@ import {
   rfcSpawnRow,
   row,
   sectionId,
+  spawnLoopControls,
+  spawnLoopView,
   spawnRow,
   statusClass,
   timeAgo,
@@ -619,6 +621,93 @@ describe("controlOutcome", () => {
     expect(controlOutcome(dismiss, { ok: true, text: "" }, "x")).toEqual({ disabled: true });
     expect(controlOutcome(dismiss, { ok: false, text: "gone" }, "x")).toEqual({ disabled: false });
     expect(controlOutcome(dismiss, { error: "offline" }, "x")).toEqual({ disabled: false });
+  });
+});
+
+describe("the spawn loop's controls", () => {
+  const STATE = { enabled: true, live_cap: 6, queue_cap: 12, stagger_seconds: 300 };
+
+  it("posts what ringo's panel posts", () => {
+    expect(controlRequest("loop-toggle", { enabled: "true" })).toMatchObject({
+      path: "/spawnloop/config", body: { enabled: false },
+    });
+    expect(controlRequest("loop-toggle", { enabled: "false" }).body).toEqual({ enabled: true });
+    expect(controlRequest("loop-skip", {})).toMatchObject({ path: "/spawnloop/skip", body: null });
+    expect(controlRequest("loop-now", {})).toMatchObject({ path: "/spawnloop/spawn-now", body: null });
+    expect(
+      controlRequest("loop-settings", { liveCap: "6", queueCap: "12", interval: "5", bundle: true }).body,
+    ).toEqual({ live_cap: 6, queue_cap: 12, stagger_seconds: 300, bundle_mode: true });
+  });
+
+  it("leaves a blank or zero setting out, so ringo keeps its own", () => {
+    const { body } = controlRequest("loop-settings", { liveCap: "", queueCap: "0", interval: "0", bundle: false });
+
+    expect(JSON.parse(JSON.stringify(body))).toEqual({ bundle_mode: false });
+  });
+
+  it("hands a setting's answer back as the loop's new state, and never holds the control", () => {
+    const toggle = controlRequest("loop-toggle", { enabled: "false" });
+
+    expect(controlOutcome(toggle, { ok: true, text: JSON.stringify(STATE) }, "play")).toEqual({
+      disabled: false,
+      state: STATE,
+    });
+    expect(controlOutcome(toggle, { ok: false, text: "bad request" }, "play")).toEqual({ disabled: false });
+    expect(controlOutcome(toggle, { ok: true, text: "not json" }, "play")).toEqual({ disabled: false });
+    expect(controlOutcome(toggle, { error: "offline" }, "play")).toEqual({ disabled: false });
+  });
+
+  it("holds spawn now while the tick registers, then asks for a re-read", () => {
+    const now = controlRequest("loop-now", {});
+
+    expect(now.busy).toBe("spawning…");
+    expect(controlOutcome(now, { ok: true, text: "" }, "spawn now")).toEqual({
+      disabled: true, text: "spawning…", resetAfterMs: 1500, refresh: "spawn-loop",
+    });
+    expect(controlOutcome(now, { error: "offline" }, "spawn now")).toMatchObject({
+      disabled: true, text: "spawn now", alert: "Spawn now failed: offline",
+    });
+  });
+
+  it("draws every button through control", () => {
+    const html = spawnLoopControls();
+
+    for (const action of ["loop-toggle", "loop-now", "loop-skip"]) expect(html).toContain(`data-action="${action}"`);
+    expect(html).toContain('id="slSkip" class="btn btn-sm" data-action="loop-skip" style="display:none"');
+  });
+
+  it("shows the loop's state, the next story and a skip for it", () => {
+    const view = spawnLoopView(
+      { ...STATE, live_now: 4, open_now: 9, last_spawn_at: NOW - 120000, next: { id: "a-story", title: "A <story>" } },
+      NOW,
+    );
+
+    expect(view).toMatchObject({
+      enabled: true, toggle: "pause", liveCap: 6, queueCap: 12, interval: 5, bundleMode: false,
+      liveNow: "(now: 4)", openNow: "(now: 9)", next: "next: A <story>", nextTitle: "a-story",
+      skip: true, bundleList: "",
+    });
+    expect(view.lastSpawn).toMatch(/^\(latest: .+\)$/);
+    expect(spawnLoopView({}, NOW)).toMatchObject({
+      enabled: false, toggle: "play", interval: 0, liveNow: "(now: 0)", lastSpawn: "",
+      next: "next: nothing ready", skip: false,
+    });
+  });
+
+  it("names the whole bundle in bundle mode, and offers no skip", () => {
+    const bundle = [{ id: "a", title: "<A>", est_loc: 200 }, { id: "b/c" }];
+    const view = spawnLoopView({ bundle_mode: true, next_bundle: bundle, next: { id: "a" } }, NOW);
+
+    expect(view).toMatchObject({ next: "next bundle: 2 stories · ~200 LOC", nextTitle: "a\nb/c", skip: false });
+    expect(view.bundleList).toContain('<span class="bl-loc">200 LOC</span>');
+    expect(view.bundleList).toContain('<a href="/story/a" title="a">&lt;A&gt;</a>');
+    expect(view.bundleList).toContain('<span class="bl-loc">—</span>');
+    expect(view.bundleList).toContain('href="/story/b%2Fc"');
+    expect(spawnLoopView({ bundle_mode: true, next_bundle: [{ id: "a" }] }, NOW).next).toBe("next bundle: 1 story");
+    expect(spawnLoopView({ bundle_mode: true, next_bundle_err: "tasks: exit 1" }, NOW)).toMatchObject({
+      next: "next bundle: unavailable", nextTitle: "tasks: exit 1",
+    });
+    expect(spawnLoopView({ bundle_mode: true }, NOW).next).toBe("next bundle: nothing ready");
   });
 });
 

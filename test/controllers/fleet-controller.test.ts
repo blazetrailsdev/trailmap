@@ -63,7 +63,8 @@ beforeAll(async () => {
         res.end(JSON.stringify(REVIEWERS));
         return;
       }
-      if (url.pathname === "/usage-status" || url.pathname === "/reviewer/drain-status") {
+      const loopState = url.pathname === "/spawnloop/config" && req.method === "GET";
+      if (url.pathname === "/usage-status" || url.pathname === "/reviewer/drain-status" || loopState) {
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify({ asked: url.pathname + url.search }));
         return;
@@ -170,7 +171,7 @@ describe("FleetController#control", () => {
   it("refuses a ringo endpoint the page has no button for, without calling ringo", async () => {
     setEnv("RINGO_BASE", ringoBaseUrl);
 
-    const response = await control("spawnloop/config", { enabled: true });
+    const response = await control("spawnloop/grades/generate", { id: "0136-trailmap" });
 
     expect(response.status).toBe(404);
     expect(received).toEqual([]);
@@ -303,6 +304,13 @@ async function read(name: string, params: Record<string, string> = {}) {
 }
 
 describe("FleetController#read", () => {
+  it("reads the spawn loop's state from the endpoint its settings post to", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    const response = await read("spawn-loop");
+    expect(JSON.parse(response.body)).toEqual({ asked: "/spawnloop/config" });
+    expect(received.map((r) => r.url)).toEqual(["/spawnloop/config"]);
+  });
+
   it("relays a listed read from the ringo path it names, never cached", async () => {
     setEnv("RINGO_BASE", ringoBaseUrl);
     const response = await read("usage");

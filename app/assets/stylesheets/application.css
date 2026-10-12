@@ -567,6 +567,16 @@ ul { margin: 0 0 10px 20px; }
 }
 .btn:disabled { opacity: 0.6; cursor: default; }
 .btn-green { background: var(--green); border-color: transparent; color: #fff; }
+.btn-yellow { background: var(--yellow); border-color: transparent; color: #fff; }
+.btn-blue { background: var(--accent); border-color: transparent; color: #fff; }
+.card-head .card-head { margin-bottom: 0; }
+.card-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; }
+.field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.ctl.num { width: 62px; }
+.bundle-list { padding: 6px 0 0 2px; font-size: 11px; }
+.bundle-list .bl-row { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; color: var(--muted); }
+.bundle-list .bl-row a { color: inherit; text-decoration: none; }
+.bundle-list .bl-loc { opacity: 0.6; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .spawn-form { display: flex; gap: 8px; align-items: stretch; }
 .spawn-form textarea.ctl { flex: 1; resize: vertical; min-height: 32px; max-height: 200px; line-height: 1.5; }
 
