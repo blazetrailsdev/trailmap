@@ -12,4 +12,12 @@ Trails.application!.configure(function () {
   // Show full error reports.
   this.config.considerAllRequestsLocal = true;
   this.config.cacheStore = ":null_store";
+
+  // Render exception templates for rescuable exceptions and raise for other exceptions.
+  this.config.actionDispatch.showExceptions = "rescuable";
+
+  // Disable request forgery protection in test environment.
+  this.config.actionController.allowForgeryProtection = false;
+
+  // The rest of `trails new`'s test environment is deliberately not adopted.
 });

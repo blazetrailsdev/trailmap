@@ -37,8 +37,7 @@ export const REPO_SEGMENT = /[A-Za-z0-9][A-Za-z0-9._-]*/;
 // nobody draws it a second way — see test/support/controller-test-case.ts.
 Trails.application!.routes().draw(function () {
   this.root("home#index");
-  // The framework's own health controller: 200 if the app booted with no
-  // exceptions, otherwise 500. Its callers read the status, never the body.
+  // The framework's health controller: 200 if the app booted, otherwise 500.
   this.get("up", { to: "rails/health#show", as: "rails_health_check" });
 
   // The two probes beside `/up`, which stays the only one a supervisor polls.

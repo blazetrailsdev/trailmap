@@ -31,7 +31,7 @@ describe("stripFrontmatter", () => {
 describe("tasksContentDir", () => {
   it("derives the checkout from the database path when TASKS_DIR is unset", () => {
     setX("tasks", "dir", undefined);
-    setX("tasks", "database", "/srv/tasks/.git/tasks.db");
+    setEnv("TASKS_DATABASE", "/srv/tasks/.git/tasks.db");
     expect(tasksContentDir()).toBe("/srv/tasks");
   });
 
@@ -42,7 +42,7 @@ describe("tasksContentDir", () => {
 
   it("names no directory when neither variable does", () => {
     setX("tasks", "dir", undefined);
-    setX("tasks", "database", undefined);
+    setEnv("TASKS_DATABASE", undefined);
     expect(tasksContentDir()).toBeNull();
   });
 });
@@ -68,7 +68,7 @@ describe("readDocument", () => {
 
   it("says which document it could not place when no checkout is configured", async () => {
     setX("tasks", "dir", undefined);
-    setX("tasks", "database", undefined);
+    setEnv("TASKS_DATABASE", undefined);
 
     const doc = await readDocument("rfcs/0136-trailmap/index.md");
 

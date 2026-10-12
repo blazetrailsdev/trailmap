@@ -17,4 +17,8 @@ Trails.application!.configure(function () {
 
   // Change to :null_store to avoid any caching.
   this.config.cacheStore = ":memory_store";
+
+  // Deliberately NOT adopted from `trails new`: the `tmp/caching-dev.txt`
+  // toggle (it needs `node:fs`), `raiseOnMissingCallbackActions` and
+  // `annotateRenderedViewWithFilenames`. Each activates behaviour of its own.
 });

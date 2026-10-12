@@ -157,6 +157,22 @@ describe("Story.claimableIndex", () => {
     expect(index.stories.map((s) => s.id)).toEqual(full.stories.map((s) => s.id));
     expect(index.stories.filter((s) => s instanceof Story).map((s) => s.id)).toEqual(["lead", "mate"]);
   });
+
+  it("serves no story that stopped being claimable, or was deleted, between its two reads", async () => {
+    await seed("taken", "0136-trailmap", "ready");
+    await seed("gone", "0136-trailmap", "ready");
+    await seed("stays", "0136-trailmap", "ready");
+    const outline = await Story.rankingOutline();
+    const stale = vi.spyOn(Story, "rankingOutline").mockResolvedValue(outline);
+    await Story.where({ id: "taken" }).updateAll({ status: "claimed" });
+    await Story.where({ id: "gone" }).deleteAll();
+
+    const index = await Story.claimableIndex();
+    stale.mockRestore();
+
+    expect((await Story.claimable({ index })).map((s) => s.id)).toEqual(["stays"]);
+    expect(index.stories.map((s) => s.id)).toEqual(["stays", "taken"]);
+  });
 });
 
 describe("Story.rankingRows", () => {
@@ -173,6 +189,10 @@ describe("Story.rankingRows", () => {
       const rows = await Story.rankingRows();
 
       expect(built).not.toHaveBeenCalled();
+      // Rows are plain objects, so a reader on this path that called a record
+      // method would throw here: the filter and the serializer both run.
+      expect(rows.stories.some((row) => row instanceof Story)).toBe(false);
+      expect((await Story.listFiltered({ index: rows, status: "claimed" })).map((s) => s.id)).toEqual(["full"]);
       expect(JSON.stringify(serializeStories(rows.stories, rows))).toBe(
         JSON.stringify(serializeStories(full.stories, full)),
       );

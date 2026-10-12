@@ -14,14 +14,16 @@ Trails.application!.configure(function () {
   this.config.considerAllRequestsLocal = false;
 
   // NOT forced, deliberately — `trails new` writes `true` here. The tasks CLI
-  // and ringo reach this process over plain HTTP on loopback
-  // (`TRAILMAP_URL=http://127.0.0.1:<port>`, docs/deploy.md), and `forceSsl`
-  // would answer every one of those calls with a 301 to an https:// origin
-  // nothing listens on. The public vhost is TLS-terminated and redirected by
-  // dokku's nginx (nginx.conf.sigil) before a request gets here, so the
-  // redirect this would add is already done where the certificate lives.
-  // `assumeSsl` stays off for the same reason: a loopback request IS http.
+  // and ringo reach this process over plain HTTP on loopback (docs/deploy.md),
+  // and `forceSsl` would answer each call with a 301 to an https:// origin
+  // nothing listens on. dokku's nginx terminates TLS and redirects the public
+  // vhost (nginx.conf.sigil) before a request gets here.
+  // `assumeSsl` is off for the same reason: a loopback request IS http.
+  this.config.assumeSsl = false;
   this.config.forceSsl = false;
+
+  // NOT adopted from `trails new`: `logTags` and the `TaggedLogging` logger,
+  // which the template builds from `process.stdout`. The default logger stays.
 
   // Change to "debug" to log everything (including potentially personally-identifiable information!)
   this.config.logLevel = env.RAILS_LOG_LEVEL ?? "info";

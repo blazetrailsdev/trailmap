@@ -427,9 +427,16 @@ describe("ringoStoryRows / trailmapStoryRows", () => {
 describe("trailmapRfcBars / barKey", () => {
   const seg = (status: string, count: number) =>
     `<span class="seg s-${status}" style="width:10%" title="${count} ${status}"></span>`;
+  const cap = `<span class="sbarcap">4 stories</span>`;
+  const withBar = trailmapRfcRow.replace("</span></div>", `${cap}${seg("done", 3)}${seg("in-progress", 1)}</span></div>`);
+
+  it("says the markup changed when a row's segments do not add up to the total it states", () => {
+    expect(() => trailmapRfcBars(withBar.replace(/class="seg s-done"/, 'class="segment done"'))).toThrow(
+      /1 stories in segments, 4 stated/,
+    );
+  });
 
   it("reads each row's segments by RFC id, and an RFC with no stories as an empty bar", () => {
-    const withBar = trailmapRfcRow.replace("</span></div>", `${seg("done", 3)}${seg("in-progress", 1)}</span></div>`);
 
     expect(trailmapRfcBars(withBar + trailmapRfcRow.replace("0001-x", "0002-y"))).toEqual(
       new Map([["0001-x", { done: 3, "in-progress": 1 }], ["0002-y", {}]]),

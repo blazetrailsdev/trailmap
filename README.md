@@ -233,11 +233,9 @@ RINGO_BASE=http://$(docker inspect -f \
 TRAILMAP_BASE=http://127.0.0.1:3001 pnpm gate:pages
 ```
 
-The same run compares each `/rfcs` row's progress bar — status and count per
-RFC — against the `story_status` ringo's server computes, which no offline gate
-can see. `pnpm gate:pages --self-test=bar` builds trailmap's bar from the wrong
-RFC status and expects red; it needs ringo and the database but no trailmap
-server, and takes seconds.
+The same run compares each `/rfcs` progress bar against the `story_status`
+ringo's server computes. `pnpm gate:pages --self-test=bar` builds trailmap's
+bar from the wrong RFC status and expects red; it needs no trailmap server.
 
 It fetches every page on both sides and takes about ten minutes over the live
 database. `RINGO_BASE` has to reach ringo *without* SSO — `ringo.deanoftech.com` answers

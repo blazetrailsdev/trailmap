@@ -346,8 +346,9 @@ function poll(name, everyMs, onAnswer, onFailure = () => {}) {
     inFlight = true;
     try {
       const signal = AbortSignal.timeout(everyMs);
+      const started = performance.now();
       const response = await fetch(readPath + "/" + name, { credentials: "same-origin", signal });
-      if (response.ok) onAnswer(await response.json());
+      if (response.ok) onAnswer(await response.json(), started);
       else onFailure();
     } catch {
       onFailure();
@@ -521,7 +522,7 @@ document.addEventListener("click", async (event) => {
   button.disabled = outcome.disabled;
   if (outcome.text !== undefined) button.textContent = outcome.text;
   if (outcome.title !== undefined) button.title = outcome.title;
-  if (outcome.state) renderSpawnLoop(outcome.state);
+  if (outcome.state) loopWritten(outcome.state);
   if (outcome.alert) window.alert(outcome.alert);
   if (outcome.resetAfterMs) {
     setTimeout(() => {
@@ -531,14 +532,16 @@ document.addEventListener("click", async (event) => {
   }
 });
 
-// ---------------------------------------------------------------------------
 // The spawn loop's settings. ringo keeps the state; the panel shows its last
 // answer, and every control's answer IS the new state.
-// ---------------------------------------------------------------------------
+
+/** When a control last answered with the loop's state: a poll older than it is stale. */
+let loopWrittenAt = 0;
 
 function renderSpawnLoop(state) {
   const view = spawnLoopView(state);
   const toggle = byId("slToggle");
+  toggle.disabled = false;
   toggle.textContent = view.toggle;
   toggle.dataset.enabled = String(view.enabled);
   toggle.classList.toggle("btn-green", !view.enabled);
@@ -548,25 +551,37 @@ function renderSpawnLoop(state) {
     if (document.activeElement !== byId(id)) byId(id).value = value;
   }
   if (document.activeElement !== byId("slBundle")) byId("slBundle").checked = view.bundleMode;
-  byId("slLiveNow").textContent = view.liveNow;
-  byId("slOpenNow").textContent = view.openNow;
-  byId("slLastSpawn").textContent = view.lastSpawn;
-  byId("slNext").textContent = view.next;
+  for (const [id, text] of [["slLiveNow", view.liveNow], ["slOpenNow", view.openNow], ["slLastSpawn", view.lastSpawn], ["slNext", view.next]]) {
+    byId(id).textContent = text;
+  }
   byId("slNext").title = view.nextTitle;
   byId("slSkip").style.display = view.skip ? "" : "none";
   byId("slBundleList").innerHTML = view.bundleList;
   byId("slBundleList").style.display = view.bundleList ? "" : "none";
 }
 
+function loopWritten(state) {
+  loopWrittenAt = performance.now();
+  renderSpawnLoop(state);
+}
+
 byId("slControls").innerHTML = spawnLoopControls();
-byId("spawnLoopPanel").addEventListener("change", async () => {
+// Until ringo has said whether the loop runs, a click cannot know which way to toggle.
+byId("slToggle").disabled = true;
+byId("spawnLoopPanel").addEventListener("change", async (event) => {
   const request = controlRequest("loop-settings", {
-    liveCap: byId("slLiveCap").value,
-    queueCap: byId("slQueueCap").value,
-    interval: byId("slStagger").value,
-    bundle: byId("slBundle").checked,
+    liveCap: byId("slLiveCap").value, queueCap: byId("slQueueCap").value,
+    interval: byId("slStagger").value, bundle: byId("slBundle").checked,
   });
   const outcome = controlOutcome(request, await send(request), "");
-  if (outcome.state) renderSpawnLoop(outcome.state);
+  if (outcome.state) loopWritten(outcome.state);
+  if (outcome.alert) {
+    window.alert(outcome.alert);
+    // Unfocused, the field takes ringo's value back on the re-read.
+    event.target.blur();
+    polls["spawn-loop"]();
+  }
 });
-poll("spawn-loop", 15000, renderSpawnLoop);
+poll("spawn-loop", 15000, (state, started) => {
+  if (started >= loopWrittenAt) renderSpawnLoop(state);
+});

@@ -652,9 +652,14 @@ describe("the spawn loop's controls", () => {
       disabled: false,
       state: STATE,
     });
-    expect(controlOutcome(toggle, { ok: false, text: "bad request" }, "play")).toEqual({ disabled: false });
     expect(controlOutcome(toggle, { ok: true, text: "not json" }, "play")).toEqual({ disabled: false });
-    expect(controlOutcome(toggle, { error: "offline" }, "play")).toEqual({ disabled: false });
+    // A refusal or a failed fetch is said, where ringo swallows both.
+    expect(controlOutcome(toggle, { ok: false, text: "bad request" }, "play")).toEqual({
+      disabled: false, alert: "Spawn loop not changed: bad request",
+    });
+    expect(controlOutcome(toggle, { error: "offline" }, "play")).toEqual({
+      disabled: false, alert: "Spawn loop not changed: offline",
+    });
   });
 
   it("holds spawn now while the tick registers, then asks for a re-read", () => {

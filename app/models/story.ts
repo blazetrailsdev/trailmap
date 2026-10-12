@@ -226,27 +226,26 @@ export class Story extends Base {
 
   /**
    * The outline, with a RECORD in place of every claimable story and of no
-   * other: what `claimable()` and `nextBundle()` need, since both return only
-   * claimable stories and `nextBundleIn` reads `est_loc` and `cluster` of
-   * nothing else. The queue is ranked twice — once over the outline to learn
-   * which records to load, once by the caller over this — and the second pass
-   * is the one that answers, so a story that stopped being claimable between
-   * the two reads is dropped, not served.
+   * other: `claimable()` and `nextBundle()` return only claimable stories, and
+   * `nextBundleIn` reads `est_loc` and `cluster` of nothing else. The caller
+   * ranks again over this, and that pass is the one that answers, so a story
+   * no longer claimable by the second read is dropped, not served.
    */
   static async claimableIndex(): Promise<RankingIndex> {
     const outline = await Story.rankingOutline();
     const ids = claimableIn(outline).map((story) => story.id);
     const records = new Map((await Story.where({ id: ids }).toArray()).map((s) => [s.id, s]));
+    // A claimable story deleted between the two reads has no record, and is
+    // dropped: left as an outline row it would be served with four columns.
+    const stories = outline.stories.filter((s) => !ids.includes(s.id) || records.has(s.id));
     // The cast is the method's contract: only the claimable entries are records.
-    return { ...outline, stories: outline.stories.map((s) => records.get(s.id) ?? s) as Story[] };
+    return { ...outline, stories: stories.map((s) => records.get(s.id) ?? s) as Story[] };
   }
 
   /**
-   * The whole snapshot as plucked ROWS — every column the JSON publishes, as
-   * plain objects — for the two endpoints that serialize every story
-   * (`/stories.json`, `/index.json`). Typed as `Story` because every reader on
-   * that path reads columns and nothing else; a row is NOT a record, and has
-   * no associations, callbacks or `save`.
+   * The whole snapshot as plucked ROWS — every published column, as plain
+   * objects — for `/stories.json` and `/index.json`. Typed as `Story` because
+   * every reader on that path reads columns only; a row is NOT a record.
    */
   static async rankingRows(): Promise<RankingIndex> {
     const rows = await Story.pluck(...SERIALIZED_COLUMNS);

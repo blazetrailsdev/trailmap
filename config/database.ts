@@ -151,6 +151,11 @@ export function hasTasksDatabase(): boolean {
   return Boolean(env.TASKS_DATABASE);
 }
 
+/** The path `TASKS_DATABASE` names, for the one caller that derives from it. */
+export function tasksDatabasePath(): string | undefined {
+  return env.TASKS_DATABASE?.trim() || undefined;
+}
+
 /**
  * The trails stats database, read-only.
  *

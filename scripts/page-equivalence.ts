@@ -139,8 +139,7 @@ async function main(): Promise<number> {
   console.log(`${rfcIds.length} RFCs, ${storyIds.length} stories\n`);
 
   if (BAR_SELF_TEST) {
-    // The fault: `storyStatusCounts` handed the wrong RFC status — "active"
-    // for every RFC, which is the bar the authored statuses would draw.
+    // The fault: `storyStatusCounts` handed "active" for every RFC.
     const wrong = new Map(
       rfcs.map((r) => {
         const own = stories.filter((s) => s.rfc_id === r.id).map((s) => s.status);
@@ -166,7 +165,9 @@ async function main(): Promise<number> {
     const pages = Number.parseInt(/class="pager" data-pages="(\d+)"/.exec(first)?.[1] ?? "1", 10);
     for (let page = 1; page <= pages; page++) {
       const html = page === 1 ? first : (await get(`${url}&page=${page}`)).html;
-      for (const [id, bar] of trailmapRfcBars(html)) bars.set(id, bar);
+      const rows = trailmapRfcBars(html);
+      if (rows.size === 0) problems.push(`/rfcs bar: no rows extracted from ${url} page ${page} — its markup has changed`);
+      for (const [id, bar] of rows) bars.set(id, bar);
     }
   }
   problems.push(...(await compareBars(ringoBase, rfcIds, bars)));
@@ -279,15 +280,13 @@ async function main(): Promise<number> {
  *
  * ringo's map is the EFFECTIVE status — its index applies the parent-RFC
  * override on load (`effectiveStoryStatus`, webhook/tasksdb.go) — so the one
- * status rule (`app/views/shared/_status-badge`) agrees with it, and a `ready`
- * story under a draft RFC is `draft` on both sides.
+ * status rule (`app/views/shared/_status-badge`) agrees with it.
  *
- * ONE KNOWN DIFFERENCE, stated rather than tolerated silently. Since btwhooks
- * `6a18453` ringo also repaints, for display, a `ready` story whose deps are
- * unfinished as `blocked` (`markDepBlocked`, webhook/depblocked.go). trailmap
- * does not port that yet (`show-dep-held-ready-stories-as-blocked`, RFC 0136),
- * so `ready` and `blocked` are compared as ONE count (`barKey`). Every
- * other status is compared exactly, and the override still crosses that line:
+ * ONE KNOWN DIFFERENCE, stated rather than tolerated silently: since btwhooks
+ * `6a18453` ringo also draws a `ready` story with unfinished deps as `blocked`
+ * (`markDepBlocked`). trailmap does not port that yet
+ * (`show-dep-held-ready-stories-as-blocked`, RFC 0136), so the two are
+ * compared as ONE count (`barKey`). The override still crosses that line:
  * `ready` to `draft` leaves the folded count.
  */
 async function compareBars(

@@ -15,18 +15,18 @@
  * and a page that 500s for want of an unset variable nobody has heard of is
  * worse than one that finds the file.
  *
- * Both are read as `config.x.tasks`, which config/application.ts fills from
- * the environment at boot.
+ * `TASKS_DIR` is `config.x.tasks.dir`, which config/application.ts fills from
+ * the environment at boot; the database path is config/database.ts's.
  */
 import { Trails } from "@blazetrails/trailties";
+import { tasksDatabasePath } from "./database.js";
 
 /** The tasks checkout, or null when neither variable names one. */
 export function tasksContentDir(): string | null {
-  const tasks = Trails.application!.config.x.tasks as { dir?: string; database?: string };
-  const dir = tasks.dir?.trim();
+  const dir = (Trails.application!.config.x.tasks.dir as string | undefined)?.trim();
   if (dir) return dir.replace(/\/+$/, "");
 
-  const db = tasks.database?.trim();
+  const db = tasksDatabasePath();
   if (!db) return null;
   const match = /^(.*)\/\.git\/[^/]+$/.exec(db);
   return match ? match[1]! : null;

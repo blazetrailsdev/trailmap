@@ -18,10 +18,10 @@ export class Trailmap extends Application {
     // trailmap's own settings, read from the environment ONCE, here. Their
     // readers (config/fleet.ts, config/tasks-content.ts) take them from
     // `config.x` and never from `env`, so a test or a console sets the
-    // setting rather than the process's environment.
+    // setting rather than the process's environment. `TASKS_DATABASE` is NOT
+    // here: config/database.ts owns it, and is its only reader.
     this.config.x.fleet.repoPaths = env.FLEET_REPO_PATHS;
     this.config.x.tasks.dir = env.TASKS_DIR;
-    this.config.x.tasks.database = env.TASKS_DATABASE;
   }
 
   // Configuration for the application, engines, and trailties goes here.

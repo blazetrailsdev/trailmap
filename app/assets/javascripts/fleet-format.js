@@ -378,10 +378,7 @@ export function controlRequest(action, data) {
       return { path: "/spawnloop/skip", body: null, state: true };
     case "loop-now":
       return {
-        path: "/spawnloop/spawn-now",
-        body: null,
-        busy: "spawning…",
-        done: "spawning…",
+        path: "/spawnloop/spawn-now", body: null, busy: "spawning…", done: "spawning…",
         // A tick takes a moment to register: hold the button, and re-read.
         resetAfterMs: 1500,
         refresh: "spawn-loop",
@@ -457,7 +454,7 @@ const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  *   away on success, that is a dead button with nothing to say why.
  * - the loop's settings never stay disabled: the control is still there after
  *   the click, and a success carries the loop's new `state` for the page to
- *   draw. "spawn now" is the exception, held like merge and then re-read
+ *   draw. A refusal or a failed fetch alerts, where ringo says nothing. "spawn now" is the exception, held like merge and then re-read
  *   (`refresh`), because ringo answers before the tick has registered.
  */
 export function controlOutcome(request, result, label) {
@@ -467,7 +464,10 @@ export function controlOutcome(request, result, label) {
   const outcome = { disabled: succeeded || (!request.quiet && !!request.resetAfterMs) };
   if (answered && request.refresh) outcome.refresh = request.refresh;
   if (request.quiet) return outcome;
-  if (request.state) return succeeded ? stateOutcome(result.text) : { disabled: false };
+  if (request.state) {
+    if (succeeded) return stateOutcome(result.text);
+    return { disabled: false, alert: "Spawn loop not changed: " + (answered ? result.text : result.error) };
+  }
 
   const said = answered ? result.text : result.error;
   if (succeeded) outcome.text = request.report ? request.report(result.text) : request.done;
@@ -491,9 +491,7 @@ function stateOutcome(text) {
   return { disabled: false };
 }
 
-// ---------------------------------------------------------------------------
-// The spawn loop's settings panel
-// ---------------------------------------------------------------------------
+// The spawn loop's settings panel.
 
 /** The panel's buttons, drawn once; `spawnLoopView` says what each shows. */
 export const spawnLoopControls = () =>
@@ -537,17 +535,13 @@ export function spawnLoopView(s, now = Date.now()) {
     nextTitle = s.next.id;
   }
   return {
-    enabled: !!s.enabled,
-    toggle: s.enabled ? "pause" : "play",
-    liveCap: s.live_cap,
-    queueCap: s.queue_cap,
+    enabled: !!s.enabled, toggle: s.enabled ? "pause" : "play",
+    liveCap: s.live_cap, queueCap: s.queue_cap,
     interval: Math.round((s.stagger_seconds || 0) / 60),
     bundleMode: !!s.bundle_mode,
-    liveNow: "(now: " + (s.live_now || 0) + ")",
-    openNow: "(now: " + (s.open_now || 0) + ")",
+    liveNow: "(now: " + (s.live_now || 0) + ")", openNow: "(now: " + (s.open_now || 0) + ")",
     lastSpawn: s.last_spawn_at ? "(latest: " + timeAgo(s.last_spawn_at, now) + ")" : "",
-    next,
-    nextTitle,
+    next, nextTitle,
     skip: !s.bundle_mode && !!(s.next && s.next.id),
     bundleList: bundle
       .map((story) =>

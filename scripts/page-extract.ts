@@ -551,12 +551,19 @@ export function trailmapRfcRows(html: string): RfcListRow[] {
  */
 export function trailmapRfcBars(html: string): Map<string, Record<string, number>> {
   return new Map(
-    rowsOf(html, "item-row").map((row) => [
-      decodeURIComponent(hrefIds(row, "rfc")[0] ?? ""),
-      Object.fromEntries(
-        [...row.matchAll(/class="seg s-([a-z-]+)"[^>]*title="(\d+) /g)].map((m) => [m[1]!, Number(m[2])]),
-      ),
-    ]),
+    rowsOf(html, "item-row").map((row) => {
+      const id = decodeURIComponent(hrefIds(row, "rfc")[0] ?? "");
+      const segments = [...row.matchAll(/class="seg s-([a-z-]+)"[^>]*title="(\d+) /g)];
+      // The row states its own total beside the bar. Segments that do not add
+      // up to it mean this pattern stopped matching the template, and that is
+      // said here, not left to read as a difference from ringo.
+      const stated = Number(/class="sbarcap">(\d+) /.exec(row)?.[1] ?? 0);
+      const drawn = segments.reduce((sum, m) => sum + Number(m[2]), 0);
+      if (id === "" || drawn !== stated) {
+        throw new Error(`/rfcs row "${id}": ${drawn} stories in segments, ${stated} stated — the row's markup has changed`);
+      }
+      return [id, Object.fromEntries(segments.map((m) => [m[1]!, Number(m[2])]))];
+    }),
   );
 }
 
