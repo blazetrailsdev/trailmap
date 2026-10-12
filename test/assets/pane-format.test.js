@@ -3,6 +3,7 @@ import {
   POLL_MS,
   SLOW_POLL_MS,
   atBottom,
+  failureKind,
   initialState,
   noticeText,
   pollDelay,
@@ -82,6 +83,14 @@ describe("screenStep", () => {
     expect(shouldPoll(state, { paused: false, hidden: false })).toBe(true);
     // Only a failure that asking again cannot fix slows the asking down.
     expect(pollDelay(state)).toBe(kind === "refused" ? SLOW_POLL_MS : POLL_MS);
+  });
+
+  it("classifies a failed poll by the status it came under", () => {
+    expect(failureKind(undefined)).toBe("unreachable");
+    expect(failureKind(502)).toBe("unreachable");
+    expect(failureKind(500, "boom")).toBe("pane");
+    expect(failureKind(503, " no ringo origin is configured\n")).toBe("refused");
+    expect(failureKind(403)).toBe("refused");
   });
 
   it("clears the unreachable notice on the next answer", () => {
