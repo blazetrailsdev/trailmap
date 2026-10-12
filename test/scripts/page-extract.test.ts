@@ -8,6 +8,8 @@ import {
   extractTrailmapStory,
   ringoRfcRows,
   ringoStoryRows,
+  barKey,
+  trailmapRfcBars,
   trailmapRfcRows,
   trailmapStoryRows,
   badgeStatuses,
@@ -419,6 +421,25 @@ describe("ringoStoryRows / trailmapStoryRows", () => {
     expect(diffFacts(ringoStoryRows(ringoStoryRow)[0], trailmapStoryRows(ported)[0])).toEqual([
       "priorityInherited: ringo=true trailmap=false",
     ]);
+  });
+});
+
+describe("trailmapRfcBars / barKey", () => {
+  const seg = (status: string, count: number) =>
+    `<span class="seg s-${status}" style="width:10%" title="${count} ${status}"></span>`;
+
+  it("reads each row's segments by RFC id, and an RFC with no stories as an empty bar", () => {
+    const withBar = trailmapRfcRow.replace("</span></div>", `${seg("done", 3)}${seg("in-progress", 1)}</span></div>`);
+
+    expect(trailmapRfcBars(withBar + trailmapRfcRow.replace("0001-x", "0002-y"))).toEqual(
+      new Map([["0001-x", { done: 3, "in-progress": 1 }], ["0002-y", {}]]),
+    );
+  });
+
+  it("folds ready and blocked into one count and compares every other status exactly", () => {
+    expect(barKey({ ready: 2, blocked: 1, done: 4, draft: 0 })).toBe("4 done · 3 ready+blocked");
+    expect(barKey({ ready: 1, blocked: 2, done: 4 })).toBe(barKey({ ready: 3, done: 4 }));
+    expect(barKey({ draft: 3, done: 4 })).not.toBe(barKey({ ready: 3, done: 4 }));
   });
 });
 

@@ -65,6 +65,7 @@ import {
   extractRingoStory,
   extractTrailmapRfc,
   extractTrailmapStory,
+  barKey,
   ringoNotFound,
   trailmapRfcBars,
   type RfcPageFacts,
@@ -285,7 +286,7 @@ async function main(): Promise<number> {
  * `6a18453` ringo also repaints, for display, a `ready` story whose deps are
  * unfinished as `blocked` (`markDepBlocked`, webhook/depblocked.go). trailmap
  * does not port that yet (`show-dep-held-ready-stories-as-blocked`, RFC 0136),
- * so `ready` and `blocked` are compared as ONE count, {@link HELD}. Every
+ * so `ready` and `blocked` are compared as ONE count (`barKey`). Every
  * other status is compared exactly, and the override still crosses that line:
  * `ready` to `draft` leaves the folded count.
  */
@@ -305,19 +306,6 @@ async function compareBars(
   }
   console.log(`ok  /rfcs bar (${rfcIds.length} rfcs, ${problems.length} differences)`);
   return problems;
-}
-
-/** The count `ready` and `blocked` are compared as — see {@link compareBars}. */
-const HELD = "ready+blocked";
-
-/** A bar as one comparable string: its non-zero counts, by status, folded. */
-function barKey(bar: Record<string, number>): string {
-  const counts: Record<string, number> = {};
-  for (const [status, count] of Object.entries(bar)) {
-    const key = status === "ready" || status === "blocked" ? HELD : status;
-    if (count > 0) counts[key] = (counts[key] ?? 0) + count;
-  }
-  return Object.keys(counts).sort().map((status) => `${counts[status]} ${status}`).join(" · ");
 }
 
 /** Every id of one kind, `CONCURRENCY` at a time, with a progress line. */

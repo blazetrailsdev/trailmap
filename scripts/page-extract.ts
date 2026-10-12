@@ -560,6 +560,20 @@ export function trailmapRfcBars(html: string): Map<string, Record<string, number
   );
 }
 
+/**
+ * A bar as one comparable string: its non-zero counts, by status, with `ready`
+ * and `blocked` folded into one — the known difference `compareBars`
+ * (page-equivalence.ts) states.
+ */
+export function barKey(bar: Record<string, number>): string {
+  const counts: Record<string, number> = {};
+  for (const [status, count] of Object.entries(bar)) {
+    const key = status === "ready" || status === "blocked" ? "ready+blocked" : status;
+    if (count > 0) counts[key] = (counts[key] ?? 0) + count;
+  }
+  return Object.keys(counts).sort().map((status) => `${counts[status]} ${status}`).join(" · ");
+}
+
 /** ringo's `/backlog` rows, in page order. */
 export function ringoStoryRows(html: string): StoryListRow[] {
   return rowsOf(html, "row").map((row) => storyRow(row, RINGO_ROW));

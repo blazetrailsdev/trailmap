@@ -467,10 +467,7 @@ export function controlOutcome(request, result, label) {
   const outcome = { disabled: succeeded || (!request.quiet && !!request.resetAfterMs) };
   if (answered && request.refresh) outcome.refresh = request.refresh;
   if (request.quiet) return outcome;
-  if (request.state) {
-    const state = succeeded ? parseState(result.text) : null;
-    return state ? { disabled: false, state } : { disabled: false };
-  }
+  if (request.state) return succeeded ? stateOutcome(result.text) : { disabled: false };
 
   const said = answered ? result.text : result.error;
   if (succeeded) outcome.text = request.report ? request.report(result.text) : request.done;
@@ -483,14 +480,15 @@ export function controlOutcome(request, result, label) {
   return outcome;
 }
 
-/** ringo's loop state out of a response body, or null when it is not one. */
-function parseState(text) {
+/** A setting's outcome: never held, and carrying ringo's new loop state when the body is one. */
+function stateOutcome(text) {
   try {
     const state = JSON.parse(text);
-    return state && typeof state === "object" ? state : null;
+    if (state && typeof state === "object") return { disabled: false, state };
   } catch {
-    return null;
+    // Not JSON: the control comes back and the panel keeps what it showed.
   }
+  return { disabled: false };
 }
 
 // ---------------------------------------------------------------------------
