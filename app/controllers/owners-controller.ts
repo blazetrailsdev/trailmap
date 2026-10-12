@@ -3,7 +3,7 @@ import { ApplicationController } from "./application-controller.js";
 import { Owner } from "../models/owner.js";
 import { Repository } from "../models/repository.js";
 import { viewerOf } from "./concerns/viewer.js";
-import { openCountForRepo } from "../models/concerns/repo-scope.js";
+import { openCountsByRepo } from "../models/concerns/repo-scope.js";
 
 /**
  * `/:owner` — the owner root, as GitHub's account page is: who this is, and
@@ -15,16 +15,11 @@ import { openCountForRepo } from "../models/concerns/repo-scope.js";
  *
  * Each row carries its repo's open-story count, which is the only number worth
  * putting next to a repository name here: it is what tells you where the work
- * is. It is a COUNT per repository — `openCountForRepo`, not
- * `storiesForRepo(…).filter(…)`, which plucked eight columns of nine thousand
- * `trails` stories per row to arrive at one integer.
+ * is. `openCountsByRepo` answers every row with one grouped query.
  *
  * Only the repositories the viewer can read are listed
  * (`Repository#isReadableBy`): a private one is not a row with a `private`
  * tag for a stranger, it is not a row, and the tab pages 404 it to match.
- *
- * Still one query per repository, which is fine at four and would not be at
- * four hundred; the day that matters it becomes one grouped query.
  */
 export class OwnersController extends ApplicationController {
   async show(): Promise<void> {
@@ -32,11 +27,13 @@ export class OwnersController extends ApplicationController {
     const owner = login === "" ? null : await Owner.findByLogin(login);
     if (owner === null) throw new RecordNotFound(`No owner ${login}`);
 
-    const repos = await Repository.where({ owner_id: owner.id }).order("name").toArray();
+    const all = await Repository.where({ owner_id: owner.id }).order("name").toArray();
     const viewer = await viewerOf(this.request);
+    const repos = [];
+    for (const repo of all) if (await repo.isReadableBy(viewer)) repos.push(repo);
+    const openCounts = await openCountsByRepo(repos.map((repo) => repo.name));
     const rows = [];
     for (const repo of repos) {
-      if (!(await repo.isReadableBy(viewer))) continue;
       rows.push({
         name: repo.name,
         href: `/${owner.login}/${repo.name}`,
@@ -44,7 +41,7 @@ export class OwnersController extends ApplicationController {
         visibility: repo.visibility,
         defaultBranch: repo.default_branch,
         archived: repo.archived,
-        openCount: await openCountForRepo(repo.name),
+        openCount: openCounts.get(repo.name) ?? 0,
       });
     }
 

@@ -21,8 +21,6 @@ export type RepositoryVisibility = (typeof REPOSITORY_VISIBILITIES)[number];
  * are what the application reads.
  */
 export class Repository extends Hub {
-  static _tableName = "repositories";
-
   declare id: number;
   declare owner_id: number;
   declare name: string;

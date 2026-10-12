@@ -8,7 +8,7 @@ import { Stats } from "./stats.js";
  * time axis of every chart comes from `merged_at` here.
  *
  * `number` is the primary key, not `id` — the cron keys on the GitHub PR
- * number and the table has no `id` column. `_primaryKey` says so; without it
+ * number and the table has no `id` column. `primaryKey` says so; without it
  * trails looks for `id` and every lookup fails on a column that is not there.
  *
  * The comparison tables are joined on `merge_commit_sha`, not on
@@ -19,8 +19,9 @@ import { Stats } from "./stats.js";
  * add one.
  */
 export class PullRequest extends Stats {
-  static _tableName = "pull_requests";
-  static _primaryKey = "number";
+  static {
+    this.primaryKey = "number";
+  }
 
   declare number: number;
   declare title: string | null;

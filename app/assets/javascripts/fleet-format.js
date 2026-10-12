@@ -178,9 +178,8 @@ export function reviewersPollOutcome(result, previous) {
  * pane id, status dot -- the same shape as the worker's line, linked to the
  * same live view), a reviewer pinned to a PR whose pane has gone (the agent
  * and a dash, because the assignment outlives the pane), and no reviewer at
- * all (a dash). ringo offers a `+` in the last two; this page is read-only and
- * offers none, but it still says which of the three it is -- "nobody is
- * reviewing this" is the thing a reader most wants to see.
+ * all (a dash). The last two offer ringo's `+`, which spawns a reviewer -- as
+ * the loop's CURRENT reviewer, not the old pin, when it is a respawn.
  *
  * And a fourth state that is NOT one of them: no answer yet. `reviewers` is
  * null before the first poll lands and while every poll is failing, and then
@@ -194,9 +193,29 @@ export function reviewerLine(pr, reviewers = null) {
   const entry = reviewers[reviewerKey(pr.owner, pr.repo, pr.pr)];
   const chip = entry ? agentChip(entry.agent, entry.blocked_by_usage) : "";
   if (entry && entry.pane_id) return paneLine(REV_EMOJI, entry.pane_id, entry.pane_status, chip);
+  const args = { owner: pr.owner, repo: pr.repo, pr: pr.pr, ...(entry ? { respawn: "1" } : {}) };
+  const title = entry ? "Respawn the reviewer for this PR" : "Spawn a reviewer for this PR";
+  return unassignedLine(REV_EMOJI, "reviewer", chip, control("add-reviewer", args, { cls: "add-pane", title, label: "+" }));
+}
+
+/**
+ * The worker row. With no pane it offers a `+` that re-attaches a worker to
+ * the PR's existing worktree -- only when the branch is known, because the
+ * worktree is resolved from it (`workerLine`, `dashboard.go:849`).
+ */
+export function workerLine(pr) {
+  if (pr.pane) return paneLine(WORK_EMOJI, pr.pane, pr.paneStatus);
+  if (!pr.branch) return "";
+  const args = { owner: pr.owner, repo: pr.repo, pr: pr.pr, branch: pr.branch };
+  const title = "Re-attach a worker to this PR's worktree";
+  return unassignedLine(WORK_EMOJI, "worker", "", control("add-worker", args, { cls: "add-pane", title, label: "+" }));
+}
+
+/** A pane row with no pane in it: a dash, and the button that would fill it. */
+function unassignedLine(label, role, lead, button) {
   return (
-    '<div class="pcell unassigned"><span class="plabel" title="reviewer">' + REV_EMOJI + "</span>" +
-    '<span class="pval">' + chip + '<span class="dash">—</span></span></div>'
+    '<div class="pcell unassigned"><span class="plabel" title="' + role + '">' + label + "</span>" +
+    '<span class="pval">' + lead + '<span class="dash">—</span>' + button + "</span></div>"
   );
 }
 
@@ -361,9 +380,43 @@ export const anyFailedSpawn = (spawns) => spawns.some((s) => s.status === "faile
  * disables the button and lets the next frame remove the row, while merge and
  * respawn report on the button itself and in an alert, because the row stays.
  */
-export function controlRequest(action, data) {
+export function controlRequest(action, data, page = {}) {
   const repo = data.owner + "/" + data.repo;
+  // ringo's `+` buttons report on themselves and stay usable after a refusal.
+  const plus = { busy: "...", done: "spawned", failed: "fail", errored: "err", titled: true };
   switch (action) {
+    case "add-reviewer":
+      return {
+        ...plus,
+        path: "/reviewer/assign",
+        // With no agent known yet, ringo picks the loop's own for a respawn and
+        // refuses anything else by name (`handler.go:1053`), which the `+` shows.
+        body: { owner: data.owner, repo: data.repo, pr: Number(data.pr), agent: page.nextReviewer || "", respawn: !!data.respawn },
+        // The list is polled, not streamed, so the new reviewer is fetched.
+        refresh: "reviewers",
+      };
+    case "add-worker":
+      return {
+        ...plus,
+        path: "/worker/spawn",
+        body: { owner: data.owner, repo: data.repo, pr: Number(data.pr), branch: data.branch },
+      };
+    case "broadcast": {
+      const message = (page.message || "").trim();
+      if (!message) return null;
+      const count = (page.audiences || {})[data.target] || 0;
+      // `note` is where a broadcast reports: on the box, not on its button.
+      if (!count) return { note: "no agents in that group" };
+      const who = (data.target === "all" ? "agent" : "CI-red agent") + (count === 1 ? "" : "s");
+      return {
+        path: "/broadcast",
+        body: { message, target: data.target },
+        // It types into someone else's session, so it names the audience first.
+        confirm: "Send to " + count + " " + who + "?\n\n" + message,
+        note: "sending…",
+        refresh: "broadcast-targets",
+      };
+    }
     case "merge": {
       const pr = Number(data.pr);
       return {
@@ -469,6 +522,16 @@ export function controlOutcome(request, result, label) {
   if (request.quiet) return outcome;
 
   const said = answered ? result.text : result.error;
+  if (request.note) {
+    // The buttons come back either way; the message is kept unless it landed.
+    const sent = succeeded ? broadcastSent(said) : null;
+    return {
+      ...outcome,
+      disabled: false,
+      note: sent ? sent.note : "failed: " + said,
+      ...(sent && sent.complete ? { clearMessage: true } : {}),
+    };
+  }
   if (succeeded) outcome.text = request.report ? request.report(result.text) : request.done;
   else if (answered) outcome.text = request.failed || label;
   else outcome.text = request.errored || label;
@@ -477,6 +540,38 @@ export function controlOutcome(request, result, label) {
   if (!succeeded && alert) outcome.alert = alert(said);
   if (request.resetAfterMs) outcome.resetAfterMs = request.resetAfterMs;
   return outcome;
+}
+
+/** ringo's `/broadcast` answer as the box's note, or null for one it cannot read. */
+function broadcastSent(text) {
+  let out;
+  try {
+    out = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const failed = (out.sent || []).filter((s) => s.error).length;
+  return {
+    complete: !failed,
+    note:
+      "sent to " + out.pane_count + " pane" + (out.pane_count === 1 ? "" : "s") +
+      (out.skipped ? " (" + out.skipped + " pane gone)" : "") +
+      (failed ? " — " + failed + " failed" : ""),
+  };
+}
+
+/**
+ * What the two broadcast buttons say for ringo's `/broadcast/targets` counts.
+ * "all" carries its size so it never turns out to mean nobody; "CI red" is
+ * hidden at zero, because its absence is the signal (`dashboard.go:2092`).
+ */
+export function broadcastButtons(counts) {
+  const all = (counts && counts.all) || 0;
+  const red = (counts && counts["ci-red"]) || 0;
+  return {
+    all: { text: "all (" + all + ")", dim: all === 0 },
+    ciRed: { text: "CI red (" + red + ")", hidden: red === 0 },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -650,7 +745,7 @@ export function prRow(pr, fixers = [], now = Date.now(), reviewers = null, queue
     // because it is information -- and who reviewed a PR is most wanted while
     // reading the merge. ringo renders it unconditionally too
     // (`dashboard.go:1335`).
-    panes: paneLine(WORK_EMOJI, pr.pane, pr.paneStatus) + reviewerLine(pr, reviewers),
+    panes: workerLine(pr) + reviewerLine(pr, reviewers),
   }));
 }
 

@@ -15,14 +15,21 @@
   </div>
 </div>
 
-<% if (!statsConfigured) { %>
+<% if (!charted) { %>
   <div class="card">
-    <div class="card-head"><span class="card-title">No stats database</span></div>
+    <div class="card-head"><span class="card-title">Nothing projected yet</span></div>
     <div class="field-note">
-      This deployment has no <code>STATS_DB</code>, so there are no comparison
-      results to chart. Point it at the stats database the nightly stats-sync
-      cron fills. Every other page is unaffected — see
-      <code>config/initializers/stats-database.ts</code>.
+      <% if (canRefresh) { %>
+        The <code>parity_days</code> projection is empty. It fills itself on the
+        first page load, so a refresh of this page should do it — or run
+        <code>pnpm parity:sync</code> to fill it now.
+      <% } else { %>
+        The <code>parity_days</code> projection is empty, and this deployment has
+        no <code>STATS_DB</code> to fill it from. Run <code>pnpm parity:sync</code>
+        from a host that has the stats database, pointed at this hub. The chart
+        itself needs only the projection — see
+        <code>config/initializers/stats-database.ts</code>.
+      <% } %>
     </div>
   </div>
 <% } else { %>

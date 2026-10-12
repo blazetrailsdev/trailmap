@@ -12,14 +12,12 @@ import { CompareRun } from "./compare-run.js";
 
 /** `api:compare` — the public API surface against Rails'. */
 export class ApiCompareStat extends CompareRun {
-  static _tableName = "api_compare_stats";
   declare misplaced: number;
   declare missing: number;
 }
 
 /** `api:compare --privates` — the same, for Rails' private surface. */
 export class ApiComparePrivatesStat extends CompareRun {
-  static _tableName = "api_compare_privates_stats";
   declare missing: number;
 }
 
@@ -36,7 +34,6 @@ export class ApiComparePrivatesStat extends CompareRun {
  * mapped: the tests percent does not move when one of them does.
  */
 export class TestCompareStat extends CompareRun {
-  static _tableName = "test_compare_stats";
   declare misplaced: number;
   declare skipped: number;
   declare files_mapped: number;
@@ -55,12 +52,10 @@ export class TestCompareStat extends CompareRun {
  * package rather than fail (see the controller).
  */
 export class ApiCallsStat extends CompareRun {
-  static _tableName = "api_calls_stats";
   declare mismatched: number;
 }
 
 /** `calls:args` — the second advisory call check, same synthetic `all` package. */
 export class ApiCallArgsStat extends CompareRun {
-  static _tableName = "api_call_args_stats";
   declare mismatched: number;
 }

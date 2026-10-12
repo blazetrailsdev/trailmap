@@ -78,6 +78,8 @@ export const FLEET_READS: Readonly<Record<string, string>> = {
   "codex-usage": "codex-usage-status",
   asks: "ask/list",
   "drain-status": "reviewer/drain-status",
+  "reviewer-config": "reviewer/config",
+  "broadcast-targets": "broadcast/targets",
 };
 
 /** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
@@ -119,6 +121,9 @@ export const FLEET_CONTROLS: readonly string[] = [
   "spawnloop/dismiss",
   "spawnloop/dismiss-failed",
   "ci-fixer/spawn",
+  "reviewer/assign",
+  "worker/spawn",
+  "broadcast",
   "drain",
   "drain-one",
   "poke-stalled",

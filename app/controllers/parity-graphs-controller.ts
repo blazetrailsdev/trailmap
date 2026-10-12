@@ -1,14 +1,9 @@
 import { ApplicationController } from "./application-controller.js";
 import { hasStatsDatabase } from "../../config/database.js";
-import {
-  PARITY_METRICS,
-  gapsFor,
-  lookupParityMetric,
-  metricAvailable,
-  metricColumns,
-  type ParityMetric,
-} from "../models/parity-metric.js";
+import { PARITY_METRICS, lookupParityMetric, type ParityMetric } from "../models/parity-metric.js";
 import { serializeParitySeries, type ParitySeries } from "../serializers/parity-json.js";
+import { ParityDay } from "../models/parity-day.js";
+import { refreshProjectionIfStale } from "../models/parity-refresh.js";
 
 /**
  * How many packages one request may chart.
@@ -19,12 +14,46 @@ import { serializeParitySeries, type ParitySeries } from "../serializers/parity-
  */
 const MAX_PACKAGES = 8;
 
-/** A `?days=` window, as the lower bound the rollup wants. `all` means none. */
+/**
+ * A `?days=` window, as the lower bound the rollup wants. `all` means none.
+ *
+ * `?days=abc`, `0` and `-5` are all "no bound", silently — which is ringo's
+ * own behaviour, not an oversight: `paritySince` (webhook/parity.go) returns
+ * the empty string for `strconv.Atoi` failing or `n <= 0`. Checked rather than
+ * assumed, because the page's default window is 90 days while the endpoint's
+ * is `all`, and a reader meeting that for the first time reasonably suspects a
+ * divergence.
+ */
 function sinceFor(days: string | undefined): string | undefined {
   if (!days || days === "all") return undefined;
   const n = Number(days);
   if (!Number.isInteger(n) || n <= 0) return undefined;
   return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
+ * One run's gap counters, as the PROJECTION actually stored them.
+ *
+ * `ParityMetric.gaps` is what a run may write; what a given database holds is
+ * whatever was available when it was last synced, which is narrower if that
+ * sync ran against a stats schema older than the metric table. Reading it off
+ * a stored row keeps the answer true of the data being charted, and keeps the
+ * page from needing the stats schema to reflect against.
+ *
+ * Ordered by `metric.gaps` rather than by the JSON object's key order, because
+ * the chart's gap tabs are drawn in this order and ringo emits them in the
+ * metric's order.
+ *
+ * `null`, not `[]`, for a run with no counters — Go marshals its nil slice as
+ * null and the vendored drawing code reads that shape.
+ */
+async function storedGapsFor(metric: ParityMetric): Promise<string[] | null> {
+  if (metric.gaps === undefined || metric.gaps.length === 0) return null;
+  const row = await ParityDay.where({ metric: metric.key }).where("gaps IS NOT NULL").first();
+  const stored = (row?.gaps ?? null) as Record<string, number> | null;
+  if (stored === null) return null;
+  const present = metric.gaps.filter((gap) => gap in stored);
+  return present.length > 0 ? [...present] : null;
 }
 
 /** The comma-separated list form the page's query parameters use. */
@@ -61,7 +90,15 @@ export class ParityGraphsController extends ApplicationController {
    * the page then says the source is missing instead of 500ing.
    */
   async show(): Promise<void> {
-    await this.render({ locals: { statsConfigured: hasStatsDatabase() } });
+    // Whether there is anything to DRAW, which is a question about the
+    // projection and not about `STATS_DB`. The stats file fills `parity_days`
+    // and is not needed to read it, so a deployment without the file charts
+    // whatever the last sync left — the chart is gated on rows, not on an
+    // environment variable.
+    const charted = (await ParityDay.count()) > 0;
+    await this.render({
+      locals: { charted, canRefresh: hasStatsDatabase() },
+    });
   }
 
   /**
@@ -79,13 +116,26 @@ export class ParityGraphsController extends ApplicationController {
    * The response shape is ringo's, field for field, so the vendored drawing
    * code needs no adaptation and scripts/gate-ringo-parity.ts can diff the two
    * endpoints directly.
+   *
+   * That includes the STATUS: every error below renders `{ error }` with a
+   * 200, which is ringo's `fail` closure exactly — it writes the JSON and
+   * never calls `WriteHeader` (webhook/parity.go). A 400 would read better in
+   * isolation and would be a divergence from the wire contract the vendored
+   * `parity-draw.js` is written against, which checks the `error` key rather
+   * than `response.ok`. The gate diffs bodies and would not catch it.
+   *
+   * The snake_case keys — `metrics_selected`, `gaps_by_metric`,
+   * `unknown_packages`, `max_packages` — are that same contract and are the
+   * one place in this repository where CLAUDE.md's camelCase rule does not
+   * apply: they are ringo's JSON field names, read by ringo's own code.
    */
   async data(): Promise<void> {
-    if (!hasStatsDatabase()) {
-      await this.render({ json: { error: "STATS_DB is not set, so there are no stats to chart." } });
-      return;
-    }
-
+    // NO `STATS_DB` CHECK. The page serves from `parity_days`, which is the
+    // whole point of the projection: the 7 GB stats file is needed to REFRESH
+    // it, never to read it, so a deployment without the file still charts
+    // whatever the last sync left. The empty-projection case is answered
+    // below, where it can say which of the two situations it is.
+    //
     // `this.params` is a parameter map read with `.get()`, not a plain object
     // — reading it as one silently yields undefined for every parameter, which
     // looks exactly like a request that asked for nothing.
@@ -103,34 +153,73 @@ export class ParityGraphsController extends ApplicationController {
       }
       if (!selected.some((already) => already.key === metric.key)) selected.push(metric);
     }
-    if (selected.length === 0) selected.push(PARITY_METRICS[0]);
-
     const requested = splitCsv(param("packages"));
     if (requested.length > MAX_PACKAGES) {
       await this.render({ json: { error: `at most ${MAX_PACKAGES} packages at a time` } });
       return;
     }
 
-    // The picker only offers runs this database can actually chart, and only
-    // charts the selected ones that survive that test — the stats schema is
-    // the sync cron's, so trailmap can be older or newer than it.
-    const available = PARITY_METRICS.filter((metric) => metricAvailable(metric));
+    // RESCUED, deliberately. A refresh is an optimisation on top of data the
+    // page already has: an unreadable stats file, a constraint violation or a
+    // lock error must not take down a page that can serve the existing
+    // projection. This is the "render what is there" the lock was chosen for,
+    // and without the rescue it was only true of the lock case.
+    try {
+      await refreshProjectionIfStale();
+    } catch (error) {
+      console.warn(`parity refresh failed; serving the existing projection: ${String(error)}`);
+    }
+
+    // The picker offers the runs the PROJECTION can chart — the ones it holds
+    // rows for — not the ones the stats schema has columns for. Those agree
+    // after a refresh, and only the first is true of a deployment that has no
+    // stats file to reflect against.
+    const charted = new Set(
+      (await ParityDay.distinct().pluck("metric")).filter(
+        (key): key is string => typeof key === "string",
+      ),
+    );
+    const available = PARITY_METRICS.filter((metric) => charted.has(metric.key));
     const gapsByMetric: Record<string, string[] | null> = {};
-    const offered = available.map((metric) => {
-      const gaps = gapsFor(metric);
+    const offered = [];
+    for (const metric of available) {
+      const gaps = await storedGapsFor(metric);
       gapsByMetric[metric.key] = gaps;
-      return { key: metric.key, label: metric.label, gaps };
-    });
+      offered.push({ key: metric.key, label: metric.label, gaps });
+    }
+    // No `?metrics=` means the first run the PROJECTION can chart, not
+    // `PARITY_METRICS[0]`. The two are the same wherever `api:compare` has
+    // rows, which is everywhere today — but defaulting to a run the projection
+    // is missing selects it, charts nothing, and reports no error, which is a
+    // blank page with a populated picker and nothing on screen explaining it.
+    if (selected.length === 0 && available.length > 0) selected.push(available[0]);
+
     const chartable = selected.filter((metric) => available.some((m) => m.key === metric.key));
+
+    // Nothing to chart at all is worth saying rather than answering an empty
+    // picker, and the two reasons are different problems: no sync has run, or
+    // there is no stats database here to run one from.
+    if (available.length === 0) {
+      await this.render({
+        json: {
+          error: hasStatsDatabase()
+            ? "The parity projection is empty. Run `pnpm parity:sync` to fill it."
+            : "The parity projection is empty and STATS_DB is not set, so nothing here can fill it.",
+        },
+      });
+      return;
+    }
 
     // The package list is the union over the selected runs, in canonical
     // order, because the page assigns a colour per package from it and a
     // package charted under one run must keep its colour under the others.
+    // From the PROJECTION, not the comparison tables: this used to be a
+    // `DISTINCT package` over 60k rows, per metric, per request.
     const perMetric = new Map<string, Set<string>>();
     const union = new Set<string>();
     for (const metric of chartable) {
       const names = new Set(
-        (await metric.model.distinct().pluck("package")).filter(
+        (await ParityDay.where({ metric: metric.key }).distinct().pluck("package")).filter(
           (name): name is string => typeof name === "string" && name.length > 0,
         ),
       );
@@ -149,15 +238,25 @@ export class ParityGraphsController extends ApplicationController {
     const unknown = requested.filter((pkg) => !kept.includes(pkg));
 
     const since = sinceFor(param("days"));
+
+    // One run at a time. The page may have eight on the chart and these are
+    // eight independent indexed reads, so Rails' `load_async` — fire them all,
+    // then consume — is the obvious shape, and it is not used here.
+    //
+    // It was not used because `loadAsync` was broken in the vendored trails:
+    // only the FIRST call in a process returned rows and every later one
+    // silently answered an empty set. Charting two runs lost the second, which
+    // is how it was found — the ringo gate caught it. That is FIXED upstream
+    // (trails#8820), so this can become `loadAsync` once the pin moves past
+    // it; it is left sequential here because adopting it needs a vendor bump,
+    // which is its own PR. The reads are a few milliseconds against a
+    // 14k-row table, so the sequencing costs nothing worth hurrying for.
     const series: ParitySeries[] = [];
     for (const metric of chartable) {
       const want = kept.filter((pkg) => perMetric.get(metric.key)?.has(pkg));
       if (want.length === 0) continue;
-      const gaps = gapsByMetric[metric.key] ?? [];
-      const rows = await metric.model
-        .dailyRollup({ packages: want, since, columns: [...metricColumns(metric), ...gaps] })
-        .toArray();
-      series.push(...serializeParitySeries(rows, metric, want, gaps));
+      const rows = await ParityDay.forChart(metric.key, want, since).toArray();
+      series.push(...serializeParitySeries(rows, metric.key, want));
     }
 
     await this.render({
