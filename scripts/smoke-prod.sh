@@ -7,7 +7,8 @@
 #
 #   0  liveness    /up on loopback
 #   1  readiness   /up/ready, the migration head, the loopback API, the public vhost
-#   2  read smoke  every read verb and page, by shape rather than by status
+#   2  read smoke  every read verb and page, by shape rather than by status,
+#                  and the installed `tasks` binary from an agent's worktree
 #
 # Tiers 3 through 5 are later stories. `scripts/deploy.sh` gates on 0 and 1.
 #
@@ -34,6 +35,9 @@ LOOPBACK="${TRAILMAP_LOOPBACK:-http://127.0.0.1:8080}"
 PUBLIC_ORIGIN="${TRAILMAP_PUBLIC_ORIGIN:-http://127.0.0.1}"
 HOSTNAME_PUBLIC="${TRAILMAP_HOSTNAME:-trailmap.deanoftech.com}"
 TIMEOUT="${TRAILMAP_SMOKE_TIMEOUT:-30}"
+# The canary's worktree: made once with `scripts/start-worktree.sh smoke-canary`,
+# so it has the path and the `tasks` link every agent's worktree has.
+WORKTREE="${TRAILMAP_SMOKE_WORKTREE:-$HOME/github/blazetrailsdev/worktrees/smoke-canary}"
 
 failed=0
 work="$(mktemp -d)"
@@ -232,6 +236,128 @@ tier2() {
   page tier2.page-rfcs "/rfcs" "RFCs"
   page tier2.page-backlog "/backlog" "Backlog"
   page tier2.page-graphs-parity "/graphs/parity" "Parity over time"
+
+  tier2Cli "$stories" "$id"
+}
+
+# cli <name> <jq filter> <verb> [<arg> ...] — the installed binary, run where an
+# agent runs it, exiting 0 with a stdout the filter answers `true` for. `-s`
+# reads the whole stdout as one JSON string when it is not JSON (`where`).
+#
+# Stdout goes to a FILE. Through a pipe the CLI loses everything past 64KiB
+# (story tasks-cli-json-truncates-through-a-pipe), and that is a bug with a
+# story, not a deployment fault this suite should be red about every 5 minutes.
+cli() {
+  local name="$1" filter="$2" code=0
+  shift 2
+  if [ -n "$cliSkip" ]; then
+    fail "$name" "not run: $cliSkip"
+    return
+  fi
+  (cd "$WORKTREE" && timeout "$TIMEOUT" tasks "$@") >"$work/stdout" 2>"$work/stderr" || code=$?
+  if [ "$code" != 0 ]; then
+    fail "$name" "tasks $* exited $code" \
+      "\`tasks $*\` exited $code from $WORKTREE: $(tail -n 3 "$work/stderr" | tr '\n' ' ')"
+  elif [ "$(jq -r "$filter" "$work/stdout" 2>/dev/null)" != "true" ] &&
+    [ "$(jq -Rsr "$filter" "$work/stdout" 2>/dev/null)" != "true" ]; then
+    fail "$name" "tasks $* exited 0 without the expected stdout" \
+      "\`tasks $*\` exited 0, but its stdout does not satisfy: $filter"
+  else
+    pass "$name" "tasks $* ok"
+  fi
+}
+
+# What breaks for an agent is not the endpoint. It is TRAILMAP_URL, PATH, where
+# the binary was installed and which checkout it resolves — none of which a
+# `curl` from here can see, because this script is not standing where an agent
+# stands. So this half runs the binary an agent would find, from a worktree of
+# the shape an agent is given, and reads its stdout (RFC 0143).
+#
+# The three things it stands on each have a row of their own, and a verb that
+# could not be run says which of them was missing rather than failing blind.
+tier2Cli() {
+  local stories="$1" id="$2"
+  cliSkip=""
+
+  if [ -z "${TRAILMAP_URL:-}" ]; then
+    fail tier2.cli-trailmap-url "TRAILMAP_URL is not set" \
+      "TRAILMAP_URL is not set in the canary's environment. It is how the CLI
+  finds the application once it is an HTTP client (RFC 0136 phase G); set it
+  where agents get theirs, and in the crontab that runs this suite."
+  else
+    fetch "$TRAILMAP_URL/up"
+    if [ "$status" = "200" ]; then
+      pass tier2.cli-trailmap-url "TRAILMAP_URL $TRAILMAP_URL answers /up"
+    else
+      fail tier2.cli-trailmap-url "TRAILMAP_URL $TRAILMAP_URL answered $status for /up, not 200" \
+        "TRAILMAP_URL is $TRAILMAP_URL, and /up there answered $status. The
+  variable names somewhere the application is not."
+    fi
+  fi
+
+  # A linked worktree: `.git` is a file there and a directory in a checkout.
+  if [ -f "$WORKTREE/.git" ] && [ -e "$WORKTREE/tasks" ]; then
+    pass tier2.cli-worktree "$WORKTREE"
+  else
+    fail tier2.cli-worktree "$WORKTREE is not a worktree with a tasks checkout" \
+      "$WORKTREE is not a linked git worktree holding a \`tasks\` link.
+  Make it with \`scripts/start-worktree.sh ${WORKTREE##*/}\`, or name another
+  with TRAILMAP_SMOKE_WORKTREE."
+    cliSkip="no worktree at $WORKTREE"
+  fi
+
+  local bin
+  bin="$(command -v tasks)"
+  if [ -z "$bin" ]; then
+    fail tier2.cli-binary "tasks is not on PATH" \
+      "no \`tasks\` on PATH ($PATH). An agent's first verb fails the same
+  way; reinstall it with the tasks checkout's scripts/install-bin.sh."
+    cliSkip="${cliSkip:-tasks is not on PATH}"
+  else
+    pass tier2.cli-binary "$bin"
+  fi
+
+  # Found is not resolved: the link in ~/.local/bin has pointed at a checkout
+  # with no node_modules, and a binary run from a worktree has answered for
+  # the canonical checkout. `where` prints what it resolved.
+  local want
+  want="$(realpath "$WORKTREE/tasks" 2>/dev/null)"
+  cli tier2.cli-where \
+    "(split(\"\n\")[0] | ltrimstr(\"tasks dir:\") | ltrimstr(\" \")) as \$dir | \$dir == \"$WORKTREE/tasks\" or \$dir == \"$want\"" \
+    where
+  cli tier2.cli-ready "$stories" ready --json
+  # Phase G's own verification, run continuously: the verb prints what the API
+  # answers. Ids in queue order are the part the spawn loop acts on. Asked
+  # twice before it is believed, because a claim landing between the two reads
+  # is a difference too.
+  if [ -z "$cliSkip" ]; then
+    local same=0
+    for _ in 1 2; do
+      (cd "$WORKTREE" && timeout "$TIMEOUT" tasks ready --json) >"$work/stdout" 2>/dev/null
+      fetch "$LOOPBACK/stories/ready"
+      if [ "$(jq -c '[.[].id]' "$work/stdout" 2>/dev/null)" = "$(jq -c '[.[].id]' "$work/body" 2>/dev/null)" ]; then
+        same=1
+        break
+      fi
+    done
+    if [ "$same" = 1 ]; then
+      pass tier2.cli-ready-matches-api "tasks ready --json names the stories /stories/ready does"
+    else
+      fail tier2.cli-ready-matches-api "tasks ready --json and /stories/ready name different stories" \
+        "\`tasks ready --json\` and $LOOPBACK/stories/ready named different
+  stories, twice. The CLI and the application are not reading one queue."
+    fi
+  else
+    fail tier2.cli-ready-matches-api "not run: $cliSkip"
+  fi
+  cli tier2.cli-next-bundle \
+    "(.stories | $stories) and has(\"bundle_total_loc\") and has(\"max_loc\")" next-bundle --json
+  cli tier2.cli-list "$stories" list --status ready --json
+  if [ -n "$id" ]; then
+    cli tier2.cli-show ".id == \"$id\" and has(\"rfc\") and has(\"status\")" show "$id"
+  else
+    fail tier2.cli-show "no story id to ask for: /stories named none"
+  fi
 }
 
 # ── self-test ──────────────────────────────────────────────────────────────
@@ -243,7 +369,8 @@ tier2() {
 # expect <label> <tier> <want exit> <name that must FAIL, or "">
 expect() {
   local out status=0
-  out="$(PATH="$fake/bin:${basePath:-$PATH}" SMOKE_FAKE="$fake" "$0" --tier "$2" 2>/dev/null)" || status=$?
+  out="$(PATH="$fake/bin:${basePath:-$PATH}" SMOKE_FAKE="$fake" TRAILMAP_URL="${cannedUrl-http://127.0.0.1:8080}" \
+    TRAILMAP_SMOKE_WORKTREE="$fake/worktree" "$0" --tier "$2" 2>/dev/null)" || status=$?
   local failing; failing="$(printf '%s\n' "$out" | awk -F'\t' '$1 == "FAIL" { print $2 }' | paste -sd, -)"
   if [ "$status" != "$3" ] || [ "$failing" != "$4" ]; then
     echo "self-test FAILED: $1 — exit $status (want $3), failing [$failing] (want [$4])" >&2
@@ -252,6 +379,9 @@ expect() {
     echo "self-test ok: $1"
   fi
 }
+
+# cliCan <verb> <stdout> — what the canned `tasks` prints for one verb.
+cliCan() { printf '%s\n' "$2" >"$fake/tasks.$1"; }
 
 # can <key> <status> <content type> <body> — one canned response. The key is
 # the URL path with `/` as `_`, and `public` for the request carrying a Host.
@@ -285,6 +415,11 @@ healthy() {
   can _graphs_parity 200 text/html "${html}Parity over time</h1>"
   can _story_story-a 200 text/html "${html}A story</h1><span class=\"id\">story-a</span>"
   can _rfc_rfc-r 200 text/html "${html}An RFC</h1><span class=\"id\">rfc-r</span>"
+  cliCan where "tasks dir: $fake/worktree/tasks"
+  cliCan ready "[$s]"
+  cliCan next-bundle "{\"stories\":[$s],\"bundle_total_loc\":1,\"max_loc\":2}"
+  cliCan list "[$s]"
+  cliCan show "$s"
 }
 
 selfTest() {
@@ -313,7 +448,16 @@ else
   echo "404 application/json"
 fi
 CURL
-  chmod +x "$fake/bin/curl"
+  cat >"$fake/bin/tasks" <<'TASKS'
+#!/usr/bin/env bash
+# Answers from $SMOKE_FAKE/tasks.<verb>; a verb with nothing canned fails the
+# way the real one does.
+[ -f "$SMOKE_FAKE/tasks.$1" ] || { echo "error: unknown command \"$1\"" >&2; exit 1; }
+cat "$SMOKE_FAKE/tasks.$1"
+TASKS
+  chmod +x "$fake/bin/curl" "$fake/bin/tasks"
+  mkdir -p "$fake/worktree/tasks"
+  echo "gitdir: /nowhere" >"$fake/worktree/.git"
 
   healthy
   expect "a healthy application passes tier 0" 0 0 ""
@@ -347,7 +491,9 @@ CURL
 
   healthy
   can _stories_ready 200 application/json '{"error":"ranking failed"}'
-  expect "a read verb answering 200 with the wrong shape is caught" 2 1 tier2.stories-ready
+  # The CLI still names the queue, so the two no longer agree either.
+  expect "a read verb answering 200 with the wrong shape is caught" 2 1 \
+    tier2.stories-ready,tier2.cli-ready-matches-api
 
   healthy
   can _graphs_parity_data 200 application/json '{"error":"STATS_DB is not set"}'
@@ -367,6 +513,53 @@ CURL
   healthy
   can _story_story-a 200 text/html '<main class="site-main"><h1>Not found</h1><p>No story in the index has the id <code>story-a</code>.</p>'
   expect "a show page answering 200 for something else is caught" 2 1 tier2.page-story
+
+  local cliRows=tier2.cli-where,tier2.cli-ready,tier2.cli-ready-matches-api,tier2.cli-next-bundle,tier2.cli-list,tier2.cli-show
+
+  healthy
+  cannedUrl=""
+  expect "an unset TRAILMAP_URL is named, and the verbs still run" 2 1 tier2.cli-trailmap-url
+  unset cannedUrl
+
+  healthy
+  cannedUrl="http://127.0.0.1:1/nowhere"
+  expect "a TRAILMAP_URL naming somewhere else is named" 2 1 tier2.cli-trailmap-url
+  unset cannedUrl
+
+  healthy
+  cliCan where "tasks dir: /home/dean/github/blazetrailsdev/tasks"
+  expect "a binary answering for the canonical checkout is caught" 2 1 tier2.cli-where
+
+  healthy
+  cliCan ready '[]'
+  expect "a CLI naming a different queue from the API is caught" 2 1 tier2.cli-ready-matches-api
+
+  healthy
+  cliCan next-bundle 'no ready stories'
+  expect "a verb exiting 0 with the wrong stdout is caught" 2 1 tier2.cli-next-bundle
+
+  healthy
+  rm "$fake/tasks.show"
+  expect "a verb exiting non-zero is caught" 2 1 tier2.cli-show
+
+  healthy
+  rm "$fake/worktree/.git"
+  expect "a missing worktree is named apart from the verbs it stopped" 2 1 \
+    "tier2.cli-worktree,$cliRows"
+  echo "gitdir: /nowhere" >"$fake/worktree/.git"
+
+  # No `tasks` anywhere on PATH, the same way the jq case below gets no jq.
+  healthy
+  mkdir -p "$fake/notasks"
+  for tool in bash mktemp rm cat grep jq timeout realpath tail tr; do
+    ln -sf "$(command -v "$tool")" "$fake/notasks/$tool"
+  done
+  mv "$fake/bin/tasks" "$fake/tasks.bin"
+  basePath="$fake/notasks"
+  expect "a missing binary is named apart from the verbs it stopped" 2 1 \
+    "tier2.cli-binary,$cliRows"
+  unset basePath
+  mv "$fake/tasks.bin" "$fake/bin/tasks"
 
   # A PATH holding what the script needs and no jq, rather than a flag the
   # script reads: the guard is `command -v`, so that is what has to miss.

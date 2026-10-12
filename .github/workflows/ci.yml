@@ -106,6 +106,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: ./scripts/smoke-prod.sh --self-test
+      # The schedule's own guarantees — one run at a time, a hung tier killed,
+      # every run written where /crons reads it — against a suite that passes,
+      # fails or hangs on demand.
+      - run: ./scripts/smoke-cron.sh --self-test
 
   boot:
     runs-on: ubuntu-latest
