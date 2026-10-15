@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Dir, getFs } from "@blazetrails/ruby-compat";
-import { STYLESHEET, boxRules, collisionsInList, collisionsInSource } from "../../scripts/class-collisions.js";
+import { STYLESHEET, boxRules, classListsIn, collisionsInList, collisionsInSource } from "../../scripts/class-collisions.js";
 
 /**
  * A CSS class collision is invisible to every other check: the markup is
@@ -45,5 +45,9 @@ describe("the CSS class space", () => {
     expect(collisionsInList("card btn", rules)).toEqual(["btn card"]);
     // `.a.b` is the stylesheet composing the pair: one component.
     expect(collisionsInList("a b", rules)).toEqual([]);
+  });
+
+  it("reads every class attribute of rendered HTML, either quote", () => {
+    expect(classListsIn(`<div class="a b"><span class='c'></span><p data-class="x"></p></div>`)).toEqual(["a b", "c"]);
   });
 });
