@@ -12,7 +12,13 @@ import { controllerTestCase } from "../support/controller-test-case.js";
  * The class-collision rule (`scripts/class-collisions.ts`) over the class
  * lists the `.tse` pages actually render, so a list the template assembles at
  * render time — an `<%= %>` interpolation, a helper's `class:` option — is
- * read whole, where the source scan sees only its literal half. The dashboard
+ * read whole, where the source scan sees only its literal half.
+ *
+ * This file is the guaranteed floor: pages that need only the task database.
+ * Every OTHER page is held to the same rule by `controllerTestCase` itself
+ * (test/support/controller-test-case.ts), which checks every HTML response
+ * any controller test renders: the repo tabs, the owner page, panes and
+ * parity, with the data those tests already build. The dashboard
  * is not here: its rows are drawn in the browser, and `scripts/dashboard-e2e.ts`
  * checks the DOM it ends up with.
  */

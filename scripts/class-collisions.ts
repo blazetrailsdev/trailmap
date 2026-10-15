@@ -13,7 +13,8 @@
  * A compound rule (`.pcell.unassigned`) is the stylesheet saying that pair is
  * one component, so it makes the pair deliberate. A descendant or child rule
  * (`.card .btn`) lays out its LAST class's box in that context, so that class
- * counts as a box class.
+ * counts as a box class. A type, id, attribute or pseudo-class in the compound
+ * (`button.a`, `.a:hover`) still makes its one class a box class.
  */
 export const STYLESHEET = "app/assets/stylesheets/application.css";
 
@@ -37,9 +38,11 @@ export function boxRules(css: string): BoxRules {
     for (const selector of selectors!.split(",")) {
       // The compound the rule styles: the last one, after any combinator.
       const last = selector.trim().split(/\s*[\s>+~]\s*/).pop() ?? "";
-      const compound = last.replace(/::?[\w-]+(\([^)]*\))?/g, "");
+      // Pseudo-classes, attribute tests and a type (`button.a`) narrow which
+      // elements the rule reaches, not which class's box it lays out.
+      const compound = last.replace(/::?[\w-]+(\([^)]*\))?/g, "").replace(/\[[^\]]*\]/g, "").replace(/^[\w-]+|#[\w-]+/g, "");
       const classes = [...compound.matchAll(/\.([\w-]+)/g)].map((m) => m[1]!);
-      if (/^\.[\w-]+$/.test(compound)) box.add(classes[0]!);
+      if (classes.length === 1) box.add(classes[0]!);
       for (let i = 0; i < classes.length; i++) {
         for (let j = i + 1; j < classes.length; j++) composed.add([classes[i], classes[j]].sort().join(" "));
       }

@@ -47,6 +47,13 @@ describe("the CSS class space", () => {
     expect(collisionsInList("a b", rules)).toEqual([]);
   });
 
+  it("counts a type-qualified class as a box class", () => {
+    const rules = boxRules("button.a { display: grid } .b { padding: 0 } a[href].c:hover { position: relative }");
+
+    expect([...rules.box].sort()).toEqual(["a", "b", "c"]);
+    expect(collisionsInList("a b", rules)).toEqual(["a b"]);
+  });
+
   it("reads every class attribute of rendered HTML, either quote", () => {
     expect(classListsIn(`<div class="a b"><span class='c'></span><p data-class="x"></p></div>`)).toEqual(["a b", "c"]);
   });
