@@ -18,7 +18,19 @@ Trails.application!.configure(function () {
   // Change to :null_store to avoid any caching.
   this.config.cacheStore = ":memory_store";
 
-  // Deliberately NOT adopted from `trails new`: the `tmp/caching-dev.txt`
-  // toggle (it needs `node:fs`), `raiseOnMissingCallbackActions` and
-  // `annotateRenderedViewWithFilenames`. Each activates behaviour of its own.
+  // NOT adopted from `trails new`: the `tmp/caching-dev.txt` toggle. It reads
+  // the file with `node:fs`'s synchronous `existsSync`, which this repo forbids;
+  // nothing here does fragment caching for it to switch on.
+
+  // Highlight code that triggered database queries in logs.
+  this.config.activeRecord.verboseQueryLogs = true;
+
+  // Append comments with runtime information tags to SQL queries in logs.
+  this.config.activeRecord.queryLogTagsEnabled = true;
+
+  // Annotate rendered view with file names.
+  this.config.actionView.annotateRenderedViewWithFilenames = true;
+
+  // Raise error when a before_action's only/except options reference missing actions.
+  this.config.actionController.raiseOnMissingCallbackActions = true;
 });

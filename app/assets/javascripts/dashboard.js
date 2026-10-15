@@ -26,6 +26,7 @@ import {
   fixerSummary,
   mainCIByRepo,
   mainCITitle,
+  pauseButton,
   pokeButton,
   prRow,
   queueCard,
@@ -42,6 +43,7 @@ import {
   spawnLoopView,
   spawnRow,
   strandedAgents,
+  usageScraperPill,
   visibleSpawns,
 } from "./fleet-format.js";
 
@@ -405,6 +407,17 @@ const usageStale = (id) => () => byId(id).classList.add("stale");
 
 poll("usage", 60_000, (u) => {
   showUsage("usageBar", claudeUsage(u), !!u.stale);
+  const pause = pauseButton(u);
+  byId("pauseBtn").style.display = "";
+  byId("pauseBtn").textContent = pause.text;
+  byId("pauseBtn").dataset.paused = String(pause.paused);
+  byId("pauseBtn").classList.remove("btn-green", "btn-red");
+  byId("pauseBtn").classList.add(pause.cls);
+  const pill = usageScraperPill(u);
+  byId("watchPill").style.display = "";
+  byId("watchDot").className = "connected " + pill.state;
+  byId("watchPill").classList.toggle("ok", pill.state === "on");
+  byId("watchPill").title = pill.title;
   queue = u.queue || [];
   byId("queueSection").style.display = queue.length ? "" : "none";
   byId("queueSection").innerHTML = queueCard(queue);
@@ -531,6 +544,7 @@ document.addEventListener("click", async (event) => {
     message: byId("bcastMsg").value,
   });
   if (!request) return;
+  if (request.focus) return byId(request.focus).focus();
   if (request.note) byId("bcastNote").textContent = request.note;
   if (!request.path) return;
   if (request.confirm && !window.confirm(request.confirm)) {
@@ -541,8 +555,11 @@ document.addEventListener("click", async (event) => {
   const label = button.textContent;
   button.disabled = true;
   if (request.busy) button.textContent = request.busy;
+  const held = (request.holds || []).map(byId).filter((other) => other !== button);
+  for (const other of held) other.disabled = true;
 
   const result = await send(request);
+  for (const other of held) other.disabled = false;
 
   if (request.statusId) {
     await followDrain(request, result);

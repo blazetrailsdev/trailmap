@@ -403,7 +403,8 @@ export function controlRequest(action, data, page = {}) {
       };
     case "broadcast": {
       const message = (page.message || "").trim();
-      if (!message) return null;
+      // ringo puts the cursor in the box: that is what says why nothing went.
+      if (!message) return { focus: "bcastMsg" };
       const count = (page.audiences || {})[data.target] || 0;
       // `note` is where a broadcast reports: on the box, not on its button.
       if (!count) return { note: "no agents in that group" };
@@ -415,8 +416,19 @@ export function controlRequest(action, data, page = {}) {
         confirm: "Send to " + count + " " + who + "?\n\n" + message,
         note: "sending…",
         refresh: "broadcast-targets",
+        // Both audiences' buttons are held, so a second one cannot be sent
+        // the same sentence mid-flight (`sendBroadcast`, `dashboard.go:2117`).
+        holds: BROADCAST_BUTTONS,
       };
     }
+    // `togglePause` (`dashboard.go:1922`). The button says which way it goes
+    // from the last usage answer, and the re-read redraws it.
+    case "pause":
+      return { path: "/pause", body: { paused: data.paused !== "true" }, keep: true, refresh: "usage" };
+    // `refreshUsageNow`: the scraper pill's click. ringo answers with the
+    // fresh status, which the re-read draws.
+    case "refresh-usage":
+      return { path: "/refresh-usage", body: null, keep: true, refresh: "usage", errorAlert: (message) => "Usage refresh failed: " + message, failureAlert: (text) => "Usage refresh failed: " + text };
     case "merge": {
       const pr = Number(data.pr);
       return {
@@ -554,6 +566,11 @@ export function controlOutcome(request, result, label) {
   const outcome = { disabled: succeeded || (!request.quiet && !!request.resetAfterMs) };
   if (answered && request.refresh) outcome.refresh = request.refresh;
   if (request.quiet) return outcome;
+  // A control that stays where it is: it comes back, and says nothing on itself.
+  if (request.keep) {
+    const alert = answered ? request.failureAlert : request.errorAlert;
+    return { ...outcome, disabled: false, ...(!succeeded && alert ? { alert: alert(answered ? result.text : result.error) } : {}) };
+  }
   if (request.state) {
     if (succeeded) return stateOutcome(result.text);
     return { disabled: false, alert: "Spawn loop not changed: " + (answered ? result.text : result.error) };
@@ -668,6 +685,29 @@ function broadcastSent(text) {
       (out.skipped ? " (" + out.skipped + " pane gone)" : "") +
       (failed ? " — " + failed + " failed" : ""),
   };
+}
+
+/** The broadcast box's buttons, every one of which a send holds. */
+export const BROADCAST_BUTTONS = ["bcastAll", "bcastCIRed"];
+
+/** What the pause button says for ringo's usage answer (`renderUsage`, `dashboard.go:1543`). */
+export function pauseButton(u) {
+  const paused = !!u.manualPause;
+  return { text: paused ? "Resume" : "Pause", paused, cls: paused ? "btn-green" : "btn-red" };
+}
+
+/**
+ * The usage-scraper pill for ringo's usage answer (`renderUsage`,
+ * `dashboard.go:1592-1605`): on while the browser watch is connected and
+ * fresh, stale while connected with an old last scrape, off when it is not
+ * connected at all.
+ */
+export function usageScraperPill(u, now = Date.now()) {
+  const state = u.watchConnected ? (u.stale ? "stale" : "on") : "off";
+  let title = "claude.ai usage scraper (local browser watch)";
+  if (u.lastCheckTime) title += " — last check " + timeAgo(u.lastCheckTime, now);
+  if (u.lastError) title += " — error: " + u.lastError;
+  return { state, title };
 }
 
 /**

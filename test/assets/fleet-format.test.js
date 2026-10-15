@@ -4,7 +4,10 @@ import {
   DEFAULT_REPO,
   anyFailedSpawn,
   control,
+  BROADCAST_BUTTONS,
   broadcastButtons,
+  pauseButton,
+  usageScraperPill,
   controlOutcome,
   controlRequest,
   REV_EMOJI,
@@ -348,12 +351,17 @@ describe("the broadcast box", () => {
       confirm: "Send to 3 agents?\n\nrebase before you push",
       note: "sending…",
       refresh: "broadcast-targets",
+      holds: ["bcastAll", "bcastCIRed"],
     });
     expect(controlRequest("broadcast", { target: "ci-red" }, page).confirm).toContain("Send to 1 CI-red agent?");
   });
 
+  it("holds both audiences' buttons while either sends", () => {
+    expect(controlRequest("broadcast", { target: "ci-red" }, page).holds).toEqual(BROADCAST_BUTTONS);
+  });
+
   it("sends nothing without a message, and says so for an audience of nobody", () => {
-    expect(controlRequest("broadcast", { target: "all" }, { ...page, message: " " })).toBeNull();
+    expect(controlRequest("broadcast", { target: "all" }, { ...page, message: " " })).toEqual({ focus: "bcastMsg" });
     expect(controlRequest("broadcast", { target: "ci-red" }, { ...page, audiences: { all: 3 } })).toEqual({
       note: "no agents in that group",
     });
@@ -1452,5 +1460,45 @@ describe("the usage helpers", () => {
     expect(codexUsage({ sessionPercent: -1, weeklyPercent: -1 }, noon)).toContain("No limits reported yet");
     // A scraper with nothing yet sends no percents: zero, not "NaN%".
     expect(claudeUsage({}, noon)).not.toMatch(/NaN|undefined/);
+  });
+});
+
+describe("the pause button", () => {
+  it("says Pause or Resume from ringo's manualPause", () => {
+    expect(pauseButton({ manualPause: false })).toEqual({ text: "Pause", paused: false, cls: "btn-red" });
+    expect(pauseButton({ manualPause: true, paused: true })).toEqual({ text: "Resume", paused: true, cls: "btn-green" });
+  });
+
+  it("posts the other way from what the button says, and comes back", () => {
+    const request = controlRequest("pause", { paused: "false" });
+    expect(request).toEqual({ path: "/pause", body: { paused: true }, keep: true, refresh: "usage" });
+    expect(controlRequest("pause", { paused: "true" }).body).toEqual({ paused: false });
+    expect(controlOutcome(request, { ok: true, text: '{"paused":true}' }, "Pause")).toEqual({ disabled: false, refresh: "usage" });
+  });
+});
+
+describe("the usage-scraper pill", () => {
+  const now = Date.parse("2026-10-15T12:00:00Z");
+  const base = "claude.ai usage scraper (local browser watch)";
+
+  it("is on, stale or off from the watch's connection and freshness", () => {
+    expect(usageScraperPill({ watchConnected: true }, now)).toEqual({ state: "on", title: base });
+    expect(usageScraperPill({ watchConnected: true, stale: true }, now).state).toBe("stale");
+    expect(usageScraperPill({ watchConnected: false, stale: true }, now).state).toBe("off");
+    expect(usageScraperPill({}, now).state).toBe("off");
+  });
+
+  it("names the last check and the last error in its title", () => {
+    const u = { watchConnected: true, lastCheckTime: "2026-10-15T11:55:00Z", lastError: "paywall" };
+    expect(usageScraperPill(u, now).title).toBe(base + " — last check 5m ago — error: paywall");
+  });
+
+  it("refreshes usage on a click, and alerts when that fails", () => {
+    const request = controlRequest("refresh-usage", {});
+    expect(request.path).toBe("/refresh-usage");
+    expect(request.body).toBeNull();
+    expect(controlOutcome(request, { ok: true, text: "{}" }, "")).toEqual({ disabled: false, refresh: "usage" });
+    expect(controlOutcome(request, { ok: false, text: "not configured" }, "").alert).toBe("Usage refresh failed: not configured");
+    expect(controlOutcome(request, { error: "offline" }, "").alert).toBe("Usage refresh failed: offline");
   });
 });

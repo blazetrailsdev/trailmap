@@ -137,4 +137,6 @@ export const FLEET_CONTROLS: readonly string[] = [
   "ask/answer",
   "reviewer/drain-codex",
   "reviewer/drain-claude",
+  "pause",
+  "refresh-usage",
 ];
