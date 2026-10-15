@@ -63,6 +63,19 @@ describe("the CSS class space", () => {
     expect(collisionsInList("a b", rules)).toEqual([]);
   });
 
+  it("counts two compound boxes against each other", () => {
+    const rules = boxRules(".a.b { display: grid } .c.d { padding: 0 }");
+
+    expect(collisionsInList("a b c d", rules)).toEqual(["a b c d"]);
+  });
+
+  it("exempts a pair only through a compound the element matches", () => {
+    const rules = boxRules(".a { display: block } .b { padding: 0 } .a.b.c { position: relative }");
+
+    expect(collisionsInList("a b", rules)).toEqual(["a b"]);
+    expect(collisionsInList("a b c", rules)).toEqual([]);
+  });
+
   it("reads every class attribute of rendered HTML, either quote", () => {
     expect(classListsIn(`<div class="a b"><span class='c'></span><p data-class="x"></p></div>`)).toEqual(["a b", "c"]);
   });
