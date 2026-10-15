@@ -22,8 +22,10 @@
   <span class="pill" id="eventsPill" title="Dashboard event stream"><span class="connected off" id="eventsDot"></span><span class="ico">&#128225;</span><span class="label">events</span></span>
   <span class="pill" id="tmuxPill" title="tmux socket to agent panes"><span class="connected off" id="tmuxDot"></span><span class="ico">&#128421;</span><span class="label">tmux</span></span>
   <span id="mainCIPills"></span>
+  <button type="button" class="pill" id="watchPill" data-action="refresh-usage" title="claude.ai usage scraper (local browser watch)" style="display:none"><span class="connected off" id="watchDot"></span><span class="ico">&#128202;</span><span class="label">usage scraper</span><span class="action">&#10227;</span></button>
   <span class="pill" id="pullFailPill" style="display:none"><span class="connected off" id="pullFailDot"></span><span class="ico">&#11015;</span><span class="label" id="pullFailLabel">pull failed</span></span>
   <span id="agentPills"></span>
+  <button type="button" class="btn btn-red btn-sm" id="pauseBtn" data-action="pause" data-paused="false" title="Hold every agent's next prompt in the usage queue, or release them" style="display:none">Pause</button>
 </div>
 
 <div id="queueSection" class="card" style="display:none"></div>

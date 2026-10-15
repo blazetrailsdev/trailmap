@@ -36,6 +36,25 @@ import "../../config/application.js";
 import "../../config/routes.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { ApplicationHelper } from "../../app/helpers/application-helper.js";
+import { getFs } from "@blazetrails/ruby-compat";
+import { STYLESHEET, boxRules, classListsIn, collisionsInList, type BoxRules } from "../../scripts/class-collisions.js";
+
+let rules: Promise<BoxRules> | undefined;
+
+/**
+ * Every page any controller test renders is held to the class-collision rule
+ * (`scripts/class-collisions.ts`), so the rendered class lists of every `.tse`
+ * page family are checked by the tests that already build its data — the
+ * repo tabs and owner page included, under `HUB_TEST_DATABASE_URL`.
+ */
+async function assertNoClassCollisions(tc: ActionController.TestCase): Promise<void> {
+  const body = String(tc.response.body ?? "");
+  if (!body.includes("<html")) return;
+  rules ??= getFs().readFile(STYLESHEET, "utf8").then(boxRules);
+  const box = await rules;
+  const found = classListsIn(body).flatMap((list) => collisionsInList(list, box));
+  if (found.length) throw new Error(`class collision in ${tc.request.path}: ${[...new Set(found)].join(", ")}`);
+}
 
 ApplicationController.helper(function (this: object, mod?: object) {
   Object.assign(mod ?? this, ApplicationHelper);
@@ -54,6 +73,12 @@ export async function controllerTestCase(
   ControllerTest.tests(controller);
   const tc = new ControllerTest(`${controller.name}Test`);
   await tc.beforeSetup();
+  const get = tc.get.bind(tc);
+  tc.get = async (...args: Parameters<typeof get>) => {
+    const answer = await get(...args);
+    await assertNoClassCollisions(tc);
+    return answer;
+  };
 
   const application = Trails.application!.routes();
   const routed = [...application.routes].some(

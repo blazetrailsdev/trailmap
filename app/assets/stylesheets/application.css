@@ -490,6 +490,11 @@ ul { margin: 0 0 10px 20px; }
 .connected { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
 .connected.on { background: var(--green); }
 .connected.off { background: var(--red); }
+.connected.stale { background: var(--yellow); }
+/* The scraper pill is a control: a button that looks like its neighbours. */
+.status-group button.pill { border: 0; font: inherit; color: inherit; cursor: pointer; }
+.status-group #pauseBtn { order: 2; margin-left: auto; }
+.status-group .pill .action { margin-left: 2px; color: var(--muted); }
 .ico { font-size: 12px; line-height: 1; display: inline-flex; align-items: center; }
 
 /* Cards: the CI-fixer panel and the manual-spawn control. */
@@ -503,7 +508,6 @@ ul { margin: 0 0 10px 20px; }
 
 /* The queue, the relayed questions and the usage bars -- ringo's own rules,
    on the shell's tokens. */
-.btn-red { background: var(--red); border-color: transparent; color: #fff; }
 .queued { color: var(--yellow); font-size: 12px; }
 .queued-row { padding: 5px 16px 5px 40px; font-size: 12px; border-top: 1px solid var(--border); background: var(--surface); }
 .ask-panel { border-left: 3px solid var(--purple); }
@@ -570,6 +574,8 @@ ul { margin: 0 0 10px 20px; }
 }
 .btn:disabled { opacity: 0.6; cursor: default; }
 .btn-green { background: var(--green); border-color: transparent; color: #fff; }
+/* After `.btn`, or `.btn`'s background wins and a red button draws white. */
+.btn-red { background: var(--red); border-color: transparent; color: #fff; }
 .btn-yellow { background: var(--yellow); border-color: transparent; color: #fff; }
 .btn-blue { background: var(--accent); border-color: transparent; color: #fff; }
 .card-head .card-head { margin-bottom: 0; }

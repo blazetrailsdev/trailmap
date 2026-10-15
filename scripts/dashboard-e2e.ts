@@ -10,7 +10,8 @@
  * each control's request and what its button says afterwards. Chrome is driven
  * over its DevTools protocol with the platform's `fetch` and `WebSocket`.
  */
-import { env, exit, getHttpAsync } from "@blazetrails/ruby-compat";
+import { env, exit, getFs, getHttpAsync } from "@blazetrails/ruby-compat";
+import { STYLESHEET, boxRules, collisionsInList } from "./class-collisions.js";
 
 const APP = String(env.E2E_APP);
 const PR = { owner: "o", repo: "r", pr: 7, title: "A pull request", branch: "a-branch" };
@@ -28,13 +29,18 @@ const ANSWERS: Record<string, [number, string]> = {
   "/ci-fixer/spawn": [200, "ok"],
   "/broadcast": [200, JSON.stringify({ pane_count: 3, sent: [{}, {}, {}] })],
   "/reviewer/assign": [200, "ok"],
+  "/pause": [200, JSON.stringify({ paused: true })],
+  "/refresh-usage": [200, "{}"],
 };
 let reviewers: Array<Record<string, unknown>> = [{ ...PR, pr: 8, agent: "copilot" }];
 let ciRed = 1;
+// ringo's usage answer: the pause button and the scraper pill draw from it.
+const usage = { manualPause: false, watchConnected: false, lastCheckTime: "" };
 const READS: Record<string, () => unknown> = {
   "/reviewer/list": () => reviewers,
   "/reviewer/config": () => ({ next_reviewer: "codex" }),
   "/broadcast/targets": () => ({ all: 3, "ci-red": ciRed }),
+  "/usage-status": () => usage,
 };
 const posts: Array<[string, unknown]> = [];
 
@@ -58,9 +64,14 @@ const ringo = (await getHttpAsync()).createServer((req, res) => {
         reviewers = [...reviewers.filter((r) => r.pr !== sent.pr), { ...PR, pr: sent.pr, agent: "codex", pane_id: `%9${sent.pr}` }];
       }
       if (sent?.target === "ci-red") ciRed = 0;
+      if (path === "/pause") usage.manualPause = sent.paused;
+      if (path === "/refresh-usage") usage.watchConnected = true;
       const [status, text] = ANSWERS[path] ?? [404, "not a ringo endpoint"];
-      res.writeHead(status);
-      res.end(text);
+      // A broadcast is held a moment, so the page's in-flight state can be seen.
+      setTimeout(() => {
+        res.writeHead(status);
+        res.end(text);
+      }, path === "/broadcast" ? 500 : 0);
     });
   }
 });
@@ -114,7 +125,9 @@ const sentNote = `${byId("bcastNote")}.textContent === "sent to 3 panes" && ${by
  * `on` is the button; `act` what is done to the page (a click of `on` unless
  * given); `after` what must come true of `on` (as `b`) once the POST settled.
  */
-const CASES: Array<{ name: string; on: string; act?: string; post: [string, unknown]; after: string }> = [
+const bothHeld = `${byId("bcastAll")}.disabled && ${byId("bcastCIRed")}.disabled`;
+/** `during`, when given, must hold while ringo has the POST and has not answered. */
+const CASES: Array<{ name: string; on: string; act?: string; post: [string, unknown]; during?: string; after: string }> = [
   { name: "merge", on: button("merge"), post: ["/merge-pr", { owner: "o", repo: "r", pr: 7 }],
     after: `b.textContent === "merged" && b.disabled && b.title === "merged"` },
   { name: "add worker, refused by ringo", on: button("add-worker"),
@@ -125,12 +138,16 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
   { name: "respawn fixer", on: button("respawn-fixer"), post: ["/ci-fixer/spawn", { owner: "o", repo: "r" }],
     after: `b.textContent === "spawned" && b.disabled` },
   { name: "broadcast to all, by Enter", on: byId("bcastAll"), act: enter(false),
-    post: ["/broadcast", { message: "rebase", target: "all" }],
-    after: `!b.disabled && b.textContent === "all (3)" && ${sentNote}` },
+    post: ["/broadcast", { message: "rebase", target: "all" }], during: bothHeld,
+    after: `!b.disabled && !${byId("bcastCIRed")}.disabled && b.textContent === "all (3)" && ${sentNote}` },
   // ringo then reports nobody failing CI, and the audience's button goes.
   { name: "broadcast to CI red, by Ctrl+Enter", on: byId("bcastCIRed"), act: enter(true),
-    post: ["/broadcast", { message: "rebase", target: "ci-red" }],
-    after: `b.style.display === "none" && ${sentNote}` },
+    post: ["/broadcast", { message: "rebase", target: "ci-red" }], during: bothHeld,
+    after: `b.style.display === "none" && !${byId("bcastAll")}.disabled && ${sentNote}` },
+  { name: "pause", on: byId("pauseBtn"), post: ["/pause", { paused: true }],
+    after: `!b.disabled && b.textContent === "Resume" && b.dataset.paused === "true"` },
+  { name: "refresh usage from the scraper pill", on: byId("watchPill"), post: ["/refresh-usage", null],
+    after: `!b.disabled && ${byId("watchDot")}.className === "connected on"` },
   // Last, because a reviewer's refresh repaints the rows: the `+` gives way to the pane.
   { name: "add reviewer", on: button("add-reviewer", "7"),
     post: ["/reviewer/assign", { owner: "o", repo: "r", pr: 7, agent: "codex", respawn: false }],
@@ -142,8 +159,19 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
 
 // Both `+` buttons and the live counts on the page means the stream and all three polls have landed.
 await until("the page to draw", () =>
-  evaluate(`!!${button("add-worker")} && !!${button("add-reviewer", "8")} && ${byId("bcastCIRed")}.textContent === "CI red (1)"`),
+  evaluate(
+    `!!${button("add-worker")} && !!${button("add-reviewer", "8")} && ${byId("bcastCIRed")}.textContent === "CI red (1)" && ` +
+      `${byId("pauseBtn")}.textContent === "Pause" && ${byId("watchDot")}.className === "connected off"`,
+  ),
 );
+
+// An empty message sends nothing and puts the cursor in the box.
+await evaluate(`${byId("bcastMsg")}.value = "  "; ${byId("bcastMsg")}.blur(); ${byId("bcastAll")}.click(); true`);
+await new Promise((resolve) => setTimeout(resolve, 300));
+if (posts.length > 0 || !(await evaluate(`document.activeElement === ${byId("bcastMsg")}`))) {
+  throw new Error("dashboard-e2e: an empty broadcast did not focus the message box");
+}
+console.log("ok  broadcast, empty message focuses the box");
 
 // A declined confirm sends nothing and leaves the button as it was.
 await evaluate(`window.alert = () => {}; window.confirm = () => false; ${button("merge")}.click(); true`);
@@ -154,15 +182,25 @@ if (posts.length > 0 || (await evaluate(`${button("merge")}.disabled`))) {
 console.log("ok  merge, confirm declined");
 await evaluate("window.confirm = () => true; true");
 
-for (const { name, on, act, post, after } of CASES) {
+for (const { name, on, act, post, during, after } of CASES) {
   const before = posts.length;
   await evaluate(`${act ?? `${on}.click()`}; true`);
   const sent = await until(`${name}: its POST`, async () => posts[before]);
   if (JSON.stringify(sent) !== JSON.stringify(post)) {
     throw new Error(`dashboard-e2e: ${name} sent ${JSON.stringify(sent)}, not ${JSON.stringify(post)}`);
   }
+  if (during && !(await evaluate(during))) throw new Error(`dashboard-e2e: ${name}: not so in flight: ${during}`);
   await until(`${name}: the button afterwards`, () => evaluate(`(() => { const b = ${on}; return ${after}; })()`));
   console.log(`ok  ${name}`);
 }
-console.log(`dashboard-e2e: ${CASES.length + 1} cases — every control posts what ringo expects and says what happened`);
+// The class lists the page drew at run time, against the source scan's rule
+// (test/assets/class-collisions.test.ts): rows, cards and toggled classes included.
+const rules = boxRules(await getFs().readFile(STYLESHEET, "utf8"));
+const drawn = (await evaluate(`[...document.querySelectorAll("[class]")].map((e) => e.getAttribute("class"))`)) as string[];
+const collided = [...new Set(drawn.flatMap((list) => collisionsInList(list, rules)))];
+if (drawn.length < 50 || collided.length) {
+  throw new Error(`dashboard-e2e: ${drawn.length} class lists drawn, colliding: ${collided.join(", ") || "none"}`);
+}
+console.log(`ok  ${drawn.length} drawn class lists, none wearing two boxes`);
+console.log(`dashboard-e2e: ${CASES.length + 3} cases — every control posts what ringo expects and says what happened`);
 exit(0);

@@ -25,6 +25,10 @@ Trails.application!.configure(function () {
   // NOT adopted from `trails new`: `logTags` and the `TaggedLogging` logger,
   // which the template builds from `process.stdout`. config/application.ts's stays.
 
+  // NOT adopted: the template's year-long `publicFileServer.headers`. It assumes
+  // digest-stamped assets, and scripts/build-assets.sh copies them under fixed
+  // names, so a deploy's new dashboard.js would hide behind a cached old one.
+
   // Change to "debug" to log everything (including potentially personally-identifiable information!)
   this.config.logLevel = env.RAILS_LOG_LEVEL ?? "info";
 
@@ -32,4 +36,14 @@ Trails.application!.configure(function () {
   this.config.silenceHealthcheckPath = "/up";
 
   this.config.cacheStore = ":memory_store";
+
+  // Enable locale fallbacks for I18n (makes lookups for any locale fall back to
+  // the I18n.defaultLocale when a translation cannot be found).
+  this.config.i18n.fallbacks = true;
+
+  // Do not dump schema after migrations.
+  this.config.activeRecord.dumpSchemaAfterMigration = false;
+
+  // Only use "id" for inspections in production.
+  this.config.activeRecord.attributesForInspect = ["id"];
 });

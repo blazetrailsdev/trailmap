@@ -19,5 +19,12 @@ Trails.application!.configure(function () {
   // Disable request forgery protection in test environment.
   this.config.actionController.allowForgeryProtection = false;
 
-  // The rest of `trails new`'s test environment is deliberately not adopted.
+  // Configure public file server for tests with cache-control for performance.
+  this.config.publicFileServer.headers = { "cache-control": "public, max-age=3600" };
+
+  // Print deprecation notices to the stderr.
+  this.config.activeSupport.deprecation = "stderr";
+
+  // Raise error when a before_action's only/except options reference missing actions.
+  this.config.actionController.raiseOnMissingCallbackActions = true;
 });
