@@ -31,11 +31,25 @@ const ANSWERS: Record<string, [number, string]> = {
   "/reviewer/assign": [200, "ok"],
   "/pause": [200, JSON.stringify({ paused: true })],
   "/refresh-usage": [200, "{}"],
+  "/spawn": [200, "spawned in %5"],
+  "/spawnloop/spawn-now": [200, "ok"],
 };
 let reviewers: Array<Record<string, unknown>> = [{ ...PR, pr: 8, agent: "copilot" }];
 let ciRed = 1;
 // ringo's usage answer: the pause button and the scraper pill draw from it.
 const usage = { manualPause: false, watchConnected: false, lastCheckTime: "" };
+/**
+ * The spawn loop as ringo reports it: unanswered (a 503) until the harness
+ * says otherwise, so the page's not-yet state can be seen. While `loopHeld` is
+ * set a read is answered only once `loopReleased` is called, with whatever
+ * the loop was when the read ARRIVED — the poll that was already in flight
+ * when a control answered.
+ */
+const LOOP = { enabled: false, live_cap: 4, queue_cap: 8, stagger_seconds: 600, bundle_mode: false };
+let loop: typeof LOOP | null = null;
+let loopHeld = false;
+let loopInFlight = 0;
+let loopReleased = (): void => {};
 const READS: Record<string, () => unknown> = {
   "/reviewer/list": () => reviewers,
   "/reviewer/config": () => ({ next_reviewer: "codex" }),
@@ -50,6 +64,17 @@ const ringo = (await getHttpAsync()).createServer((req, res) => {
     // One frame, then held open as ringo holds it: nothing repaints the rows.
     res.writeHead(200, { "content-type": "text/event-stream" });
     res.write(`data: ${JSON.stringify(ENVELOPE)}\n\n`);
+  } else if (path === "/spawnloop/config" && req.method !== "POST") {
+    const answer = (state: typeof loop): void => {
+      res.writeHead(state ? 200 : 503, { "content-type": "application/json" });
+      res.end(JSON.stringify(state ?? "not yet"));
+    };
+    if (!loopHeld) answer(loop);
+    else {
+      const then = loop && { ...loop };
+      loopInFlight++;
+      loopReleased = () => answer(then);
+    }
   } else if (req.method !== "POST") {
     res.writeHead(READS[path] ? 200 : 404, { "content-type": "application/json" });
     res.end(JSON.stringify(READS[path]?.() ?? null));
@@ -66,7 +91,15 @@ const ringo = (await getHttpAsync()).createServer((req, res) => {
       if (sent?.target === "ci-red") ciRed = 0;
       if (path === "/pause") usage.manualPause = sent.paused;
       if (path === "/refresh-usage") usage.watchConnected = true;
-      const [status, text] = ANSWERS[path] ?? [404, "not a ringo endpoint"];
+      let [status, text] = ANSWERS[path] ?? [404, "not a ringo endpoint"];
+      // A setting ringo refuses, by its size; anything else IS the loop's new state.
+      if (path === "/spawnloop/config") {
+        if (sent.live_cap > 50) [status, text] = [400, "live_cap must be at most 50"];
+        else {
+          loop = { ...LOOP, ...loop, ...sent };
+          [status, text] = [200, JSON.stringify(loop)];
+        }
+      }
       // A broadcast is held a moment, so the page's in-flight state can be seen.
       setTimeout(() => {
         res.writeHead(status);
@@ -144,6 +177,11 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
   { name: "broadcast to CI red, by Ctrl+Enter", on: byId("bcastCIRed"), act: enter(true),
     post: ["/broadcast", { message: "rebase", target: "ci-red" }], during: bothHeld,
     after: `b.style.display === "none" && !${byId("bcastAll")}.disabled && ${sentNote}` },
+  // ringo answers with what it spawned; the report goes beside the picker,
+  // and the task box empties for the next one.
+  { name: "manual spawn", on: byId("spawn"), act: `${byId("task")}.value = " fix the build "; ${byId("spawn")}.click()`,
+    post: ["/spawn", { repoDir: "/w/r", message: "fix the build" }],
+    after: `!b.disabled && ${byId("spawnStatus")}.textContent === "Spawned: spawned in %5" && ${byId("task")}.value === ""` },
   { name: "pause", on: byId("pauseBtn"), post: ["/pause", { paused: true }],
     after: `!b.disabled && b.textContent === "Resume" && b.dataset.paused === "true"` },
   { name: "refresh usage from the scraper pill", on: byId("watchPill"), post: ["/refresh-usage", null],
@@ -164,6 +202,19 @@ await until("the page to draw", () =>
       `${byId("pauseBtn")}.textContent === "Pause" && ${byId("watchDot")}.className === "connected off"`,
   ),
 );
+
+// The loop's toggle cannot know which way to go until ringo has said whether
+// the loop runs: it is held, and says why, until the first read answers.
+const toggle = byId("slToggle");
+await until("the loop's toggle to say ringo has not answered", () =>
+  evaluate(`${toggle}.disabled && ${toggle}.title === "ringo has not answered for the loop's state yet"`),
+);
+loop = { ...LOOP };
+// The panel polls every fifteen seconds; `until` waits a minute.
+await until("the loop's toggle once ringo answered", () =>
+  evaluate(`!${toggle}.disabled && ${toggle}.textContent === "play" && ${byId("slLiveCap")}.value === "4"`),
+);
+console.log("ok  spawn loop, the toggle waits for ringo's first answer");
 
 // An empty message sends nothing and puts the cursor in the box.
 await evaluate(`${byId("bcastMsg")}.value = "  "; ${byId("bcastMsg")}.blur(); ${byId("bcastAll")}.click(); true`);
@@ -193,6 +244,43 @@ for (const { name, on, act, post, during, after } of CASES) {
   await until(`${name}: the button afterwards`, () => evaluate(`(() => { const b = ${on}; return ${after}; })()`));
   console.log(`ok  ${name}`);
 }
+// A poll that started before a control's answer landed is dropped: "spawn
+// now" re-reads a second after it answers, that read is held while the toggle
+// is clicked and answered, and it then carries the loop as it was before.
+loopHeld = true;
+await evaluate(`${button("loop-now")}.click(); true`);
+await until("the re-read after spawn now", async () => loopInFlight === 1);
+let before = posts.length;
+await evaluate(`${toggle}.click(); true`);
+await until("the toggle's answer", () => evaluate(`${toggle}.textContent === "pause"`));
+if (JSON.stringify(posts[before]) !== JSON.stringify(["/spawnloop/config", { enabled: true }])) {
+  throw new Error(`dashboard-e2e: the toggle sent ${JSON.stringify(posts[before])}`);
+}
+loopHeld = false;
+loopReleased();
+await new Promise((resolve) => setTimeout(resolve, 500));
+if ((await evaluate(`${toggle}.textContent`)) !== "pause") {
+  throw new Error("dashboard-e2e: a poll that started before the toggle answered drew over it");
+}
+console.log("ok  spawn loop, a poll older than a control's answer is dropped");
+
+// A refused setting alerts, lets go of the field and re-reads, so the field
+// shows ringo's value again rather than the one it refused.
+const field = byId("slLiveCap");
+before = posts.length;
+await evaluate(
+  `window.alerted = ""; window.alert = (m) => { window.alerted = m; }; ${field}.focus(); ${field}.value = "99"; ` +
+    `${field}.dispatchEvent(new Event("change", { bubbles: true })); true`,
+);
+await until("the refused setting's POST", async () => posts[before]);
+await until("the refused setting to be put back", () =>
+  evaluate(
+    `window.alerted === "Spawn loop not changed: live_cap must be at most 50" && ` +
+      `document.activeElement !== ${field} && ${field}.value === "4"`,
+  ),
+);
+console.log("ok  spawn loop, a refused setting alerts and takes ringo's value back");
+
 // The class lists the page drew at run time, against the source scan's rule
 // (test/assets/class-collisions.test.ts): rows, cards and toggled classes included.
 const rules = boxRules(await getFs().readFile(STYLESHEET, "utf8"));
@@ -202,5 +290,5 @@ if (drawn.length < 50 || collided.length) {
   throw new Error(`dashboard-e2e: ${drawn.length} class lists drawn, colliding: ${collided.join(", ") || "none"}`);
 }
 console.log(`ok  ${drawn.length} drawn class lists, none wearing two boxes`);
-console.log(`dashboard-e2e: ${CASES.length + 3} cases — every control posts what ringo expects and says what happened`);
+console.log(`dashboard-e2e: ${CASES.length + 6} cases — every control posts what ringo expects and says what happened`);
 exit(0);

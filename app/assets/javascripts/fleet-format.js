@@ -523,6 +523,19 @@ export function controlRequest(action, data, page = {}) {
     }
     case "clear-failed":
       return { path: "/spawnloop/dismiss-failed", body: null, quiet: true };
+    // The manual spawn card. Its report goes beside the repo picker
+    // (`says`), not on the button, and a spawn that landed empties the task.
+    case "spawn": {
+      const message = String(page.task || "").trim();
+      if (!message) return null;
+      return {
+        path: "/spawn",
+        body: { repoDir: page.repoDir || "", message },
+        says: "spawnStatus",
+        saying: "Spawning...",
+        clears: "task",
+      };
+    }
     default:
       return null;
   }
@@ -554,6 +567,8 @@ const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  *   removes the row or hides the button. On a refusal or a failed fetch they
  *   come back. ringo leaves them disabled there, and since the row only goes
  *   away on success, that is a dead button with nothing to say why.
+ * - manual spawn comes back at once, and reports beside itself (`say`)
+ *   rather than on its button; a spawn that landed clears the task box.
  * - the loop's settings never stay disabled: the control is still there after
  *   the click, and a success carries the loop's new `state` for the page to
  *   draw. A refusal or a failed fetch alerts, where ringo says nothing. "spawn now" is the exception, held like merge and then re-read
@@ -566,6 +581,10 @@ export function controlOutcome(request, result, label) {
   const outcome = { disabled: succeeded || (!request.quiet && !!request.resetAfterMs) };
   if (answered && request.refresh) outcome.refresh = request.refresh;
   if (request.quiet) return outcome;
+  if (request.says) {
+    if (!succeeded) return { disabled: false, say: "Error: " + (answered ? result.text : result.error) };
+    return { disabled: false, say: "Spawned: " + result.text, clear: request.clears };
+  }
   // A control that stays where it is: it comes back, and says nothing on itself.
   if (request.keep) {
     const alert = answered ? request.failureAlert : request.errorAlert;

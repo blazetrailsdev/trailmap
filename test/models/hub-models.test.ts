@@ -3,6 +3,7 @@ import { setX } from "../support/config-x.js";
 import { setEnv } from "@blazetrails/ruby-compat";
 import {
   connectHubTestDatabase,
+  HUB_SETUP_TIMEOUT,
   hasHubTestDatabase,
   releaseHubTestDatabase,
   truncateHub,
@@ -30,7 +31,7 @@ import { RepositoryCollaborator } from "../../app/models/repository-collaborator
 describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
   beforeAll(async () => {
     await connectHubTestDatabase();
-  });
+  }, HUB_SETUP_TIMEOUT);
   beforeEach(async () => {
     await truncateHub();
   });

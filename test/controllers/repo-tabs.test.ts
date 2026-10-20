@@ -6,6 +6,7 @@ import { RecordNotFound } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "../models/schema.js";
 import {
   connectHubTestDatabase,
+  HUB_SETUP_TIMEOUT,
   hasHubTestDatabase,
   releaseHubTestDatabase,
 } from "../support/hub-schema.js";
@@ -117,7 +118,7 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
       pr: "trails#7228",
       actor: "agent",
     });
-  });
+  }, HUB_SETUP_TIMEOUT);
   // Hands the hub to the next test file; see `releaseHubTestDatabase`.
   afterAll(releaseHubTestDatabase);
 

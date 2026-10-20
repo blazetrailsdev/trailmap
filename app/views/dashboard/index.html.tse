@@ -108,7 +108,7 @@
   <% } %>
   <div class="spawn-form">
     <textarea id="task" class="ctl" placeholder="Enter a task for Claude..." rows="1"></textarea>
-    <button id="spawn" class="btn btn-green">Spawn</button>
+    <button id="spawn" class="btn btn-green" data-action="spawn">Spawn</button>
   </div>
 </div>
 

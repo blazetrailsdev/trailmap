@@ -96,6 +96,15 @@ the owner/repository hierarchy is **Postgres**, under `Hub`
   to a `screenshots/pr-<N>` branch (as #11 and #15 do) so binaries stay out of
   the reviewable diff, and embed them with
   `<img src=".../blob/screenshots/pr-<N>/<file>.png?raw=1" width="100%">`.
+- **A phone-width shot needs a real 390px viewport.** `google-chrome
+  --headless=new --window-size=390,...` lays the page out wider and crops the
+  capture, so every page looks like it overflows (#36's 390px shot is that
+  artefact). Use the playwright build:
+  `~/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell --window-size=390,1400 --screenshot=<file>.png <url>`.
+  Check it before believing a picture: the page's `innerWidth` must be 390
+  (`--dump-dom` of a page that prints it, or `Runtime.evaluate` over
+  `--remote-debugging-port`), and an overflow is real only if
+  `document.documentElement.scrollWidth` exceeds it.
 - Tests live in `test/`, mirroring `app/`. Run them with `pnpm test`;
   `pnpm build` is the typecheck.
 - **`pnpm gate` is a merge condition, not a formality.** trailmap's ready queue

@@ -479,36 +479,6 @@ async function followDrain(request, result) {
 }
 
 // ---------------------------------------------------------------------------
-// Manual spawn -- the one control this page carries, and the reason the repo
-// list is configuration. It posts to ringo, which owns the spawn loop.
-// ---------------------------------------------------------------------------
-
-byId("spawn").addEventListener("click", async () => {
-  const button = byId("spawn");
-  const status = byId("spawnStatus");
-  const task = byId("task");
-  const message = task.value.trim();
-  if (!message) return;
-
-  button.disabled = true;
-  status.textContent = "Spawning...";
-  try {
-    const response = await fetch(ringoUrl("/spawn"), {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json", ...csrfHeaders() },
-      body: JSON.stringify({ repoDir: byId("repo").value, message }),
-    });
-    const text = await response.text();
-    status.textContent = (response.ok ? "Spawned: " : "Error: ") + text;
-    if (response.ok) task.value = "";
-  } catch (e) {
-    status.textContent = "Error: " + e.message;
-  }
-  button.disabled = false;
-});
-
-// ---------------------------------------------------------------------------
 // Controls -- every button with a `data-action`. One listener for all of them:
 // the rows are redrawn on every frame, so a listener bound to a button would
 // be bound to a node that is gone a second later.
@@ -542,6 +512,8 @@ document.addEventListener("click", async (event) => {
     nextReviewer,
     audiences,
     message: byId("bcastMsg").value,
+    task: byId("task").value,
+    repoDir: byId("repo").value,
   });
   if (!request) return;
   if (request.focus) return byId(request.focus).focus();
@@ -555,6 +527,7 @@ document.addEventListener("click", async (event) => {
   const label = button.textContent;
   button.disabled = true;
   if (request.busy) button.textContent = request.busy;
+  if (request.saying) byId(request.says).textContent = request.saying;
   const held = (request.holds || []).map(byId).filter((other) => other !== button);
   for (const other of held) other.disabled = true;
 
@@ -578,6 +551,8 @@ document.addEventListener("click", async (event) => {
   if (outcome.state) loopWritten(outcome.state);
   if (outcome.alert) window.alert(outcome.alert);
   if (outcome.note !== undefined) byId("bcastNote").textContent = outcome.note;
+  if (outcome.say !== undefined) byId(request.says).textContent = outcome.say;
+  if (outcome.clear) byId(outcome.clear).value = "";
   if (outcome.clearMessage) byId("bcastMsg").value = "";
   if (outcome.resetAfterMs) {
     setTimeout(() => {
