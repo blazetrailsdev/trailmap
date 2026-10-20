@@ -59,10 +59,12 @@ CI has not started on this pull request ten minutes after its last push, and it 
 
 # ── self-test ──────────────────────────────────────────────────────────────
 #
-# The canned `gh` answers from $WATCHDOG_FAKE: `pulls` is the open-PR list,
-# `runs.<sha>` the run count for a head, and every `gh pr comment` appends its
-# body to `comments.<n>`, which `gh pr view` reads back — so two ticks see each
-# other's comments the way they would on GitHub.
+# The canned `gh` answers every `gh api` from a JSON file and applies the
+# script's own `--jq` to it, so the fork filter and the field picks run for
+# real: `pulls.json` is the open-PR list, `commit.<sha>.json`,
+# `runs.<sha>.json` and `checks.<sha>.json` one head's answers. Every
+# `gh pr comment` appends its body to `comments.<n>`, which `gh pr view` reads
+# back — so two ticks see each other's comments the way they would on GitHub.
 selfTest() {
   local fake out status selfFailed=0
   fake="$(mktemp -d)"
@@ -72,25 +74,31 @@ selfTest() {
 #!/usr/bin/env bash
 f="$WATCHDOG_FAKE"
 case "$1 $2" in
-  "api --paginate") cat "$f/pulls" ;;
-  "api repos/"*)
-    case "$2" in
-      */commits/*/check-runs*) echo 0 ;;
-      */commits/*) echo 2020-01-01T00:00:00Z ;;
-      */actions/runs*) sha="${2#*head_sha=}"; cat "$f/runs.${sha%%&*}" 2>/dev/null || echo 0 ;;
-    esac ;;
-  "pr view") cat "$f/comments.$3" 2>/dev/null || true ;;
+  "pr view") cat "$f/comments.$3" 2>/dev/null || true; exit ;;
   "pr comment") shift 2; n="$1"; while [ "$1" != --body ]; do shift; done
-    printf '%s\n' "$2" >>"$f/comments.$n" ;;
-  *) echo "canned gh: unexpected $*" >&2; exit 1 ;;
+    printf '%s\n' "$2" >>"$f/comments.$n"; exit ;;
 esac
+[ "$1" = api ] || { echo "canned gh: unexpected $*" >&2; exit 1; }
+shift
+url= filter=.
+while [ $# -gt 0 ]; do
+  case "$1" in --paginate) ;; --jq) filter="$2"; shift ;; *) url="$1" ;; esac
+  shift
+done
+case "$url" in
+  */pulls\?*) file=pulls ;;
+  */commits/*/check-runs*) sha="${url#*/commits/}"; file="checks.${sha%%/*}" ;;
+  */commits/*) file="commit.${url##*/}" ;;
+  */actions/runs*) sha="${url#*head_sha=}"; file="runs.${sha%%&*}" ;;
+esac
+jq -r "$filter" "$f/$file.json"
 GH
   chmod +x "$fake/bin/gh"
 
   # tick <args> — one run of this script as a child; sets $out and $status.
   tick() {
     status=0
-    out="$(env PATH="$fake/bin:$PATH" WATCHDOG_FAKE="$fake" REPO=o/r "$0" "$@" 2>/dev/null)" || status=$?
+    out="$(env PATH="$fake/bin:$PATH" WATCHDOG_FAKE="$fake" REPO=o/r "$0" "$@" 2>/dev/null | paste -sd, -)" || status=$?
   }
   check() {
     if [ "$2" = "$3" ]; then echo "self-test ok: $1"; else
@@ -98,25 +106,37 @@ GH
       selfFailed=1
     fi
   }
+  # headCommit <sha> <pushed at> <runs> <checks> — one head commit's answers.
+  headCommit() {
+    printf '{"commit":{"committer":{"date":"%s"}}}' "$2" >"$fake/commit.$1.json"
+    printf '{"total_count":%s}' "$3" >"$fake/runs.$1.json"
+    printf '{"total_count":%s}' "$4" >"$fake/checks.$1.json"
+  }
+  # pr <n> <sha> <created at> [<head repo>] — one entry of the open-PR list.
+  pr() { printf '{"number":%s,"created_at":"%s","head":{"sha":"%s","repo":{"full_name":"%s"}},"base":{"repo":{"full_name":"o/r"}}}' \
+    "$1" "$3" "$2" "${4:-o/r}"; }
 
-  # Every PR is a day old by the canned dates; #7 has a run, #8 has none.
-  printf '7 aaa 2020-01-01T00:00:00Z\n8 bbb 2020-01-01T00:00:00Z\n' >"$fake/pulls"
-  echo 1 >"$fake/runs.aaa"
+  local old=2020-01-01T00:00:00Z now
+  now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  # #7 has a run, #8 only a check, #9 neither. #10 and #11 have neither but
+  # were opened, or last pushed, just now; #12 is a fork's.
+  headCommit aaa "$old" 1 0; headCommit bbb "$old" 0 1; headCommit ccc "$old" 1 0
+  headCommit ddd "$old" 0 0; headCommit eee "$now" 0 0; headCommit fff "$old" 0 0
+  echo "[$(pr 7 aaa "$old"),$(pr 8 bbb "$old"),$(pr 9 ccc "$old"),$(pr 10 ddd "$now"),$(pr 11 eee "$old"),$(pr 12 fff "$old" fork/r)]" >"$fake/pulls.json"
 
-  echo 1 >"$fake/runs.bbb"
   tick --comment
   check "no stuck PR passes" "$status:$(ls "$fake" | grep -c '^comments' || true)" "0:0"
 
-  rm "$fake/runs.bbb"
+  headCommit ccc "$old" 0 0
   tick
-  check "the list names the PR whose head has no run" "$status:$out" "0:8"
+  check "the list names only the old, same-repo PR with no run and no check" "$status:$out" "0:9"
   tick --comment
   check "a stuck PR fails the tick" "$status" "1"
   tick --comment
   check "and the second tick fails too" "$status" "1"
   check "the PR is commented on exactly once across two ticks" \
-    "$(grep -c "$MARKER" "$fake/comments.8")" "1"
-  check "the PR that has a run is left alone" "$([ -e "$fake/comments.7" ] && echo yes || echo no)" "no"
+    "$(grep -c "$MARKER" "$fake/comments.9")" "1"
+  check "nothing else is commented on" "$(cd "$fake" && ls comments.* | paste -sd, -)" "comments.9"
 
   [ "$selfFailed" -eq 0 ] || return 1
   echo "self-test passed"

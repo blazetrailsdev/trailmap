@@ -41,15 +41,15 @@ const usage = { manualPause: false, watchConnected: false, lastCheckTime: "" };
 /**
  * The spawn loop as ringo reports it: unanswered (a 503) until the harness
  * says otherwise, so the page's not-yet state can be seen. While `loopHeld` is
- * set a read is answered only once `loopReleased` is called, with whatever
- * the loop was when the read ARRIVED — the poll that was already in flight
- * when a control answered.
+ * set a read is held in `loopHeldReads` until released, then answered with
+ * whatever the loop was when the read ARRIVED — the poll that was already in
+ * flight when a control answered. Every held read is kept, so the 15s poll
+ * landing during the hold is answered too rather than left hanging.
  */
 const LOOP = { enabled: false, live_cap: 4, queue_cap: 8, stagger_seconds: 600, bundle_mode: false };
 let loop: typeof LOOP | null = null;
 let loopHeld = false;
-let loopInFlight = 0;
-let loopReleased = (): void => {};
+const loopHeldReads: Array<() => void> = [];
 const READS: Record<string, () => unknown> = {
   "/reviewer/list": () => reviewers,
   "/reviewer/config": () => ({ next_reviewer: "codex" }),
@@ -72,8 +72,7 @@ const ringo = (await getHttpAsync()).createServer((req, res) => {
     if (!loopHeld) answer(loop);
     else {
       const then = loop && { ...loop };
-      loopInFlight++;
-      loopReleased = () => answer(then);
+      loopHeldReads.push(() => answer(then));
     }
   } else if (req.method !== "POST") {
     res.writeHead(READS[path] ? 200 : 404, { "content-type": "application/json" });
@@ -249,7 +248,7 @@ for (const { name, on, act, post, during, after } of CASES) {
 // is clicked and answered, and it then carries the loop as it was before.
 loopHeld = true;
 await evaluate(`${button("loop-now")}.click(); true`);
-await until("the re-read after spawn now", async () => loopInFlight === 1);
+await until("the re-read after spawn now", async () => loopHeldReads.length >= 1);
 let before = posts.length;
 await evaluate(`${toggle}.click(); true`);
 await until("the toggle's answer", () => evaluate(`${toggle}.textContent === "pause"`));
@@ -257,7 +256,7 @@ if (JSON.stringify(posts[before]) !== JSON.stringify(["/spawnloop/config", { ena
   throw new Error(`dashboard-e2e: the toggle sent ${JSON.stringify(posts[before])}`);
 }
 loopHeld = false;
-loopReleased();
+for (const release of loopHeldReads.splice(0)) release();
 await new Promise((resolve) => setTimeout(resolve, 500));
 if ((await evaluate(`${toggle}.textContent`)) !== "pause") {
   throw new Error("dashboard-e2e: a poll that started before the toggle answered drew over it");

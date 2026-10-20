@@ -557,7 +557,7 @@ const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  * missing `text` leaves the button's text alone; `refresh` names the read to
  * poll again, because an answered control changed what it reports.
  *
- * Four families, as in ringo, with two of its holes closed:
+ * Five families: ringo's four, with two of its holes closed, and manual spawn:
  *
  * - merge keeps the button disabled for the full reset period on EVERY
  *   outcome, a failed fetch included, then restores it.
@@ -571,7 +571,8 @@ const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  *   rather than on its button; a spawn that landed clears the task box.
  * - the loop's settings never stay disabled: the control is still there after
  *   the click, and a success carries the loop's new `state` for the page to
- *   draw. A refusal or a failed fetch alerts, where ringo says nothing. "spawn now" is the exception, held like merge and then re-read
+ *   draw. A refusal or a failed fetch alerts, where ringo says nothing.
+ *   "spawn now" is the exception, held like merge and then re-read
  *   (`refresh`), because ringo answers before the tick has registered.
  */
 export function controlOutcome(request, result, label) {
