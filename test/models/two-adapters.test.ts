@@ -3,6 +3,7 @@ import { Base } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "./schema.js";
 import {
   connectHubTestDatabase,
+  HUB_SETUP_TIMEOUT,
   hasHubTestDatabase,
   releaseHubTestDatabase,
 } from "../support/hub-schema.js";
@@ -35,7 +36,7 @@ describe.skipIf(!hasHubTestDatabase())("two adapters in one process", () => {
     await Story.create({ id: "a-story", rfc_id: "0136-trailmap", status: "ready" });
     const owner = await Owner.create({ login: "blazetrailsdev", kind: "organization" });
     await Repository.create({ owner_id: owner.id, name: "trails" });
-  });
+  }, HUB_SETUP_TIMEOUT);
   // Hands the hub to the next test file; see `releaseHubTestDatabase`.
   afterAll(releaseHubTestDatabase);
 

@@ -721,12 +721,38 @@ describe("controlRequest", () => {
     });
   });
 
+  it("spawns the typed task in the picked repo, reporting beside the picker", () => {
+    expect(controlRequest("spawn", {}, { task: "  fix the build ", repoDir: "/w/trails" })).toEqual({
+      path: "/spawn",
+      body: { repoDir: "/w/trails", message: "fix the build" },
+      says: "spawnStatus",
+      saying: "Spawning...",
+      clears: "task",
+    });
+  });
+
+  it("sends no spawn with no task", () => {
+    expect(controlRequest("spawn", {}, { task: "   ", repoDir: "/w/trails" })).toBeNull();
+  });
+
   it("is null for a button that is not a control", () => {
-    expect(controlRequest("spawn", {})).toBeNull();
+    expect(controlRequest("not-a-control", {})).toBeNull();
   });
 });
 
 describe("controlOutcome", () => {
+  it("says a manual spawn landed, clears the task and gives the button back", () => {
+    const spawn = controlRequest("spawn", {}, { task: "t", repoDir: "/w" });
+
+    expect(controlOutcome(spawn, { ok: true, text: "spawned %5" }, "Spawn")).toEqual({
+      disabled: false,
+      say: "Spawned: spawned %5",
+      clear: "task",
+    });
+    expect(controlOutcome(spawn, { ok: false, text: "no such repo" }, "Spawn")).toEqual({ disabled: false, say: "Error: no such repo" });
+    expect(controlOutcome(spawn, { error: "offline" }, "Spawn")).toEqual({ disabled: false, say: "Error: offline" });
+  });
+
   const merge = controlRequest("merge", { owner: "o", repo: "r", pr: "7" });
   const respawn = controlRequest("respawn-fixer", { owner: "o", repo: "r" });
   const dismiss = controlRequest("dismiss", { branch: "b" });

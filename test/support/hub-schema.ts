@@ -70,6 +70,23 @@ const HUB_TABLES = [
  */
 const HUB_TEST_LOCK = 0x7471_6d70;
 
+/**
+ * How long a file may wait for that lock, in seconds: long enough to queue
+ * behind EVERY other hub file on a loaded machine, not vitest's default 10s
+ * hook timeout. Behind six other files at load average 50, the wait alone
+ * passed 10s, and "Hook timed out in 10000ms" landed on a different file each
+ * run. The files take turns by design, so the wait is the cost of the turn.
+ */
+const HUB_LOCK_WAIT_SECONDS = 180;
+
+/**
+ * The timeout for the `beforeAll` that calls `connectHubTestDatabase`:
+ * `beforeAll(fn, HUB_SETUP_TIMEOUT)`. A little longer than the lock wait, so a
+ * file that never gets the lock fails on `lock_timeout`, which names the lock,
+ * rather than on a hook timeout that names nothing.
+ */
+export const HUB_SETUP_TIMEOUT = (HUB_LOCK_WAIT_SECONDS + 30) * 1000;
+
 export async function connectHubTestDatabase(): Promise<void> {
   const url = hubTestUrl();
   if (url === null) {
@@ -94,7 +111,7 @@ export async function connectHubTestDatabase(): Promise<void> {
   }
 
   await Hub.connectionPool().withConnection(async (connection) => {
-    await connection.execute("SET lock_timeout = '60s'");
+    await connection.execute(`SET lock_timeout = '${HUB_LOCK_WAIT_SECONDS}s'`);
     await connection.execute(`SELECT pg_advisory_lock(${HUB_TEST_LOCK})`);
   });
 

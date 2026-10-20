@@ -16,6 +16,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { setEnv } from "@blazetrails/ruby-compat";
 import {
   connectHubTestDatabase,
+  HUB_SETUP_TIMEOUT,
   hasHubTestDatabase,
   releaseHubTestDatabase,
   truncateHub,
@@ -56,7 +57,7 @@ describe.skipIf(!hasHubTestDatabase())("ParityGraphsController", () => {
     ApplicationController.prependViewPath("app/views");
     // No stats database anywhere in this file — see the file comment.
     setEnv("STATS_DB", undefined);
-  });
+  }, HUB_SETUP_TIMEOUT);
   beforeEach(truncateHub);
   afterAll(releaseHubTestDatabase);
 

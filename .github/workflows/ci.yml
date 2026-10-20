@@ -110,6 +110,9 @@ jobs:
       # every run written where /crons reads it — against a suite that passes,
       # fails or hangs on demand.
       - run: ./scripts/smoke-cron.sh --self-test
+      # pr-watchdog.yml runs only on a schedule, from `main`: this is what
+      # proves its comment-once-and-fail path before it is needed.
+      - run: ./scripts/ci/prs-without-runs.sh --self-test
 
   boot:
     runs-on: ubuntu-latest

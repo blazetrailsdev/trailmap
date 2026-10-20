@@ -22,17 +22,7 @@ jobs:
       REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
+      # The comment, its once-only marker and the failing exit live in the
+      # script, where `--self-test` holds them in ci.yml.
       - name: Every open PR older than ten minutes has a run
-        run: |
-          set -euo pipefail
-          stuck="$(./scripts/ci/prs-without-runs.sh)"
-          [ -n "$stuck" ] || { echo "Every open PR has a run."; exit 0; }
-          for number in $stuck; do
-            echo "::error::#$number has had no CI run for ten minutes."
-            # Said once: the marker is how the next tick knows it already has.
-            if ! gh pr view "$number" --repo "$REPO" --json comments --jq '.comments[].body' | grep -q 'pr-watchdog:no-run'; then
-              gh pr comment "$number" --repo "$REPO" --body "<!-- pr-watchdog:no-run -->
-          CI has not started on this pull request ten minutes after its last push, and it will not show a result until it does. Close and reopen it, or push an empty commit, to start it."
-            fi
-          done
-          exit 1
+        run: ./scripts/ci/prs-without-runs.sh --comment

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { RecordNotFound } from "@blazetrails/activerecord";
 import {
   connectHubTestDatabase,
+  HUB_SETUP_TIMEOUT,
   hasHubTestDatabase,
   releaseHubTestDatabase,
   truncateHub,
@@ -34,7 +35,7 @@ describe.skipIf(!hasHubTestDatabase())("RepositoryCollaborator", () => {
 
   beforeAll(async () => {
     await connectHubTestDatabase();
-  });
+  }, HUB_SETUP_TIMEOUT);
   afterAll(releaseHubTestDatabase);
 
   beforeEach(async () => {

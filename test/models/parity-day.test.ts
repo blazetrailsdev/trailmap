@@ -18,6 +18,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
 import {
   connectHubTestDatabase,
+  HUB_SETUP_TIMEOUT,
   hasHubTestDatabase,
   releaseHubTestDatabase,
   truncateHub,
@@ -73,7 +74,7 @@ describe.skipIf(!hasHubTestDatabase())("ParityDay", () => {
     // Only the gate in `refreshProjectionIfStale` reads this; the scratch
     // stats connection is already established, and in memory.
     setEnv("STATS_DB", ":memory:");
-  });
+  }, HUB_SETUP_TIMEOUT);
   beforeEach(truncateHub);
   afterAll(releaseHubTestDatabase);
 
