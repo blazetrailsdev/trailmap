@@ -69,6 +69,9 @@ export async function controllerTestCase(
   controller: Controller,
   headers: Record<string, string> = {},
 ): Promise<ActionController.TestCase> {
+  // `Application#initialize` reads tmp/local_secret.txt before anything can
+  // ask for `secret_key_base`; the suite does not boot, so it loads it here.
+  await Trails.application!.config.loadLocalSecret();
   class ControllerTest extends ActionController.TestCase {}
   ControllerTest.tests(controller);
   const tc = new ControllerTest(`${controller.name}Test`);

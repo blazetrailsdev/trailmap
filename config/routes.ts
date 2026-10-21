@@ -148,7 +148,9 @@ Trails.application!.routes().draw(function () {
   // `scope-and-constraints-call-their-block-unbound` (RFC 0141, filed from
   // this PR) tracks the divergence. Nothing here works around it.
   this.constraints({ owner: OWNER_SEGMENT, repo: REPO_SEGMENT }, () => {
-    this.get(":owner", { to: "owners#show", as: "owner" });
+    // The leading slash is load-bearing: a bare ":owner" reads as the Ruby
+    // Symbol :owner, which draws the static path /owner.
+    this.get("/:owner", { to: "owners#show", as: "owner" });
 
     // The eight tabs. `scope` carries the shared `:owner/:repo` prefix and the
     // `repo_` route-helper names; the controllers are flat, named

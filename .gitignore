@@ -1,6 +1,9 @@
 /node_modules/
 /dist/
 /.trails/
+# trails-tsc-views --in-place output for the test-only templates.
+/test/fixtures/views/**/*.tse.js
+/test/fixtures/views/**/*.tse.js.map
 /.env*
 !/.env.example
 

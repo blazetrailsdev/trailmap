@@ -130,7 +130,7 @@ export class StoriesController extends ApiController {
     // takes the first type on offer, so `text/html, */*` gets JSON too, and a
     // q-value orders the types without removing one.
     const json = MimeType.lookup("application/json");
-    const accept = String(this.request.getHeader("accept") ?? "").trim();
+    const accept = String(this.request.getHeader("HTTP_ACCEPT") ?? "").trim();
     const accepted = accept === "" ? [MimeType.ALL] : MimeType.parse(accept);
     if (accepted.some((type) => type.string === "*/*" || json.equals(type))) {
       await this.render({ json: payload });

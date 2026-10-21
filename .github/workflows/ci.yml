@@ -68,6 +68,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec trails-tsc-views build --views app/views
+      - run: pnpm exec trails-tsc-views build --views test/fixtures/views --in-place
       # The hub schema, through the real entry point. `test/support/hub-schema.ts`
       # connects and truncates but does not migrate — see the note there — and
       # fails with this command in its message when the schema is missing.

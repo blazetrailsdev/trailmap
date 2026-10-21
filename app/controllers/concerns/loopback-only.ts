@@ -63,7 +63,7 @@ export function isLoopbackRequest(request: LoopbackRequest): boolean {
  * `false` halts the callback chain, so the action never runs.
  */
 export async function requireLoopback(
-  controller: AbstractController.AbstractController,
+  controller: AbstractController.Base,
 ): Promise<boolean> {
   const base = controller as unknown as LoopbackGuarded;
   if (isLoopbackRequest(base.request)) return true;

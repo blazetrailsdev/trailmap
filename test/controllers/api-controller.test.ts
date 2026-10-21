@@ -67,9 +67,9 @@ describe("a 500", () => {
       async () => {
         throw new Error("a page raised");
       },
-      { showDetailedExceptions: true, showExceptions: true },
     );
     const [status, headers] = await debug.call({
+      "action_dispatch.show_detailed_exceptions": true,
       REQUEST_METHOD: "GET",
       PATH_INFO: "/rfcs",
       HTTP_ACCEPT: BROWSER_ACCEPT,
