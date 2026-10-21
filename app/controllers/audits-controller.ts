@@ -1,54 +1,43 @@
 import { htmlSafe } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.js";
-import { AUDIT_FILE_RE, Audit, auditsDir } from "../models/audit.js";
+import { Audit, auditsDir } from "../models/audit.js";
 import { renderMarkdown } from "../helpers/markdown-helper.js";
 import { stripFrontmatter } from "../models/concerns/document.js";
 
 /**
  * `/audits` — the agent-written progress reports, newest first;
  * `/audits/<file>`, the list with one of them open; and
- * `/audits/view/<file>`, one report on its own. Ported from ringo's
- * `webhook/audits.go`.
+ * `/audits/<file>/raw`, one report on its own. Ported from ringo's
+ * `webhook/audits.go`; ringo's `/audits/view/<file>` redirects to `raw`.
+ *
+ * The filename is checked by the route (config/audit-files.ts), so a bad name
+ * never reaches an action, and a well-formed one with no file is
+ * `RecordNotFound`, a 404 — ringo answers the first with a 400; Rails does not
+ * tell the two apart.
  *
  * Read-only, and audits only: ringo's page also lists grade report cards and
  * RFC refinements, and carries the "Generate report card" trigger. The cards
  * read `stats.db`, which RFC 0136 leaves Go-owned, so those stay on ringo.
  */
 export class AuditsController extends ApplicationController {
-  /**
-   * A name the list does not hold raises `RecordNotFound`, a 404, rather than
-   * quietly opening the newest, so a stale link says it is stale.
-   *
-   * A markdown audit renders INLINE, through the same escaping renderer the
-   * story pages use. An `.html` audit is a self-contained document with its
-   * own styles and possibly scripts, so it is never inlined into this origin:
-   * it stays in a sandboxed frame, and `body` is null.
-   */
+  /** The list, with the newest audit open. */
   async index(): Promise<void> {
     const audits = await Audit.all();
-    const file = this.params.get("file");
-    const selected =
-      file === undefined || file === null ? (audits[0] ?? null) : await Audit.find(String(file));
-    const body =
-      selected === null || selected.isHtml()
-        ? null
-        : renderMarkdown(stripFrontmatter(await selected.read()));
-    await this.render({ locals: { audits, selected, body, configured: auditsDir() !== null } });
+    await this.renderPage(audits, audits[0] ?? null);
+  }
+
+  /** The list, with this audit open. */
+  async show(): Promise<void> {
+    const audit = await Audit.find(String(this.params.get("id")));
+    await this.renderPage(await Audit.all(), audit, "index");
   }
 
   /**
-   * One audit. Markdown is rendered into the audit shell; an `.html`
-   * submission is served exactly as the agent wrote it. The name is checked
-   * against ringo's `auditFileRe` BEFORE anything touches the filesystem, with
-   * ringo's 400 for a bad name; a missing file is `RecordNotFound`, a 404.
+   * One audit on its own: markdown in the audit shell, an `.html` submission
+   * exactly as the agent wrote it.
    */
-  async show(): Promise<void> {
-    const name = this.auditName();
-    if (!AUDIT_FILE_RE.test(name)) {
-      await this.render({ plain: "bad audit name", status: 400 });
-      return;
-    }
-    const audit = await Audit.find(name);
+  async raw(): Promise<void> {
+    const audit = await Audit.find(String(this.params.get("id")));
     const source = await audit.read();
     this.response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     // An audit is agent-written and served from trailmap's own origin, so a
@@ -69,12 +58,19 @@ export class AuditsController extends ApplicationController {
   }
 
   /**
-   * The filename, through strong parameters: Rails 8's `params.expect(:file)`,
-   * which permits only a scalar and raises `ParameterMissing` (a 400) for
-   * anything else. `:file` is a path segment, so routing already makes it one
-   * string; `AUDIT_FILE_RE` in `show` is still what decides it may be served.
+   * A markdown audit renders INLINE, through the same escaping renderer the
+   * story pages use. An `.html` audit is a self-contained document with its
+   * own styles and possibly scripts, so it is never inlined into this origin:
+   * it stays in a sandboxed frame on `raw`, and `body` is null.
    */
-  private auditName(): string {
-    return String(this.params.expect("file"));
+  private async renderPage(audits: Audit[], selected: Audit | null, action?: string): Promise<void> {
+    const body =
+      selected === null || selected.isHtml()
+        ? null
+        : renderMarkdown(stripFrontmatter(await selected.read()));
+    await this.render({
+      ...(action ? { action } : {}),
+      locals: { audits, selected, body, configured: auditsDir() !== null },
+    });
   }
 }

@@ -1,4 +1,5 @@
 import { Trails } from "@blazetrails/trailties";
+import { AUDIT_SEGMENT } from "./audit-files.js";
 import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "./owner-names.js";
 
 // Re-exported so `test/routes.test.ts` and anything reading the route table
@@ -103,16 +104,26 @@ Trails.application!.routes().draw(function () {
   this.get("graphs/parity/data", { to: "parity_graphs#data" });
   this.get("graphs/parity", { to: "parity_graphs#show" });
 
-  // The audits, ported from ringo's `/audits` and `/audits/view/<file>`. The
-  // constraint lets ANY remainder reach the action — dots and slashes too, as
-  // ringo's `TrimPrefix` does — so `auditFileRe` in the action is the one
-  // place that decides what may be served, and a traversal gets its 400.
-  this.get("audits", { to: "audits#index" });
-  this.get("audits/view/:file", { to: "audits#show", constraints: { file: /.+/ } });
-  // Each audit's own page: the list with that audit open. Drawn after the
-  // viewer, though they cannot collide — `view` is not a filename the list
-  // could hold, since it has no `.md` or `.html`.
-  this.get("audits/:file", { to: "audits#index", constraints: { file: /[^/]+/ } });
+  // The audits, ported from ringo's `/audits`. A resource: `index` is the
+  // list, `show` an audit's page, and the member `raw` the file on its own,
+  // sandboxed. `:id` is the filename, constrained by ringo's `auditFileRe`
+  // (config/audit-files.ts), so a traversal, a dotfile or any other bad name
+  // matches no route and is a 404 before a controller runs. `format: false`
+  // because the extension is part of the id: `a.md` is the audit `a.md`, not
+  // the audit `a` as markdown.
+  this.resources(
+    "audits",
+    { only: ["index", "show"], constraints: { id: AUDIT_SEGMENT }, format: false },
+    () => {
+      this.get("raw", { on: "member" });
+    },
+  );
+  // ringo's viewer URL, kept as a redirect to `raw` under the same constraint.
+  this.get("audits/view/:file", {
+    to: this.redirect((params) => `/audits/${encodeURIComponent(String(params.file))}/raw`),
+    constraints: { file: AUDIT_SEGMENT },
+    format: false,
+  });
 
   // The read-models ringo consumes whole, replacing the `index.json` and
   // `events.json` it used to unmarshal from disk.

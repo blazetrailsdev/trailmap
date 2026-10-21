@@ -8,7 +8,8 @@ import { AUDIT_FILE_RE, Audit, auditTitle, auditsDir } from "../../app/models/au
 import { controllerTestCase } from "../support/controller-test-case.js";
 
 /**
- * `/audits` and `/audits/view/<file>`, against a scratch audits directory.
+ * `/audits`, `/audits/<file>` and `/audits/<file>/raw`, against a scratch
+ * audits directory.
  *
  * The directory sits INSIDE a parent holding a file of its own, so a
  * traversal that escaped would have something real to read.
@@ -16,7 +17,7 @@ import { controllerTestCase } from "../support/controller-test-case.js";
 let parent: string;
 let dir: string;
 
-async function get(action: "index" | "show", params: Record<string, string> = {}) {
+async function get(action: "index" | "show" | "raw", params: Record<string, string> = {}) {
   const tc = await controllerTestCase(AuditsController);
   await tc.get(action, { params });
   return tc.response;
@@ -61,32 +62,31 @@ describe("AuditsController", () => {
   });
 
   it("renders a markdown audit inline, escaped", async () => {
-    const body = (await get("index", { file: "newer_audit.md" })).body;
+    const body = (await get("show", { id: "newer_audit.md" })).body;
     expect(body).toContain("<h1>Newer</h1>");
     expect(body).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(body).not.toContain("<iframe");
   });
 
   it("frames an html audit, sandboxed, rather than inlining it", async () => {
-    const body = (await get("index", { file: "b-tie.html" })).body;
-    expect(body).toContain('<iframe sandbox src="/audits/view/b-tie.html"');
+    const body = (await get("show", { id: "b-tie.html" })).body;
+    expect(body).toContain('<iframe sandbox src="/audits/b-tie.html/raw"');
     expect(body).not.toContain("raw html");
   });
 
   it("opens the audit its own url names", async () => {
-    const body = (await get("index", { file: "a-tie.md" })).body;
+    const body = (await get("show", { id: "a-tie.md" })).body;
     expect(body).toContain("<h1>tie</h1>");
     expect(body).toMatch(/class="audit-item active" href="\/audits\/a-tie.md"/);
   });
 
   it("404s an audit url the list does not hold", async () => {
-    for (const file of ["missing.md", ".hidden.md", "notes.txt"]) {
-      await expect(get("index", { file }), file).rejects.toThrow(RecordNotFound);
-    }
+    // A malformed name never gets here — the route refuses it (test/routes.test.ts).
+    await expect(get("show", { id: "missing.md" })).rejects.toThrow(RecordNotFound);
   });
 
   it("renders a markdown audit into the shell, without its frontmatter", async () => {
-    const response = await get("show", { file: "older-audit-20260801T000000Z.md" });
+    const response = await get("raw", { id: "older-audit-20260801T000000Z.md" });
     expect(response.status).toBe(200);
     expect(response.body).toContain("<title>older audit</title>");
     expect(response.body).toContain("<h1>Older</h1>");
@@ -95,7 +95,7 @@ describe("AuditsController", () => {
   });
 
   it("escapes raw html and refuses a javascript: link in a markdown audit", async () => {
-    const body = (await get("show", { file: "newer_audit.md" })).body;
+    const body = (await get("raw", { id: "newer_audit.md" })).body;
     expect(body).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(body).toContain("&lt;img src=x onerror=alert(1)&gt;");
     expect(body).not.toContain("<script>");
@@ -104,37 +104,19 @@ describe("AuditsController", () => {
 
   it("serves every audit sandboxed, and frames it sandboxed", async () => {
     for (const file of ["b-tie.html", "a-tie.md"]) {
-      const response = await get("show", { file });
+      const response = await get("raw", { id: file });
       expect(response.getHeader("Content-Security-Policy"), file).toBe("sandbox");
     }
   });
 
   it("serves an html audit exactly as written", async () => {
-    const response = await get("show", { file: "b-tie.html" });
+    const response = await get("raw", { id: "b-tie.html" });
     expect(response.status).toBe(200);
     expect(response.body).toBe("<!doctype html><p>raw html</p>");
   });
 
-  it("refuses a path traversal and a dotfile before reading anything", async () => {
-    for (const file of ["../secret.md", "..%2Fsecret.md", ".hidden.md", "audits/../../secret.md"]) {
-      const response = await get("show", { file });
-      expect(response.status, file).toBe(400);
-      expect(response.body, file).toBe("bad audit name");
-    }
-  });
-
-  it("takes the filename through strong parameters; a hash cannot smuggle one in", async () => {
-    // `:file` is a path segment, so routing flattens a hash to one string
-    // (`evil=a-tie.md`) before `params.expect` sees it, and the filename rule
-    // refuses that.
-    const tc = await controllerTestCase(AuditsController);
-    await tc.get("show", { params: { file: { evil: "a-tie.md" } as unknown as string } });
-    expect(tc.response.status).toBe(400);
-    expect(tc.response.body).toBe("bad audit name");
-  });
-
   it("404s a well-formed name with no file", async () => {
-    await expect(get("show", { file: "missing.md" })).rejects.toThrow(RecordNotFound);
+    await expect(get("raw", { id: "missing.md" })).rejects.toThrow(RecordNotFound);
   });
 });
 

@@ -130,25 +130,52 @@ describe("config/routes", () => {
     expect(recognize(routes, "GET", "/")?.route.controller).toBe("home");
   });
 
-  it("routes the audits list, each audit's own url, and the viewer", () => {
+  it("routes audits as a resource whose id is the whole filename", () => {
     const routes = routeSet();
 
     expect(recognize(routes, "GET", "/audits").route).toEqual({ controller: "audits", action: "index" });
 
-    // The whole filename, extension included, is `:file` — not a `.md` format.
-    const own = recognize(routes, "GET", "/audits/a-tie.md");
-    expect(own.route).toEqual({ controller: "audits", action: "index" });
-    expect(own.params.file).toBe("a-tie.md");
-    expect(own.params.format).toBeUndefined();
+    // The extension is part of the id, not a `.md` format.
+    const show = recognize(routes, "GET", "/audits/a-tie.md");
+    expect(show.route).toEqual({ controller: "audits", action: "show" });
+    expect(show.params.id).toBe("a-tie.md");
+    expect(show.params.format).toBeUndefined();
 
-    // `view` alone is an audit url the list cannot hold, so `index` 404s it.
-    const bare = recognize(routes, "GET", "/audits/view");
-    expect(bare.route).toEqual({ controller: "audits", action: "index" });
-    expect(bare.params.file).toBe("view");
+    const raw = recognize(routes, "GET", "/audits/b-tie.html/raw");
+    expect(raw.route).toEqual({ controller: "audits", action: "raw" });
+    expect(raw.params.id).toBe("b-tie.html");
+  });
 
-    const viewer = recognize(routes, "GET", "/audits/view/b-tie.html");
-    expect(viewer.route).toEqual({ controller: "audits", action: "show" });
-    expect(viewer.params.file).toBe("b-tie.html");
+  it("refuses a path traversal, a dotfile and any name auditFileRe rejects", () => {
+    const routes = routeSet();
+    for (const path of [
+      "/audits/..%2Fsecret.md",
+      "/audits/.hidden.md",
+      "/audits/notes.txt",
+      "/audits/view",
+      "/audits/..%2Fsecret.md/raw",
+      "/audits/.hidden.md/raw",
+      "/audits/view/..%2Fsecret.md",
+      "/audits/view/.hidden.md",
+    ]) {
+      expect(() => recognize(routes, "GET", path), path).toThrow(/No route matches/);
+    }
+  });
+
+  it("redirects ringo's viewer url to the audit's raw url", async () => {
+    const env = (path: string) => ({
+      REQUEST_METHOD: "GET",
+      PATH_INFO: path,
+      SERVER_NAME: "example.com",
+      SERVER_PORT: "80",
+      "rack.url_scheme": "http",
+    });
+    const [status, headers] = await routeSet().call(env("/audits/view/a-tie.md"));
+    expect(status).toBe(301);
+    expect(headers["location"]).toBe("http://example.com/audits/a-tie.md/raw");
+
+    const [refused] = await routeSet().call(env("/audits/view/.hidden.md"));
+    expect(refused).toBe(404);
   });
 
   it("routes a pane's live view, and the screen relay it polls", () => {

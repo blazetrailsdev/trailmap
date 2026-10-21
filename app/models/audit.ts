@@ -3,15 +3,9 @@ import { RecordNotFound } from "@blazetrails/activerecord";
 import { include } from "@blazetrails/activesupport";
 import { getFs, getPath } from "@blazetrails/ruby-compat";
 import { Trails } from "@blazetrails/trailties";
+import { AUDIT_FILE_RE } from "../../config/audit-files.js";
 
-/**
- * The only filename shape the audit viewer will serve: no separators, no
- * dotfiles, and either extension an agent may submit — `.md`, which is
- * rendered, or `.html`, which is served as written. ringo's `auditFileRe`
- * (webhook/audits.go), character for character, and it is the whole of the
- * path-traversal defence: a name that matches cannot leave the directory.
- */
-export const AUDIT_FILE_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.(md|html)$/;
+export { AUDIT_FILE_RE };
 
 /** A trailing ISO-basic timestamp (`-20260803T134718Z`), ringo's `tsSuffixRe`. */
 const TS_SUFFIX_RE = /[-_]?\d{8}T\d{6}Z$/;
