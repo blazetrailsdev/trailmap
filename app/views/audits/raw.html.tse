@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= title %></title>
+<style>
+  :root { --bg: #0d1117; --fg: #c9d1d9; --muted: #8b949e; --border: #30363d; --surface: #161b22; --accent: #58a6ff; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --border: #d0d7de; --surface: #f6f8fa; --accent: #0969da; }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--fg); padding: 28px; }
+  .md { font-size: 14px; line-height: 1.6; max-width: 900px; margin: 0 auto; }
+  .md > :first-child { margin-top: 0; }
+  .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { margin: 20px 0 10px; line-height: 1.3; }
+  .md h1 { font-size: 24px; } .md h2 { font-size: 19px; } .md h3 { font-size: 16px; }
+  .md p { margin: 10px 0; }
+  .md ul, .md ol { margin: 10px 0; padding-left: 24px; }
+  .md li { margin: 4px 0; }
+  .md a { color: var(--accent); }
+  .md code { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .md pre { margin: 12px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px; overflow-x: auto; }
+  .md pre code { background: transparent; border: none; padding: 0; }
+  .md blockquote { margin: 10px 0; padding: 4px 14px; border-left: 3px solid var(--border); color: var(--muted); }
+  .md hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+  .md table { border-collapse: collapse; margin: 14px 0; display: block; width: max-content; max-width: 100%; overflow-x: auto; }
+  .md th, .md td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+  .md th { background: var(--surface); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="md"><%= body %></div>
+</body>
+</html>

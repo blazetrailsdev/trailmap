@@ -23,6 +23,7 @@ export class Trailmap extends Application {
     // here: config/database.ts owns it, and is its only reader.
     this.config.x.fleet.repoPaths = env.FLEET_REPO_PATHS;
     this.config.x.tasks.dir = env.TASKS_DIR;
+    this.config.x.audits.dir = env.AUDITS_DIR;
 
     // Log to STDOUT, as Rails' production template does, in every environment:
     // without a logger the framework installs a NullLogger, and what the

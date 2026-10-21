@@ -3,6 +3,7 @@ import { RouteSet, controllerConstants } from "@blazetrails/actionpack";
 import { Trails } from "@blazetrails/trailties";
 import "../config/application.js";
 import "../config/routes.js";
+import { AuditsController } from "../app/controllers/audits-controller.js";
 import { DashboardController } from "../app/controllers/dashboard-controller.js";
 import { FleetController } from "../app/controllers/fleet-controller.js";
 import { HomeController } from "../app/controllers/home-controller.js";
@@ -32,6 +33,7 @@ import { RESERVED_OWNER_NAMES } from "../config/routes.js";
 // booting, so it does that registration itself — which also makes each case a
 // check that the route names a controller that is really there.
 for (const controller of [
+  AuditsController,
   DashboardController,
   FleetController,
   HomeController,
@@ -126,6 +128,54 @@ describe("config/routes", () => {
     // ringo keeps serving its own `/` until this page is verified, so
     // trailmap's root is still its landing page.
     expect(recognize(routes, "GET", "/")?.route.controller).toBe("home");
+  });
+
+  it("routes audits as a resource whose id is the whole filename", () => {
+    const routes = routeSet();
+
+    expect(recognize(routes, "GET", "/audits").route).toEqual({ controller: "audits", action: "index" });
+
+    // The extension is part of the id, not a `.md` format.
+    const show = recognize(routes, "GET", "/audits/a-tie.md");
+    expect(show.route).toEqual({ controller: "audits", action: "show" });
+    expect(show.params.id).toBe("a-tie.md");
+    expect(show.params.format).toBeUndefined();
+
+    const raw = recognize(routes, "GET", "/audits/b-tie.html/raw");
+    expect(raw.route).toEqual({ controller: "audits", action: "raw" });
+    expect(raw.params.id).toBe("b-tie.html");
+  });
+
+  it("refuses a path traversal, a dotfile and any name auditFileRe rejects", () => {
+    const routes = routeSet();
+    for (const path of [
+      "/audits/..%2Fsecret.md",
+      "/audits/.hidden.md",
+      "/audits/notes.txt",
+      "/audits/view",
+      "/audits/..%2Fsecret.md/raw",
+      "/audits/.hidden.md/raw",
+      "/audits/view/..%2Fsecret.md",
+      "/audits/view/.hidden.md",
+    ]) {
+      expect(() => recognize(routes, "GET", path), path).toThrow(/No route matches/);
+    }
+  });
+
+  it("redirects ringo's viewer url to the audit's raw url", async () => {
+    const env = (path: string) => ({
+      REQUEST_METHOD: "GET",
+      PATH_INFO: path,
+      SERVER_NAME: "example.com",
+      SERVER_PORT: "80",
+      "rack.url_scheme": "http",
+    });
+    const [status, headers] = await routeSet().call(env("/audits/view/a-tie.md"));
+    expect(status).toBe(301);
+    expect(headers["location"]).toBe("http://example.com/audits/a-tie.md/raw");
+
+    const [refused] = await routeSet().call(env("/audits/view/.hidden.md"));
+    expect(refused).toBe(404);
   });
 
   it("routes a pane's live view, and the screen relay it polls", () => {

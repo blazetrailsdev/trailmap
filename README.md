@@ -425,3 +425,8 @@ TASKS_DIR=~/github/blazetrailsdev/tasks pnpm dev
 when the two are not arranged that way. When neither names a checkout the
 pages still render their metadata and say, in place of the document, why they
 could not read it.
+
+`AUDITS_DIR` names the directory `/audits` lists — ringo's, which on this box
+is `~/.btwhooks/data/github/blazetrailsdev/trails/audits`. It has no default,
+because there is no path a guess could be right about: unset, the page says so
+and lists nothing. Agents write the files; trailmap only reads them.

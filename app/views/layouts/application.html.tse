@@ -17,6 +17,7 @@
       <a href="/backlog">Backlog</a>
       <a href="/dashboard">Fleet</a>
       <a href="/graphs/parity">Parity</a>
+      <a href="/audits">Audits</a>
     </nav>
   </nav>
 

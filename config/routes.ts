@@ -1,4 +1,5 @@
 import { Trails } from "@blazetrails/trailties";
+import { AUDIT_SEGMENT } from "./audit-files.js";
 import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "./owner-names.js";
 
 // Re-exported so `test/routes.test.ts` and anything reading the route table
@@ -102,6 +103,27 @@ Trails.application!.routes().draw(function () {
   // readability; the patterns cannot collide.
   this.get("graphs/parity/data", { to: "parity_graphs#data" });
   this.get("graphs/parity", { to: "parity_graphs#show" });
+
+  // The audits, ported from ringo's `/audits`. A resource: `index` is the
+  // list, `show` an audit's page, and the member `raw` the file on its own,
+  // sandboxed. `:id` is the filename, constrained by ringo's `auditFileRe`
+  // (config/audit-files.ts), so a traversal, a dotfile or any other bad name
+  // matches no route and is a 404 before a controller runs. `format: false`
+  // because the extension is part of the id: `a.md` is the audit `a.md`, not
+  // the audit `a` as markdown.
+  this.resources(
+    "audits",
+    { only: ["index", "show"], constraints: { id: AUDIT_SEGMENT }, format: false },
+    () => {
+      this.get("raw", { on: "member" });
+    },
+  );
+  // ringo's viewer URL, kept as a redirect to `raw` under the same constraint.
+  this.get("audits/view/:file", {
+    to: this.redirect((params) => `/audits/${encodeURIComponent(String(params.file))}/raw`),
+    constraints: { file: AUDIT_SEGMENT },
+    format: false,
+  });
 
   // The read-models ringo consumes whole, replacing the `index.json` and
   // `events.json` it used to unmarshal from disk.
