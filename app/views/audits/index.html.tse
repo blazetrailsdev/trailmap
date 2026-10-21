@@ -22,7 +22,7 @@
       <% } %>
     </div>
     <div class="audits-frame">
-      <iframe src="/audits/view/<%= encodeURIComponent(selected.name) %>" title="<%= selected.title %>"></iframe>
+      <iframe sandbox src="/audits/view/<%= encodeURIComponent(selected.name) %>" title="<%= selected.title %>"></iframe>
     </div>
   </div>
 <% } %>

@@ -38,6 +38,13 @@ export class AuditsController extends ApplicationController {
       return;
     }
     this.response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    // An audit is agent-written and served from trailmap's own origin, so a
+    // script in one could call every state-changing endpoint here. `sandbox`
+    // gives the document an opaque origin and no scripts, opened in the
+    // page's iframe or on its own. ringo does NOT do this — it reaches into
+    // the frame to bind its fullscreen key — and this deliberately does not
+    // copy that.
+    this.response.setHeader("Content-Security-Policy", "sandbox");
     if (isHtmlAudit(name)) {
       await this.render({ html: htmlSafe(source), layout: false });
       return;

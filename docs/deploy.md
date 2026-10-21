@@ -438,6 +438,16 @@ The container runs as uid/gid 1000, the host owner of `tasks.db`, so the bind
 mount is writable with no permission work. `TASKS_DIR` is needed as well as
 `TASKS_DATABASE`: the show pages read each document's markdown off disk.
 
+`/audits` reads ringo's audits directory, read-only. Mount it and name it:
+
+```sh
+dokku storage:mount trailmap \
+  /home/dean/.btwhooks/data/github/blazetrailsdev/trails/audits:/audits:ro
+dokku config:set trailmap AUDITS_DIR=/audits
+```
+
+Unset, `/audits` renders and says there is no directory to list.
+
 **Decided: the mount is read-write.** Authoring and ingest commit into the
 checkout from inside the container, and the mutation endpoints exist to write.
 The CLI still opens the same file, so the guard against two writers is

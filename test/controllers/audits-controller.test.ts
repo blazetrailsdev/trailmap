@@ -39,7 +39,9 @@ beforeAll(async () => {
   await fs.writeFile!(`${dir}/notes.txt`, "not an audit");
   const files: [string, string, string][] = [
     ["older-audit-20260801T000000Z.md", "---\nkind: audit\n---\n# Older\n\nbody", "2026-08-01T00:00:00Z"],
-    ["newer_audit.md", "# Newer", "2026-09-01T00:00:00Z"],
+    [
+      "newer_audit.md",
+      '# Newer\n\n<script>alert(1)</script> [x](javascript:alert(1)) <img src=x onerror=alert(1)>', "2026-09-01T00:00:00Z"],
     ["b-tie.html", "<!doctype html><p>raw html</p>", "2026-08-15T00:00:00Z"],
     ["a-tie.md", "# tie", "2026-08-15T00:00:00Z"],
   ];
@@ -75,6 +77,22 @@ describe("AuditsController", () => {
     expect(response.body).toContain("<h1>Older</h1>");
     expect(response.body).not.toContain("kind: audit");
     expect(response.body).not.toContain('<nav class="nav">');
+  });
+
+  it("escapes raw html and refuses a javascript: link in a markdown audit", async () => {
+    const body = (await get("show", { file: "newer_audit.md" })).body;
+    expect(body).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(body).toContain("&lt;img src=x onerror=alert(1)&gt;");
+    expect(body).not.toContain("<script>");
+    expect(body).not.toContain('href="javascript:');
+  });
+
+  it("serves every audit sandboxed, and frames it sandboxed", async () => {
+    for (const file of ["b-tie.html", "a-tie.md"]) {
+      const response = await get("show", { file });
+      expect(response.getHeader("Content-Security-Policy"), file).toBe("sandbox");
+    }
+    expect((await get("index")).body).toMatch(/<iframe sandbox src="\/audits\/view\//);
   });
 
   it("serves an html audit exactly as written", async () => {
