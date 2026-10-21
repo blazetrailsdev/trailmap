@@ -60,14 +60,21 @@ afterAll(async () => {
 describe("AuditsController", () => {
   it("lists the audits newest first, ties in filename order, skipping other files", async () => {
     const body = (await get("index")).body;
-    const order = [...body.matchAll(/href="\/audits\?file=([^"]+)"/g)].map((m) => decodeURIComponent(m[1]!));
+    const order = [...body.matchAll(/href="\/audits\/([^"]+)"/g)].map((m) => decodeURIComponent(m[1]!));
     expect(order).toEqual(["newer_audit.md", "a-tie.md", "b-tie.html", "older-audit-20260801T000000Z.md"]);
     expect(body).toContain('src="/audits/view/newer_audit.md"');
   });
 
-  it("selects the audit named in the query", async () => {
+  it("opens the audit its own url names", async () => {
     const body = (await get("index", { file: "a-tie.md" })).body;
     expect(body).toContain('src="/audits/view/a-tie.md"');
+    expect(body).toMatch(/class="audit-item active" href="\/audits\/a-tie.md"/);
+  });
+
+  it("answers 404 for an audit url the list does not hold", async () => {
+    for (const file of ["missing.md", ".hidden.md", "notes.txt"]) {
+      expect((await get("index", { file })).status, file).toBe(404);
+    }
   });
 
   it("renders a markdown audit into the shell, without its frontmatter", async () => {

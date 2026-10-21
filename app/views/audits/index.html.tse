@@ -15,7 +15,7 @@
     <div class="audits-side">
       <div class="audits-group">Audits <span class="muted"><%= audits.length %></span></div>
       <% for (const audit of audits) { %>
-        <a class="audit-item<%= audit === selected ? " active" : "" %>" href="/audits?file=<%= encodeURIComponent(audit.name) %>">
+        <a class="audit-item<%= audit === selected ? " active" : "" %>" href="/audits/<%= encodeURIComponent(audit.name) %>">
           <span class="audit-title"><%= audit.title %></span>
           <time class="muted" datetime="<%= audit.when.toISOString() %>"><%= audit.when.toISOString().slice(0, 16).replace("T", " ") %></time>
         </a>

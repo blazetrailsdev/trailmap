@@ -109,6 +109,10 @@ Trails.application!.routes().draw(function () {
   // place that decides what may be served, and a traversal gets its 400.
   this.get("audits", { to: "audits#index" });
   this.get("audits/view/:file", { to: "audits#show", constraints: { file: /.+/ } });
+  // Each audit's own page: the list with that audit open. Drawn after the
+  // viewer, though they cannot collide — `view` is not a filename the list
+  // could hold, since it has no `.md` or `.html`.
+  this.get("audits/:file", { to: "audits#index", constraints: { file: /[^/]+/ } });
 
   // The read-models ringo consumes whole, replacing the `index.json` and
   // `events.json` it used to unmarshal from disk.

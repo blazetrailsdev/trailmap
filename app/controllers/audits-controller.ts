@@ -15,8 +15,18 @@ import { stripFrontmatter } from "../models/concerns/document.js";
 export class AuditsController extends ApplicationController {
   async index(): Promise<void> {
     const audits = await listAudits();
-    const requested = String(this.params.get("file") ?? "");
-    const selected = audits.find((audit) => audit.name === requested) ?? audits[0] ?? null;
+    // `/audits/<file>` opens that audit; bare `/audits` opens the newest. A
+    // name the list does not hold is a 404, not a quiet fall back to the
+    // newest, so a stale link says it is stale.
+    const requested = this.params.get("file");
+    const selected =
+      requested === undefined || requested === null
+        ? (audits[0] ?? null)
+        : (audits.find((audit) => audit.name === String(requested)) ?? null);
+    if (requested !== undefined && requested !== null && selected === null) {
+      await this.render({ plain: "audit not found", status: 404 });
+      return;
+    }
     await this.render({ locals: { audits, selected, configured: auditsDir() !== null } });
   }
 
