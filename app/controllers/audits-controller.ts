@@ -43,7 +43,7 @@ export class AuditsController extends ApplicationController {
    * ringo's 400 for a bad name; a missing file is `RecordNotFound`, a 404.
    */
   async show(): Promise<void> {
-    const name = String(this.params.get("file") ?? "");
+    const name = this.auditName();
     if (!AUDIT_FILE_RE.test(name)) {
       await this.render({ plain: "bad audit name", status: 400 });
       return;
@@ -66,5 +66,15 @@ export class AuditsController extends ApplicationController {
       layout: false,
       locals: { title: audit.title, body: renderMarkdown(stripFrontmatter(source)) },
     });
+  }
+
+  /**
+   * The filename, through strong parameters: Rails 8's `params.expect(:file)`,
+   * which permits only a scalar and raises `ParameterMissing` (a 400) for
+   * anything else. `:file` is a path segment, so routing already makes it one
+   * string; `AUDIT_FILE_RE` in `show` is still what decides it may be served.
+   */
+  private auditName(): string {
+    return String(this.params.expect("file"));
   }
 }

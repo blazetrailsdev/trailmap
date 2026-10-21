@@ -123,6 +123,16 @@ describe("AuditsController", () => {
     }
   });
 
+  it("takes the filename through strong parameters; a hash cannot smuggle one in", async () => {
+    // `:file` is a path segment, so routing flattens a hash to one string
+    // (`evil=a-tie.md`) before `params.expect` sees it, and the filename rule
+    // refuses that.
+    const tc = await controllerTestCase(AuditsController);
+    await tc.get("show", { params: { file: { evil: "a-tie.md" } as unknown as string } });
+    expect(tc.response.status).toBe(400);
+    expect(tc.response.body).toBe("bad audit name");
+  });
+
   it("404s a well-formed name with no file", async () => {
     await expect(get("show", { file: "missing.md" })).rejects.toThrow(RecordNotFound);
   });
