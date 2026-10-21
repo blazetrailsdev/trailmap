@@ -63,11 +63,9 @@ describe("a 500", () => {
   // Before trails#7777 it matched `Accept` by substring, and a browser — whose
   // header names application/xml — was answered with an `<error>` document.
   it("is the HTML page for a browser", async () => {
-    const debug = new DebugExceptions(
-      async () => {
-        throw new Error("a page raised");
-      },
-    );
+    const debug = new DebugExceptions(async () => {
+      throw new Error("a page raised");
+    });
     const [status, headers] = await debug.call({
       "action_dispatch.show_detailed_exceptions": true,
       REQUEST_METHOD: "GET",
