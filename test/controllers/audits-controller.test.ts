@@ -3,14 +3,8 @@ import { getFs } from "@blazetrails/ruby-compat";
 import { Trails } from "@blazetrails/trailties";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { AuditsController } from "../../app/controllers/audits-controller.js";
-import {
-  AUDIT_FILE_RE,
-  auditTitle,
-  auditsDir,
-  isHtmlAudit,
-  listAudits,
-  readAudit,
-} from "../../app/models/audit.js";
+import { RecordNotFound } from "@blazetrails/activerecord";
+import { AUDIT_FILE_RE, Audit, auditTitle, auditsDir } from "../../app/models/audit.js";
 import { controllerTestCase } from "../support/controller-test-case.js";
 
 /**
@@ -62,18 +56,32 @@ describe("AuditsController", () => {
     const body = (await get("index")).body;
     const order = [...body.matchAll(/href="\/audits\/([^"]+)"/g)].map((m) => decodeURIComponent(m[1]!));
     expect(order).toEqual(["newer_audit.md", "a-tie.md", "b-tie.html", "older-audit-20260801T000000Z.md"]);
-    expect(body).toContain('src="/audits/view/newer_audit.md"');
+    expect(body).toContain('<article class="markdown audits-doc">');
+    expect(body).not.toContain("<iframe");
+  });
+
+  it("renders a markdown audit inline, escaped", async () => {
+    const body = (await get("index", { file: "newer_audit.md" })).body;
+    expect(body).toContain("<h1>Newer</h1>");
+    expect(body).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(body).not.toContain("<iframe");
+  });
+
+  it("frames an html audit, sandboxed, rather than inlining it", async () => {
+    const body = (await get("index", { file: "b-tie.html" })).body;
+    expect(body).toContain('<iframe sandbox src="/audits/view/b-tie.html"');
+    expect(body).not.toContain("raw html");
   });
 
   it("opens the audit its own url names", async () => {
     const body = (await get("index", { file: "a-tie.md" })).body;
-    expect(body).toContain('src="/audits/view/a-tie.md"');
+    expect(body).toContain("<h1>tie</h1>");
     expect(body).toMatch(/class="audit-item active" href="\/audits\/a-tie.md"/);
   });
 
-  it("answers 404 for an audit url the list does not hold", async () => {
+  it("404s an audit url the list does not hold", async () => {
     for (const file of ["missing.md", ".hidden.md", "notes.txt"]) {
-      expect((await get("index", { file })).status, file).toBe(404);
+      await expect(get("index", { file }), file).rejects.toThrow(RecordNotFound);
     }
   });
 
@@ -99,7 +107,6 @@ describe("AuditsController", () => {
       const response = await get("show", { file });
       expect(response.getHeader("Content-Security-Policy"), file).toBe("sandbox");
     }
-    expect((await get("index")).body).toMatch(/<iframe sandbox src="\/audits\/view\//);
   });
 
   it("serves an html audit exactly as written", async () => {
@@ -116,9 +123,8 @@ describe("AuditsController", () => {
     }
   });
 
-  it("answers 404 for a well-formed name with no file", async () => {
-    const response = await get("show", { file: "missing.md" });
-    expect(response.status).toBe(404);
+  it("404s a well-formed name with no file", async () => {
+    await expect(get("show", { file: "missing.md" })).rejects.toThrow(RecordNotFound);
   });
 });
 
@@ -136,7 +142,7 @@ describe("auditFileRe", () => {
   });
 });
 
-describe("audit model", () => {
+describe("Audit", () => {
   it("reads AUDITS_DIR from config.x, without a trailing slash", () => {
     Trails.application!.config.x.audits.dir = `${dir}/`;
     try {
@@ -146,24 +152,53 @@ describe("audit model", () => {
     }
   });
 
-  it("tells an html audit from a markdown one", () => {
-    expect(isHtmlAudit("a.html")).toBe(true);
-    expect(isHtmlAudit("a.md")).toBe(false);
+  it("is an ActiveModel with typed attributes", async () => {
+    const audit = await Audit.find("a-tie.md");
+    expect(audit).toBeInstanceOf(Audit);
+    expect(audit.name).toBe("a-tie.md");
+    expect(audit.size).toBe(5);
+    expect(audit.when).toEqual(new Date("2026-08-15T00:00:00Z"));
+    expect(audit.attributes).toEqual({ name: "a-tie.md", size: 5, when: audit.when });
+    expect(Audit.modelName.name).toBe("Audit");
   });
 
-  it("reads one audit, and answers null for a missing file or a bad name", async () => {
-    expect(await readAudit("a-tie.md")).toBe("# tie");
-    expect(await readAudit("missing.md")).toBeNull();
-    expect(await readAudit("../secret.md")).toBeNull();
+  it("finds like ActiveRecord: all, first, findBy, find", async () => {
+    expect((await Audit.all()).map((a) => a.name)).toEqual([
+      "newer_audit.md",
+      "a-tie.md",
+      "b-tie.html",
+      "older-audit-20260801T000000Z.md",
+    ]);
+    expect((await Audit.first())?.name).toBe("newer_audit.md");
+    expect((await Audit.findBy({ name: "b-tie.html" }))?.name).toBe("b-tie.html");
+    expect(await Audit.findBy({ name: "missing.md" })).toBeNull();
+    expect(await Audit.findBy({ name: "../secret.md" })).toBeNull();
+    expect(await Audit.findBy({ name: ".hidden.md" })).toBeNull();
+    await expect(Audit.find("missing.md")).rejects.toThrow(RecordNotFound);
+  });
+
+  it("answers its name as its param, its title, and whether it is html", async () => {
+    const html = await Audit.find("b-tie.html");
+    expect(html.toParam()).toBe("b-tie.html");
+    expect(html.isHtml()).toBe(true);
+    const md = await Audit.find("older-audit-20260801T000000Z.md");
+    expect(md.isHtml()).toBe(false);
+    expect(md.title).toBe("older audit");
+  });
+
+  it("reads its file, and raises RecordNotFound once it is gone", async () => {
+    expect(await (await Audit.find("a-tie.md")).read()).toBe("# tie");
+    const ghost = new Audit({ name: "gone.md" });
+    await expect(ghost.read()).rejects.toThrow(RecordNotFound);
   });
 
   it("lists nothing when the directory is unset or missing", async () => {
     Trails.application!.config.x.audits.dir = `${parent}/absent`;
     try {
-      expect(await listAudits()).toEqual([]);
+      expect(await Audit.all()).toEqual([]);
       Trails.application!.config.x.audits.dir = undefined;
-      expect(await listAudits()).toEqual([]);
-      expect(await readAudit("a-tie.md")).toBeNull();
+      expect(await Audit.all()).toEqual([]);
+      expect(await Audit.first()).toBeNull();
     } finally {
       Trails.application!.config.x.audits.dir = dir;
     }

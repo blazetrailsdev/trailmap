@@ -735,11 +735,16 @@ ul { margin: 0 0 10px 20px; }
 .audit-item:hover, .audit-item.active { border-color: var(--accent); }
 .audit-item .audit-title { display: block; font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
 .audit-item time { font-size: 11.5px; }
+.audits-doc { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.audits-doc pre, .audits-doc table { max-width: 100%; overflow-x: auto; }
 .audits-frame { flex: 1 1 auto; min-width: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .audits-frame iframe { display: block; width: 100%; height: calc(100vh - 186px); min-height: 480px; border: 0; }
 @media (max-width: 800px) {
   .audits-layout { flex-direction: column; }
   .audits-side { flex-basis: auto; width: 100%; max-height: none; }
   .audits-frame { width: 100%; }
+  /* On a phone the report comes first: an audit's own url should open on it,
+     not on 73 list entries above it. */
+  .audits-doc, .audits-frame { order: -1; width: 100%; }
   .audits-frame iframe { height: 70vh; }
 }

@@ -3,6 +3,7 @@ import { RouteSet, controllerConstants } from "@blazetrails/actionpack";
 import { Trails } from "@blazetrails/trailties";
 import "../config/application.js";
 import "../config/routes.js";
+import { AuditsController } from "../app/controllers/audits-controller.js";
 import { DashboardController } from "../app/controllers/dashboard-controller.js";
 import { FleetController } from "../app/controllers/fleet-controller.js";
 import { HomeController } from "../app/controllers/home-controller.js";
@@ -32,6 +33,7 @@ import { RESERVED_OWNER_NAMES } from "../config/routes.js";
 // booting, so it does that registration itself — which also makes each case a
 // check that the route names a controller that is really there.
 for (const controller of [
+  AuditsController,
   DashboardController,
   FleetController,
   HomeController,
@@ -126,6 +128,27 @@ describe("config/routes", () => {
     // ringo keeps serving its own `/` until this page is verified, so
     // trailmap's root is still its landing page.
     expect(recognize(routes, "GET", "/")?.route.controller).toBe("home");
+  });
+
+  it("routes the audits list, each audit's own url, and the viewer", () => {
+    const routes = routeSet();
+
+    expect(recognize(routes, "GET", "/audits").route).toEqual({ controller: "audits", action: "index" });
+
+    // The whole filename, extension included, is `:file` — not a `.md` format.
+    const own = recognize(routes, "GET", "/audits/a-tie.md");
+    expect(own.route).toEqual({ controller: "audits", action: "index" });
+    expect(own.params.file).toBe("a-tie.md");
+    expect(own.params.format).toBeUndefined();
+
+    // `view` alone is an audit url the list cannot hold, so `index` 404s it.
+    const bare = recognize(routes, "GET", "/audits/view");
+    expect(bare.route).toEqual({ controller: "audits", action: "index" });
+    expect(bare.params.file).toBe("view");
+
+    const viewer = recognize(routes, "GET", "/audits/view/b-tie.html");
+    expect(viewer.route).toEqual({ controller: "audits", action: "show" });
+    expect(viewer.params.file).toBe("b-tie.html");
   });
 
   it("routes a pane's live view, and the screen relay it polls", () => {
