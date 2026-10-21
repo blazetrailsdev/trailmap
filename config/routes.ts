@@ -139,16 +139,16 @@ Trails.application!.routes().draw(function () {
   // so every route above wins over `/:owner`. See RESERVED_OWNER_NAMES for the
   // other half of the collision.
   //
-  // The nested blocks are ARROWS, which is load-bearing: `draw` binds its
-  // block to the mapper, but `scope` — and `constraints`, which is a `scope` —
-  // invokes a nested block unbound (`cb()`, actionpack's mapper.ts), where
-  // Rails' `scope` yields through `instance_eval` and keeps `self`. An arrow
-  // takes `this` lexically from the enclosing `function ()`, so it sidesteps
-  // that entirely; a nested `function () { this.get(...) }` would throw.
-  // `scope-and-constraints-call-their-block-unbound` (RFC 0141, filed from
-  // this PR) tracks the divergence. Nothing here works around it.
+  // The nested blocks are arrows, which take `this` lexically from the
+  // enclosing `function ()`. Since trails#8766
+  // (`scope-and-constraints-call-their-block-unbound`, done) `scope` and
+  // `constraints` also bind a nested block to the mapper, as Rails'
+  // `instance_eval` keeps `self`, so a nested `function ()` would work too.
   this.constraints({ owner: OWNER_SEGMENT, repo: REPO_SEGMENT }, () => {
-    this.get(":owner", { to: "owners#show", as: "owner" });
+    // Spelled with the leading slash: trails writes a Ruby Symbol as a string
+    // with its colon (trails CLAUDE.md, "A Ruby Symbol is a JS string"), so a
+    // bare ":owner" is `get :owner`, the static path /owner (trails#8875).
+    this.get("/:owner", { to: "owners#show", as: "owner" });
 
     // The eight tabs. `scope` carries the shared `:owner/:repo` prefix and the
     // `repo_` route-helper names; the controllers are flat, named

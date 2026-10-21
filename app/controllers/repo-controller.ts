@@ -93,7 +93,7 @@ const TAB_LABELS: ReadonlyArray<[string, string, string]> = [
  * message is the unknown repository's for the same reason.
  */
 async function loadRepository(
-  controller: AbstractController.AbstractController,
+  controller: AbstractController.Base,
 ): Promise<boolean> {
   const base = controller as unknown as RepoController & {
     params: { get(key: string): unknown };
