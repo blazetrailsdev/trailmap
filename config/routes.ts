@@ -103,6 +103,13 @@ Trails.application!.routes().draw(function () {
   this.get("graphs/parity/data", { to: "parity_graphs#data" });
   this.get("graphs/parity", { to: "parity_graphs#show" });
 
+  // The audits, ported from ringo's `/audits` and `/audits/view/<file>`. The
+  // constraint lets ANY remainder reach the action — dots and slashes too, as
+  // ringo's `TrimPrefix` does — so `auditFileRe` in the action is the one
+  // place that decides what may be served, and a traversal gets its 400.
+  this.get("audits", { to: "audits#index" });
+  this.get("audits/view/:file", { to: "audits#show", constraints: { file: /.+/ } });
+
   // The read-models ringo consumes whole, replacing the `index.json` and
   // `events.json` it used to unmarshal from disk.
   // `read_models` is the controller PATH the autoloader keys

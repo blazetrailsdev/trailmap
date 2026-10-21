@@ -21,6 +21,7 @@
  */
 export const RESERVED_OWNER_NAMES = [
   "assets",
+  "audits",
   "backlog",
   "dashboard",
   "events",

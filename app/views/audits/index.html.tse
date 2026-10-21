@@ -1,0 +1,28 @@
+<div class="page-header">
+  <h1 class="page-title">Audits</h1>
+  <div class="page-subhead">
+    <span class="muted">Agent-written progress reports, newest first. Report cards and refinements are on ringo.</span>
+  </div>
+</div>
+
+<% if (audits.length === 0) { %>
+  <div class="card">
+    <div class="card-head"><span class="card-title">No audits yet</span></div>
+    <div class="field-note"><% if (configured) { %>Agents write audits (markdown or self-contained HTML) into the audits directory.<% } else { %>This deployment has no <code>AUDITS_DIR</code>, so there is no directory to list.<% } %></div>
+  </div>
+<% } else { %>
+  <div class="audits-layout">
+    <div class="audits-side">
+      <div class="audits-group">Audits <span class="muted"><%= audits.length %></span></div>
+      <% for (const audit of audits) { %>
+        <a class="audit-item<%= audit === selected ? " active" : "" %>" href="/audits?file=<%= encodeURIComponent(audit.name) %>">
+          <span class="audit-title"><%= audit.title %></span>
+          <time class="muted" datetime="<%= audit.when.toISOString() %>"><%= audit.when.toISOString().slice(0, 16).replace("T", " ") %></time>
+        </a>
+      <% } %>
+    </div>
+    <div class="audits-frame">
+      <iframe src="/audits/view/<%= encodeURIComponent(selected.name) %>" title="<%= selected.title %>"></iframe>
+    </div>
+  </div>
+<% } %>
