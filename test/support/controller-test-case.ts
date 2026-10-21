@@ -71,6 +71,8 @@ export async function controllerTestCase(
 ): Promise<ActionController.TestCase> {
   // `Application#initialize` reads tmp/local_secret.txt before anything can
   // ask for `secret_key_base`; the suite does not boot, so it loads it here.
+  // Agreed temporary stand-in, deleted by trails story
+  // `controller-test-case-needs-local-secret-loaded-without-boot` (RFC 0142).
   await Trails.application!.config.loadLocalSecret();
   class ControllerTest extends ActionController.TestCase {}
   ControllerTest.tests(controller);
