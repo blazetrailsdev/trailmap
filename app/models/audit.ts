@@ -29,6 +29,11 @@ export function auditTitle(name: string): string {
   return base === "" ? name : base;
 }
 
+/** Rails' `find` message and fields (activerecord/lib/active_record/core.rb:280). */
+function notFound(name: string): RecordNotFound {
+  return new RecordNotFound(`Couldn't find Audit with 'name'=${name}`, "Audit", "name", name);
+}
+
 function isEnoent(e: unknown): boolean {
   return (e as { code?: string }).code === "ENOENT";
 }
@@ -108,7 +113,7 @@ export class Audit extends Model {
   /** `findBy`, raising `RecordNotFound` (a 404) for a missing audit, as AR's `find`. */
   static async find(name: string): Promise<Audit> {
     const audit = await this.findBy({ name });
-    if (audit === null) throw new RecordNotFound(`Couldn't find Audit with name=${name}`);
+    if (audit === null) throw notFound(name);
     return audit;
   }
 
@@ -138,13 +143,13 @@ export class Audit extends Model {
   /** The file's contents. Only reachable for a name `all` listed. */
   async read(): Promise<string> {
     const dir = auditsDir();
-    if (dir === null) throw new RecordNotFound(`Couldn't find Audit with name=${this.name}`);
+    if (dir === null) throw notFound(this.name);
     const [fs, path] = await Promise.all([getFs(), getPath()]);
     if (!fs.readFile) throw new Error("the filesystem adapter cannot read files asynchronously");
     try {
       return await fs.readFile(path.join(dir, this.name), "utf8");
     } catch (e) {
-      if (isEnoent(e)) throw new RecordNotFound(`Couldn't find Audit with name=${this.name}`);
+      if (isEnoent(e)) throw notFound(this.name);
       throw e;
     }
   }

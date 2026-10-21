@@ -184,7 +184,10 @@ describe("Audit", () => {
     expect(await Audit.findBy({ name: "missing.md" })).toBeNull();
     expect(await Audit.findBy({ name: "../secret.md" })).toBeNull();
     expect(await Audit.findBy({ name: ".hidden.md" })).toBeNull();
-    await expect(Audit.find("missing.md")).rejects.toThrow(RecordNotFound);
+    const error = await Audit.find("missing.md").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(RecordNotFound);
+    expect((error as RecordNotFound).message).toBe("Couldn't find Audit with 'name'=missing.md");
+    expect(error).toMatchObject({ model: "Audit", primaryKey: "name", id: "missing.md" });
   });
 
   it("answers its name as its param, its title, and whether it is html", async () => {
