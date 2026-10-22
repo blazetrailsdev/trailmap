@@ -413,6 +413,18 @@ yielding between queries would still stall everything for half a second at a
 stretch. The cheaper ranking is the one `/backlog` already uses, from plucked columns
 (`Story.rankingOutline`, 0.1s for the same six queries).
 
+`deep`, `GET /stories/ready` and `next-bundle` now all rank from
+`Story.claimableIndex`: the outline, with records loaded only for the claimable
+stories. Measured on 2026-10-21 against a snapshot of the live database
+(13,698 stories, 275 in the queue), warm, the same ranking and count:
+
+| path | stall |
+| --- | --- |
+| `rankingIndex` (every story a record), before | 0.73–0.94s |
+| `claimableIndex`, after | 0.14–0.17s |
+
+`pnpm gate` is byte-identical over the same snapshot.
+
 `/up` is UNGUARDED, so a 200 from it proves only that the listener is up. The
 thing that has broken twice is `requireLoopback` refusing a request that
 arrived carrying proxy provenance, and only a guarded endpoint can show that —

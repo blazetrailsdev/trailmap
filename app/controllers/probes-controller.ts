@@ -116,7 +116,8 @@ export class ProbesController extends ApiController {
     const probes = ProbesController;
     if (probes.inFlight === null) {
       const run = (async () => {
-        const index = await Story.rankingIndex();
+        // The path `GET /stories/ready` serves, so `deep` times what it answers.
+        const index = await Story.claimableIndex();
         return (await Story.claimable({ index })).length;
       })();
       const clear = () => {

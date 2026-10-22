@@ -296,7 +296,7 @@ describe("GET /up/deep", () => {
   });
 
   it("answers 503 when the queue cannot be computed", async () => {
-    vi.spyOn(Story, "rankingIndex").mockRejectedValue(new Error("no such table: stories"));
+    vi.spyOn(Story, "claimableIndex").mockRejectedValue(new Error("no such table: stories"));
     const { status, body } = await getJson("deep");
 
     expect(status).toBe(503);
@@ -305,7 +305,7 @@ describe("GET /up/deep", () => {
 
   it("answers 503 naming the timeout when the queue outruns its bound", async () => {
     let settle!: (error: Error) => void;
-    vi.spyOn(Story, "rankingIndex").mockReturnValue(new Promise((_, reject) => (settle = reject)));
+    vi.spyOn(Story, "claimableIndex").mockReturnValue(new Promise((_, reject) => (settle = reject)));
     ProbesController.deepTimeoutMs = 20;
     const { status, body } = await getJson("deep");
     // The run outlives its caller, and holds the slot until it settles.
@@ -337,8 +337,8 @@ describe("GET /up/deep", () => {
   it("shares one ranking between overlapping requests", async () => {
     let release!: () => void;
     const held = new Promise<void>((resolve) => (release = resolve));
-    const original = Story.rankingIndex.bind(Story);
-    const ranking = vi.spyOn(Story, "rankingIndex").mockImplementation(async () => {
+    const original = Story.claimableIndex.bind(Story);
+    const ranking = vi.spyOn(Story, "claimableIndex").mockImplementation(async () => {
       await held;
       return original();
     });
