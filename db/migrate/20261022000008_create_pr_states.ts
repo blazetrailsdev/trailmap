@@ -34,16 +34,19 @@ export class CreatePrStates extends Migration.get(8) {
       t.string("next_action", { null: false, default: "" });
       t.string("pane", { null: false, default: "" });
       t.boolean("pane_manual", { null: false, default: false });
-      // The debounces. Their reset rules are ringo's, and its tests pin them:
-      // `notified` and `ci_success_notified` are once per PR lifetime (the
-      // latter is NOT reset on push); `ci_failure_notified` and
-      // `cycles_exhausted_notified` reset on every push.
+      // The debounces, each with the reset rule its PRState field comment
+      // states — nothing in ringo tests them yet; that is this story's ringo
+      // half. `ci_success_notified` is once per PR lifetime and NOT reset on
+      // push; `ci_failure_notified` and `cycles_exhausted_notified` are per
+      // push cycle; `notified` records that the opening message reached a pane.
       t.boolean("notified", { null: false, default: false });
       t.boolean("ci_failure_notified", { null: false, default: false });
       t.boolean("ci_success_notified", { null: false, default: false });
       t.boolean("cycles_exhausted_notified", { null: false, default: false });
       t.string("closed_seen_at", { null: false, default: "" });
       t.boolean("merged", { null: false, default: false });
+      // When a pending pane cleanup next acts; "" when none is pending.
+      t.string("teardown_at", { null: false, default: "" });
       t.boolean("merged_checked", { null: false, default: false });
       t.index(["pane"]);
     });

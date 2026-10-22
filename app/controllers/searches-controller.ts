@@ -3,6 +3,7 @@ import {
   SEARCH_MAX_LENGTH,
   SEARCH_MIN_LENGTH,
   search,
+  withSnippets,
   searchPhrase,
   type SearchHit,
 } from "../models/concerns/search.js";
@@ -30,10 +31,16 @@ export class SearchesController extends ApplicationController {
     const phrase = searchPhrase(raw);
     const hits: SearchHit[] = phrase === null ? [] : await search(phrase);
 
-    const pager = pagerFor(hits.length, SEARCH_PAGE_SIZE, requestedPage(this.params.get("page")), (page) =>
-      searchHref(phrase ?? "", page),
+    const pager = pagerFor(
+      hits.length,
+      SEARCH_PAGE_SIZE,
+      requestedPage(this.params.get("page")),
+      (page) => searchHref(phrase ?? "", page),
     );
-    const onPage = hits.slice(pager.from === 0 ? 0 : pager.from - 1, pager.to);
+    const onPage = await withSnippets(
+      hits.slice(pager.from === 0 ? 0 : pager.from - 1, pager.to),
+      phrase ?? "",
+    );
 
     await this.render({
       locals: {

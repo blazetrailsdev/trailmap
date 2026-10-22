@@ -39,16 +39,23 @@ export interface SearchHit {
   tier: number;
   /** Mentions in the body; 0 when the body was not read or says nothing. */
   mentions: number;
-  /** A stretch of the body around the first mention, or "" for none. */
+  /** Relative to the tasks checkout; what `withSnippets` reads. */
+  filePath: string | null;
+  /** A stretch of the body around the first mention, or "" for none. Filled by `withSnippets`. */
   snippet: string;
 }
 
 /** The phrase a request means, trimmed and bounded; null when there is none to search. */
 export function searchPhrase(param: unknown): string | null {
   if (typeof param !== "string") return null;
-  const phrase = param.trim().replace(/\s+/g, " ");
-  if (phrase.length < SEARCH_MIN_LENGTH) return null;
-  return phrase.slice(0, SEARCH_MAX_LENGTH);
+  // Cut, THEN trim: a cut that lands after a space would otherwise make the
+  // space part of the needle.
+  const phrase = param
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, SEARCH_MAX_LENGTH)
+    .trim();
+  return phrase.length < SEARCH_MIN_LENGTH ? null : phrase;
 }
 
 interface Row {
@@ -63,16 +70,24 @@ interface Row {
 /** Every hit for `phrase`, ranked. The caller pages it. */
 export async function search(phrase: string): Promise<SearchHit[]> {
   const needle = phrase.toLowerCase();
-  const [rows, titled, bodies] = await Promise.all([allRows(), titleMatches(phrase), bodyIndex()]);
+  const [rows, titled, bodies] = await Promise.all([
+    allRows(),
+    titleMatches(phrase),
+    bodyIndex(),
+  ]);
 
   const hits: SearchHit[] = [];
   for (const row of rows) {
     const key = `${row.kind}:${row.id}`;
     const body = bodies.get(key);
-    const mentions = body ? countMentions(body.lower, needle) : 0;
+    const mentions = body ? countMentions(body, needle) : 0;
     let tier: number;
     if (row.id.toLowerCase() === needle) tier = 0;
-    else if ((row.title ?? "").toLowerCase().startsWith(needle) && titled.has(key)) tier = 1;
+    else if (
+      (row.title ?? "").toLowerCase().startsWith(needle) &&
+      titled.has(key)
+    )
+      tier = 1;
     else if (titled.has(key)) tier = 2;
     else if (mentions > 0) tier = 3;
     else continue;
@@ -84,10 +99,36 @@ export async function search(phrase: string): Promise<SearchHit[]> {
       rfcId: row.rfcId,
       tier,
       mentions,
-      snippet: body ? snippetOf(body, needle) : "",
+      filePath: row.filePath,
+      snippet: "",
     });
   }
   return hits.sort(compareHits);
+}
+
+/**
+ * `hits` with their snippets, read from the files. Only the page being shown
+ * is passed, so this is fifty reads, not fourteen thousand — the index keeps
+ * bodies lowercased only, and a snippet should read as written.
+ */
+export async function withSnippets(
+  hits: SearchHit[],
+  phrase: string,
+): Promise<SearchHit[]> {
+  const needle = phrase.toLowerCase();
+  return Promise.all(
+    hits.map(async (hit) =>
+      hit.mentions === 0
+        ? hit
+        : {
+            ...hit,
+            snippet: snippetOf(
+              (await readDocument(hit.filePath)).markdown,
+              needle,
+            ),
+          },
+    ),
+  );
 }
 
 export function compareHits(a: SearchHit, b: SearchHit): number {
@@ -99,6 +140,10 @@ export function compareHits(a: SearchHit, b: SearchHit): number {
 
 /**
  * `kind:id` of every story and RFC whose id or title contains the phrase,
+ * ASCII-case-insensitively: SQLite's `lower()` folds ASCII only, so `É` in a
+ * title matches only `É`. The tiers above use JS case folding for the prefix
+ * test but only among these rows, so a fold SQLite missed costs the hit its
+ * title tier, never a wrong one.
  * case-insensitively. `sanitizeSqlLike` escapes the phrase's own `%` and `_`,
  * so `est_loc` means those seven characters and not a pattern.
  */
@@ -151,21 +196,18 @@ async function allRows(): Promise<Row[]> {
 /** How many reads are in flight while the index is built: enough to keep the disk busy, not the descriptor table full. */
 const READ_CONCURRENCY = 64;
 
-/** A body as written, for the snippet, and lowercased, for matching. */
-interface Body {
-  text: string;
-  lower: string;
-}
-
-let cached: { sha: string | null; bodies: Promise<Map<string, Body>> } | null = null;
+let cached: {
+  sha: string | null;
+  bodies: Promise<Map<string, string>>;
+} | null = null;
 
 /**
- * Every body, keyed `kind:id` — read once per ingest. The first
+ * Every body, lowercased, keyed `kind:id` — read once per ingest. The first
  * search after an ingest pays for the read (under a second for ~14,000 files
  * on the box); every other one reads memory. Concurrent first searches share
  * one read.
  */
-export async function bodyIndex(): Promise<Map<string, Body>> {
+export async function bodyIndex(): Promise<Map<string, string>> {
   const sha = await Meta.get("last_ingested_sha");
   if (cached === null || cached.sha !== sha) {
     const bodies = readBodies();
@@ -183,23 +225,28 @@ export function resetBodyIndex(): void {
   cached = null;
 }
 
-async function readBodies(): Promise<Map<string, Body>> {
+async function readBodies(): Promise<Map<string, string>> {
   const rows = (await allRows()).filter((row) => row.filePath);
-  const bodies = new Map<string, Body>();
+  const bodies = new Map<string, string>();
   for (let at = 0; at < rows.length; at += READ_CONCURRENCY) {
     const batch = rows.slice(at, at + READ_CONCURRENCY);
-    const read = await Promise.all(batch.map((row) => readDocument(row.filePath)));
-    batch.forEach((row, i) => {
-      const text = read[i]!.markdown;
-      bodies.set(`${row.kind}:${row.id}`, { text, lower: text.toLowerCase() });
-    });
+    const read = await Promise.all(
+      batch.map((row) => readDocument(row.filePath)),
+    );
+    batch.forEach((row, i) =>
+      bodies.set(`${row.kind}:${row.id}`, read[i]!.markdown.toLowerCase()),
+    );
   }
   return bodies;
 }
 
 function countMentions(body: string, needle: string): number {
   let count = 0;
-  for (let at = body.indexOf(needle); at !== -1; at = body.indexOf(needle, at + needle.length)) {
+  for (
+    let at = body.indexOf(needle);
+    at !== -1;
+    at = body.indexOf(needle, at + needle.length)
+  ) {
     count++;
   }
   return count;
@@ -208,14 +255,11 @@ function countMentions(body: string, needle: string): number {
 /** Characters either side of the first mention. */
 const SNIPPET_CONTEXT = 80;
 
-function snippetOf(body: Body, needle: string): string {
-  // Offsets in `lower` are offsets in `text` for everything but the handful
-  // of characters whose lowercase is a different length — a snippet a few
-  // characters off for those, never a wrong match.
-  const at = body.lower.indexOf(needle);
+function snippetOf(text: string, needle: string): string {
+  const at = text.toLowerCase().indexOf(needle);
   if (at === -1) return "";
   const start = Math.max(0, at - SNIPPET_CONTEXT);
-  const end = Math.min(body.text.length, at + needle.length + SNIPPET_CONTEXT);
-  const text = body.text.slice(start, end).replace(/\s+/g, " ").trim();
-  return `${start > 0 ? "…" : ""}${text}${end < body.text.length ? "…" : ""}`;
+  const end = Math.min(text.length, at + needle.length + SNIPPET_CONTEXT);
+  const shown = text.slice(start, end).replace(/\s+/g, " ").trim();
+  return `${start > 0 ? "…" : ""}${shown}${end < text.length ? "…" : ""}`;
 }

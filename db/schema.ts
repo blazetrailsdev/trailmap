@@ -61,6 +61,7 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_10_22_000008 }, async
     t.boolean("cycles_exhausted_notified", { default: false, null: false });
     t.string("closed_seen_at", { default: "", null: false });
     t.boolean("merged", { default: false, null: false });
+    t.string("teardown_at", { default: "", null: false });
     t.boolean("merged_checked", { default: false, null: false });
     t.index(["pane"], { name: "index_pr_states_on_pane" });
   });
