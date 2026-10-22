@@ -68,6 +68,12 @@ Trails.application!.routes().draw(function () {
   this.get("panes/:id", { to: "panes#show" });
   this.get("fleet/pane/:id/screen", { to: "fleet#screen" });
 
+  // The deploy history and one run's log, relayed read-only from ringo, which
+  // keeps both on its own disk (DeploysController). ringo's spelling of the
+  // log URL, `?id=`, is kept so a link copied from either page works on both.
+  this.get("deploys", { to: "deploys#index" });
+  this.get("deploys/log", { to: "deploys#log" });
+
   // The list pages. Plural, and they come BEFORE the singular show routes only
   // by convention — the patterns cannot collide. The status/filter tab is a
   // query parameter rather than a path segment (`/rfcs?status=draft`) because

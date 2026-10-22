@@ -17,6 +17,7 @@ import { RepoSettingsController } from "../../app/controllers/repo-settings-cont
 import { RepoWikiController } from "../../app/controllers/repo-wiki-controller.js";
 import { ParityGraphsController } from "../../app/controllers/parity-graphs-controller.js";
 import { AuditsController } from "../../app/controllers/audits-controller.js";
+import { DeploysController } from "../../app/controllers/deploys-controller.js";
 
 /**
  * Every page controller's view directory is the one the implicit lookup asks
@@ -39,6 +40,7 @@ import { AuditsController } from "../../app/controllers/audits-controller.js";
  */
 const PAGE_CONTROLLERS = [
   AuditsController,
+  DeploysController,
   DashboardController,
   HomeController,
   PanesController,
