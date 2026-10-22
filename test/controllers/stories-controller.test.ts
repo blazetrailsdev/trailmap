@@ -154,7 +154,7 @@ describe("StoriesController", () => {
   it("loads one ranking index per request", async () => {
     // The outline is what every snapshot on these paths is built over, so it
     // counts them — and the index of every record is never asked for.
-    const outline = vi.spyOn(Story, "rankingOutline");
+    const outline = vi.spyOn(Story, "bundleOutline");
     const everyRecord = vi.spyOn(Story, "rankingIndex");
 
     await getJson("ready");

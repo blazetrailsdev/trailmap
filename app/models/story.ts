@@ -236,21 +236,57 @@ export class Story extends ApplicationRecord {
   }
 
   /**
-   * The outline, with a RECORD in place of every claimable story and of no
-   * other: `claimable()` and `nextBundle()` return only claimable stories, and
-   * `nextBundleIn` reads `est_loc` and `cluster` of nothing else. The caller
-   * ranks again over this, and that pass is the one that answers, so a story
-   * no longer claimable by the second read is dropped, not served.
+   * `GET /stories/ready` (and `/up/deep`, which times it): ranked over plucked
+   * columns, with records loaded for the rows it answers with and no others.
    */
-  static async claimableIndex(): Promise<RankingIndex> {
-    const outline = await Story.rankingOutline();
-    const ids = new Set(claimableIn(outline).map((story) => story.id));
-    const records = new Map((await Story.where({ id: [...ids] }).toArray()).map((s) => [s.id, s]));
-    // A claimable story deleted between the two reads has no record, and is
-    // dropped: left as an outline row it would be served with four columns.
-    const stories = outline.stories.filter((s) => !ids.has(s.id) || records.has(s.id));
-    // The cast is the method's contract: only the claimable entries are records.
-    return { ...outline, stories: stories.map((s) => records.get(s.id) ?? s) as Story[] };
+  static async readyQueue(opts: { rfc?: string } = {}): Promise<{ stories: Story[]; index: RankingIndex }> {
+    const index = await Story.bundleOutline();
+    return { stories: await Story.recordsFor(claimableIn(index, opts)), index };
+  }
+
+  /**
+   * `next-bundle`, the same way: packed over plucked columns, which carry the
+   * `est_loc` and `cluster` the packing compares, then records for the bundle.
+   */
+  static async bundle(opts: { maxLoc: number; cluster?: string; rfc?: string }): Promise<{
+    stories: Story[];
+    index: RankingIndex;
+    emptyReason: EmptyBundleReason | null;
+  }> {
+    const index = await Story.bundleOutline();
+    const chosen = nextBundleIn(index, opts);
+    return {
+      stories: await Story.recordsFor(chosen),
+      index,
+      emptyReason: chosen.length === 0 ? emptyBundleReasonIn(index, opts) : null,
+    };
+  }
+
+  /**
+   * The outline plus `est_loc` and `cluster`, as plain rows. Typed as `Story`
+   * for the ranking functions, which read those six columns and nothing else;
+   * a row is NOT a record, so nothing built on this serves one.
+   */
+  static async bundleOutline(): Promise<RankingIndex> {
+    const columns = ["id", "rfc_id", "status", "priority", "est_loc", "cluster"] as const;
+    const rows = await Story.pluck(...columns);
+    return rankingIndexOver(
+      rows.map(
+        (row) => Object.fromEntries(pluckedRow(row).map((value, at) => [columns[at], value])) as unknown as Story,
+      ),
+    );
+  }
+
+  /**
+   * Records for ranked rows, in their order. A row deleted, or whose status
+   * moved, between the two reads is dropped rather than served stale.
+   */
+  private static async recordsFor(rows: Story[]): Promise<Story[]> {
+    const records = new Map((await Story.where({ id: rows.map((r) => r.id) }).toArray()).map((s) => [s.id, s]));
+    return rows.flatMap((row) => {
+      const record = records.get(row.id);
+      return record && record.status === row.status ? [record] : [];
+    });
   }
 
   /**

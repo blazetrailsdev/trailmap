@@ -49,7 +49,8 @@ beforeAll(async () => {
     cluster: "pages",
   });
   await Story.create({ id: "abandoned", rfc_id: "0136-trailmap", status: "closed" });
-  await Story.create({ id: "working", rfc_id: "0136-trailmap", status: "in-progress" });
+  // An estimate of 0 is "no estimate", as ringo and `/backlog` read it.
+  await Story.create({ id: "working", rfc_id: "0136-trailmap", status: "in-progress", est_loc: 0 });
   // Created LAST: the RFC auto-closes the moment every story it has is done,
   // so a `done` story must never be the only one on it (rfc-close.ts).
   await Story.create({ id: "shipped", rfc_id: "0136-trailmap", status: "done", est_loc: 40 });
@@ -106,6 +107,13 @@ describe("RfcPagesController", () => {
     expect(order).toEqual(["held", "parked-ready"]);
     expect(body).toContain('<span class="badge s-draft">draft</span>');
     expect(body).not.toContain('<span class="badge s-ready">');
+  });
+
+  it("prints no estimate for a story estimated at zero", async () => {
+    const { body } = await show("0136-trailmap");
+
+    expect(body).not.toContain("working &middot; 0 loc");
+    expect(body).toContain("queued &middot; 250 loc");
   });
 
   it("counts done against the total, leaving closed stories out", async () => {
