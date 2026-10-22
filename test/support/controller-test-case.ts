@@ -36,6 +36,7 @@ import "../../config/application.js";
 import "../../config/routes.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { ApplicationHelper } from "../../app/helpers/application-helper.js";
+import { DeploysHelper } from "../../app/helpers/deploys-helper.js";
 import { getFs } from "@blazetrails/ruby-compat";
 import { STYLESHEET, boxRules, classListsIn, collisionsInList, type BoxRules } from "../../scripts/class-collisions.js";
 
@@ -57,7 +58,7 @@ async function assertNoClassCollisions(tc: ActionController.TestCase): Promise<v
 }
 
 ApplicationController.helper(function (this: object, mod?: object) {
-  Object.assign(mod ?? this, ApplicationHelper);
+  Object.assign(mod ?? this, ApplicationHelper, DeploysHelper);
 });
 
 type Controller = Parameters<typeof ActionController.TestCase.tests>[0] & {

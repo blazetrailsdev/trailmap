@@ -228,7 +228,7 @@ function saysPaneIsGone(text: string): boolean {
 }
 
 /** 504 for a ringo that did not answer in time, 502 for one that could not be reached. */
-function ringoFailure(error: unknown, timeoutMs: number): { plain: string; status: number } {
+export function ringoFailure(error: unknown, timeoutMs: number): { plain: string; status: number } {
   if (error instanceof Error && error.name === "TimeoutError") {
     return { plain: `ringo did not answer in ${timeoutMs / 1000}s`, status: 504 };
   }

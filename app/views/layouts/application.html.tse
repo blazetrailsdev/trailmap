@@ -18,6 +18,7 @@
       <a href="/dashboard">Fleet</a>
       <a href="/graphs/parity">Parity</a>
       <a href="/audits">Audits</a>
+      <a href="/deploys">Deploys</a>
     </nav>
   </nav>
 

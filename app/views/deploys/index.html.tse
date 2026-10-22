@@ -1,0 +1,29 @@
+<div class="page-header">
+  <h1 class="page-title">Deploys</h1>
+  <div class="page-subhead">
+    <span class="muted">Every dokku deploy ringo has run, newest first. Read-only; relayed from ringo, which holds the history and the logs.</span>
+  </div>
+</div>
+
+<% if (problem !== null) { %>
+  <div class="card ci-fixer paused">
+    <div class="card-head"><span class="card-title">No deploy data</span></div>
+    <div class="field-note"><%= problem %></div>
+  </div>
+<% } else if (runs.length === 0) { %>
+  <div class="card"><div class="field-note">No deploys yet.</div></div>
+<% } else { %>
+  <div class="card deploys">
+    <% for (const run of runs) { %>
+      <div class="deploy-row">
+        <span class="badge s-deploy-<%= run.status %>"><%= run.status %></span>
+        <span class="deploy-app"><%= run.app %></span>
+        <code class="muted"><%= run.sha %></code>
+        <span class="deploy-msg"><%= run.message %></span>
+        <% if (run.error) { %><span class="deploy-err"><%= run.error %></span><% } %>
+        <time class="muted" datetime="<%= run.started %>"><%= run.started.slice(0, 16).replace("T", " ") %> UTC · <%= deployDuration(run.seconds) %></time>
+        <a href="/deploys/log?id=<%= encodeURIComponent(run.id) %>">log</a>
+      </div>
+    <% } %>
+  </div>
+<% } %>
