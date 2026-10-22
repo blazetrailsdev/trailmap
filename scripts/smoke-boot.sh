@@ -107,7 +107,7 @@ done
 # production sends safe: a deploy's changed file must arrive under a new name.
 echo "smoke-boot: the linked assets are digested and cached"
 for asset in $assets; do
-  if ! [[ "$asset" =~ -[0-9a-f]{16}\.(css|js)$ ]]; then
+  if ! [[ "$asset" =~ -[A-Za-z0-9_-]{8}\.(css|js)$ ]]; then
     echo "smoke-boot: $asset is linked under an undigested name" >&2
     exit 1
   fi

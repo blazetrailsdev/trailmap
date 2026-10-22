@@ -23,9 +23,11 @@ describe("HomeController", () => {
     const body = await renderIndex();
 
     expect(body).toContain("<!DOCTYPE html>");
-    // The `/assets` prefix and digest come from the manifest a boot loads;
-    // scripts/smoke-boot.sh checks those against a production server.
-    expect(body).toMatch(/<link rel="stylesheet" href="[^"]*\/stylesheets\/application(-[0-9a-f]{16})?\.css"/);
+    // The logical name only. A test does not boot, so trails' Vite trailtie
+    // never installs the manifest-reading `computeAssetPath`, and the link is
+    // neither `/assets`-prefixed nor digested here. scripts/smoke-boot.sh is
+    // the ONLY guard on the digested link and its cache header.
+    expect(body).toMatch(/<link rel="stylesheet" href="[^"]*\/stylesheets\/application\.css"/);
   });
 
   it("renders the nav bar, the task-domain links and the footer", async () => {
