@@ -22,8 +22,17 @@ dokku domains:set trailmap trailmap.deanoftech.com
 # Authoring and ingest commit into the tasks checkout from inside the
 # container, so the mount is writable and at the identical host path — the
 # database and the repo must look the same from in and out of the container.
+# It is the PARENT directory, not `tasks/` alone: one mount serves the tasks
+# checkout and `tasks.db` beside it, and `stats.db` with its WAL sidecars
+# ("The stats database" below has why a sidecar-bearing database needs its
+# directory). An app set up before trailmap#71 also carries a tasks-only mount
+# nested inside this one; it is redundant, and
+#   dokku storage:unmount trailmap \
+#     /home/dean/github/blazetrailsdev/tasks:/home/dean/github/blazetrailsdev/tasks
+# removes it. `dokku storage:list trailmap` should name only this directory and
+# `/audits`.
 dokku storage:mount trailmap \
-  /home/dean/github/blazetrailsdev/tasks:/home/dean/github/blazetrailsdev/tasks
+  /home/dean/github/blazetrailsdev:/home/dean/github/blazetrailsdev
 
 # The JSON API's loopback listener is nginx's, from this repo's
 # `nginx.conf.sigil` — there is no dokku port map entry and no docker publish
@@ -212,7 +221,7 @@ page, on a multi-gigabyte host file most deployments do not have, so
 the source is missing. Every other page is unaffected. A deployment with no
 stats database is supported, not broken.
 
-To serve the page, mount the database and name it:
+To serve the page, its directory must be in the container, and named:
 
 ```sh
 # The DIRECTORY, not the file, and writable. SQLite finds `stats.db-wal` and
@@ -227,13 +236,8 @@ To serve the page, mount the database and name it:
 # link gives readers their own `-shm` while the writer uses the original, which
 # is two shm files for one WAL database.
 #
-# This nests with the tasks mount above, which names the identical host path one
-# level down. Docker orders nested binds by depth and both resolve to the same
-# directory, so it works and the tasks mount becomes redundant — left in place
-# because removing it is a separate change.
-dokku storage:mount trailmap \
-  /home/dean/github/blazetrailsdev:/home/dean/github/blazetrailsdev
-
+# It is the parent-directory mount from "First-time setup" — already in place
+# there, so there is nothing more to mount; this is all the stats database adds.
 dokku config:set --no-restart trailmap \
   STATS_DB=/home/dean/github/blazetrailsdev/stats.db
 ```

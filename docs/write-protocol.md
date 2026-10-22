@@ -46,8 +46,10 @@ The other process may **read** every table.
 | `story_paths` | trailmap |
 | `events` | trailmap |
 | `meta` | trailmap |
+| `pr_states` | ringo |
 
-ringo owns no table yet. Each RFC 0136 phase-B migration story that moves one of
+`pr_states` is ringo's PR tracker, the first of its JSON state files moved
+here (`tracker-state.json`). Each RFC 0136 phase-B migration story that moves one of
 ringo's JSON state files adds its table here, as `ringo`, in the same PR that
 adds its migration.
 

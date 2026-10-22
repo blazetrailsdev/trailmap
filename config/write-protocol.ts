@@ -42,6 +42,8 @@ export const ringoBusyTimeoutPragma = `_pragma=busy_timeout(${writeProtocol.busy
 export const tableOwners: Record<string, Owner> = {
   events: "trailmap",
   meta: "trailmap",
+  // ringo's PR tracker, in place of tracker-state.json. trailmap reads it.
+  pr_states: "ringo",
   rfcs: "trailmap",
   stories: "trailmap",
   story_deps: "trailmap",

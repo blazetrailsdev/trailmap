@@ -81,6 +81,8 @@ Trails.application!.routes().draw(function () {
   // deep-link (`/tasks/done`) is the only path form it ever had.
   this.get("rfcs", { to: "rfc_pages#index" });
   this.get("backlog", { to: "story_pages#index" });
+  // Search over every story and RFC: one ranked list, paged like the backlog.
+  this.get("search", { to: "searches#show" });
 
   // The show pages. Singular paths, matching the URLs ringo already serves and
   // the ones the wiki-link renderer emits (`/story/<id>`) — a link that lives
