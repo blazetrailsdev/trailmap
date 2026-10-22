@@ -331,6 +331,12 @@ ul { margin: 0 0 10px 20px; }
 .pager .pager-link { font-weight: 500; }
 .pager .pager-link.disabled { color: var(--muted); opacity: 0.5; }
 
+/* `/search`: the phrase box, and the stretch of body each hit shows. */
+.search-form { display: flex; gap: 8px; margin: 12px 0; }
+.search-input { flex: 1; min-width: 0; padding: 6px 10px; font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+.search-button { padding: 6px 14px; font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+.search-snippet { margin-top: 4px; overflow-wrap: anywhere; }
+
 /*
  * Row tags -- everything a row says about itself that is NOT its status. The
  * status keeps `.badge` and its one hue table (#7); these are deliberately

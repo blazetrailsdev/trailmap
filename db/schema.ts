@@ -13,7 +13,7 @@
 import { Schema } from "@blazetrails/activerecord";
 import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapters/sqlite3-adapter.js";
 
-await Schema.get(8).define<SQLite3Adapter>({ version: 2026_09_10_000007 }, async (ctx) => {
+await Schema.get(8).define<SQLite3Adapter>({ version: 2026_10_22_000008 }, async (ctx) => {
   await ctx.createTable("events", { force: "cascade" }, (t) => {
     t.string("at", { null: false });
     t.string("verb", { null: false });
@@ -32,6 +32,38 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_09_10_000007 }, async
     t.text("value");
     t.datetime("created_at", { null: false });
     t.datetime("updated_at", { null: false });
+  });
+
+  await ctx.createTable("pr_states", { primaryKey: ["owner","repo","pr"], force: "cascade" }, (t) => {
+    t.string("owner", { null: false });
+    t.string("repo", { null: false });
+    t.integer("pr", { null: false });
+    t.string("branch", { default: "", null: false });
+    t.string("title", { default: "", null: false });
+    t.text("labels", { default: "", null: false });
+    t.boolean("draft", { default: false, null: false });
+    t.boolean("merge_conflict", { default: false, null: false });
+    t.boolean("behind", { default: false, null: false });
+    t.integer("comment_count", { default: 0, null: false });
+    t.integer("review_cycles", { default: 0, null: false });
+    t.integer("open_findings", { default: 0, null: false });
+    t.boolean("open_findings_known", { default: false, null: false });
+    t.string("pane_status", { default: "", null: false });
+    t.string("ci_status", { default: "", null: false });
+    t.string("last_action", { default: "", null: false });
+    t.string("last_time", { default: "", null: false });
+    t.string("next_action", { default: "", null: false });
+    t.string("pane", { default: "", null: false });
+    t.boolean("pane_manual", { default: false, null: false });
+    t.boolean("notified", { default: false, null: false });
+    t.boolean("ci_failure_notified", { default: false, null: false });
+    t.boolean("ci_success_notified", { default: false, null: false });
+    t.boolean("cycles_exhausted_notified", { default: false, null: false });
+    t.string("closed_seen_at", { default: "", null: false });
+    t.boolean("merged", { default: false, null: false });
+    t.string("teardown_at", { default: "", null: false });
+    t.boolean("merged_checked", { default: false, null: false });
+    t.index(["pane"], { name: "index_pr_states_on_pane" });
   });
 
   await ctx.createTable("rfcs", { id: "string", force: "cascade" }, (t) => {
