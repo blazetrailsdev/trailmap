@@ -3,7 +3,7 @@
      snapshot by scripts/vendor-ringo.sh and copied into public/assets by
      scripts/build-assets.sh. A <link> and a deferred <script> in the body are
      both valid here, and the layout has no per-page head slot. -->
-<link rel="stylesheet" href="/assets/stylesheets/ringo-parity.css">
+<%= stylesheetLinkTag("ringo-parity") %>
 
 <div class="page-header">
   <h1 class="page-title">Parity over time</h1>
@@ -34,5 +34,5 @@
   </div>
 <% } else { %>
   <%= render({ partial: "parity-graphs/cards" }) %>
-  <script src="/assets/javascripts/ringo-parity.js" defer></script>
+  <script src="<%= javascriptPath("ringo-parity") %>" defer></script>
 <% } %>

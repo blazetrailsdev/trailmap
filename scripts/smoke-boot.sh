@@ -103,6 +103,20 @@ for asset in $assets; do
   curl -fsS -o /dev/null "http://127.0.0.1:$port$asset"
 done
 
+# The links are digest-stamped, and only that makes the year-long cache header
+# production sends safe: a deploy's changed file must arrive under a new name.
+echo "smoke-boot: the linked assets are digested and cached"
+for asset in $assets; do
+  if ! [[ "$asset" =~ -[0-9a-f]{16}\.(css|js)$ ]]; then
+    echo "smoke-boot: $asset is linked under an undigested name" >&2
+    exit 1
+  fi
+  if ! curl -fsS -D - -o /dev/null "http://127.0.0.1:$port$asset" | grep -qi '^cache-control: public, max-age=31556952'; then
+    echo "smoke-boot: $asset is served without the long cache header" >&2
+    exit 1
+  fi
+done
+
 # EVERY built asset, byte for byte. A 200 is not the file: the framework once
 # served any static file holding a non-ASCII byte re-encoded and cut off at the
 # original length, and the fleet page's script answered 200 for days while
@@ -126,7 +140,7 @@ while IFS= read -r file; do
     exit 1
   fi
   checked=$((checked + 1))
-done < <(find public/assets -type f ! -name '.gitkeep' | sort)
+done < <(find public/assets -type f ! -name '.gitkeep' ! -path '*/.vite/*' | sort)
 if [ "$checked" -eq 0 ]; then
   echo "smoke-boot: no built asset to check, so this check is testing nothing" >&2
   exit 1
