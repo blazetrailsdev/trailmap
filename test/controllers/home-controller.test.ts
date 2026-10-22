@@ -23,7 +23,9 @@ describe("HomeController", () => {
     const body = await renderIndex();
 
     expect(body).toContain("<!DOCTYPE html>");
-    expect(body).toContain('<link rel="stylesheet" href="/assets/stylesheets/application.css">');
+    // The `/assets` prefix and digest come from the manifest a boot loads;
+    // scripts/smoke-boot.sh checks those against a production server.
+    expect(body).toMatch(/<link rel="stylesheet" href="[^"]*\/stylesheets\/application(-[0-9a-f]{16})?\.css"/);
   });
 
   it("renders the nav bar, the task-domain links and the footer", async () => {

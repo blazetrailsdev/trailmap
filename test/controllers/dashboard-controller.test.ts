@@ -30,7 +30,7 @@ describe("DashboardController", () => {
     const body = await index();
 
     expect(body).toContain("<!DOCTYPE html>");
-    expect(body).toContain('<link rel="stylesheet" href="/assets/stylesheets/application.css">');
+    expect(body).toMatch(/<link rel="stylesheet" href="[^"]*\/stylesheets\/application(-[0-9a-f]{16})?\.css"/);
     expect(body).toContain('<nav class="nav">');
   });
 
@@ -112,6 +112,6 @@ describe("DashboardController", () => {
   it("loads the client half as an external script, not an inline one", async () => {
     const body = await index();
 
-    expect(body).toContain('<script src="/assets/javascripts/dashboard.js" type="module"></script>');
+    expect(body).toMatch(/<script src="[^"]*\/javascripts\/dashboard(-[0-9a-f]{16})?\.js" type="module"><\/script>/);
   });
 });

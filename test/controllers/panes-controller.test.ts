@@ -52,7 +52,7 @@ describe("PanesController", () => {
     }
     expect(body).toContain('<pre id="paneScreen" class="terminal"');
     expect(body).toContain("last ~2000 rows");
-    expect(body).toContain('<script src="/assets/javascripts/pane.js" type="module"></script>');
+    expect(body).toMatch(/<script src="[^"]*\/javascripts\/pane(-[0-9a-f]{16})?\.js" type="module"><\/script>/);
   });
 
   it("says so on the page when no ringo is configured", async () => {

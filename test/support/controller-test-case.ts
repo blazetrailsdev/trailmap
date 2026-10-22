@@ -63,6 +63,7 @@ ApplicationController.helper(function (this: object, mod?: object) {
 type Controller = Parameters<typeof ActionController.TestCase.tests>[0] & {
   name: string;
   controllerPath(): string;
+  actionMethods(): string[];
 };
 
 export async function controllerTestCase(
@@ -93,10 +94,12 @@ export async function controllerTestCase(
     tc.routes = application;
   } else {
     tc.routes = new RouteSet();
+    // One route per action, never a `:action` segment: Rails 8.0 deprecates a
+    // dynamic `:action` (mapper.rb `add_route`) and 8.1 removes it.
+    const path = controller.controllerPath();
+    const actions = controller.actionMethods();
     tc.routes.draw(function () {
-      this.get(`__test/${controller.controllerPath()}/:action`, {
-        controller: controller.controllerPath(),
-      });
+      for (const action of actions) this.get(`__test/${path}/${action}`, { controller: path, action });
     });
   }
 
