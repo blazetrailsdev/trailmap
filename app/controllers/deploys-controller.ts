@@ -58,7 +58,7 @@ export class DeploysController extends ApplicationController {
         }
       }
     }
-    await this.render({ locals: { runs, problem, deployDuration } });
+    await this.render({ locals: { runs, problem } });
   }
 
   /** One run's log, as ringo serves it: the capture verbatim, as plain text. */
@@ -85,7 +85,3 @@ export class DeploysController extends ApplicationController {
   }
 }
 
-/** A run's length as ringo's page writes it: `42s`, `2m 5s`. */
-export function deployDuration(seconds: number): string {
-  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-}
