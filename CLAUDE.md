@@ -100,7 +100,10 @@ the owner/repository hierarchy is **Postgres**, under `Hub`
   --headless=new --window-size=390,...` lays the page out wider and crops the
   capture, so every page looks like it overflows (#36's 390px shot is that
   artefact). Use the playwright build:
-  `~/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell --window-size=390,1400 --screenshot=<file>.png <url>`.
+  `~/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell --no-sandbox --window-size=390,1400 --screenshot=<file>.png <url>`.
+  `--no-sandbox` is required on the box: Ubuntu's AppArmor restricts
+  unprivileged user namespaces, so without it the shell aborts with
+  `No usable sandbox!` and writes no file.
   Check it before believing a picture: the page's `innerWidth` must be 390
   (`--dump-dom` of a page that prints it, or `Runtime.evaluate` over
   `--remote-debugging-port`), and an overflow is real only if
