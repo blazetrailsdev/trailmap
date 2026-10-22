@@ -117,8 +117,7 @@ export class ProbesController extends ApiController {
     if (probes.inFlight === null) {
       const run = (async () => {
         // The path `GET /stories/ready` serves, so `deep` times what it answers.
-        const index = await Story.claimableIndex();
-        return (await Story.claimable({ index })).length;
+        return (await Story.readyQueue()).stories.length;
       })();
       const clear = () => {
         if (probes.inFlight === run) probes.inFlight = null;

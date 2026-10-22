@@ -40,9 +40,8 @@ export class StoriesController extends ApiController {
 
   /** `tasks ready [--rfc R]` — the ready queue, in ready-queue order. */
   async ready(): Promise<void> {
-    const rfc = this.param("rfc");
-    const index = await Story.claimableIndex({ rfc });
-    await this.renderStories(await Story.claimable({ index, rfc }), index);
+    const { stories, index } = await Story.readyQueue({ rfc: this.param("rfc") });
+    await this.renderStories(stories, index);
   }
 
   /**
@@ -55,10 +54,12 @@ export class StoriesController extends ApiController {
    * spawned. Keep the CLI's keys exactly.
    */
   async nextBundle(): Promise<void> {
-    const index = await Story.claimableIndex({ rfc: this.param("rfc") });
     const maxLoc = this.intParam("max-loc") ?? DEFAULT_MAX_LOC;
-    const opts = { index, maxLoc, cluster: this.param("cluster"), rfc: this.param("rfc") };
-    const rows = await Story.nextBundle(opts);
+    const { stories: rows, index, emptyReason } = await Story.bundle({
+      maxLoc,
+      cluster: this.param("cluster"),
+      rfc: this.param("rfc"),
+    });
     const summary = summarizeBundle(rows, maxLoc);
     const stories = serializeStories(rows, index);
     await this.respondWith({
@@ -66,7 +67,7 @@ export class StoriesController extends ApiController {
       bundle_total_loc: summary.total,
       max_loc: maxLoc,
       lead_exceeds_budget: summary.leadExceedsBudget,
-      empty_reason: rows.length === 0 ? await Story.emptyBundleReason(opts) : null,
+      empty_reason: emptyReason,
     });
   }
 

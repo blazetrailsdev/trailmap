@@ -138,51 +138,55 @@ describe("Story.rankingOutline", () => {
 
 // The JSON read endpoints. Each has to answer exactly as the index of records
 // does, which is what "byte-identical" rests on, without building it.
-describe("Story.claimableIndex", () => {
-  it("answers the queue and the bundle as the index of records does, from the claimable records alone", async () => {
+describe("Story.readyQueue and Story.bundle", () => {
+  it("answers the queue and the bundle as the index of records does, with records for the answered rows alone", async () => {
     await seed("lead", "0136-trailmap", "ready", { cluster: "c1", est_loc: 50, priority: 1 });
     await seed("mate", "0136-trailmap", "ready", { cluster: "c1", est_loc: 100 });
+    await seed("other", "0136-trailmap", "ready", { cluster: "c2", est_loc: 10 });
     await seed("base", "0136-trailmap", "in-progress", { cluster: "c1", est_loc: 10 });
     await seed("held", "0136-trailmap", "ready", { cluster: "c1", est_loc: 20 });
     await StoryDep.create({ story_id: "held", depends_on_id: "base" });
     await seed("under-draft", "0002-draft", "ready", { cluster: "c1", est_loc: 30 });
 
-    const [full, index] = [await Story.rankingIndex(), await Story.claimableIndex()];
+    const full = await Story.rankingIndex();
     const attrs = (stories: Story[]) => stories.map((s) => s.attributes);
 
-    expect(attrs(await Story.claimable({ index }))).toEqual(attrs(await Story.claimable({ index: full })));
-    expect(attrs(await Story.nextBundle({ index, maxLoc: 700 }))).toEqual(
-      attrs(await Story.nextBundle({ index: full, maxLoc: 700 })),
-    );
-    expect(index.stories.map((s) => s.id)).toEqual(full.stories.map((s) => s.id));
-    expect(index.stories.filter((s) => s instanceof Story).map((s) => s.id)).toEqual(["lead", "mate"]);
+    const queue = await Story.readyQueue();
+    expect(attrs(queue.stories)).toEqual(attrs(await Story.claimable({ index: full })));
+    expect(queue.stories.every((s) => s instanceof Story)).toBe(true);
+
+    const bundle = await Story.bundle({ maxLoc: 700 });
+    expect(attrs(bundle.stories)).toEqual(attrs(await Story.nextBundle({ index: full, maxLoc: 700 })));
+    expect(bundle.stories.map((s) => s.id)).toEqual(["lead", "mate"]);
+    expect(bundle.stories.every((s) => s instanceof Story)).toBe(true);
+    expect(bundle.emptyReason).toBeNull();
   });
 
-  it("loads records only for the claimable stories in the RFC it is scoped to", async () => {
+  it("scopes the queue to an RFC, and names why a bundle came back empty", async () => {
     await seed("ours", "0136-trailmap", "ready", { cluster: "c1", est_loc: 50 });
     await seed("theirs", "0004-other", "ready", { cluster: "c1", est_loc: 50 });
     await Rfc.create({ id: "0004-other", status: "active", title: "Other" });
 
-    const index = await Story.claimableIndex({ rfc: "0136-trailmap" });
-
-    expect(index.stories.filter((s) => s instanceof Story).map((s) => s.id)).toEqual(["ours"]);
-    expect((await Story.claimable({ index, rfc: "0136-trailmap" })).map((s) => s.id)).toEqual(["ours"]);
+    expect((await Story.readyQueue({ rfc: "0136-trailmap" })).stories.map((s) => s.id)).toEqual(["ours"]);
+    expect((await Story.bundle({ maxLoc: 10 })).emptyReason).toBe("none-within-budget");
+    expect((await Story.bundle({ maxLoc: 700, cluster: "nope" })).emptyReason).toBe("no-matching-stories");
   });
 
   it("serves no story that stopped being claimable, or was deleted, between its two reads", async () => {
     await seed("taken", "0136-trailmap", "ready");
     await seed("gone", "0136-trailmap", "ready");
     await seed("stays", "0136-trailmap", "ready");
-    const outline = await Story.rankingOutline();
-    const stale = vi.spyOn(Story, "rankingOutline").mockResolvedValue(outline);
-    await Story.where({ id: "taken" }).updateAll({ status: "claimed" });
-    await Story.where({ id: "gone" }).deleteAll();
+    const where = Story.where.bind(Story);
+    const race = vi.spyOn(Story, "where").mockImplementation(((...args: Parameters<typeof Story.where>) => {
+      race.mockRestore();
+      return { toArray: async () => {
+        await Story.where({ id: "taken" }).updateAll({ status: "claimed" });
+        await Story.where({ id: "gone" }).deleteAll();
+        return where(...args).toArray();
+      } };
+    }) as never);
 
-    const index = await Story.claimableIndex();
-    stale.mockRestore();
-
-    expect((await Story.claimable({ index })).map((s) => s.id)).toEqual(["stays"]);
-    expect(index.stories.map((s) => s.id)).toEqual(["stays", "taken"]);
+    expect((await Story.readyQueue()).stories.map((s) => s.id)).toEqual(["stays"]);
   });
 });
 
