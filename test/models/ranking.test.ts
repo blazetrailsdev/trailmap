@@ -158,6 +158,17 @@ describe("Story.claimableIndex", () => {
     expect(index.stories.filter((s) => s instanceof Story).map((s) => s.id)).toEqual(["lead", "mate"]);
   });
 
+  it("loads records only for the claimable stories in the RFC it is scoped to", async () => {
+    await seed("ours", "0136-trailmap", "ready", { cluster: "c1", est_loc: 50 });
+    await seed("theirs", "0004-other", "ready", { cluster: "c1", est_loc: 50 });
+    await Rfc.create({ id: "0004-other", status: "active", title: "Other" });
+
+    const index = await Story.claimableIndex({ rfc: "0136-trailmap" });
+
+    expect(index.stories.filter((s) => s instanceof Story).map((s) => s.id)).toEqual(["ours"]);
+    expect((await Story.claimable({ index, rfc: "0136-trailmap" })).map((s) => s.id)).toEqual(["ours"]);
+  });
+
   it("serves no story that stopped being claimable, or was deleted, between its two reads", async () => {
     await seed("taken", "0136-trailmap", "ready");
     await seed("gone", "0136-trailmap", "ready");

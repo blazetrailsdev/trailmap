@@ -40,8 +40,9 @@ export class StoriesController extends ApiController {
 
   /** `tasks ready [--rfc R]` — the ready queue, in ready-queue order. */
   async ready(): Promise<void> {
-    const index = await Story.claimableIndex();
-    await this.renderStories(await Story.claimable({ index, rfc: this.param("rfc") }), index);
+    const rfc = this.param("rfc");
+    const index = await Story.claimableIndex({ rfc });
+    await this.renderStories(await Story.claimable({ index, rfc }), index);
   }
 
   /**
@@ -54,7 +55,7 @@ export class StoriesController extends ApiController {
    * spawned. Keep the CLI's keys exactly.
    */
   async nextBundle(): Promise<void> {
-    const index = await Story.claimableIndex();
+    const index = await Story.claimableIndex({ rfc: this.param("rfc") });
     const maxLoc = this.intParam("max-loc") ?? DEFAULT_MAX_LOC;
     const opts = { index, maxLoc, cluster: this.param("cluster"), rfc: this.param("rfc") };
     const rows = await Story.nextBundle(opts);

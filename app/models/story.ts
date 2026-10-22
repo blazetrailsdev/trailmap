@@ -236,15 +236,16 @@ export class Story extends ApplicationRecord {
   }
 
   /**
-   * The outline, with a RECORD in place of every claimable story and of no
-   * other: `claimable()` and `nextBundle()` return only claimable stories, and
+   * The outline, with a RECORD in place of every claimable story (in `rfc`,
+   * when given) and of no other: `claimable()` and `nextBundle()` return only claimable stories, and
    * `nextBundleIn` reads `est_loc` and `cluster` of nothing else. The caller
    * ranks again over this, and that pass is the one that answers, so a story
    * no longer claimable by the second read is dropped, not served.
    */
-  static async claimableIndex(): Promise<RankingIndex> {
+  static async claimableIndex(opts: { rfc?: string } = {}): Promise<RankingIndex> {
     const outline = await Story.rankingOutline();
-    const ids = new Set(claimableIn(outline).map((story) => story.id));
+    // Scoped to `rfc` when the caller is: a story outside it is never served.
+    const ids = new Set(claimableIn(outline, opts).map((story) => story.id));
     const records = new Map((await Story.where({ id: [...ids] }).toArray()).map((s) => [s.id, s]));
     // A claimable story deleted between the two reads has no record, and is
     // dropped: left as an outline row it would be served with four columns.
