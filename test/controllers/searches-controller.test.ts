@@ -5,7 +5,7 @@ import { migrateScratchDatabase } from "../models/schema.js";
 import { Meta, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
 import { ApplicationController } from "../../app/controllers/application-controller.js";
 import { SEARCH_PAGE_SIZE, SearchesController } from "../../app/controllers/searches-controller.js";
-import { resetBodyIndex, search, searchPhrase } from "../../app/models/concerns/search.js";
+import { bodyIndex, compareHits, resetBodyIndex, search, searchPhrase, type SearchHit } from "../../app/models/concerns/search.js";
 import { controllerTestCase } from "../support/controller-test-case.js";
 
 /** `/search`, over a scratch database and a scratch tasks checkout. */
@@ -82,6 +82,27 @@ describe("search", () => {
     await Meta.set("last_ingested_sha", "a-new-ingest");
     expect((await search("freshly written")).map((hit) => hit.id)).toEqual(["once"]);
     await write("s/once.md", "---\nid: once\n---\nCalls Serialize once.");
+  });
+
+  it("orders by tier, then mentions, then RFC before story, then id", () => {
+    const hit = (over: Partial<SearchHit>): SearchHit => ({
+      kind: "story", id: "b", title: "", status: "ready", rfcId: null, tier: 2, mentions: 0, snippet: "", ...over,
+    });
+    expect(compareHits(hit({ tier: 1 }), hit({ tier: 2, mentions: 9 }))).toBeLessThan(0);
+    expect(compareHits(hit({ mentions: 3 }), hit({ mentions: 1 }))).toBeLessThan(0);
+    expect(compareHits(hit({ kind: "rfc", id: "z" }), hit({ id: "a" }))).toBeLessThan(0);
+    expect(compareHits(hit({ id: "a" }), hit({ id: "b" }))).toBeLessThan(0);
+    expect(compareHits(hit({}), hit({}))).toBe(0);
+  });
+
+  it("indexes each body once per ingest, keyed kind:id, frontmatter stripped", async () => {
+    const first = await bodyIndex();
+    expect(first.get("story:thrice")!.text).toBe("serialize, serialize and SERIALIZE.");
+    expect(first.get("rfc:0042-serialize")!.lower).toBe("the rfc body.");
+    expect(first.has("story:serialize")).toBe(false);
+    expect(await bodyIndex()).toBe(first);
+    resetBodyIndex();
+    expect(await bodyIndex()).not.toBe(first);
   });
 
   it("bounds the phrase", () => {
