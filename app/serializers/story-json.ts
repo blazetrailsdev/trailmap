@@ -14,7 +14,7 @@
  */
 import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
 import type { Story } from "../models/index.js";
-import type { RankingIndex } from "../models/concerns/ranking.js";
+import type { BundledStory, RankedStory, RankingIndex } from "../models/concerns/ranking.js";
 
 export interface StoryJson {
   id: string;
@@ -68,9 +68,24 @@ export function integerOrNull(value: unknown): number | null {
  * path is exactly what `rankingIndex` and `buildIndex` both went out of their
  * way to avoid.
  */
-export type StoryJsonContext = RankingIndex;
+export type StoryJsonContext = RankingIndex<RankedStory>;
 
-export function serializeStory(story: Story, context: StoryJsonContext): StoryJson {
+/**
+ * The columns a serialization reads. A `Story` satisfies it, and so does a row
+ * `Story.rankingRows()` plucks, which is not a record and is not typed as one.
+ */
+export interface SerializedStory extends BundledStory {
+  title: string | null;
+  updated_on: unknown;
+  pr: string | null;
+  claim_at: unknown;
+  assignee: string | null;
+  blocked_by: string | null;
+  closed_reason: string | null;
+  file_path: string | null;
+}
+
+export function serializeStory(story: SerializedStory, context: StoryJsonContext): StoryJson {
   const raw = asString(story.status);
   return {
     id: story.id,
@@ -95,6 +110,6 @@ export function serializeStory(story: Story, context: StoryJsonContext): StoryJs
   };
 }
 
-export function serializeStories(stories: Story[], context: StoryJsonContext): StoryJson[] {
+export function serializeStories(stories: SerializedStory[], context: StoryJsonContext): StoryJson[] {
   return stories.map((story) => serializeStory(story, context));
 }

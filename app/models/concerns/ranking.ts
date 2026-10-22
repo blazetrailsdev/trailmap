@@ -29,6 +29,16 @@ export interface RankedStory {
   priority: number | null;
 }
 
+/**
+ * What `next-bundle`'s packing reads besides the order: the six columns
+ * `bundleOutline` plucks. A `Story` satisfies it, and so does a plucked row,
+ * which is why the packing is typed over this and not over `Story`.
+ */
+export interface BundledStory extends RankedStory {
+  est_loc: number | null;
+  cluster: string | null;
+}
+
 /** A snapshot of everything the queue reads, loaded once per query. */
 export interface RankingIndex<S extends RankedStory = Story> {
   stories: S[];
@@ -123,7 +133,7 @@ export function claimableIn<S extends RankedStory>(
 
 // 0/1 knapsack: max total est_loc within budget. N <= a few dozen in
 // practice; O(N*budget) is trivially fast.
-export function bestBundle(items: Story[], budget: number): Story[] {
+export function bestBundle<S extends BundledStory>(items: S[], budget: number): S[] {
   const n = items.length;
   if (n === 0 || budget <= 0) return [];
   const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(budget + 1).fill(0));
@@ -136,7 +146,7 @@ export function bestBundle(items: Story[], budget: number): Story[] {
       }
     }
   }
-  const chosen: Story[] = [];
+  const chosen: S[] = [];
   let b = budget;
   for (let i = n; i >= 1; i--) {
     if (dp[i][b] !== dp[i - 1][b]) {
@@ -147,10 +157,10 @@ export function bestBundle(items: Story[], budget: number): Story[] {
   return chosen.reverse();
 }
 
-export function bundleScope(
-  index: RankingIndex,
+export function bundleScope<S extends BundledStory>(
+  index: RankingIndex<S>,
   opts: { cluster?: string; rfc?: string },
-): Story[] {
+): S[] {
   return claimableIn(index, { rfc: opts.rfc }).filter((s) =>
     opts.cluster ? s.cluster === opts.cluster : true,
   );
@@ -159,16 +169,16 @@ export function bundleScope(
 export type EmptyBundleReason = "no-matching-stories" | "none-within-budget";
 
 export function emptyBundleReasonIn(
-  index: RankingIndex,
+  index: RankingIndex<BundledStory>,
   opts: { cluster?: string; rfc?: string },
 ): EmptyBundleReason {
   return bundleScope(index, opts).length === 0 ? "no-matching-stories" : "none-within-budget";
 }
 
-export function nextBundleIn(
-  index: RankingIndex,
+export function nextBundleIn<S extends BundledStory>(
+  index: RankingIndex<S>,
   opts: { maxLoc: number; cluster?: string; rfc?: string },
-): Story[] {
+): S[] {
   const inScope = bundleScope(index, opts);
   // Priority overrides cluster-LOC packing: any prioritized story outranks
   // every unprioritized one, however well the latter fills the budget. The
@@ -192,13 +202,13 @@ export function nextBundleIn(
   const candidates = inScope.filter((s) => s.est_loc !== null);
   // Map<string | null, ...> so `null` (unclustered) stays distinct from any
   // real cluster name, even one literally called "_none".
-  const byCluster = new Map<string | null, Story[]>();
+  const byCluster = new Map<string | null, S[]>();
   for (const s of candidates) {
     const bucket = byCluster.get(s.cluster) ?? [];
     bucket.push(s);
     byCluster.set(s.cluster, bucket);
   }
-  let best: Story[] = [];
+  let best: S[] = [];
   let bestTotal = 0;
   for (const group of byCluster.values()) {
     const subset = bestBundle(group, opts.maxLoc);
@@ -212,7 +222,7 @@ export function nextBundleIn(
 }
 
 export function summarizeBundle(
-  rows: Story[],
+  rows: BundledStory[],
   maxLoc: number,
 ): { total: number; leadExceedsBudget: boolean } {
   const total = rows.reduce((a, s) => a + (s.est_loc ?? 0), 0);
@@ -229,10 +239,10 @@ export const OPEN_STORY_STATUSES: readonly string[] = [
   "blocked",
 ];
 
-export function listFilteredIn(
-  index: RankingIndex,
+export function listFilteredIn<S extends BundledStory>(
+  index: RankingIndex<S>,
   opts: { rfc?: string; status?: string; cluster?: string } = {},
-): Story[] {
+): S[] {
   return index.stories.filter((s) => {
     if (opts.rfc && s.rfc_id !== opts.rfc) return false;
     // EFFECTIVE status, not the authored one: the CLI filters the published

@@ -15,6 +15,7 @@ import {
   priorityContext,
   storiesTouchingIn,
   summarizeBundle,
+  type BundledStory,
   type EmptyBundleReason,
   type RankedStory,
   type RankingIndex,
@@ -27,6 +28,7 @@ import {
   lifecycleErrors,
 } from "./concerns/semantic-validation.js";
 import type { Temporal } from "@blazetrails/date";
+import type { SerializedStory } from "../serializers/story-json.js";
 
 export const STORY_STATUSES = [
   "draft",
@@ -239,7 +241,7 @@ export class Story extends ApplicationRecord {
    * `GET /stories/ready` (and `/up/deep`, which times it): ranked over plucked
    * columns, with records loaded for the rows it answers with and no others.
    */
-  static async readyQueue(opts: { rfc?: string } = {}): Promise<{ stories: Story[]; index: RankingIndex }> {
+  static async readyQueue(opts: { rfc?: string } = {}): Promise<{ stories: Story[]; index: RankingIndex<BundledStory> }> {
     const index = await Story.bundleOutline();
     return { stories: await Story.recordsFor(claimableIn(index, opts)), index };
   }
@@ -250,7 +252,7 @@ export class Story extends ApplicationRecord {
    */
   static async bundle(opts: { maxLoc: number; cluster?: string; rfc?: string }): Promise<{
     stories: Story[];
-    index: RankingIndex;
+    index: RankingIndex<BundledStory>;
     emptyReason: EmptyBundleReason | null;
   }> {
     const index = await Story.bundleOutline();
@@ -263,25 +265,32 @@ export class Story extends ApplicationRecord {
   }
 
   /**
-   * The outline plus `est_loc` and `cluster`, as plain rows. Typed as `Story`
-   * for the ranking functions, which read those six columns and nothing else;
-   * a row is NOT a record, so nothing built on this serves one.
+   * The outline plus `est_loc` and `cluster`, as plain rows: what the ranking
+   * functions read, and nothing else. A row is NOT a record, and its type
+   * says so; `recordsFor` turns the rows a page serves into records.
    */
-  static async bundleOutline(): Promise<RankingIndex> {
-    const columns = ["id", "rfc_id", "status", "priority", "est_loc", "cluster"] as const;
-    const rows = await Story.pluck(...columns);
-    return rankingIndexOver(
-      rows.map(
-        (row) => Object.fromEntries(pluckedRow(row).map((value, at) => [columns[at], value])) as unknown as Story,
-      ),
-    );
+  static async bundleOutline(): Promise<RankingIndex<BundledStory>> {
+    const rows = await Story.pluck("id", "rfc_id", "status", "priority", "est_loc", "cluster");
+    const stories: BundledStory[] = [];
+    for (const row of rows) {
+      const [id, rfcId, status, priority, estLoc, cluster] = pluckedRow(row);
+      stories.push({
+        id: String(id),
+        rfc_id: String(rfcId),
+        status: status === null ? null : String(status),
+        priority: typeof priority === "number" ? priority : null,
+        est_loc: typeof estLoc === "number" ? estLoc : null,
+        cluster: cluster === null ? null : String(cluster),
+      });
+    }
+    return rankingIndexOver(stories);
   }
 
   /**
    * Records for ranked rows, in their order. A row deleted, or whose status
    * moved, between the two reads is dropped rather than served stale.
    */
-  private static async recordsFor(rows: Story[]): Promise<Story[]> {
+  private static async recordsFor(rows: RankedStory[]): Promise<Story[]> {
     const records = new Map((await Story.where({ id: rows.map((r) => r.id) }).toArray()).map((s) => [s.id, s]));
     return rows.flatMap((row) => {
       const record = records.get(row.id);
@@ -291,17 +300,35 @@ export class Story extends ApplicationRecord {
 
   /**
    * The whole snapshot as plucked ROWS — every published column, as plain
-   * objects — for `/stories.json` and `/index.json`. Typed as `Story` because
-   * every reader on that path reads columns only; a row is NOT a record.
+   * objects — for `/stories.json` and `/index.json`. A row is NOT a record,
+   * and its type says so: every reader on that path reads columns only.
    */
-  static async rankingRows(): Promise<RankingIndex> {
+  static async rankingRows(): Promise<RankingIndex<SerializedStory>> {
     const rows = await Story.pluck(...SERIALIZED_COLUMNS);
-    return rankingIndexOver(
-      rows.map(
-        (row) =>
-          Object.fromEntries(pluckedRow(row).map((value, at) => [SERIALIZED_COLUMNS[at], value])) as unknown as Story,
-      ),
-    );
+    const text = (value: unknown): string | null => (value === null || value === undefined ? null : String(value));
+    const integer = (value: unknown): number | null => (typeof value === "number" ? value : null);
+    const stories: SerializedStory[] = [];
+    for (const row of rows) {
+      const [id, rfcId, title, status, cluster, priority, updatedOn, estLoc, pr, claimAt, assignee, blockedBy,
+        closedReason, filePath] = pluckedRow(row);
+      stories.push({
+        id: String(id),
+        rfc_id: String(rfcId),
+        title: text(title),
+        status: text(status),
+        cluster: text(cluster),
+        priority: integer(priority),
+        updated_on: updatedOn,
+        est_loc: integer(estLoc),
+        pr: text(pr),
+        claim_at: claimAt,
+        assignee: text(assignee),
+        blocked_by: text(blockedBy),
+        closed_reason: text(closedReason),
+        file_path: text(filePath),
+      });
+    }
+    return rankingIndexOver(stories);
   }
 
   /**
