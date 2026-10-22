@@ -1,8 +1,8 @@
 import { MimeType } from "@blazetrails/actionpack";
 import { ApiController } from "./api-controller.js";
 import { Story } from "../models/index.js";
-import { summarizeBundle, type RankingIndex } from "../models/concerns/ranking.js";
-import { serializeStories } from "../serializers/story-json.js";
+import { listFilteredIn, summarizeBundle } from "../models/concerns/ranking.js";
+import { serializeStories, type SerializedStory, type StoryJsonContext } from "../serializers/story-json.js";
 
 /** `next-bundle`'s default budget, matching the CLI's `--max-loc` default. */
 const DEFAULT_MAX_LOC = 250;
@@ -29,8 +29,7 @@ export class StoriesController extends ApiController {
   /** `tasks list [--status S] [--rfc R] [--cluster C]` */
   async index(): Promise<void> {
     const index = await Story.rankingRows();
-    const rows = await Story.listFiltered({
-      index,
+    const rows = listFilteredIn(index, {
       rfc: this.param("rfc"),
       status: this.param("status"),
       cluster: this.param("cluster"),
@@ -112,7 +111,7 @@ export class StoriesController extends ApiController {
    * `show` renders the bare object the CLI's `show` prints; every other verb
    * renders the array its `--json` prints.
    */
-  private async renderStories(rows: Story[], index: RankingIndex): Promise<void> {
+  private async renderStories(rows: SerializedStory[], index: StoryJsonContext): Promise<void> {
     const stories = serializeStories(rows, index);
     await this.respondWith(this.actionName === "show" ? stories[0] : stories);
   }

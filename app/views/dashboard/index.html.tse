@@ -114,4 +114,4 @@
 
 <div id="repoSections"></div>
 
-<script src="/assets/javascripts/dashboard.js" type="module"></script>
+<script src="<%= javascriptPath("dashboard") %>" type="module"></script>

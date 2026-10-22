@@ -52,7 +52,8 @@ describe("PanesController", () => {
     }
     expect(body).toContain('<pre id="paneScreen" class="terminal"');
     expect(body).toContain("last ~2000 rows");
-    expect(body).toContain('<script src="/assets/javascripts/pane.js" type="module"></script>');
+    // Logical name only; scripts/smoke-boot.sh guards the digested link.
+    expect(body).toMatch(/<script src="[^"]*\/javascripts\/pane\.js" type="module"><\/script>/);
   });
 
   it("says so on the page when no ringo is configured", async () => {

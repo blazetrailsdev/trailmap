@@ -30,7 +30,8 @@ describe("DashboardController", () => {
     const body = await index();
 
     expect(body).toContain("<!DOCTYPE html>");
-    expect(body).toContain('<link rel="stylesheet" href="/assets/stylesheets/application.css">');
+    // Logical name only; scripts/smoke-boot.sh guards the digested link.
+    expect(body).toMatch(/<link rel="stylesheet" href="[^"]*\/stylesheets\/application\.css"/);
     expect(body).toContain('<nav class="nav">');
   });
 
@@ -112,6 +113,7 @@ describe("DashboardController", () => {
   it("loads the client half as an external script, not an inline one", async () => {
     const body = await index();
 
-    expect(body).toContain('<script src="/assets/javascripts/dashboard.js" type="module"></script>');
+    // Logical name only; scripts/smoke-boot.sh guards the digested link.
+    expect(body).toMatch(/<script src="[^"]*\/javascripts\/dashboard\.js" type="module"><\/script>/);
   });
 });

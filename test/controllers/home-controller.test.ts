@@ -23,7 +23,11 @@ describe("HomeController", () => {
     const body = await renderIndex();
 
     expect(body).toContain("<!DOCTYPE html>");
-    expect(body).toContain('<link rel="stylesheet" href="/assets/stylesheets/application.css">');
+    // The logical name only. A test does not boot, so trails' Vite trailtie
+    // never installs the manifest-reading `computeAssetPath`, and the link is
+    // neither `/assets`-prefixed nor digested here. scripts/smoke-boot.sh is
+    // the ONLY guard on the digested link and its cache header.
+    expect(body).toMatch(/<link rel="stylesheet" href="[^"]*\/stylesheets\/application\.css"/);
   });
 
   it("renders the nav bar, the task-domain links and the footer", async () => {

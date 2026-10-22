@@ -25,9 +25,15 @@ Trails.application!.configure(function () {
   // NOT adopted from `trails new`: `logTags` and the `TaggedLogging` logger,
   // which the template builds from `process.stdout`. config/application.ts's stays.
 
-  // NOT adopted: the template's year-long `publicFileServer.headers`. It assumes
-  // digest-stamped assets, and scripts/build-assets.sh copies them under fixed
-  // names, so a deploy's new dashboard.js would hide behind a cached old one.
+  // Cache digest-stamped assets in public/ for far-future expiry.
+  //
+  // As in Rails (railties v8.0.2 `production.rb.tt:20-21`), the header covers
+  // every file in public/, not only public/assets: the error pages,
+  // favicon.ico and robots.txt too. Rails accepts that for those files, and
+  // so does this app. The consequence is that a changed favicon or robots.txt
+  // can sit in a browser's cache for up to a year. The pages people read are
+  // rendered, not static, and every asset they link is hashed by `vite build`.
+  this.config.publicFileServer.headers = { "cache-control": "public, max-age=31556952" };
 
   // Change to "debug" to log everything (including potentially personally-identifiable information!)
   this.config.logLevel = env.RAILS_LOG_LEVEL ?? "info";

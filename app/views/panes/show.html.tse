@@ -24,4 +24,4 @@
 <pre id="paneScreen" class="terminal" tabindex="0" aria-label="Pane <%= pane %> screen"></pre>
 <div class="field-note">Read-only. Only the pane's last ~2000 rows are shown<span id="paneLines"></span>.</div>
 
-<script src="/assets/javascripts/pane.js" type="module"></script>
+<script src="<%= javascriptPath("pane") %>" type="module"></script>

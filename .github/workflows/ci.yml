@@ -11,6 +11,7 @@ on:
 jobs:
   typecheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       # A version is required here; package.json deliberately carries no
@@ -28,6 +29,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # POSTGRES, because the `hub` database is Postgres (config/database.ts) and
     # the tests that read it refuse to pass silently without one: they
     # `describe.skipIf(!hasHubTestDatabase())`, which prints every skipped
@@ -91,6 +93,7 @@ jobs:
   # unauthenticated, so they are checked here rather than left to review.
   nginx-sigil:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: ./scripts/check-nginx-sigil.sh
@@ -104,6 +107,7 @@ jobs:
   # curl — a suite that passes because it stopped looking is worse than none.
   smoke-prod:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: ./scripts/smoke-prod.sh --self-test
@@ -117,6 +121,7 @@ jobs:
 
   boot:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # The same service as `test`, for a different reason:
     # `config/initializers/hub-database.ts` refuses to boot without
     # `HUB_DATABASE_URL`, exactly as the tasks-database initializer refuses
@@ -155,6 +160,7 @@ jobs:
   # The script brings its own Postgres and network, so there is no service here.
   image:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Build the image from this commit
@@ -163,8 +169,11 @@ jobs:
         run: ./scripts/smoke-image.sh trailmap:ci
 
   # scripts/dashboard-e2e.ts, in the Chrome the runner image carries.
+  # A run takes about 1½ minutes; the timeout keeps a hung one from holding
+  # the check for GitHub's six-hour default. Every other job carries one too.
   dashboard-e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     services:
       postgres:
         image: postgres:18
@@ -212,6 +221,7 @@ jobs:
   # fixed set of rows. Re-recording is deliberate; README says when.
   page-snapshot:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       # A version is required here; package.json deliberately carries no
@@ -243,6 +253,7 @@ jobs:
   # that single file. One snapshot, by construction.
   gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -346,6 +357,7 @@ jobs:
   # by table; one select list for every table) turns this red.
   parity-gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:18

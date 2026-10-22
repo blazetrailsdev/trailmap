@@ -15,6 +15,7 @@ import {
   comparePriority,
   effectivePriority,
   isDepResolved,
+  listFilteredIn,
   priorityContext,
   summarizeBundle,
 } from "../../app/models/concerns/ranking.js";
@@ -207,7 +208,7 @@ describe("Story.rankingRows", () => {
       // Rows are plain objects, so a reader on this path that called a record
       // method would throw here: the filter and the serializer both run.
       expect(rows.stories.some((row) => row instanceof Story)).toBe(false);
-      expect((await Story.listFiltered({ index: rows, status: "claimed" })).map((s) => s.id)).toEqual(["full"]);
+      expect(listFilteredIn(rows, { status: "claimed" }).map((s) => s.id)).toEqual(["full"]);
       expect(JSON.stringify(serializeStories(rows.stories, rows))).toBe(
         JSON.stringify(serializeStories(full.stories, full)),
       );
