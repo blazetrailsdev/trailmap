@@ -35,6 +35,12 @@ beforeAll(async () => {
     if (url.pathname === "/api/deploys") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(RUNS));
+    } else if (url.pathname === "/bad-json/api/deploys") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end("<html>not json</html>");
+    } else if (url.pathname === "/proxy-down/api/deploys") {
+      res.writeHead(502, { "content-type": "text/html" });
+      res.end("<html><body>Bad Gateway from nginx</body></html>");
     } else if (url.pathname === "/deploys/log" && url.searchParams.get("id") === "ringo-100") {
       res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       res.end("-----> Building ringo\n ! push rejected\n");
@@ -93,6 +99,22 @@ describe("DeploysController#index", () => {
 
     expect((await get("index")).body).toContain("ringo is unreachable");
   });
+
+  it("says ringo answered something other than JSON, not that it is unreachable", async () => {
+    setEnv("RINGO_BASE", `${ringoBaseUrl}/bad-json`);
+
+    const body = (await get("index")).body;
+    expect(body).toContain("not with the deploy history as JSON");
+    expect(body).not.toContain("unreachable");
+  });
+
+  it("reports ringo's error status without its body", async () => {
+    setEnv("RINGO_BASE", `${ringoBaseUrl}/proxy-down`);
+
+    const body = (await get("index")).body;
+    expect(body).toContain("ringo answered 502");
+    expect(body).not.toContain("Bad Gateway from nginx");
+  });
 });
 
 describe("DeploysController#log", () => {
@@ -118,7 +140,9 @@ describe("DeploysController#log", () => {
   it("refuses a request with no id without calling ringo", async () => {
     setEnv("RINGO_BASE", ringoBaseUrl);
 
-    expect((await get("log")).status).toBe(404);
+    const response = await get("log");
+    expect(response.status).toBe(404);
+    expect(response.getHeader("Cache-Control")).toContain("no-store");
     expect(asked).toEqual([]);
   });
 

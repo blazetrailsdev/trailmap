@@ -21,7 +21,7 @@
         <code class="muted"><%= run.sha %></code>
         <span class="deploy-msg"><%= run.message %></span>
         <% if (run.error) { %><span class="deploy-err"><%= run.error %></span><% } %>
-        <time class="muted" datetime="<%= run.started %>"><%= run.started.slice(0, 16).replace("T", " ") %> · <%= run.seconds < 60 ? `${run.seconds}s` : `${Math.floor(run.seconds / 60)}m ${run.seconds % 60}s` %></time>
+        <time class="muted" datetime="<%= run.started %>"><%= run.started.slice(0, 16).replace("T", " ") %> UTC · <%= deployDuration(run.seconds) %></time>
         <a href="/deploys/log?id=<%= encodeURIComponent(run.id) %>">log</a>
       </div>
     <% } %>

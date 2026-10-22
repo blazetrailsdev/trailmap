@@ -36,24 +36,34 @@ export interface DeployRow {
  */
 export class DeploysController extends ApplicationController {
   async index(): Promise<void> {
+    this.noStore();
     const base = await Setting.ringoBase();
     let runs: DeployRow[] = [];
     let problem: string | null = base === null ? "no ringo origin is configured" : null;
     if (base !== null) {
+      let response: Response | null = null;
       try {
-        const response = await fetch(`${base}/api/deploys`, { signal: AbortSignal.timeout(DEPLOYS_TIMEOUT_MS) });
-        if (response.ok) runs = (await response.json()) as DeployRow[];
-        else problem = `ringo answered ${response.status}: ${await response.text()}`;
+        response = await fetch(`${base}/api/deploys`, { signal: AbortSignal.timeout(DEPLOYS_TIMEOUT_MS) });
       } catch (error) {
         problem = ringoFailure(error, DEPLOYS_TIMEOUT_MS).plain;
       }
+      if (response !== null && !response.ok) {
+        // The status alone: an error body may be a proxy's whole HTML page.
+        problem = `ringo answered ${response.status}`;
+      } else if (response !== null) {
+        try {
+          runs = (await response.json()) as DeployRow[];
+        } catch {
+          problem = "ringo answered, but not with the deploy history as JSON";
+        }
+      }
     }
-    this.noStore();
-    await this.render({ locals: { runs, problem } });
+    await this.render({ locals: { runs, problem, deployDuration } });
   }
 
   /** One run's log, as ringo serves it: the capture verbatim, as plain text. */
   async log(): Promise<void> {
+    this.noStore();
     const id = String(this.params.get("id") ?? "");
     if (id === "") {
       await this.render({ plain: "unknown deploy", status: 404 });
@@ -64,7 +74,6 @@ export class DeploysController extends ApplicationController {
       await this.render({ plain: "no ringo origin is configured", status: 503 });
       return;
     }
-    this.noStore();
     try {
       const response = await fetch(`${base}/deploys/log?id=${encodeURIComponent(id)}`, {
         signal: AbortSignal.timeout(DEPLOYS_TIMEOUT_MS),
@@ -74,4 +83,9 @@ export class DeploysController extends ApplicationController {
       await this.render(ringoFailure(error, DEPLOYS_TIMEOUT_MS));
     }
   }
+}
+
+/** A run's length as ringo's page writes it: `42s`, `2m 5s`. */
+export function deployDuration(seconds: number): string {
+  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
