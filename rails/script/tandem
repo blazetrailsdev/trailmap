@@ -51,9 +51,12 @@ end
 INTENDED = [
   # Each app names the framework serving it.
   [ /served by (trails|Rails)/, "served by FRAMEWORK" ],
-  # Vite serves an asset by its source path in development; Propshaft serves
-  # it fingerprinted in every environment.
-  [ %r{/assets/(?:javascripts/|stylesheets/)?([a-z-]+?)(?:-[0-9a-f]{8})?\.(js|css)}, '/assets/\\1.\\2' ],
+  # Vite serves an asset by its source path in development and as
+  # `name-<8 chars>` in production, and names ringo's chart entries
+  # `ringo-parity*` (vite.config.ts). Propshaft fingerprints with 8 hex digits.
+  [ %r{/assets/ringo-parity-css-}, "/assets/parity-" ],
+  [ %r{/assets/ringo-parity-}, "/assets/parity-draw-" ],
+  [ %r{/assets/(?:javascripts/|stylesheets/)?([a-z-]+?)(?:-[A-Za-z0-9_-]{8})?\.(js|css)}, '/assets/\\1.\\2' ],
   # A pointer to a file that exists only in the TypeScript app.
   [ / — see<code>config\/initializers\/stats-database\.ts<\/code>\./, "." ]
 ].freeze
@@ -80,12 +83,17 @@ end
 paths = ARGV.empty? ? DEFAULT_PATHS : ARGV
 failed = 0
 paths.each do |path|
-  a = fetch(trails, path)
-  b = fetch(rails, path)
-  same_status = a.code == b.code
-  ca = comparable(a)
-  cb = comparable(b)
-  if same_status && ca == cb
+  # Against live databases the fleet can write between the two fetches, so a
+  # difference is fetched once more before it counts.
+  a = b = ca = cb = nil
+  2.times do
+    a = fetch(trails, path)
+    b = fetch(rails, path)
+    ca = comparable(a)
+    cb = comparable(b)
+    break if a.code == b.code && ca == cb
+  end
+  if a.code == b.code && ca == cb
     puts "SAME #{a.code} #{path}"
   else
     failed += 1
