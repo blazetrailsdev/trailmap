@@ -39,6 +39,9 @@ dokku ps:set trailmap-rails procfile-path rails/Procfile
 dokku app-json:set trailmap-rails appjson-path rails/app.json
 dokku nginx:set trailmap-rails nginx-conf-sigil-path rails/nginx.conf.sigil
 dokku ps:set trailmap-rails restart-policy on-failure:10
+# Explicit: the loopback block proxies to the `trailmap-rails-8080` upstream,
+# and without a map dokku assumes 5000 and the sigil fails `nginx -t`.
+dokku ports:set trailmap-rails http:80:8080
 ```
 
 ## Configuration
@@ -65,7 +68,9 @@ false` in production). The migration versions are identical in both apps, so
 whichever deploys second finds nothing to do. A hub migration therefore lands
 in both apps in the same PR.
 
-TLS, once the DNS record exists: `dokku letsencrypt:enable trailmap-rails`.
+`domains:set` creates the DNS record itself on this box (dokku's DNS
+plugin). Then TLS, which adds `https:443:8080` to the port map:
+`dokku letsencrypt:enable trailmap-rails`.
 
 ## Deploying
 
@@ -73,7 +78,7 @@ From a checkout, any branch:
 
 ```sh
 git remote add dokku-rails dokku@localhost:trailmap-rails
-git push dokku-rails HEAD:main
+git push dokku-rails HEAD:trunk   # this box deploys from `trunk`
 ```
 
 ## Checks
