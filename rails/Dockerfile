@@ -54,7 +54,11 @@ COPY --from=build /app /app
 RUN groupadd --system --gid 1000 rails \
  && useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash \
  && mkdir -p log tmp storage && chown -R rails:rails log tmp storage \
- && git config --system --add safe.directory '*'
+ && git config --system --add safe.directory '*' \
+ && git config --system user.name "Dean Marano" \
+ && git config --system user.email "here@dean.is"
+# The identity matches the trails app's image (../Dockerfile), so /up/ready's
+# `git var` check answers the same in both. This app never commits.
 USER 1000:1000
 
 ENV PORT=8080
