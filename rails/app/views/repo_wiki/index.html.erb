@@ -1,0 +1,29 @@
+<%= render "shared/repo_header" %>
+
+<p class="muted">The wiki of this domain is the content tree: one page per RFC whose work
+touches this repository, rendered by the same markdown helper the RFC pages use.</p>
+
+<div class="box">
+  <% if @pages.empty? %>
+    <div class="empty">No page.</div>
+  <% end %>
+  <% @pages.each do |page| %>
+    <div class="item-row">
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title<%= page.id == @selected ? " active" : "" %>" href="<%= page.href %>"><%= page.title %></a>
+          <%= render "shared/status_badge", status: page.status %>
+        </span>
+        <div class="row-meta"><code><%= page.id %></code></div>
+      </span>
+    </div>
+  <% end %>
+</div>
+
+<% if @selected %>
+  <h2><%= @page_title %></h2>
+  <% if @error.present? %><div class="box"><div class="empty"><%= @error %></div></div><% end %>
+  <% if @body %><div class="box doc"><%= @body %></div><% end %>
+<% else %>
+  <p class="muted">Pick a page.</p>
+<% end %>

@@ -1,0 +1,35 @@
+<!-- ringo's chart engine, as files rather than inline: generated from the
+     pinned ringo snapshot by ../scripts/vendor-ringo.sh, and shared with the
+     TypeScript app (vendor/ringo holds symlinks). -->
+<%= stylesheet_link_tag "parity" %>
+
+<div class="page-header">
+  <h1 class="page-title">Parity over time</h1>
+  <div class="page-subhead">
+    <span class="muted">
+      Per-package comparison results from every merged trails PR, rolled up to
+      the last run of each day.
+    </span>
+  </div>
+</div>
+
+<% unless @charted %>
+  <div class="card">
+    <div class="card-head"><span class="card-title">Nothing projected yet</span></div>
+    <div class="field-note">
+      <% if @can_refresh %>
+        The <code>parity_days</code> projection is empty. It fills itself on the
+        first page load, so a refresh of this page should do it — or run
+        <code>pnpm parity:sync</code> to fill it now.
+      <% else %>
+        The <code>parity_days</code> projection is empty, and this deployment has
+        no <code>STATS_DB</code> to fill it from. Run <code>pnpm parity:sync</code>
+        from a host that has the stats database, pointed at this hub. The chart
+        itself needs only the projection.
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <%= render "parity_graphs/cards" %>
+  <script src="<%= asset_path("parity-draw.js") %>" defer></script>
+<% end %>

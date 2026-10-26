@@ -1,0 +1,33 @@
+<%= render "shared/repo_header" %>
+
+<p class="muted">An RFC is this domain's project board. The done/total count is the RFC's own —
+not this repository's slice of it, which would call a forty-story project finished.</p>
+
+<div class="box">
+  <% if @rows.empty? %>
+    <div class="empty">No RFC has work in this repository.</div>
+  <% end %>
+  <% @rows.each do |row| %>
+    <div class="item-row">
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title" href="/<%= @nwo %>/projects/<%= row.id %>"><%= row.title %></a>
+          <%= render "shared/status_badge", status: row.status %>
+          <% unless row.priority.nil? %><span class="tag prio">P<%= row.priority %></span><% end %>
+          <% if row.counts.total.positive? %><span class="tag prog" title="stories done / total"><%= row.counts.done %>/<%= row.counts.total %> done</span><% end %>
+          <span class="tag" title="stories scoped to this repository"><%= row.mine %> here</span>
+        </span>
+        <div class="row-meta"><code><%= row.id %></code> &middot; <a href="/rfc/<%= row.id %>">RFC page</a></div>
+        <% if row.bar.any? %>
+          <div class="sbarwrap">
+            <span class="sbartrack">
+              <span class="sbar" style="width:100%">
+                <% row.bar.each do |seg| %><span class="seg s-<%= seg.status %>" style="width:<%= js_num(seg.pct) %>%" title="<%= seg.count %> <%= seg.status %>"></span><% end %>
+              </span>
+            </span>
+          </div>
+        <% end %>
+      </span>
+    </div>
+  <% end %>
+</div>

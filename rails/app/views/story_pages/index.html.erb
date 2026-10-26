@@ -1,0 +1,44 @@
+<div class="page-header">
+  <h1 class="page-title">Backlog</h1>
+  <div class="page-subhead">
+    <span class="muted"><%= @queue_size %> in the ready queue</span>
+  </div>
+</div>
+
+<%= render "shared/filter_tabs", tabs: @tabs %>
+
+<%= render "shared/pager", pager: @pager %>
+
+<div class="box">
+  <% if @show_queue_help %>
+    <div class="box-header">
+      <span class="muted">Stories tagged <strong>next up</strong> / <strong>#N</strong> are the ready queue in pick order.</span>
+    </div>
+  <% end %>
+  <% if @rows.empty? %>
+    <div class="empty">
+      <% if @filter == "done" %>No done stories yet.<% elsif @filter == "icebox" %>No stories under draft or postponed RFCs.<% else %>No <%= @filter %> stories.<% end %>
+    </div>
+  <% end %>
+  <% @rows.each do |row| %>
+    <div class="item-row">
+      <%= render "shared/status_badge", status: row.status %>
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title" href="/story/<%= row.id %>"><%= row.title %></a>
+          <% if row.queue_pos == 0 %><span class="tag next">next up</span><% elsif row.queue_pos %><span class="tag queue">#<%= row.queue_pos + 1 %> in queue</span><% end %>
+          <% if row.cluster.present? %><span class="tag"><%= row.cluster %></span><% end %>
+          <% if row.icebox %><span class="tag icebox" title="its RFC is a draft or postponed">icebox</span><% end %>
+          <% row.packages.each do |name| %><span class="tag pkg" title="package<%= row.packages_inherited ? ", inherited from RFC #{row.rfc_id}" : "" %>"><%= name %><%= row.packages_inherited ? "*" : "" %></span><% end %>
+          <% unless row.priority.nil? %><span class="tag prio" title="ready-queue priority (lower = sooner)<%= row.priority_inherited ? ", inherited from RFC #{row.rfc_id}" : "" %>">pri <%= row.priority %><%= row.priority_inherited ? "*" : "" %></span><% end %>
+        </span>
+        <div class="row-meta">
+          <code><%= row.id %></code> &middot; <a href="/rfc/<%= row.rfc_id %>">RFC <%= row.rfc_id %></a><% if row.est_loc.to_i != 0 %> &middot; ~<%= row.est_loc %> LOC<% end %><% unless row.stale_days.nil? %> &middot; updated <%= row.stale_days %>d ago<% end %><% if row.assignee.present? %> &middot; by <%= row.assignee %><% end %>
+        </div>
+      </span>
+      <% unless row.pr.nil? %><span class="row-aside"><a href="/story/<%= row.id %>"><%= row.pr %></a></span><% end %>
+    </div>
+  <% end %>
+</div>
+
+<%= render "shared/pager", pager: @pager %>

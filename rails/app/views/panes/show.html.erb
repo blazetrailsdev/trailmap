@@ -1,0 +1,27 @@
+<!-- Where the page polls for the screen: trailmap's relay, never ringo. On an
+     element rather than in an inline <script>, as on the fleet page. -->
+<div id="paneConfig" hidden data-screen-path="<%= @screen_path %>"></div>
+
+<div class="page-header">
+  <h1 class="page-title">Pane <code class="pane-id"><%= @pane %></code></h1>
+  <div class="page-subhead">
+    <a href="/dashboard">&larr; Fleet</a>
+    <span class="id" id="paneWorktree" title="The pane's working directory"></span>
+    <span id="paneStatus"></span>
+    <span class="muted" id="paneUpdated">connecting&hellip;</span>
+    <span class="pane-notice" id="paneNotice" role="status"></span>
+    <button id="panePause" class="btn btn-sm" type="button">Pause</button>
+  </div>
+</div>
+
+<% unless @relay_configured %>
+  <div class="card ci-fixer paused">
+    <div class="card-head"><span class="card-title">No fleet data</span></div>
+    <div class="field-note">This deployment has no ringo origin — neither the <code>ringo_base</code> setting nor <code>RINGO_BASE</code> — so trailmap has no ringo to relay. See docs/fleet-dashboard.md.</div>
+  </div>
+<% end %>
+
+<pre id="paneScreen" class="terminal" tabindex="0" aria-label="Pane <%= @pane %> screen"></pre>
+<div class="field-note">Read-only. Only the pane's last ~2000 rows are shown<span id="paneLines"></span>.</div>
+
+<script src="<%= asset_path("pane.js") %>" type="module"></script>
