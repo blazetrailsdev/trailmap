@@ -200,6 +200,19 @@ const ROWS: Row[] = [
     names: ["generate", "dump", "tojson"],
     to: "to_json",
   },
+  {
+    id: "url-encode",
+    side: "ruby",
+    names: ["urlencode", "escape", "uencode"],
+    to: "encodeuricomponent",
+  },
+  { id: "iso8601", side: "ts", names: ["toisostring"], to: "iso8601" },
+  {
+    id: "sign",
+    side: "ruby",
+    names: ["positive", "negative", "zero", "nonzero"],
+    to: null,
+  },
   // Ruby truthiness helpers whose JS spelling is no call (`!x`, `x ?? d`).
   {
     id: "truthiness",

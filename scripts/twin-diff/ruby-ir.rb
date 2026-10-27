@@ -787,8 +787,24 @@ end
 require "set"
 $expansion_failures = []
 root, *files = ARGV
+# An ERB template becomes the body of one method: each `<%= e %>` an
+# `__out((e))`, each `<% code %>` its code. Markup is compared separately, from
+# the template text, so it is left out here.
+def erb_to_ruby(src)
+  code = +"def __template;"
+  src.scan(/<%(=|#)?-?(.*?)-?%>/m) do |kind, body|
+    next if kind == "#"
+    # Pad to the tag's template line, so a line in the IR is a line in the .erb.
+    line = src[0, Regexp.last_match.begin(0)].count("\n") + 1
+    code << "\n" * [line - (code.count("\n") + 1), 0].max
+    code << (kind == "=" ? "__out((#{body.strip}));" : "#{body.strip};")
+  end
+  code << "\n"
+  code << "end\n"
+end
+
 out = files.map do |f|
-  result = Prism.parse_file(f)
+  result = f.end_with?(".erb") ? Prism.parse(erb_to_ruby(File.read(f)), filepath: f) : Prism.parse_file(f)
   b = CodegenIR::Builder.new(result.source, nil)
   { file: f.delete_prefix(root).delete_prefix("/"), body: b.build_program(result.value), unhandled: b.unhandled_counts }
 end

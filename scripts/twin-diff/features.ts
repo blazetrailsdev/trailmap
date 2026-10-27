@@ -14,6 +14,35 @@ const isLengthRead = (n: N | undefined) =>
   (n.name === "length" || n.name === "size") &&
   !n.args?.length;
 
+/**
+ * `render "shared/status_badge", status: s` and
+ * `render({ partial: "shared/status-badge", locals: { status: s } })` render
+ * one partial with one local.
+ */
+function renderPartial(
+  node: N,
+  side: Side,
+): { name: string; locals: { key: N; value: N }[] } | null {
+  if (node.name !== "render" || (node.recv && node.recv.k !== "self"))
+    return null;
+  const args: N[] = node.args ?? [];
+  const pairsOf = (h: N | undefined): { key: N; value: N }[] =>
+    h && (h.k === "hash" || h.k === "kwargs") ? h.pairs : [];
+  const partialName = (s: string) => s.replace(/[-_]/g, "").toLowerCase();
+  if (side === "ruby" && args[0]?.k === "str")
+    return { name: partialName(args[0].value), locals: pairsOf(args[1]) };
+  const opts = pairsOf(args[0]);
+  const partial = opts.find((p) => p.key.value === "partial");
+  if (partial?.value.k === "str") {
+    const locals = opts.find((p) => p.key.value === "locals");
+    return {
+      name: partialName(partial.value.value),
+      locals: pairsOf(locals?.value),
+    };
+  }
+  return null;
+}
+
 interface Pattern {
   concept: string | null;
   idiom?: string;
@@ -29,6 +58,13 @@ interface Pattern {
  */
 function tsPattern(node: N): Pattern | null {
   const COMPARE = new Set(["==", ">", ">=", "<", "<="]);
+  // `n > 0` is Ruby's `n.positive?`, `n === 0` its `n.zero?`.
+  if (
+    COMPARE.has(node.name) &&
+    node.args?.[0]?.k === "int" &&
+    Number(node.args[0].value) === 0
+  )
+    return { concept: null, idiom: "sign", visit: [node.recv] };
   if (
     COMPARE.has(node.name) &&
     isLengthRead(node.recv) &&
@@ -113,6 +149,20 @@ export function features(body: N, side: Side): Features {
     if (typeof node.l === "number") lastLine = node.l;
     switch (node.k) {
       case "call": {
+        if (node.name === "__out" && !node.recv) {
+          visit(node.args);
+          return;
+        }
+        const partial = renderPartial(node, side);
+        if (partial) {
+          idioms.set("render-partial", (idioms.get("render-partial") ?? 0) + 1);
+          add(`render:${partial.name}`);
+          for (const p of partial.locals) {
+            add(`local:${canon(String(p.key.value))}`);
+            visit(p.value);
+          }
+          return;
+        }
         const pattern = side === "ts" ? tsPattern(node) : null;
         if (pattern) {
           if (pattern.idiom)

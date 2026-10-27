@@ -21,6 +21,7 @@ import {
 } from "@blazetrails/ruby-compat";
 import type { N, Param } from "./ir.ts";
 import { lowerTsFile } from "./ts-ir.ts";
+import { markupFeatures, tseToTs, viewTwinPath } from "./views.ts";
 import {
   canon,
   constName,
@@ -42,9 +43,10 @@ const opt = (name: string, dflt: string) => {
   return i >= 0 ? argv[i + 1] : dflt;
 };
 const OUT = opt("out", join(ROOT, "tmp/twin-diff"));
-const AREAS = opt("area", "models,controllers,helpers,serializers,jobs").split(
-  ",",
-);
+const AREAS = opt(
+  "area",
+  "models,controllers,helpers,serializers,jobs,views",
+).split(",");
 
 function files(dir: string, ext: string): string[] {
   let out: string[] = [];
@@ -65,19 +67,25 @@ const tsFiles = AREAS.flatMap((a: string) =>
   files(join(ROOT, "app", a), ".ts"),
 );
 
+const erbFiles = AREAS.includes("views")
+  ? files(join(ROOT, "rails/app/views"), ".erb")
+  : [];
 const ruby = child.spawnSync(
   "ruby",
   [
     join(ROOT, "scripts/twin-diff/ruby-ir.rb"),
     join(ROOT, "rails/app"),
     ...rubyFiles,
+    ...erbFiles,
   ],
   {
     encoding: "utf8",
   },
 );
 if (ruby.status !== 0) throw new Error(`ruby-ir.rb failed: ${ruby.stderr}`);
-const rubyIr = JSON.parse(ruby.stdout) as { file: string; body: N }[];
+const rubyIrAll = JSON.parse(ruby.stdout) as { file: string; body: N }[];
+const rubyIr = rubyIrAll.filter((f) => !f.file.endsWith(".erb"));
+const erbIr = rubyIrAll.filter((f) => f.file.endsWith(".erb"));
 
 const rubyUnits: Unit[] = rubyIr.flatMap((f) =>
   extractUnits(f.file, f.body, "ruby"),
@@ -311,6 +319,8 @@ function score(m: MethodReport): number {
     if (kind === "raise") s += 3;
     else if (kind === "call") s += BUILTIN.has(rest) ? 0.5 : 2;
     else if (kind === "lit") s += /\s/.test(rest) ? 2 : 1;
+    else if (kind === "text" || kind === "render") s += 2;
+    else if (kind === "html" || kind === "local") s += 1;
     else if (kind === "ivar") s += 1;
     else if (kind === "branch" || kind === "rescue" || kind === "loop") s += 1;
     else s += 0.5;
@@ -777,8 +787,67 @@ function bodySimilarity(rb: N, tb: N): number {
   return (a.length - d.missing.length) / Math.max(a.length, b.length);
 }
 
+// Templates: code through the body diff, markup beside it.
+const viewsSeen = new Set<string>();
+for (const v of erbIr) {
+  const tsRel = viewTwinPath(v.file);
+  const tsPath = join(ROOT, "app", tsRel);
+  const report: PairReport = {
+    ruby: `${v.file}:1`,
+    ts: null,
+    how: "unpaired",
+    findings: [],
+    methods: [],
+  };
+  pairs.push(report);
+  if (!fs.existsSync(tsPath)) {
+    report.findings.push({
+      tier: "surface",
+      kind: "view-missing",
+      ruby: `${v.file}:1`,
+      detail: `no ${tsRel}`,
+    });
+    continue;
+  }
+  viewsSeen.add(tsRel);
+  report.ts = `${tsRel}:1`;
+  report.how = "same-file";
+  const tse = fs.readFileSync(tsPath, "utf8");
+  const tsBody = lowerTsFile(tsRel, tseToTs(tse)).body[0]?.body ?? {
+    k: "seq",
+    body: [],
+  };
+  const rbBody = (v.body.body as N[])[0]?.body ?? { k: "seq", body: [] };
+  const m = bodyReport(
+    "(template)",
+    `${v.file}:1`,
+    `${tsRel}:1`,
+    "view",
+    rbBody,
+    tsBody,
+  );
+  const markup = diffFeatures(
+    markupFeatures(fs.readFileSync(join(ROOT, "rails/app", v.file), "utf8")),
+    markupFeatures(tse),
+  );
+  m.missing.push(...markup.missing);
+  m.extra.push(...markup.extra);
+  if (m.missing.length || m.extra.length) report.methods.push(m);
+}
+
 // TS surface with no Ruby twin.
 const extras: Finding[] = [];
+if (AREAS.includes("views"))
+  for (const f of files(join(ROOT, "app/views"), ".tse")) {
+    const rel = f.slice(join(ROOT, "app").length + 1);
+    if (!viewsSeen.has(rel))
+      extras.push({
+        tier: "surface",
+        kind: "ts-only-view",
+        ts: `${rel}:1`,
+        detail: rel,
+      });
+  }
 for (const u of tsUnits) {
   if (!usedTs.has(u)) {
     if (u.kind === "file") {
