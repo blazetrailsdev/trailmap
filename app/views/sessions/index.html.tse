@@ -1,0 +1,45 @@
+<div class="page-header">
+  <h1 class="page-title">Session archive</h1>
+  <div class="page-subhead">
+    <span class="muted">What the agents actually did, kept after the pane is gone. Read-only; relayed from ringo, which holds the archive. Cost figures are list-price equivalents rather than a bill.</span>
+  </div>
+</div>
+
+<% if (problem !== null) { %>
+  <div class="card ci-fixer paused">
+    <div class="card-head"><span class="card-title">No session data</span></div>
+    <div class="field-note"><%= problem %></div>
+  </div>
+<% } else { %>
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Archives</span>
+      <span class="muted"><%= archives.length %> recorded — open panes first, then most recently closed</span>
+    </div>
+    <% if (archives.length === 0) { %>
+      <div class="field-note">Nothing archived yet. A pane is enrolled when it is linked to a PR.</div>
+    <% } else { %>
+      <div class="session-scroll"><table class="session-table">
+        <thead><tr><th>PR</th><th>Branch</th><th>Pane</th><th>Opened</th><th>Duration</th><th>State</th><th>Sessions</th><th>Pane log</th><th>Cost</th></tr></thead>
+        <tbody>
+          <% for (const archive of archives) { %>
+            <tr>
+              <td><a href="/sessions/<%= archive.owner %>/<%= archive.repo %>/<%= archive.pr %>"><%= archive.owner %>/<%= archive.repo %>#<%= archive.pr %></a></td>
+              <td><code><%= orDash(archive.branch) %></code></td>
+              <td><code><%= archive.pane %></code></td>
+              <td><%= sessionTime(archive.row.opened_at) %></td>
+              <td><%= shortDur(archive.duration(now)) %></td>
+              <td>
+                <% if (archive.isOpen()) { %><span class="session-pill live">open</span><% } else { %><span class="session-pill"><%= archive.reason %></span><% } %>
+                <% if (archive.truncated) { %><span class="session-pill trunc">truncated</span><% } %>
+              </td>
+              <td><%= render({ partial: "sessions/role-split", locals: { archive } }) %></td>
+              <td><% if (archive.paneLog !== "") { %><%= humanBytes(archive.paneLogBytes) %><% } else { %><span class="muted">—</span><% } %></td>
+              <td><%= money(archive.cost) %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table></div>
+    <% } %>
+  </div>
+<% } %>

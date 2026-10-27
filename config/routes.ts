@@ -74,6 +74,12 @@ Trails.application!.routes().draw(function () {
   this.get("deploys", { to: "deploys#index" });
   this.get("deploys/log", { to: "deploys#log" });
 
+  // The session archive, relayed read-only from ringo (SessionsController):
+  // the index, one PR's archives at ringo's own path, and ringo's JSON.
+  this.get("sessions", { to: "sessions#index" });
+  this.get("sessions/:owner/:repo/:pr", { to: "sessions#show", constraints: { pr: /\d+/ } });
+  this.get("api/sessions", { to: "sessions#api" });
+
   // The list pages. Plural, and they come BEFORE the singular show routes only
   // by convention — the patterns cannot collide. The status/filter tab is a
   // query parameter rather than a path segment (`/rfcs?status=draft`) because

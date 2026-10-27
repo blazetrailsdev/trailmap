@@ -20,6 +20,7 @@
  * `new` are reserved there, and no account can hold them.
  */
 export const RESERVED_OWNER_NAMES = [
+  "api",
   "assets",
   "audits",
   "backlog",
@@ -31,6 +32,7 @@ export const RESERVED_OWNER_NAMES = [
   "panes",
   "rfc",
   "rfcs",
+  "sessions",
   "stories",
   "story",
   "up",
