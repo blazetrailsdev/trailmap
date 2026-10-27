@@ -30,7 +30,11 @@ describe("runRingoCore", () => {
   it("rejects with ringo's own stderr when the command exits non-zero", async () => {
     const failure = runRingoCore(["no-such-mode"], new Uint8Array());
     await expect(failure).rejects.toBeInstanceOf(RingoCoreError);
-    await expect(failure).rejects.toMatchObject({ code: 2, message: expect.stringContaining("unknown mode: no-such-mode") });
+    await expect(failure).rejects.toMatchObject({
+      args: ["no-such-mode"],
+      code: 2,
+      message: expect.stringContaining("unknown mode: no-such-mode"),
+    });
   });
 
   it("keeps calls independent of one another", async () => {
