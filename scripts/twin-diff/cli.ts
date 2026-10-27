@@ -33,6 +33,7 @@ import {
 } from "./model.ts";
 import { diffFeatures, features, type Feature } from "./features.ts";
 import type { TwinContext } from "./idioms.ts";
+import { rubyFor } from "./ruby-env.ts";
 
 const fs = getFs();
 const { join } = getPath();
@@ -79,9 +80,11 @@ const tsFiles = AREAS.flatMap((a: string) =>
 const erbFiles = AREAS.includes("views")
   ? files(join(RAILS_APP, "views"), ".erb")
   : [];
+const invocation = rubyFor(RAILS_APP);
 const ruby = child.spawnSync(
   "ruby",
   [
+    ...invocation.args,
     join(ROOT, "scripts/twin-diff/ruby-ir.rb"),
     RAILS_APP,
     ...rubyFiles,
@@ -89,6 +92,7 @@ const ruby = child.spawnSync(
   ],
   {
     encoding: "utf8",
+    env: invocation.env,
   },
 );
 if (ruby.status !== 0) throw new Error(`ruby-ir.rb failed: ${ruby.stderr}`);
