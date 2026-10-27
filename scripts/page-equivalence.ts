@@ -272,14 +272,20 @@ async function main(): Promise<number> {
       );
       underClosedRfc = new Set([...storyNow].filter(([, rfc]) => closedNow.has(rfc)).map(([id]) => id));
       unsettled = [];
+      // A page fetched again replaces its record where it stands, so the
+      // fixture keeps its order; one that is gone, or now differs, is dropped.
       for (const id of touched.rfcs) {
-        records.delete(`rfc:${id}`);
-        if (rfcNow.has(id) && (await compareRfc(id)).length > 0) unsettled.push(`rfc:${id}`);
+        if (!rfcNow.has(id) || (await compareRfc(id)).length > 0) {
+          records.delete(`rfc:${id}`);
+          if (rfcNow.has(id)) unsettled.push(`rfc:${id}`);
+        }
       }
       for (const id of touched.stories) {
-        records.delete(`story:${id}`);
         exempt.delete(id);
-        if (storyNow.has(id) && (await compareStory(id)).length > 0) unsettled.push(`story:${id}`);
+        if (!storyNow.has(id) || (await compareStory(id)).length > 0) {
+          records.delete(`story:${id}`);
+          if (storyNow.has(id)) unsettled.push(`story:${id}`);
+        }
       }
       rowsBefore = rowsAfter;
     }
