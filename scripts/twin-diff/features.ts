@@ -307,10 +307,7 @@ export function features(body: N, side: Side): Features {
         if (node.ensure) add("ensure");
         break;
       case "str":
-        if (String(node.value).trim())
-          add(`lit:${JSON.stringify(normLit(node.value))}`);
-        return;
-      case "str":
+        // `order({ name: "asc" })` spells the default Ruby's `order(:name)` leaves out.
         if (side === "ts" && node.value === "asc") return;
         if (String(node.value).trim())
           add(`lit:${JSON.stringify(normLit(node.value))}`);
