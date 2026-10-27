@@ -1,3 +1,4 @@
+import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { ApplicationController } from "./application-controller.ts";
 import { FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash } from "../../config/fleet.ts";
 import { Setting } from "../models/setting.ts";
@@ -225,15 +226,6 @@ function saysPaneIsGone(text: string): boolean {
   } catch {
     return false;
   }
-}
-
-/** 504 for a ringo that did not answer in time, 502 for one that could not be reached. */
-export function ringoFailure(error: unknown, timeoutMs: number): { plain: string; status: number } {
-  if (error instanceof Error && error.name === "TimeoutError") {
-    return { plain: `ringo did not answer in ${timeoutMs / 1000}s`, status: 504 };
-  }
-  const reason = error instanceof Error ? error.message : String(error);
-  return { plain: `ringo is unreachable: ${reason}`, status: 502 };
 }
 
 /** The handshake headers the WebSocket driver reads, lower-cased, from the Rack env. */

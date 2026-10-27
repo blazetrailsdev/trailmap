@@ -764,3 +764,16 @@ ul { margin: 0 0 10px 20px; }
 .badge.s-deploy-running { background: var(--yellow-bg); color: var(--yellow); border-color: transparent; }
 .badge.s-deploy-success { background: var(--green-bg); color: var(--green); border-color: transparent; }
 .badge.s-deploy-failed, .badge.s-deploy-timeout, .badge.s-deploy-error { background: var(--red-bg); color: var(--red); border-color: transparent; }
+
+/* /sessions -- ringo's archive tables; wide, so they scroll inside the card */
+.session-scroll { overflow-x: auto; }
+.session-pr { overflow-wrap: anywhere; }
+.session-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.session-table th, .session-table td { text-align: left; padding: 6px 10px; border-top: 1px solid var(--border); white-space: nowrap; }
+.session-table th { color: var(--muted); font-weight: 600; font-size: 12px; border-top: 0; }
+.session-pill { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); color: var(--muted); }
+.session-pill.live { color: var(--green); border-color: var(--green); }
+.session-pill.trunc { color: var(--yellow); border-color: var(--yellow); }
+.session-role { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600; border: 1px solid var(--border); }
+.session-role.agent { color: var(--accent); }
+.session-role.reviewer { color: var(--purple); }

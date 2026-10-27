@@ -19,6 +19,7 @@ import { ParityGraphsController } from "../../app/controllers/parity-graphs-cont
 import { AuditsController } from "../../app/controllers/audits-controller.ts";
 import { DeploysController } from "../../app/controllers/deploys-controller.ts";
 import { SearchesController } from "../../app/controllers/searches-controller.ts";
+import { SessionsController } from "../../app/controllers/sessions-controller.ts";
 
 /**
  * Every page controller's view directory is the one the implicit lookup asks
@@ -43,6 +44,7 @@ const PAGE_CONTROLLERS = [
   AuditsController,
   DeploysController,
   SearchesController,
+  SessionsController,
   DashboardController,
   HomeController,
   PanesController,
