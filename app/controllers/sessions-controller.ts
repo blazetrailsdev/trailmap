@@ -23,6 +23,10 @@ export class SessionsController extends ApplicationController {
     await this.render({ locals: { archives, problem, now: new Date() } });
   }
 
+  /**
+   * One PR's archives. An unknown PR is a 200 with "No archive recorded", not
+   * a 404: that is what ringo's `servePR` answers, and this page matches it.
+   */
   async show(): Promise<void> {
     this.noStore();
     const owner = String(this.params.get("owner") ?? "");
@@ -31,7 +35,7 @@ export class SessionsController extends ApplicationController {
     let archives: SessionArchive[] = [];
     let problem: string | null = null;
     try {
-      archives = await SessionArchive.where({ owner, repo, pr });
+      archives = await SessionArchive.forPr({ owner, repo, pr });
     } catch (error) {
       if (!(error instanceof SessionArchiveUnavailable)) throw error;
       problem = error.message;

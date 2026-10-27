@@ -1,7 +1,6 @@
 import { Attributes, Model, type AttributesClassHalf } from "@blazetrails/activemodel";
-import { RecordNotFound } from "@blazetrails/activerecord";
 import { include } from "@blazetrails/activesupport";
-import { ringoFailure } from "./concerns/ringo-failure.ts";
+import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { Setting } from "./setting.ts";
 
 /**
@@ -59,7 +58,8 @@ export class SessionArchiveUnavailable extends Error {
  * An ActiveModel, not an ActiveRecord: the archive is ringo's `index.json` and
  * the files beside it, on ringo's disk, so `all` reads it over the private
  * network from ringo's `/api/sessions` as the deploys page does. The finders
- * are shaped like AR's, so the controller reads the same either way, and the
+ * carry ringo's names (`all`, `forPr` for `ForPR`), not AR's, since they
+ * return arrays rather than relations, and the
  * row ringo sent is kept verbatim so `/api/sessions` relays its shape exactly.
  */
 export class SessionArchive extends Model {
@@ -136,17 +136,8 @@ export class SessionArchive extends Model {
   }
 
   /** ringo's `ForPR`: every archive recorded against one PR, one per pane. */
-  static async where({ owner, repo, pr }: { owner: string; repo: string; pr: number }): Promise<SessionArchive[]> {
+  static async forPr({ owner, repo, pr }: { owner: string; repo: string; pr: number }): Promise<SessionArchive[]> {
     return (await this.all()).filter((a) => a.owner === owner && a.repo === repo && a.pr === pr);
-  }
-
-  /** `where`, raising `RecordNotFound` for a PR with no archive, as AR's `find`. */
-  static async find(owner: string, repo: string, pr: number): Promise<SessionArchive[]> {
-    const archives = await this.where({ owner, repo, pr });
-    if (archives.length === 0) {
-      throw new RecordNotFound(`Couldn't find SessionArchive for ${owner}/${repo}#${pr}`, "SessionArchive");
-    }
-    return archives;
   }
 
   get transcripts(): ArchivedTranscriptRow[] {

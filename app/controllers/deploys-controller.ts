@@ -1,5 +1,5 @@
 import { ApplicationController } from "./application-controller.ts";
-import { ringoFailure } from "./fleet-controller.ts";
+import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { Setting } from "../models/setting.ts";
 
 /**

@@ -1,4 +1,4 @@
-import { ringoFailure } from "../models/concerns/ringo-failure.ts";
+import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { ApplicationController } from "./application-controller.ts";
 import { FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash } from "../../config/fleet.ts";
 import { Setting } from "../models/setting.ts";
@@ -39,8 +39,6 @@ export const REVIEWERS_TIMEOUT_MS = 5_000;
  * trailmap restart drops every viewer's socket (the page reconnects), and
  * trailmap holds a connection per viewer.
  */
-export { ringoFailure };
-
 export class FleetController extends ApplicationController {
   /**
    * `GET /fleet/socket`, as a WebSocket handshake. The connection is taken

@@ -1,6 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { getHttpAsync, setEnv, type HttpServer } from "@blazetrails/ruby-compat";
-import { RecordNotFound } from "@blazetrails/activerecord";
 import { SessionArchive, SessionArchiveUnavailable, type SessionArchiveRow } from "../../app/models/session-archive.ts";
 
 const OPEN: SessionArchiveRow = {
@@ -55,15 +54,9 @@ describe("SessionArchive", () => {
     await expect(SessionArchive.all()).rejects.toThrow("not with the session archive as JSON");
   });
 
-  it("where filters to one PR", async () => {
+  it("forPr filters to one PR", async () => {
     setEnv("RINGO_BASE", base);
-    expect((await SessionArchive.where({ owner: "o", repo: "r", pr: 2 })).map((a) => a.pane)).toEqual(["%2"]);
-  });
-
-  it("find raises RecordNotFound for a PR with no archive", async () => {
-    setEnv("RINGO_BASE", base);
-    expect((await SessionArchive.find("o", "r", 1))[0].pane).toBe("%1");
-    await expect(SessionArchive.find("o", "r", 99)).rejects.toBeInstanceOf(RecordNotFound);
+    expect((await SessionArchive.forPr({ owner: "o", repo: "r", pr: 2 })).map((a) => a.pane)).toEqual(["%2"]);
   });
 
   it("reads Go's zero time as open", () => {
