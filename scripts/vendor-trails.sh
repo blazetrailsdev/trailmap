@@ -31,7 +31,7 @@ for(const d of fs.readdirSync("packages")){
   const p=JSON.parse(fs.readFileSync(pj,"utf8"));
   byName[p.name]={dir:d,deps:Object.keys(p.dependencies||{})};
 }
-const seen=new Set(),stack=["@blazetrails/activerecord","@blazetrails/actionpack","@blazetrails/actionview","@blazetrails/trailties","@blazetrails/rack","@blazetrails/trails-tsc"];
+const seen=new Set(),stack=["@blazetrails/activerecord","@blazetrails/actionpack","@blazetrails/actionview","@blazetrails/trailties","@blazetrails/rack","@blazetrails/trails-tsc","@blazetrails/solid-queue"];
 while(stack.length){
   const n=stack.pop();
   if(seen.has(n)||!byName[n])continue;
