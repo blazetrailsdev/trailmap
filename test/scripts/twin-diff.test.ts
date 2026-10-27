@@ -247,12 +247,13 @@ describe("twin-diff", () => {
   // the twin. CI's rails job has both; the unit job has no Ruby and skips.
   const railsApp =
     env.TWIN_DIFF_RAILS ?? getPath().join(Dir.pwd(), "rails/app");
+  const invocation = rubyFor(railsApp);
   const runnable =
     getFs().existsSync(railsApp) &&
     getChildProcess().spawnSync(
       "ruby",
-      [...rubyFor(railsApp).args, "-e", 'gem "prism", ">= 1.0"'],
-      { env: rubyFor(railsApp).env },
+      [...invocation.args, "-e", 'gem "prism", ">= 1.0"'],
+      { env: invocation.env },
     ).status === 0;
 
   it.skipIf(!runnable)(
