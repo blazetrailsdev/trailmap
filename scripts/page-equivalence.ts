@@ -261,7 +261,8 @@ async function main(): Promise<number> {
    * differences, which is how a real defect surfaced by a re-fetch is told
    * apart from a database that would not hold still.
    */
-  const settle = async (): Promise<{ settled: true; rows: RowRecord[] } | { settled: false; problems: string[] }> => {
+  type Settled = { settled: true; rows: RowRecord[] } | { settled: false; problems: string[] };
+  const settle = async (): Promise<Settled> => {
     let unsettled = { rfcs: new Set<string>(), stories: new Set<string>() };
     let differences: string[] = [];
     for (let round = 1; round <= SETTLE_ROUNDS; round++) {
@@ -269,7 +270,9 @@ async function main(): Promise<number> {
       const touched = pagesTouchedBy(rowsBefore, rowsAfter);
       for (const id of unsettled.rfcs) touched.rfcs.add(id);
       for (const id of unsettled.stories) touched.stories.add(id);
-      if (touched.rfcs.size === 0 && touched.stories.size === 0) return { settled: true, rows: rowsAfter };
+      if (touched.rfcs.size === 0 && touched.stories.size === 0) {
+        return { settled: true, rows: rowsAfter };
+      }
       console.log(
         `settle ${round}: ${touched.rfcs.size} RFC and ${touched.stories.size} story pages moved under the run`,
       );
@@ -304,7 +307,11 @@ async function main(): Promise<number> {
         if (!storyNow.has(id)) records.delete(`story:${id}`);
       }
       differences = [
-        ...(await compareAll("rfc", [...touched.rfcs].filter((id) => rfcNow.has(id)), refetch("rfcs", compareRfc))),
+        ...(await compareAll(
+          "rfc",
+          [...touched.rfcs].filter((id) => rfcNow.has(id)),
+          refetch("rfcs", compareRfc),
+        )),
         ...(await compareAll(
           "story",
           [...touched.stories].filter((id) => storyNow.has(id)),
