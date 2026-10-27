@@ -14,10 +14,12 @@
   `ready` story under a non-active RFC reads `draft`, because the ready queue
   will not offer it.
 
-  Every page in this application shows the EFFECTIVE one. `/rfc/<id>`,
-  `/backlog`, `/story/<id>` and the `/rfcs` progress bar all pass a status
-  through `effectiveStoryStatus` before it reaches this partial or
-  `shared/_status-state`.
+  Every page in this application shows the EFFECTIVE one, and one step more:
+  `shownStoryStatus` also reads a `ready` story the queue holds on an
+  unfinished dep as `blocked`, as ringo's `markDepBlocked` does. `/rfc/<id>`,
+  `/backlog`, `/story/<id>`, the dep graph and the `/rfcs` progress bar all
+  pass a status through `shownStoryStatus` before it reaches this partial or
+  `shared/_status-state`. The JSON verbs do not: they answer claimability.
 
   Why that one and not the authored one: a status badge is read as a claim
   about what will happen to the story next, and the thing that decides what

@@ -10,6 +10,7 @@ import {
   PING_INTERVAL_MS,
   UPSTREAM_CONNECT_TIMEOUT_MS,
   relayEvents,
+  upstreamReads,
 } from "../../lib/fleet-relay.ts";
 
 let server: HttpServer | null = null;
@@ -186,6 +187,70 @@ function fedUpstream() {
   }) as typeof fetch;
   return { fetchEvents, state, feed: (frame: string) => feed(frame) };
 }
+
+describe("relayEvents, shared between viewers", () => {
+  /** The next message on `socket`. */
+  const nextMessage = (socket: WebSocket) =>
+    new Promise<string>((resolve) => {
+      socket.onmessage = (event) => resolve(String(event.data));
+    });
+
+  it("holds one upstream connection for any number of viewers", async () => {
+    const { state, fetchEvents } = upstream(['data: {"n":1}\n\n'], { end: false });
+    const url = await relayOn(fetchEvents);
+    const sockets = [new WebSocket(url), new WebSocket(url), new WebSocket(url)];
+
+    expect(await Promise.all(sockets.map(nextMessage))).toEqual(['{"n":1}', '{"n":1}', '{"n":1}']);
+    expect(state.opened).toBe(1);
+    expect(upstreamReads("http://ringo.test/events", fetchEvents)).toBe(1);
+
+    for (const socket of sockets) socket.close();
+    await settle();
+  });
+
+  it("sends a viewer joining mid-stream the latest frame at once", async () => {
+    const { state, fetchEvents } = upstream(['data: {"n":1}\n\ndata: {"n":2}\n\n'], { end: false });
+    const url = await relayOn(fetchEvents);
+    const first = new WebSocket(url);
+    const seen: string[] = [];
+    await new Promise<void>((resolve) => {
+      first.onmessage = (event) => {
+        seen.push(String(event.data));
+        if (seen.length === 2) resolve();
+      };
+    });
+
+    const late = new WebSocket(url);
+
+    expect(await nextMessage(late)).toBe('{"n":2}');
+    expect(state.opened).toBe(1);
+    first.close();
+    late.close();
+    await settle();
+  });
+
+  it("ends the upstream read with the last viewer, and restarts it for the next", async () => {
+    const { state, fetchEvents } = upstream(['data: {"n":1}\n\n'], { end: false });
+    const url = await relayOn(fetchEvents);
+    const one = new WebSocket(url);
+    const two = new WebSocket(url);
+    await Promise.all([nextMessage(one), nextMessage(two)]);
+
+    one.close();
+    await settle();
+    expect(state.aborted).toBe(false);
+    two.close();
+    await settle();
+    expect(state.aborted).toBe(true);
+    expect(upstreamReads("http://ringo.test/events", fetchEvents)).toBe(0);
+
+    const again = new WebSocket(url);
+    expect(await nextMessage(again)).toBe('{"n":1}');
+    expect(state.opened).toBe(2);
+    again.close();
+    await settle();
+  });
+});
 
 describe("relayEvents, when the browser is slow or the fleet is quiet", () => {
   it("keeps only the newest frame while the socket is backed up, and sends it on drain", async () => {

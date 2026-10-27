@@ -221,6 +221,8 @@ interface CliStory {
   assignee: string | null;
   pr: number | null;
   packages: string[];
+  deps: string[];
+  deps_rfc: string[];
 }
 
 /** An RFC row, straight out of the snapshot's columns. */
@@ -295,10 +297,29 @@ async function ringoBacklog(
   }
   // `allStories` (webhook/spawnloop.go:1373) hides stories under a CLOSED RFC:
   // the backlog only shows work under RFCs still in play.
-  const all = stories.filter((s) => rfcStatus[s.rfc] !== "closed");
+  const all = markDepBlocked(stories.filter((s) => rfcStatus[s.rfc] !== "closed"), stories, rfcStatus);
   return runRingoScript(await fs.readFile!("vendor/ringo/backlog-draw.js", "utf8"),
     { all, ready, rfc_status: rfcStatus, rfc_priorities: rfcPriorities, rfc_packages: rfcPackages },
     BACKLOG_TABS, ringoStoryRows);
+}
+
+/**
+ * ringo's `markDepBlocked` (webhook/depblocked.go), which its SERVER applies
+ * to the backlog's `all` before the script sees it (`HandleBacklog`,
+ * spawnloop.go): a `ready` story with a story dep neither done nor closed, or
+ * an RFC dep not closed, is sent as `blocked`. It is Go outside `core`, so it
+ * cannot be run from the WASM; this is that function over the CLI's rows,
+ * line for line, and deliberately not trailmap's `shownStoryStatus`, so the
+ * comparison still cannot agree with itself by construction.
+ */
+function markDepBlocked(shown: CliStory[], index: CliStory[], rfcStatus: Record<string, string>): CliStory[] {
+  const storyStatus = new Map(index.map((s) => [s.id, s.status]));
+  return shown.map((s) => {
+    if (s.status !== "ready") return s;
+    const stories = s.deps.filter((d) => storyStatus.get(d) !== "done" && storyStatus.get(d) !== "closed");
+    const rfcDeps = s.deps_rfc.filter((d) => rfcStatus[d] !== "closed");
+    return stories.length === 0 && rfcDeps.length === 0 ? s : { ...s, status: "blocked" };
+  });
 }
 
 /** Run ringo's vendored `cmd/core` over `input`, handing back its stdout. */

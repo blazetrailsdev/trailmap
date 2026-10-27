@@ -38,11 +38,14 @@ export function isWebSocketRequest(request: DriverRequest): boolean {
  * trailmap, and trailmap reads `eventsUrl` and forwards each event's JSON as
  * one text message, unchanged.
  *
- * One upstream connection per browser, and it ends when the browser's does:
- * the socket's `close` aborts the fetch. That is the whole reason this is a
- * hijacked socket and not a streamed response — a response body is never told
- * its reader has gone, and an unread stream per closed tab is a leak that only
- * a restart clears.
+ * ONE upstream connection, however many browsers: ringo's stream is a
+ * sequence of whole snapshots, so every viewer subscribes to the same read
+ * (`subscribe`). A viewer that joins mid-stream is sent the latest frame at
+ * once. The read starts with the first viewer and is aborted when the last
+ * one's socket closes. That is the whole reason this is a hijacked socket and
+ * not a streamed response — a response body is never told its reader has
+ * gone, and an unread stream per closed tab is a leak that only a restart
+ * clears.
  *
  * When ringo's stream ends or cannot be reached, the socket is closed (1012,
  * "service restart") and the page reconnects, as it would to ringo itself.
@@ -54,14 +57,14 @@ export function relayEvents(
   fetchEvents: typeof fetch = fetch,
 ): void {
   const driver = websocket.http(request);
-  const upstream = new AbortController();
+  let unsubscribe: (() => void) | null = null;
   let closed = false;
   let keepalive: ReturnType<typeof setInterval> | null = null;
   const finish = (): void => {
     if (closed) return;
     closed = true;
     if (keepalive !== null) clearInterval(keepalive);
-    upstream.abort();
+    unsubscribe?.();
     socket.end();
   };
 
@@ -98,17 +101,80 @@ export function relayEvents(
   driver.on("error", finish);
   driver.on("open", () => {
     keepalive = setInterval(() => driver.ping(), PING_INTERVAL_MS);
-    void pump(forward, eventsUrl, upstream, fetchEvents).finally(() => {
-      if (closed) return;
-      // A close handshake, so the page sees 1012 and reconnects. A browser
-      // answers it at once; one that does not is hung up on.
-      driver.close("upstream ended", 1012);
-      setTimeout(finish, CLOSE_GRACE_MS);
+    unsubscribe = subscribe(eventsUrl, fetchEvents, {
+      frame: forward,
+      ended: () => {
+        unsubscribe = null;
+        if (closed) return;
+        // A close handshake, so the page sees 1012 and reconnects. A browser
+        // answers it at once; one that does not is hung up on.
+        driver.close("upstream ended", 1012);
+        setTimeout(finish, CLOSE_GRACE_MS);
+      },
     });
   });
   // The request is already parsed, so there is no `connect` to wait for:
   // `start` writes the 101 and emits `open` before it returns.
   driver.start();
+}
+
+/** One viewer of a shared upstream read. */
+interface Viewer {
+  frame(frame: string): void;
+  /** The upstream read ended, or never started; the viewer is dropped. */
+  ended(): void;
+}
+
+/** One upstream read of ringo's stream and everyone reading it. */
+interface SharedStream {
+  viewers: Set<Viewer>;
+  latest: string | null;
+  upstream: AbortController;
+}
+
+/**
+ * The reads in flight, by fetch and then URL. Keyed by the fetch too so a
+ * test's stand-in ringo never shares a read with another's.
+ */
+const streams = new WeakMap<typeof fetch, Map<string, SharedStream>>();
+
+/** How many upstream reads are open for `eventsUrl` right now: zero or one. */
+export function upstreamReads(eventsUrl: string, fetchEvents: typeof fetch = fetch): number {
+  return streams.get(fetchEvents)?.has(eventsUrl) ? 1 : 0;
+}
+
+/**
+ * Join the read of `eventsUrl`, starting it if this is the first viewer.
+ * Answers the function that leaves it; the last to leave aborts the read.
+ */
+function subscribe(eventsUrl: string, fetchEvents: typeof fetch, viewer: Viewer): () => void {
+  let byUrl = streams.get(fetchEvents);
+  if (byUrl === undefined) streams.set(fetchEvents, (byUrl = new Map()));
+  let stream = byUrl.get(eventsUrl);
+  if (stream === undefined) {
+    const started: SharedStream = { viewers: new Set(), latest: null, upstream: new AbortController() };
+    stream = started;
+    byUrl.set(eventsUrl, started);
+    const fanOut = (frame: string): void => {
+      started.latest = frame;
+      for (const v of started.viewers) v.frame(frame);
+    };
+    void pump(fanOut, eventsUrl, started.upstream, fetchEvents).finally(() => {
+      // Gone before anyone else can join it: the next viewer starts afresh.
+      if (byUrl.get(eventsUrl) === started) byUrl.delete(eventsUrl);
+      const left = [...started.viewers];
+      started.viewers.clear();
+      for (const v of left) v.ended();
+    });
+  }
+  const joined = stream;
+  joined.viewers.add(viewer);
+  if (joined.latest !== null) viewer.frame(joined.latest);
+  return () => {
+    if (!joined.viewers.delete(viewer) || joined.viewers.size > 0) return;
+    if (byUrl.get(eventsUrl) === joined) byUrl.delete(eventsUrl);
+    joined.upstream.abort();
+  };
 }
 
 async function pump(
@@ -138,7 +204,7 @@ async function pump(
       for (const message of data) forward(message);
     }
   } catch {
-    // Aborted because the browser left or ringo never answered, or ringo is
+    // Aborted because the last browser left or ringo never answered, or ringo is
     // unreachable. Either way there is nothing to forward, and the caller
     // closes the socket.
   } finally {

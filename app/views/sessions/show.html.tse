@@ -23,7 +23,7 @@
         <span class="muted"><%= sessionTime(archive.row.opened_at) %> → <%= archive.isOpen() ? "open" : `closed (${archive.reason})` %> · <%= shortDur(archive.duration(now)) %> · <%= money(archive.cost) %> · cwd <%= orDash(archive.cwd) %></span>
       </div>
       <% if (archive.paneLog !== "") { %>
-        <div class="field-note">Pane log: <%= humanBytes(archive.paneLogBytes) %><% if (archive.truncated) { %> <span class="session-pill trunc">truncated at the size cap</span><% } %></div>
+        <div class="field-note">Pane log: <a href="/sessions/pane?p=<%= encodeURIComponent(archive.paneLog) %>">view scrollback</a> · <a href="/sessions/file?p=<%= encodeURIComponent(archive.paneLog) %>">raw (<%= humanBytes(archive.paneLogBytes) %>)</a><% if (archive.truncated) { %> <span class="session-pill trunc">truncated at the size cap</span><% } %></div>
       <% } %>
       <% if (archive.transcripts.length === 0) { %>
         <div class="field-note">No transcripts pinned.</div>
@@ -33,7 +33,7 @@
           <tbody>
             <% for (const t of archive.transcripts) { %>
               <tr>
-                <td><code><%= shortId(t.session_id) %></code></td>
+                <td><a href="/sessions/transcript?p=<%= encodeURIComponent(t.path) %>"><code><%= shortId(t.session_id) %></code></a></td>
                 <td><% if (t.role === "agent" || t.role === "reviewer") { %><span class="session-role <%= t.role %>"><%= t.role %></span><% } %></td>
                 <td><%= sessionTime(t.first_at) %></td>
                 <td><%= sessionTime(t.last_at) %></td>

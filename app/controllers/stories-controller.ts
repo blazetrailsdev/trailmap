@@ -1,5 +1,5 @@
-import { MimeType } from "@blazetrails/actionpack";
 import { ApiController } from "./api-controller.ts";
+import { integerParam, presentParam } from "./concerns/api-params.ts";
 import { Story } from "../models/index.ts";
 import { listFilteredIn, summarizeBundle } from "../models/concerns/ranking.ts";
 import { serializeStories, type SerializedStory, type StoryJsonContext } from "../serializers/story-json.ts";
@@ -11,15 +11,15 @@ const DEFAULT_MAX_LOC = 250;
  * The read verbs — `ready`, `next-bundle`, `list` (index), `show`, `touching`
  * — served as JSON.
  *
- * One listener, two audiences, per the RFC: the dashboard answers HTML on the
+ * One listener, two audiences, per the RFC: the pages answer HTML on the
  * public hostname behind SSO, and the API answers JSON on loopback only. The
- * split is `respondTo` plus `requireLoopback`, not a second server — so when
- * the HTML halves of these actions land they share this controller, this
- * query, and this ordering rather than reimplementing them.
+ * format is the ROUTE's (`defaults({ format: "json" })` in config/routes.ts),
+ * as a Rails API scope fixes it, so every action renders JSON whatever the
+ * client's `Accept` says — ringo's Go client sends none.
  *
- * `requireLoopback` runs BEFORE the negotiation, so a proxied request is a 404
- * whatever it asked for: the API must not be reachable from the public
- * hostname, and a 404 (rather than a 403) declines to confirm it exists.
+ * `requireLoopback` (LoopbackOnly) runs first, so a proxied request is a 404:
+ * the API must not be reachable from the public hostname, and a 404 (rather
+ * than a 403) declines to confirm it exists.
  *
  * Responses are `readmodel.ts`'s shapes verbatim — see story-json.ts. The two
  * consumers being replaced (the CLI's `--json` and webhook/tasksdb.go) parse
@@ -30,16 +30,16 @@ export class StoriesController extends ApiController {
   async index(): Promise<void> {
     const index = await Story.rankingRows();
     const rows = listFilteredIn(index, {
-      rfc: this.param("rfc"),
-      status: this.param("status"),
-      cluster: this.param("cluster"),
+      rfc: presentParam(this.params, "rfc"),
+      status: presentParam(this.params, "status"),
+      cluster: presentParam(this.params, "cluster"),
     });
     await this.renderStories(rows, index);
   }
 
   /** `tasks ready [--rfc R]` — the ready queue, in ready-queue order. */
   async ready(): Promise<void> {
-    const { stories, index } = await Story.readyQueue({ rfc: this.param("rfc") });
+    const { stories, index } = await Story.readyQueue({ rfc: presentParam(this.params, "rfc") });
     await this.renderStories(stories, index);
   }
 
@@ -53,21 +53,21 @@ export class StoriesController extends ApiController {
    * spawned. Keep the CLI's keys exactly.
    */
   async nextBundle(): Promise<void> {
-    const maxLoc = this.intParam("max-loc") ?? DEFAULT_MAX_LOC;
+    const maxLoc = integerParam(this.params, "max-loc") ?? DEFAULT_MAX_LOC;
     const { stories: rows, index, emptyReason } = await Story.bundle({
       maxLoc,
-      cluster: this.param("cluster"),
-      rfc: this.param("rfc"),
+      cluster: presentParam(this.params, "cluster"),
+      rfc: presentParam(this.params, "rfc"),
     });
     const summary = summarizeBundle(rows, maxLoc);
     const stories = serializeStories(rows, index);
-    await this.respondWith({
+    await this.render({ json: {
       stories,
       bundle_total_loc: summary.total,
       max_loc: maxLoc,
       lead_exceeds_budget: summary.leadExceedsBudget,
       empty_reason: emptyReason,
-    });
+    } });
   }
 
   /**
@@ -78,7 +78,7 @@ export class StoriesController extends ApiController {
    * serialization needs the snapshot anyway.
    */
   async show(): Promise<void> {
-    const id = this.param("id") ?? "";
+    const id = presentParam(this.params, "id") ?? "";
     const index = await Story.rankingIndex();
     const story = index.stories.find((s) => s.id === id);
     if (!story) {
@@ -97,13 +97,13 @@ export class StoriesController extends ApiController {
    * whole open backlog would come back dressed as a search result.
    */
   async touching(): Promise<void> {
-    const path = this.param("path");
+    const path = presentParam(this.params, "path");
     if (path === undefined) {
       await this.render({ json: { error: "touching requires a path" }, status: 400 });
       return;
     }
     const index = await Story.rankingIndex();
-    const rows = await Story.touching(path, { index, all: this.param("all") !== undefined });
+    const rows = await Story.touching(path, { index, all: presentParam(this.params, "all") !== undefined });
     await this.renderStories(rows, index);
   }
 
@@ -113,42 +113,6 @@ export class StoriesController extends ApiController {
    */
   private async renderStories(rows: SerializedStory[], index: StoryJsonContext): Promise<void> {
     const stories = serializeStories(rows, index);
-    await this.respondWith(this.actionName === "show" ? stories[0] : stories);
-  }
-
-  /**
-   * The HTML half of these actions does not exist yet — the dashboard pages
-   * are a later story — so anything that is not asking for JSON is declined
-   * here rather than falling through to a missing template.
-   */
-  private async respondWith(payload: unknown): Promise<void> {
-    // Rails' `negotiate_mime` (`mime_negotiation.rb:143-153`) over the one
-    // type on offer, with the client's types read from the `Accept` header
-    // ALONE through `Mime::Type.parse` rather than from `request.formats`.
-    // `formats` answers "html" when a client sends no `Accept` at all, and
-    // ringo's Go client sends none, so `Base#respondTo` would refuse it. A
-    // missing header is treated as `*/*`. As in Rails, `*/*` (curl's default)
-    // takes the first type on offer, so `text/html, */*` gets JSON too, and a
-    // q-value orders the types without removing one.
-    const json = MimeType.lookup("application/json");
-    const accept = String(this.request.getHeader("HTTP_ACCEPT") ?? "").trim();
-    const accepted = accept === "" ? [MimeType.ALL] : MimeType.parse(accept);
-    if (accepted.some((type) => type.string === "*/*" || json.equals(type))) {
-      await this.render({ json: payload });
-    } else {
-      await this.render({ json: { error: "not_acceptable" }, status: 406 });
-    }
-  }
-
-  private param(name: string): string | undefined {
-    const value = this.params.get(name);
-    return value == null || value === "" ? undefined : String(value);
-  }
-
-  private intParam(name: string): number | undefined {
-    const value = this.param(name);
-    if (value === undefined) return undefined;
-    const parsed = Number.parseInt(value, 10);
-    return Number.isNaN(parsed) ? undefined : parsed;
+    await this.render({ json: this.actionName === "show" ? stories[0] : stories });
   }
 }

@@ -1,7 +1,7 @@
 import { Rfc } from "../rfc.ts";
 import { StoryDep } from "../joins.ts";
-import type { Story } from "../story.ts";
-import { effectiveStoryStatus } from "./effective-status.ts";
+import { Story } from "../story.ts";
+import { shownStoryStatus } from "./effective-status.ts";
 
 /** One story reached from the page's own, and how far away it is. */
 export interface DepNode {
@@ -85,6 +85,7 @@ export async function depGraphFor(id: string): Promise<DepGraph> {
   const rfcIds = new Set<string>();
   for (const { story } of [...up.reached, ...down.reached]) if (story !== null) rfcIds.add(story.rfc_id);
   const rfcStatus = new Map<string, string | null>();
+  const held = await Story.depHeldIds([...up.reached, ...down.reached].map((r) => r.id));
   if (rfcIds.size > 0) {
     for (const rfc of await Rfc.where({ id: [...rfcIds] }).toArray()) rfcStatus.set(rfc.id, rfc.status);
   }
@@ -95,7 +96,7 @@ export async function depGraphFor(id: string): Promise<DepGraph> {
     status:
       story === null
         ? ""
-        : String(effectiveStoryStatus(rfcStatus.get(story.rfc_id) ?? null, story.status) ?? ""),
+        : String(shownStoryStatus(rfcStatus.get(story.rfc_id) ?? null, story.status, held.has(story.id)) ?? ""),
     depth,
     via,
   });

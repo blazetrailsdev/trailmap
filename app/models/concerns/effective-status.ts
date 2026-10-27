@@ -22,3 +22,23 @@ export function effectiveStoryStatus(
   if (storyStatus === "ready" && rfcStatus !== "active") return "draft";
   return storyStatus;
 }
+
+/**
+ * The status a page SHOWS — ringo's `markDepBlocked` (webhook/depblocked.go)
+ * over the effective status: a story still `ready` after the RFC override
+ * that the queue holds back on an unfinished dep (a story neither done nor
+ * closed, or an RFC not closed) reads as `blocked`.
+ *
+ * DISPLAY ONLY. The authored status stays `ready`, so the story unblocks
+ * itself when its last dep lands, and nothing that decides claimability —
+ * the queue, `list --status`, the JSON verbs — may read this. `depHeld` comes
+ * from `depHeldIn` (an index in hand) or `Story.depHeldIds` (a query).
+ */
+export function shownStoryStatus(
+  rfcStatus: string | null | undefined,
+  storyStatus: string | null | undefined,
+  depHeld: boolean,
+): string | null | undefined {
+  const effective = effectiveStoryStatus(rfcStatus, storyStatus);
+  return effective === "ready" && depHeld ? "blocked" : effective;
+}

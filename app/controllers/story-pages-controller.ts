@@ -3,8 +3,8 @@ import { ApplicationController } from "./application-controller.ts";
 import { Rfc, Story, StoryDep, StoryPackage, StoryRfcDep } from "../models/index.ts";
 import { readDocument } from "../models/concerns/document.ts";
 import { renderMarkdown } from "../helpers/markdown-helper.ts";
-import { effectiveStoryStatus } from "../models/concerns/effective-status.ts";
-import { claimableIn } from "../models/concerns/ranking.ts";
+import { shownStoryStatus } from "../models/concerns/effective-status.ts";
+import { claimableIn, depHeldIn } from "../models/concerns/ranking.ts";
 import {
   BACKLOG_FILTERS,
   isBacklogFilter,
@@ -147,12 +147,16 @@ export class StoryPagesController extends ApplicationController {
     //                it does in the queue, the `list` verb and the JSON.
     //                Reading the stored status instead put stories on the Ready
     //                tab that nothing could ever claim.
+    //   blocked      a `ready` story the queue holds on an unfinished dep is
+    //                shown `blocked` (`shownStoryStatus`), as ringo's backlog
+    //                shows it, so the Ready tab is only what can be picked.
+    const held = depHeldIn(index);
     const listed = index.stories
       .filter((story) => index.rfcStatus.get(story.rfc_id) !== "closed")
       .map((story) => ({
         id: story.id,
         rfc_id: story.rfc_id,
-        status: String(effectiveStoryStatus(index.rfcStatus.get(story.rfc_id), story.status)),
+        status: String(shownStoryStatus(index.rfcStatus.get(story.rfc_id), story.status, held.has(story.id))),
       }));
 
     // Every tab count comes from the SAME predicate that fills its list, so a
@@ -280,11 +284,12 @@ export class StoryPagesController extends ApplicationController {
     // The dep statuses and the document are independent of each other, and the
     // document read is disk. Issued together so the page costs one round of
     // waiting rather than three.
-    const [deps, rfcDeps, doc, graph] = await Promise.all([
+    const [deps, rfcDeps, doc, graph, held] = await Promise.all([
       storyStatusesFor(depRows.map((row) => row.depends_on_id)),
       rfcStatusesFor(rfcDepRows.map((row) => row.rfc_id)),
       readDocument(story.file_path),
       depGraphFor(id),
+      Story.depHeldIds([id]),
     ]);
 
     await this.renderPage(
@@ -296,7 +301,11 @@ export class StoryPagesController extends ApplicationController {
         // rule written out in `app/views/shared/_status-badge`. The pill was
         // the last page still showing the authored status, which had a story
         // read `ready` here and `draft` on its own RFC's page.
-        shownStatus: effectiveStoryStatus(rfc?.status ?? null, story.status) ?? "",
+        shownStatus: shownStoryStatus(rfc?.status ?? null, story.status, held.has(id)) ?? "",
+        // ringo's pill names WHY a ready story reads blocked (story.go:213).
+        heldLabel: shownStoryStatus(rfc?.status ?? null, story.status, false) === "ready" && held.has(id)
+          ? "blocked on deps"
+          : null,
         deps,
         rfcDeps,
         graph,
@@ -312,7 +321,7 @@ export class StoryPagesController extends ApplicationController {
   /** Named for the same reason as the RFC page's — see `renderPage` there. */
   private async renderPage(locals: Record<string, unknown>, status: number): Promise<void> {
     await this.render({
-      locals: { body: null as SafeBuffer | null, error: "", shownStatus: "", ...locals },
+      locals: { body: null as SafeBuffer | null, error: "", shownStatus: "", heldLabel: null, ...locals },
       status,
     });
   }
@@ -351,7 +360,7 @@ async function rfcStatusesFor(ids: string[]): Promise<DepRow[]> {
  */
 async function storyStatusesFor(ids: string[]): Promise<DepRow[]> {
   if (ids.length === 0) return [];
-  const stories = await Story.where({ id: ids }).toArray();
+  const [stories, held] = await Promise.all([Story.where({ id: ids }).toArray(), Story.depHeldIds(ids)]);
   const rfcIds = [...new Set(stories.map((story) => story.rfc_id))];
   const rfcStatus = new Map<string, string | null>();
   for (const rfc of await Rfc.where({ id: rfcIds }).toArray()) {
@@ -364,7 +373,7 @@ async function storyStatusesFor(ids: string[]): Promise<DepRow[]> {
     // the ready queue does with an orphan.
     found.set(
       story.id,
-      String(effectiveStoryStatus(rfcStatus.get(story.rfc_id) ?? null, story.status) ?? ""),
+      String(shownStoryStatus(rfcStatus.get(story.rfc_id) ?? null, story.status, held.has(story.id)) ?? ""),
     );
   }
   return ids.map((id) => ({ id, status: found.get(id) ?? "" }));

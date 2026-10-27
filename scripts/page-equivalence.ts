@@ -282,14 +282,10 @@ async function main(): Promise<number> {
  *
  * ringo's map is the EFFECTIVE status — its index applies the parent-RFC
  * override on load (`effectiveStoryStatus`, webhook/tasksdb.go) — so the one
- * status rule (`app/views/shared/_status-badge`) agrees with it.
- *
- * ONE KNOWN DIFFERENCE, stated rather than tolerated silently: since btwhooks
- * `6a18453` ringo also draws a `ready` story with unfinished deps as `blocked`
- * (`markDepBlocked`). trailmap does not port that yet
- * (`show-dep-held-ready-stories-as-blocked`, RFC 0136), so the two are
- * compared as ONE count (`barKey`). The override still crosses that line:
- * `ready` to `draft` leaves the folded count.
+ * status rule (`app/views/shared/_status-badge`) agrees with it. ringo also
+ * draws a `ready` story with unfinished deps as `blocked` (`markDepBlocked`),
+ * and so does trailmap (`shownStoryStatus`), so `ready` and `blocked` are
+ * compared as two counts like every other status.
  */
 async function compareBars(
   ringoBase: string,

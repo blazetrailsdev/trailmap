@@ -2,6 +2,7 @@ import { ApplicationRecord } from "../models/application-record.ts";
 import { ApiController } from "./api-controller.ts";
 import { Story, STORY_STATUSES, type StoryStatus } from "../models/index.ts";
 import { VerbExit } from "../models/verb-exit.ts";
+import { INVALID_PR, PR_REF_USAGE, presentParam, prRefParam } from "./concerns/api-params.ts";
 
 /**
  * The mutation verbs — `claim`, `release`, `in-progress`, `done`,
@@ -22,7 +23,7 @@ import { VerbExit } from "../models/verb-exit.ts";
  * test/models/mutations.test.ts. Duplicating any of it here would be a second
  * implementation of exactly the kind this RFC is deleting; the controller's
  * whole job is to parse params, open one transaction, and turn a `VerbExit`
- * into a status code.
+ * into a status code (`rescueFrom VerbExit`).
  *
  * REFUSALS are the CLI's, verbatim. The message is the model's `VerbExit`
  * message (the text the CLI printed after `error: `), and `exit_code` is the
@@ -33,11 +34,17 @@ import { VerbExit } from "../models/verb-exit.ts";
  * tells a spawn loop "pick another story" from "you lost the race".
  */
 export class MutationsController extends ApiController {
+  static {
+    // Registered after ApiController's `Error`, so it is the one consulted
+    // first: a refusal is an answer, never a 500.
+    this.rescueFrom(VerbExit, { with: "renderVerbExit" });
+  }
+
   /** `tasks claim <id...> [--assignee NAME]` — assignee defaults to the first id. */
   async claim(): Promise<void> {
     const ids = this.ids();
     if (!ids.length) return this.usage("claim requires at least one story id");
-    await this.run(() => Story.claimAll(ids, this.param("assignee") ?? ids[0]));
+    await this.run(() => Story.claimAll(ids, presentParam(this.params, "assignee") ?? ids[0]));
   }
 
   /** `tasks release <id...>` */
@@ -50,7 +57,7 @@ export class MutationsController extends ApiController {
   /** `tasks in-progress <id...> --pr repo#N` — the PR is required, as in the CLI. */
   async inProgress(): Promise<void> {
     const ids = this.ids();
-    const pr = this.prParam("pr");
+    const pr = prRefParam(this.params, "pr");
     if (!ids.length) return this.usage("in-progress requires at least one story id");
     if (pr === INVALID_PR) return this.usage(PR_REF_USAGE);
     if (pr === null) return this.usage("in-progress requires --pr");
@@ -60,7 +67,7 @@ export class MutationsController extends ApiController {
   /** `tasks done <id...> [--pr repo#N]` — the PR is optional here, unlike in-progress. */
   async done(): Promise<void> {
     const ids = this.ids();
-    const pr = this.prParam("pr");
+    const pr = prRefParam(this.params, "pr");
     if (!ids.length) return this.usage("done requires at least one story id");
     // Given-but-malformed is refused, not read as "no PR": on `done` that would
     // silently drop the PR.
@@ -75,15 +82,15 @@ export class MutationsController extends ApiController {
    */
   async recordSpawn(): Promise<void> {
     const ids = this.ids();
-    const source = this.param("source");
-    const rfc = this.param("rfc");
+    const source = presentParam(this.params, "source");
+    const rfc = presentParam(this.params, "rfc");
     if (!source || (!ids.length && !rfc)) {
       return this.usage("record-spawn requires --source and either story ids or --rfc");
     }
     await this.run(async () => [
       await Story.recordSpawn(ids, source, {
-        branch: this.param("branch"),
-        pane: this.param("pane"),
+        branch: presentParam(this.params, "branch"),
+        pane: presentParam(this.params, "pane"),
         rfc,
       }),
     ]);
@@ -91,7 +98,7 @@ export class MutationsController extends ApiController {
 
   /** `tasks block <id> <reason>` */
   async block(): Promise<void> {
-    const reason = this.param("reason");
+    const reason = presentParam(this.params, "reason");
     if (!reason) return this.usage("block requires a reason");
     await this.onOne((story) => story.block(reason));
   }
@@ -122,7 +129,7 @@ export class MutationsController extends ApiController {
    * read the error, an HTTP body's does not.
    */
   async statusSet(): Promise<void> {
-    const status = this.param("status");
+    const status = presentParam(this.params, "status");
     if (!status) return this.usage("status-set requires a status");
     if (!(STORY_STATUSES as readonly string[]).includes(status)) {
       return this.usage(`unknown status "${status}"`);
@@ -174,19 +181,19 @@ export class MutationsController extends ApiController {
    * row they write, and leaves the batch verbs' own atomicity untouched.
    */
   private async run(body: () => Promise<string[]>): Promise<void> {
-    try {
-      let lines: string[] = [];
-      await ApplicationRecord.transaction(async () => {
-        lines = await body();
-      });
-      await this.render({ json: { ok: true, lines } });
-    } catch (error) {
-      if (!(error instanceof VerbExit)) throw error;
-      await this.render({
-        json: { ok: false, error: error.message, exit_code: error.code },
-        status: error.code === 1 ? 422 : 409,
-      });
-    }
+    let lines: string[] = [];
+    await ApplicationRecord.transaction(async () => {
+      lines = await body();
+    });
+    await this.render({ json: { ok: true, lines } });
+  }
+
+  /** A refusal the model raised: the CLI's message and exit code (see the class comment). */
+  private async renderVerbExit(error: VerbExit): Promise<void> {
+    await this.render({
+      json: { ok: false, error: error.message, exit_code: error.code },
+      status: error.code === 1 ? 422 : 409,
+    });
   }
 
   /**
@@ -223,31 +230,7 @@ export class MutationsController extends ApiController {
     const raw = this.params.get("ids");
     const list = Array.isArray(raw)
       ? raw.map((id) => String(id)).filter((id) => id !== "")
-      : ((single) => (single === null ? [] : [single]))(this.param("ids") ?? this.param("id"));
+      : ((single) => (single === undefined ? [] : [single]))(presentParam(this.params, "ids") ?? presentParam(this.params, "id"));
     return [...new Set(list)];
   }
-
-  private param(name: string): string | null {
-    const value = this.params.get(name);
-    return value == null || value === "" ? null : String(value);
-  }
-
-  /**
-   * A `repo#N` PR ref (`trails#7228`, `tasks#94`), the shape the tasks CLI's
-   * `--pr` takes since PR numbers from different repos collide. `null` when
-   * absent, `INVALID_PR` when given but malformed — a bare `7`, `7abc`,
-   * `trails#07` — which the verbs refuse, as the CLI does. An EMPTY string
-   * reads as absent (see `param`).
-   */
-  private prParam(name: string): string | null | typeof INVALID_PR {
-    const value = this.param(name);
-    if (value === null) return null;
-    const m = PR_REF_RE.exec(value.trim());
-    return m ? `${m[1]}#${Number(m[2])}` : INVALID_PR;
-  }
 }
-
-/** Mirrors the tasks CLI's src/pr-ref.ts. */
-const PR_REF_RE = /^([a-z0-9][a-z0-9._-]*)#([1-9]\d*)$/;
-const PR_REF_USAGE = "--pr takes repo#N, e.g. trails#7228 or tasks#94";
-const INVALID_PR = Symbol("invalid pr");

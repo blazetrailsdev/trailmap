@@ -6,7 +6,7 @@
     <h1 class="page-title"><%= rfc.title ?? rfc.id %></h1>
     <div class="page-subhead">
       <span class="id"><%= rfc.id %></span>
-      <%= render({ partial: "shared/status-state", locals: { status: rfc.status } }) %>
+      <%= render({ partial: "shared/status-state", locals: { status: rfc.status, label: null } }) %>
       <span class="muted"><%= counts.total %> <%= counts.total === 1 ? "story" : "stories" %></span>
     </div>
   </div>

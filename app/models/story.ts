@@ -10,6 +10,7 @@ import {
   claimableIn,
   comparePriority,
   emptyBundleReasonIn,
+  isDepHeld,
   listFilteredIn,
   nextBundleIn,
   priorityContext,
@@ -201,6 +202,42 @@ export class Story extends ApplicationRecord {
       if (!(await rfc.validate("ingest"))) messages.push(...rfc.errors.fullMessages.filter((message) => message !== null));
     }
     return messages;
+  }
+
+  /**
+   * Which of `ids` (every story, when omitted) wait on an unfinished dep —
+   * `shownStoryStatus`'s `depHeld`, for a page that has no ranking index in
+   * hand. Four queries whatever the count: the edges, then the statuses they
+   * point at.
+   */
+  static async depHeldIds(ids?: readonly string[]): Promise<Set<string>> {
+    if (ids !== undefined && ids.length === 0) return new Set();
+    const scope = ids === undefined ? {} : { story_id: [...ids] };
+    const [deps, rfcDeps] = await Promise.all([
+      StoryDep.where(scope).pluck("story_id", "depends_on_id"),
+      StoryRfcDep.where(scope).pluck("story_id", "rfc_id"),
+    ]);
+    const group = (rows: unknown[]): Map<string, string[]> => {
+      const m = new Map<string, string[]>();
+      for (const row of rows) {
+        const [from, to] = (row as unknown[]).map(String);
+        m.set(from!, [...(m.get(from!) ?? []), to!]);
+      }
+      return m;
+    };
+    const storyEdges = group(deps);
+    const rfcEdges = group(rfcDeps);
+    const statusOf = async (model: typeof Story | typeof Rfc, targets: Map<string, string[]>) => {
+      const wanted = [...new Set([...targets.values()].flat())];
+      const rows = wanted.length === 0 ? [] : await model.where({ id: wanted }).pluck("id", "status");
+      return new Map(rows.map((row) => (row as unknown[]).map((v) => (v == null ? null : String(v))) as [string, string | null]));
+    };
+    const [storyStatus, rfcStatus] = await Promise.all([statusOf(Story, storyEdges), statusOf(Rfc, rfcEdges)]);
+    const held = new Set<string>();
+    for (const id of new Set([...storyEdges.keys(), ...rfcEdges.keys()])) {
+      if (isDepHeld(id, storyEdges, rfcEdges, (d) => storyStatus.get(d), (d) => rfcStatus.get(d))) held.add(id);
+    }
+    return held;
   }
 
   // ──────────────────── ready queue (ported from src/ranking.ts) ────────────────────

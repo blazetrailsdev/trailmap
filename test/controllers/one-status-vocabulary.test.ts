@@ -45,7 +45,9 @@ function pill(body: string): string {
 /** The `/rfcs` progress bar of `rfcId`, as status -> segment width. */
 function bar(body: string, rfcId: string): Map<string, string> {
   const row = body.slice(body.indexOf(`href="/rfc/${rfcId}"`));
-  const end = row.indexOf("</span></span>");
+  // Up to the bar's end, or the next row's title when the bar ends otherwise.
+  const ends = [row.indexOf("</span></span>"), row.indexOf('class="row-title"')].filter((at) => at >= 0);
+  const end = Math.min(...ends);
   const segments = new Map<string, string>();
   for (const m of row.slice(0, end).matchAll(/class="seg s-([a-z-]+)" style="width:([^"]+)"/g)) {
     segments.set(m[1]!, m[2]!);
@@ -66,9 +68,13 @@ beforeAll(async () => {
   await Story.create({ id: "iced", rfc_id: "0900-idea", status: "ready", title: "Not yet" });
   await Story.create({ id: "iced-mate", rfc_id: "0900-idea", status: "draft" });
   await Story.create({ id: "live", rfc_id: "0136-trailmap", status: "ready", title: "Up next" });
-  // Depends on the iced story, so the dep badge on `/story/live` is the same
-  // question asked from a fifth place.
-  await StoryDep.create({ story_id: "live", depends_on_id: "iced" });
+  // Depends on the iced story, so the dep badge on `/story/held` is the same
+  // question asked from a fifth place — and, being held on that dep, is itself
+  // shown `blocked`, as ringo's `markDepBlocked` shows it. Under an RFC of its
+  // own so the control below stays one story.
+  await Rfc.create({ id: "0140-waits", status: "active", title: "waits" });
+  await Story.create({ id: "held", rfc_id: "0140-waits", status: "ready", title: "Waits on iced" });
+  await StoryDep.create({ story_id: "held", depends_on_id: "iced" });
 });
 
 describe("one status vocabulary", () => {
@@ -96,10 +102,20 @@ describe("one status vocabulary", () => {
   });
 
   it("shows a dependency on it as a draft, because it still gates", async () => {
-    const body = await get(StoryPagesController, "show", { id: "live" });
+    const body = await get(StoryPagesController, "show", { id: "held" });
 
     expect(badges(body)).toContain("draft");
     expect(badges(body)).not.toContain("ready");
+  });
+
+  it("shows a ready story held on an unfinished dep as blocked, everywhere", async () => {
+    expect(pill(await get(StoryPagesController, "show", { id: "held" }))).toBe("blocked");
+    expect(badges(await get(RfcPagesController, "show", { id: "0140-waits" }))).toEqual(["blocked"]);
+    expect([...bar(await get(RfcPagesController, "index", { status: "active" }), "0140-waits")]).toEqual([
+      ["blocked", "100%"],
+    ]);
+    const ready = await get(StoryPagesController, "index", { filter: "ready" });
+    expect(ready).not.toContain('href="/story/held"');
   });
 
   it("segments the RFC list's bar as a draft", async () => {

@@ -1,12 +1,8 @@
-import type { AbstractController } from "@blazetrails/actionpack";
+import type { ActionController } from "@blazetrails/actionpack";
+import { included } from "@blazetrails/activesupport";
 
 interface LoopbackRequest {
   getHeader(key: string): unknown;
-}
-
-interface LoopbackGuarded {
-  request: LoopbackRequest;
-  render(options: { json: unknown; status: number }): void;
 }
 
 /**
@@ -58,19 +54,33 @@ export function isLoopbackRequest(request: LoopbackRequest): boolean {
   return LOOPBACK_HOSTS.includes(stripPort(String(host).trim().toLowerCase()));
 }
 
-/**
- * A `beforeAction` that refuses anything not arriving on loopback. Returning
- * `false` halts the callback chain, so the action never runs.
- */
-export async function requireLoopback(
-  controller: AbstractController.Base,
-): Promise<boolean> {
-  const base = controller as unknown as LoopbackGuarded;
-  if (isLoopbackRequest(base.request)) return true;
+/** What `requireLoopback` needs of the controller it is mixed into. */
+type LoopbackHost = Pick<ActionController.Base, "request" | "render">;
 
-  base.render({
-    json: { error: "not_found" },
-    status: 404,
-  });
-  return false;
+/**
+ * Refuse anything not arriving on loopback with a 404, which declines to
+ * confirm the API exists. Rendering is what halts the callback chain: the
+ * `process_action` terminator stops at a performed response, as Rails'
+ * `performed?` does, so the action never runs.
+ */
+async function requireLoopback(this: LoopbackHost): Promise<void> {
+  if (isLoopbackRequest(this.request)) return;
+  await this.render({ json: { error: "not_found" }, status: 404 });
 }
+
+/** The instance half `include(this, LoopbackOnly)` adds, for a `declare`. */
+export interface LoopbackOnlyMethods {
+  requireLoopback(): Promise<void>;
+}
+
+/**
+ * `include(this, LoopbackOnly)` guards every action of the class. The guard
+ * is registered as a block rather than by name until `beforeAction` takes a
+ * method name (`before-action-does-not-accept-a-method-name`, RFC 0141).
+ */
+export const LoopbackOnly = {
+  [included](base: typeof ActionController.Base): void {
+    base.beforeAction((controller) => (controller as ActionController.Base & LoopbackOnlyMethods).requireLoopback());
+  },
+  requireLoopback,
+};

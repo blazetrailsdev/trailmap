@@ -1,6 +1,7 @@
 <%#
   The page-header state pill: `render({ partial: "shared/status-state",
-  locals: { status } })`.
+  locals: { status, label } })`. `label`, when not null, replaces the text
+  and never the class: the story page's "blocked on deps" (ringo's pill).
 
   WHICH status reaches here — authored or effective — is the rule written out
   in `shared/_status-badge`, and it is the effective one. This partial is the
@@ -38,4 +39,4 @@
   the stylesheet.
 %>
 <% const shown = String(status ?? "").trim() || "unknown"; %>
-<span class="state s-<%= shown %>"><%= shown %></span>
+<span class="state s-<%= shown %>"><%= label ?? shown %></span>

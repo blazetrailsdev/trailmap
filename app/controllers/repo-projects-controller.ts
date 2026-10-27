@@ -29,7 +29,7 @@ export class RepoProjectsController extends RepoController {
 
     // One pluck for every RFC's statuses, rather than loading each RFC's
     // stories — the same reason `/rfcs` plucks two columns.
-    const statuses = await storyStatusesByRfc();
+    const [statuses, held] = await Promise.all([storyStatusesByRfc(), Story.depHeldIds()]);
 
     await this.render({
       locals: this.repoLocals({
@@ -41,8 +41,8 @@ export class RepoProjectsController extends RepoController {
               title: rfc.title ?? rfc.id,
               status: rfc.status,
               priority: rfc.priority,
-              counts: rfcStoryCounts(own),
-              bar: storyStatusCounts(own, rfc.status),
+              counts: rfcStoryCounts(own.map(([status]) => status)),
+              bar: storyStatusCounts(own.map(([status]) => status), rfc.status, own.map(([, id]) => held.has(id))),
               mine: stories.filter((story) => story.rfc_id === rfc.id).length,
             };
           })
@@ -72,15 +72,16 @@ export class RepoProjectsController extends RepoController {
 }
 
 /** Every story's status, grouped by RFC — two columns, not 11,000 records. */
-async function storyStatusesByRfc(): Promise<Map<string, string[]>> {
-  const rows = await Story.pluck("rfc_id", "status");
-  const byRfc = new Map<string, string[]>();
+async function storyStatusesByRfc(): Promise<Map<string, [string, string][]>> {
+  const rows = await Story.pluck("rfc_id", "status", "id");
+  const byRfc = new Map<string, [string, string][]>();
   for (const row of rows) {
     if (!Array.isArray(row)) continue;
-    const [rfcId, status] = row;
+    const [rfcId, status, id] = row;
+    const entry: [string, string] = [String(status), String(id)];
     const bucket = byRfc.get(String(rfcId));
-    if (bucket) bucket.push(String(status));
-    else byRfc.set(String(rfcId), [String(status)]);
+    if (bucket) bucket.push(entry);
+    else byRfc.set(String(rfcId), [entry]);
   }
   return byRfc;
 }
