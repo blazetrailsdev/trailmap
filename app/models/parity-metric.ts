@@ -1,11 +1,11 @@
-import type { CompareRun } from "./compare-run.js";
+import type { CompareRun } from "./compare-run.ts";
 import {
   ApiCallArgsStat,
   ApiCallsStat,
   ApiCompareStat,
   ApiComparePrivatesStat,
   TestCompareStat,
-} from "./compare-stats.js";
+} from "./compare-stats.ts";
 
 /**
  * One measure the parity page can chart.

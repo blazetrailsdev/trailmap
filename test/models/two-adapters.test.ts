@@ -1,17 +1,17 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { migrateScratchDatabase } from "./schema.js";
+import { migrateScratchDatabase } from "./schema.ts";
 import {
   connectHubTestDatabase,
   HUB_SETUP_TIMEOUT,
   hasHubTestDatabase,
   releaseHubTestDatabase,
-} from "../support/hub-schema.js";
-import { Hub } from "../../app/models/hub.js";
-import { Owner } from "../../app/models/owner.js";
-import { Repository } from "../../app/models/repository.js";
-import { Rfc } from "../../app/models/rfc.js";
-import { Story } from "../../app/models/story.js";
+} from "../support/hub-schema.ts";
+import { Hub } from "../../app/models/hub.ts";
+import { Owner } from "../../app/models/owner.ts";
+import { Repository } from "../../app/models/repository.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
 
 /**
  * Two databases, two ADAPTERS, one process — the thing this change is for.

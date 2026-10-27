@@ -1,8 +1,8 @@
-import { ApplicationRecord } from "./application-record.js";
-import { pinTimestampColumns } from "./timestamps.js";
+import { ApplicationRecord } from "./application-record.ts";
+import { pinTimestampColumns } from "./timestamps.ts";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
-import { closedRfcErrors } from "./concerns/semantic-validation.js";
-import type { Story } from "./story.js";
+import { closedRfcErrors } from "./concerns/semantic-validation.ts";
+import type { Story } from "./story.ts";
 
 /**
  * The coder of the JSON array columns (`packages`, `clusters`,

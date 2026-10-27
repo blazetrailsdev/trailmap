@@ -1,7 +1,7 @@
-import { RepoController } from "./repo-controller.js";
-import { OPTIONAL_TABS } from "../models/repository-setting.js";
-import { Setting } from "../models/setting.js";
-import { RepositoryCollaborator } from "../models/repository-collaborator.js";
+import { RepoController } from "./repo-controller.ts";
+import { OPTIONAL_TABS } from "../models/repository-setting.ts";
+import { Setting } from "../models/setting.ts";
+import { RepositoryCollaborator } from "../models/repository-collaborator.ts";
 
 /**
  * `/:owner/:repo/settings` — the repository's record and its feature switches.

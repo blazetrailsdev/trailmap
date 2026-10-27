@@ -14,8 +14,8 @@
  * `ready()` — the `enum` already generates a `Story.ready()` meaning only
  * `status = 'ready'`. Conflating them would hand agents unclaimable stories.
  */
-import { effectiveStoryStatus } from "./effective-status.js";
-import type { Story } from "../story.js";
+import { effectiveStoryStatus } from "./effective-status.ts";
+import type { Story } from "../story.ts";
 
 /**
  * What the ranking reads of a story, and all it reads. A `Story` satisfies it;

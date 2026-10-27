@@ -16,10 +16,10 @@
  * The template is a fixture (`test/fixtures/views/helper-probes`), not an
  * application view: no page has been moved onto a helper yet.
  */
-import "../config/environment.js";
+import "../config/environment.ts";
 import { exit } from "@blazetrails/ruby-compat";
-import { ApplicationController } from "../app/controllers/application-controller.js";
-import { controllerTestCase } from "../test/support/controller-test-case.js";
+import { ApplicationController } from "../app/controllers/application-controller.ts";
+import { controllerTestCase } from "../test/support/controller-test-case.ts";
 
 class HelperProbesController extends ApplicationController {
   async show(): Promise<void> {

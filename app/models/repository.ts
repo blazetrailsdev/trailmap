@@ -1,9 +1,9 @@
 import { ConnectionNotDefined } from "@blazetrails/activerecord";
-import { Hub } from "./hub.js";
-import { Owner } from "./owner.js";
-import { RepositorySetting } from "./repository-setting.js";
-import { RepositoryCollaborator } from "./repository-collaborator.js";
-import { fleetRepos, type FleetRepo } from "../../config/fleet.js";
+import { Hub } from "./hub.ts";
+import { Owner } from "./owner.ts";
+import { RepositorySetting } from "./repository-setting.ts";
+import { RepositoryCollaborator } from "./repository-collaborator.ts";
+import { fleetRepos, type FleetRepo } from "../../config/fleet.ts";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 
 export const REPOSITORY_VISIBILITIES = ["public", "private"] as const;

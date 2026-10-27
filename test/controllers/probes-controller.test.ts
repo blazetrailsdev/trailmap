@@ -1,12 +1,12 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { setX } from "../support/config-x.js";
+import { setX } from "../support/config-x.ts";
 import { getChildProcess, getFs, setEnv, type FsAdapter } from "@blazetrails/ruby-compat";
 import { controllerConstants } from "@blazetrails/actionpack";
 import { MigrationContext } from "@blazetrails/activerecord";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { ProbesController } from "../../app/controllers/probes-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { ProbesController } from "../../app/controllers/probes-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 const LOOPBACK = { Host: "127.0.0.1" };
 

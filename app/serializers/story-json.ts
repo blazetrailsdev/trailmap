@@ -12,9 +12,9 @@
  * `test/serializers/story-json.test.ts` diffs the output against the published
  * `index.json` for the full RFC set, which is the real guard.
  */
-import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
-import type { Story } from "../models/index.js";
-import type { BundledStory, RankedStory, RankingIndex } from "../models/concerns/ranking.js";
+import { effectiveStoryStatus } from "../models/concerns/effective-status.ts";
+import type { Story } from "../models/index.ts";
+import type { BundledStory, RankedStory, RankingIndex } from "../models/concerns/ranking.ts";
 
 export interface StoryJson {
   id: string;

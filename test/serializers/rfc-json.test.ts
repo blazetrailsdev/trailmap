@@ -4,9 +4,9 @@
  * contract — which is what this pins.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Rfc, loadModelSchemas } from "../../app/models/index.js";
-import { serializeRfc, serializeRfcs } from "../../app/serializers/rfc-json.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Rfc, loadModelSchemas } from "../../app/models/index.ts";
+import { serializeRfc, serializeRfcs } from "../../app/serializers/rfc-json.ts";
 
 beforeAll(async () => {
   await migrateScratchDatabase();

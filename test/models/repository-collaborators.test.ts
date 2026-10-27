@@ -6,10 +6,10 @@ import {
   hasHubTestDatabase,
   releaseHubTestDatabase,
   truncateHub,
-} from "../support/hub-schema.js";
-import { Owner } from "../../app/models/owner.js";
-import { Repository } from "../../app/models/repository.js";
-import { RepositoryCollaborator } from "../../app/models/repository-collaborator.js";
+} from "../support/hub-schema.ts";
+import { Owner } from "../../app/models/owner.ts";
+import { Repository } from "../../app/models/repository.ts";
+import { RepositoryCollaborator } from "../../app/models/repository-collaborator.ts";
 
 /**
  * The composite primary key, `(repository_id, owner_id)`.

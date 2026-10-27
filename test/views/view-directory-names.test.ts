@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { getFs } from "@blazetrails/ruby-compat";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { DashboardController } from "../../app/controllers/dashboard-controller.js";
-import { HomeController } from "../../app/controllers/home-controller.js";
-import { PanesController } from "../../app/controllers/panes-controller.js";
-import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
-import { StoryPagesController } from "../../app/controllers/story-pages-controller.js";
-import { OwnersController } from "../../app/controllers/owners-controller.js";
-import { RepoActionsController } from "../../app/controllers/repo-actions-controller.js";
-import { RepoCodeController } from "../../app/controllers/repo-code-controller.js";
-import { RepoInsightsController } from "../../app/controllers/repo-insights-controller.js";
-import { RepoIssuesController } from "../../app/controllers/repo-issues-controller.js";
-import { RepoProjectsController } from "../../app/controllers/repo-projects-controller.js";
-import { RepoPullsController } from "../../app/controllers/repo-pulls-controller.js";
-import { RepoSettingsController } from "../../app/controllers/repo-settings-controller.js";
-import { RepoWikiController } from "../../app/controllers/repo-wiki-controller.js";
-import { ParityGraphsController } from "../../app/controllers/parity-graphs-controller.js";
-import { AuditsController } from "../../app/controllers/audits-controller.js";
-import { DeploysController } from "../../app/controllers/deploys-controller.js";
-import { SearchesController } from "../../app/controllers/searches-controller.js";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { DashboardController } from "../../app/controllers/dashboard-controller.ts";
+import { HomeController } from "../../app/controllers/home-controller.ts";
+import { PanesController } from "../../app/controllers/panes-controller.ts";
+import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
+import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";
+import { OwnersController } from "../../app/controllers/owners-controller.ts";
+import { RepoActionsController } from "../../app/controllers/repo-actions-controller.ts";
+import { RepoCodeController } from "../../app/controllers/repo-code-controller.ts";
+import { RepoInsightsController } from "../../app/controllers/repo-insights-controller.ts";
+import { RepoIssuesController } from "../../app/controllers/repo-issues-controller.ts";
+import { RepoProjectsController } from "../../app/controllers/repo-projects-controller.ts";
+import { RepoPullsController } from "../../app/controllers/repo-pulls-controller.ts";
+import { RepoSettingsController } from "../../app/controllers/repo-settings-controller.ts";
+import { RepoWikiController } from "../../app/controllers/repo-wiki-controller.ts";
+import { ParityGraphsController } from "../../app/controllers/parity-graphs-controller.ts";
+import { AuditsController } from "../../app/controllers/audits-controller.ts";
+import { DeploysController } from "../../app/controllers/deploys-controller.ts";
+import { SearchesController } from "../../app/controllers/searches-controller.ts";
 
 /**
  * Every page controller's view directory is the one the implicit lookup asks

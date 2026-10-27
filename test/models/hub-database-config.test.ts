@@ -4,7 +4,7 @@ import databases, {
   HUB_MIGRATIONS_PATH,
   hasHubDatabase,
   hubDatabaseConfig,
-} from "../../config/database.js";
+} from "../../config/database.ts";
 
 /**
  * `config/database.ts`'s hub half — the twin of `tasks-database-config.test.ts`.

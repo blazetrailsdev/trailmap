@@ -1,7 +1,7 @@
-import { Hub } from "./hub.js";
-import { ParityDay } from "./parity-day.js";
-import { PARITY_METRICS } from "./parity-metric.js";
-import { hasStatsDatabase } from "../../config/database.js";
+import { Hub } from "./hub.ts";
+import { ParityDay } from "./parity-day.ts";
+import { PARITY_METRICS } from "./parity-metric.ts";
+import { hasStatsDatabase } from "../../config/database.ts";
 
 /**
  * Keeping `parity_days` up to date, from the page that reads it.

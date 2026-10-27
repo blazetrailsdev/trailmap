@@ -16,7 +16,7 @@
  * want to look at its page.
  */
 import { getFs, getPath } from "@blazetrails/ruby-compat";
-import { tasksContentDir } from "../../../config/tasks-content.js";
+import { tasksContentDir } from "../../../config/tasks-content.ts";
 
 export interface Document {
   /** The body, frontmatter removed, or "" when there is none to show. */

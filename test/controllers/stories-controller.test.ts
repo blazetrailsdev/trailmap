@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Rfc, Story, StoryDep, StoryPath, loadModelSchemas } from "../../app/models/index.js";
-import { StoriesController } from "../../app/controllers/stories-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Rfc, Story, StoryDep, StoryPath, loadModelSchemas } from "../../app/models/index.ts";
+import { StoriesController } from "../../app/controllers/stories-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /** Every request the API is meant to answer arrives on loopback. */
 const LOOPBACK = { Host: "127.0.0.1" };

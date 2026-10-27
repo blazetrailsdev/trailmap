@@ -1,7 +1,7 @@
-import { ApplicationController } from "./application-controller.js";
-import { FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash } from "../../config/fleet.js";
-import { Setting } from "../models/setting.js";
-import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.js";
+import { ApplicationController } from "./application-controller.ts";
+import { FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash } from "../../config/fleet.ts";
+import { Setting } from "../models/setting.ts";
+import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.ts";
 
 /**
  * How long ringo has to answer a control. A merge waits on GitHub, so this is

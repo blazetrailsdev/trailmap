@@ -1,4 +1,4 @@
-import { Hub } from "./hub.js";
+import { Hub } from "./hub.ts";
 import { env } from "@blazetrails/ruby-compat";
 import { ConnectionNotDefined } from "@blazetrails/activerecord";
 

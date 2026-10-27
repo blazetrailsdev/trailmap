@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysSince } from "../../app/models/concerns/elapsed.js";
+import { daysSince } from "../../app/models/concerns/elapsed.ts";
 
 const NOW = Date.parse("2026-09-06T12:00:00Z");
 

@@ -1,9 +1,9 @@
 import type { SafeBuffer } from "@blazetrails/activesupport";
-import { ApplicationController } from "./application-controller.js";
-import { Event, Rfc, Story } from "../models/index.js";
-import { collectRfcMarks, markTitle, type MarkEvent } from "../models/concerns/rfc-marks.js";
-import { readDocument } from "../models/concerns/document.js";
-import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
+import { ApplicationController } from "./application-controller.ts";
+import { Event, Rfc, Story } from "../models/index.ts";
+import { collectRfcMarks, markTitle, type MarkEvent } from "../models/concerns/rfc-marks.ts";
+import { readDocument } from "../models/concerns/document.ts";
+import { effectiveStoryStatus } from "../models/concerns/effective-status.ts";
 import {
   orderRfcsForIndex,
   orderStoriesForRfc,
@@ -16,9 +16,9 @@ import {
   type RfcStoryCounts,
   type StatusCount,
   type StoryBarLength,
-} from "../models/concerns/rfc-progress.js";
-import { daysSince } from "../models/concerns/elapsed.js";
-import { renderMarkdown } from "../helpers/markdown-helper.js";
+} from "../models/concerns/rfc-progress.ts";
+import { daysSince } from "../models/concerns/elapsed.ts";
+import { renderMarkdown } from "../helpers/markdown-helper.ts";
 
 /**
  * The status tabs, in ringo's order (`STATUS_ORDER`, webhook/rfcs.go). Active

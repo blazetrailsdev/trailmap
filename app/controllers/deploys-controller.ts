@@ -1,6 +1,6 @@
-import { ApplicationController } from "./application-controller.js";
-import { ringoFailure } from "./fleet-controller.js";
-import { Setting } from "../models/setting.js";
+import { ApplicationController } from "./application-controller.ts";
+import { ringoFailure } from "./fleet-controller.ts";
+import { Setting } from "../models/setting.ts";
 
 /**
  * How long ringo has to answer for the deploy history or one run's log. A

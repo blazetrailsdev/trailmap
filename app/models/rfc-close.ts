@@ -18,9 +18,9 @@
  * this file to declare the callback.
  */
 import { Trails } from "@blazetrails/trailties";
-import { Event } from "./event.js";
-import { Rfc } from "./rfc.js";
-import type { StoryStatus } from "./story.js";
+import { Event } from "./event.ts";
+import { Rfc } from "./rfc.ts";
+import type { StoryStatus } from "./story.ts";
 
 /**
  * RFCs that must NEVER auto-close, even with an all-terminal backlog.

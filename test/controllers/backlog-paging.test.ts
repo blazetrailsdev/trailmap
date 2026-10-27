@@ -6,14 +6,14 @@
  * file asserts.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import {
   BACKLOG_PAGE_SIZE,
   StoryPagesController,
-} from "../../app/controllers/story-pages-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+} from "../../app/controllers/story-pages-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 const READY = 2 * BACKLOG_PAGE_SIZE + 5;
 

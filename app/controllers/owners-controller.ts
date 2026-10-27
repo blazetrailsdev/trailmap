@@ -1,9 +1,9 @@
 import { RecordNotFound } from "@blazetrails/activerecord";
-import { ApplicationController } from "./application-controller.js";
-import { Owner } from "../models/owner.js";
-import { Repository } from "../models/repository.js";
-import { viewerOf } from "./concerns/viewer.js";
-import { openCountsByRepo } from "../models/concerns/repo-scope.js";
+import { ApplicationController } from "./application-controller.ts";
+import { Owner } from "../models/owner.ts";
+import { Repository } from "../models/repository.ts";
+import { viewerOf } from "./concerns/viewer.ts";
+import { openCountsByRepo } from "../models/concerns/repo-scope.ts";
 
 /**
  * `/:owner` — the owner root, as GitHub's account page is: who this is, and

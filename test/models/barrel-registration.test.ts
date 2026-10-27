@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { migrateScratchDatabase } from "./schema.js";
+import { migrateScratchDatabase } from "./schema.ts";
 // Deliberately the model MODULE, not `app/models/index.js`. This file must
 // never import the barrel — vitest isolates it in its own worker, and that
 // isolation is what makes the assertion below meaningful: `registerModel` is
 // process-global, so one barrel import anywhere in this file would arm
 // association resolution and the test would pass for the wrong reason.
-import { Story } from "../../app/models/story.js";
+import { Story } from "../../app/models/story.ts";
 
 beforeAll(async () => {
   await migrateScratchDatabase();

@@ -1,11 +1,11 @@
-import { RepoController } from "./repo-controller.js";
-import { RESOLVED_DEP_STATUSES } from "../models/story.js";
+import { RepoController } from "./repo-controller.ts";
+import { RESOLVED_DEP_STATUSES } from "../models/story.ts";
 import {
   storiesForRepo,
   storyForRepo,
   type ScopedStory,
-} from "../models/concerns/repo-scope.js";
-import { pagerFor, requestedPage } from "../models/concerns/pager.js";
+} from "../models/concerns/repo-scope.ts";
+import { pagerFor, requestedPage } from "../models/concerns/pager.ts";
 
 /** A page of issues, the size `/backlog` uses. */
 export const ISSUES_PAGE_SIZE = 100;

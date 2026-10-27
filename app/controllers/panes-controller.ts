@@ -1,6 +1,6 @@
-import { ApplicationController } from "./application-controller.js";
-import { FLEET_PANE_PATH, isPaneId } from "../../config/fleet.js";
-import { Setting } from "../models/setting.js";
+import { ApplicationController } from "./application-controller.ts";
+import { FLEET_PANE_PATH, isPaneId } from "../../config/fleet.ts";
+import { Setting } from "../models/setting.ts";
 
 /**
  * `/panes/<n>` — one agent's tmux pane, live in the browser and read-only.

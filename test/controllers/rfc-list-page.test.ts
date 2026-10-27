@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
  * `/rfcs`, the server-rendered RFC list.

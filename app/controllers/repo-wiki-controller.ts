@@ -1,8 +1,8 @@
-import { RepoController } from "./repo-controller.js";
-import { Rfc } from "../models/rfc.js";
-import { storiesForRepo } from "../models/concerns/repo-scope.js";
-import { readDocument } from "../models/concerns/document.js";
-import { renderMarkdown } from "../helpers/markdown-helper.js";
+import { RepoController } from "./repo-controller.ts";
+import { Rfc } from "../models/rfc.ts";
+import { storiesForRepo } from "../models/concerns/repo-scope.ts";
+import { readDocument } from "../models/concerns/document.ts";
+import { renderMarkdown } from "../helpers/markdown-helper.ts";
 
 /**
  * `/:owner/:repo/wiki` — the prose behind this repo's work.

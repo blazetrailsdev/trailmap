@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Dir, getFs } from "@blazetrails/ruby-compat";
-import { STYLESHEET, boxRules, classListsIn, collisionsInList, collisionsInSource } from "../../scripts/class-collisions.js";
+import { STYLESHEET, boxRules, classListsIn, collisionsInList, collisionsInSource } from "../../scripts/class-collisions.ts";
 
 /**
  * A CSS class collision is invisible to every other check: the markup is

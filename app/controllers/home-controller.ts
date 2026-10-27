@@ -1,6 +1,6 @@
 import { ConnectionNotDefined } from "@blazetrails/activerecord";
-import { ApplicationController } from "./application-controller.js";
-import { Owner } from "../models/owner.js";
+import { ApplicationController } from "./application-controller.ts";
+import { Owner } from "../models/owner.ts";
 
 export class HomeController extends ApplicationController {
   /**

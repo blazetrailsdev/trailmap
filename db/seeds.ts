@@ -1,10 +1,10 @@
-import { Owner } from "../app/models/owner.js";
-import { Repository } from "../app/models/repository.js";
-import { RepositorySetting } from "../app/models/repository-setting.js";
-import { RepositoryCollaborator } from "../app/models/repository-collaborator.js";
-import { CONTENT_REPO } from "../app/models/concerns/repo-scope.js";
+import { Owner } from "../app/models/owner.ts";
+import { Repository } from "../app/models/repository.ts";
+import { RepositorySetting } from "../app/models/repository-setting.ts";
+import { RepositoryCollaborator } from "../app/models/repository-collaborator.ts";
+import { CONTENT_REPO } from "../app/models/concerns/repo-scope.ts";
 import { env } from "@blazetrails/ruby-compat";
-import { hasHubDatabase } from "../config/database.js";
+import { hasHubDatabase } from "../config/database.ts";
 
 /**
  * The `hub` database's seeds: the owner and the repositories the fleet works

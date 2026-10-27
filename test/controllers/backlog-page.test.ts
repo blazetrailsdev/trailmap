@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Rfc, Story, StoryPackage, loadModelSchemas } from "../../app/models/index.js";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { StoryPagesController } from "../../app/controllers/story-pages-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Rfc, Story, StoryPackage, loadModelSchemas } from "../../app/models/index.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
  * `/backlog`, the server-rendered story list. Separate from the story show

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { env, setEnv } from "@blazetrails/ruby-compat";
-import { hasTasksDatabase } from "../../config/database.js";
-import { connectToTasksDatabase } from "../../config/initializers/tasks-database.js";
-import { writeProtocol } from "../../config/write-protocol.js";
-import { Story } from "../../app/models/index.js";
+import { hasTasksDatabase } from "../../config/database.ts";
+import { connectToTasksDatabase } from "../../config/initializers/tasks-database.ts";
+import { writeProtocol } from "../../config/write-protocol.ts";
+import { Story } from "../../app/models/index.ts";
 
 /**
  * Importing the initializer already RAN it — that is the whole contract for a

@@ -1,4 +1,4 @@
-import { Stats } from "./stats.js";
+import { Stats } from "./stats.ts";
 
 /**
  * A merged trails PR, as the stats cron recorded it.

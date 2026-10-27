@@ -15,7 +15,7 @@
  * database, refuses without one.
  */
 import { exit } from "@blazetrails/ruby-compat";
-import "../config/environment.js";
+import "../config/environment.ts";
 
 console.log("boot-probe: booted");
 

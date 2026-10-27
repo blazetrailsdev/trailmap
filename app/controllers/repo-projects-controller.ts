@@ -1,8 +1,8 @@
-import { RepoController } from "./repo-controller.js";
-import { Rfc } from "../models/rfc.js";
-import { Story } from "../models/story.js";
-import { storiesForRepo } from "../models/concerns/repo-scope.js";
-import { rfcStoryCounts, storyStatusCounts } from "../models/concerns/rfc-progress.js";
+import { RepoController } from "./repo-controller.ts";
+import { Rfc } from "../models/rfc.ts";
+import { Story } from "../models/story.ts";
+import { storiesForRepo } from "../models/concerns/repo-scope.ts";
+import { rfcStoryCounts, storyStatusCounts } from "../models/concerns/rfc-progress.ts";
 
 /**
  * `/:owner/:repo/projects` — the RFCs this repo's work belongs to.

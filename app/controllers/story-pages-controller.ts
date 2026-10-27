@@ -1,20 +1,20 @@
 import type { SafeBuffer } from "@blazetrails/activesupport";
-import { ApplicationController } from "./application-controller.js";
-import { Rfc, Story, StoryDep, StoryPackage, StoryRfcDep } from "../models/index.js";
-import { readDocument } from "../models/concerns/document.js";
-import { renderMarkdown } from "../helpers/markdown-helper.js";
-import { effectiveStoryStatus } from "../models/concerns/effective-status.js";
-import { claimableIn } from "../models/concerns/ranking.js";
+import { ApplicationController } from "./application-controller.ts";
+import { Rfc, Story, StoryDep, StoryPackage, StoryRfcDep } from "../models/index.ts";
+import { readDocument } from "../models/concerns/document.ts";
+import { renderMarkdown } from "../helpers/markdown-helper.ts";
+import { effectiveStoryStatus } from "../models/concerns/effective-status.ts";
+import { claimableIn } from "../models/concerns/ranking.ts";
 import {
   BACKLOG_FILTERS,
   isBacklogFilter,
   matchesBacklogFilter,
   orderBacklog,
   type BacklogFilter,
-} from "../models/concerns/backlog.js";
-import { daysSince } from "../models/concerns/elapsed.js";
-import { pagerFor, requestedPage } from "../models/concerns/pager.js";
-import { depGraphFor } from "../models/concerns/dep-graph.js";
+} from "../models/concerns/backlog.ts";
+import { daysSince } from "../models/concerns/elapsed.ts";
+import { pagerFor, requestedPage } from "../models/concerns/pager.ts";
+import { depGraphFor } from "../models/concerns/dep-graph.ts";
 
 /**
  * Rows to a page. A hundred is a screenful of scanning with the page still

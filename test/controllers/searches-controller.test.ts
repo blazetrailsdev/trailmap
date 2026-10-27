@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getFs } from "@blazetrails/ruby-compat";
-import { setX } from "../support/config-x.js";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Meta, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
+import { setX } from "../support/config-x.ts";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Meta, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import {
   SEARCH_PAGE_SIZE,
   SearchesController,
-} from "../../app/controllers/searches-controller.js";
+} from "../../app/controllers/searches-controller.ts";
 import {
   bodyIndex,
   compareHits,
@@ -16,8 +16,8 @@ import {
   searchPhrase,
   withSnippets,
   type SearchHit,
-} from "../../app/models/concerns/search.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+} from "../../app/models/concerns/search.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /** `/search`, over a scratch database and a scratch tasks checkout. */
 let dir: string;

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { env, setEnv } from "@blazetrails/ruby-compat";
-import { connectToHubDatabase } from "../../config/initializers/hub-database.js";
-import { Hub } from "../../app/models/hub.js";
-import { Owner } from "../../app/models/owner.js";
-import { missingHubTables } from "../../app/models/index.js";
+import { connectToHubDatabase } from "../../config/initializers/hub-database.ts";
+import { Hub } from "../../app/models/hub.ts";
+import { Owner } from "../../app/models/owner.ts";
+import { missingHubTables } from "../../app/models/index.ts";
 
 /**
  * The hub initializer, as `tasks-database.test.ts` tests the other one:

@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getFs } from "@blazetrails/ruby-compat";
 import { Trails } from "@blazetrails/trailties";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { AuditsController } from "../../app/controllers/audits-controller.js";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { AuditsController } from "../../app/controllers/audits-controller.ts";
 import { RecordNotFound } from "@blazetrails/activerecord";
-import { AUDIT_FILE_RE, Audit, auditTitle, auditsDir } from "../../app/models/audit.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { AUDIT_FILE_RE, Audit, auditTitle, auditsDir } from "../../app/models/audit.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
  * `/audits`, `/audits/<file>` and `/audits/<file>/raw`, against a scratch

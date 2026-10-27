@@ -1,6 +1,6 @@
-import { RepoController } from "./repo-controller.js";
-import { prNumber, prRefsOf, storiesForRepo } from "../models/concerns/repo-scope.js";
-import { RESOLVED_DEP_STATUSES } from "../models/story.js";
+import { RepoController } from "./repo-controller.ts";
+import { prNumber, prRefsOf, storiesForRepo } from "../models/concerns/repo-scope.ts";
+import { RESOLVED_DEP_STATUSES } from "../models/story.ts";
 
 /** One pull request: its number and the stories stamped with it. */
 export interface PullRow {

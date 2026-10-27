@@ -1,6 +1,6 @@
 import { Trails } from "@blazetrails/trailties";
-import { AUDIT_SEGMENT } from "./audit-files.js";
-import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "./owner-names.js";
+import { AUDIT_SEGMENT } from "./audit-files.ts";
+import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "./owner-names.ts";
 
 // Re-exported so `test/routes.test.ts` and anything reading the route table
 // can reach them from here, where they are used.

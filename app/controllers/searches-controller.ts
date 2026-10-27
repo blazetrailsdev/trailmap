@@ -1,4 +1,4 @@
-import { ApplicationController } from "./application-controller.js";
+import { ApplicationController } from "./application-controller.ts";
 import {
   SEARCH_MAX_LENGTH,
   SEARCH_MIN_LENGTH,
@@ -6,8 +6,8 @@ import {
   withSnippets,
   searchPhrase,
   type SearchHit,
-} from "../models/concerns/search.js";
-import { pagerFor, requestedPage } from "../models/concerns/pager.js";
+} from "../models/concerns/search.ts";
+import { pagerFor, requestedPage } from "../models/concerns/pager.ts";
 
 /** Results to a page. Each carries a body snippet, so fewer than the backlog's hundred. */
 export const SEARCH_PAGE_SIZE = 50;

@@ -8,8 +8,8 @@
  * to cross that boundary in each direction, at sizes that force it to matter.
  */
 import { describe, expect, it } from "vitest";
-import { RingoCoreError, renderPaneLog, runRingoCore } from "../../lib/ringo-core.js";
-import { renderMarkdown } from "../../app/helpers/markdown-helper.js";
+import { RingoCoreError, renderPaneLog, runRingoCore } from "../../lib/ringo-core.ts";
+import { renderMarkdown } from "../../app/helpers/markdown-helper.ts";
 
 const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
 const text = (b: Uint8Array): string => new TextDecoder().decode(b);
@@ -30,7 +30,11 @@ describe("runRingoCore", () => {
   it("rejects with ringo's own stderr when the command exits non-zero", async () => {
     const failure = runRingoCore(["no-such-mode"], new Uint8Array());
     await expect(failure).rejects.toBeInstanceOf(RingoCoreError);
-    await expect(failure).rejects.toMatchObject({ code: 2, message: expect.stringContaining("unknown mode: no-such-mode") });
+    await expect(failure).rejects.toMatchObject({
+      args: ["no-such-mode"],
+      code: 2,
+      message: expect.stringContaining("unknown mode: no-such-mode"),
+    });
   });
 
   it("keeps calls independent of one another", async () => {

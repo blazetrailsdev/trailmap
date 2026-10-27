@@ -1,6 +1,6 @@
-import { Event } from "../event.js";
-import { Story } from "../story.js";
-import { StoryPath } from "../joins.js";
+import { Event } from "../event.ts";
+import { Story } from "../story.ts";
+import { StoryPath } from "../joins.ts";
 
 /**
  * Which stories belong to a repository, and the one place that decides it.

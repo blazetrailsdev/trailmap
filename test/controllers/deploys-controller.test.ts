@@ -4,9 +4,9 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { getHttpAsync, setEnv, type HttpServer } from "@blazetrails/ruby-compat";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { DeploysController, type DeployRow } from "../../app/controllers/deploys-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { DeploysController, type DeployRow } from "../../app/controllers/deploys-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /** What the stand-in ringo's `/api/deploys` holds, newest first as ringo keeps it. */
 const RUNS: DeployRow[] = [

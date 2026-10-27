@@ -18,10 +18,10 @@
  * Within a tier, more body mentions first, then RFC before story, then by id,
  * so a page's order is stable and the pager's pages are the whole list.
  */
-import { Meta } from "../meta.js";
-import { Rfc } from "../rfc.js";
-import { Story } from "../story.js";
-import { readDocument } from "./document.js";
+import { Meta } from "../meta.ts";
+import { Rfc } from "../rfc.ts";
+import { Story } from "../story.ts";
+import { readDocument } from "./document.ts";
 
 /** Shorter matches nearly every document and ranks nothing; longer is a paste. */
 export const SEARCH_MIN_LENGTH = 2;

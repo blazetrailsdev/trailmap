@@ -1,5 +1,5 @@
 import { env } from "@blazetrails/ruby-compat";
-import { writeProtocol } from "./write-protocol.js";
+import { writeProtocol } from "./write-protocol.ts";
 
 /**
  * `db/hub-migrate`, not `db/migrate`. See the note on the default export.

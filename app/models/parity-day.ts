@@ -1,4 +1,4 @@
-import { Hub } from "./hub.js";
+import { Hub } from "./hub.ts";
 import {
   PARITY_METRICS,
   denominatorColumn,
@@ -7,7 +7,7 @@ import {
   metricColumns,
   numeratorColumn,
   type ParityMetric,
-} from "./parity-metric.js";
+} from "./parity-metric.ts";
 import type { Relation } from "@blazetrails/activerecord";
 
 /** How many rows go into one `upsertAll` statement. */
