@@ -1,0 +1,6 @@
+<%# The list pages' filter row. Tabs are links: the server renders the slice. %>
+<div class="tabs">
+  <% tabs.each do |tab| %>
+    <a class="tab<%= tab.active ? " active" : "" %>" href="<%= tab.href %>"><%= tab.count %> <%= tab.label %></a>
+  <% end %>
+</div>

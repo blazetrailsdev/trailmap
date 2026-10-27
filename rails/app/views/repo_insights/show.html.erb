@@ -1,0 +1,31 @@
+<%= render "shared/repo_header" %>
+
+<div class="box">
+  <div class="box-row"><strong>Stories</strong> &middot; <%= @story_count %></div>
+  <div class="box-row"><strong>Open estimate</strong> &middot; <%= @open_estimate %> loc</div>
+  <div class="box-row"><strong>Last <%= @window_days %> days</strong> &middot;
+    <%= @recent_count %> events, <%= @done_count %> done</div>
+</div>
+
+<h2>Stories by status</h2>
+<div class="box">
+  <% if @statuses.empty? %>
+    <div class="empty">No stories.</div>
+  <% end %>
+  <% @statuses.each do |row| %>
+    <div class="box-row">
+      <%= render "shared/status_badge", status: row.key %>
+      <span class="muted"><%= row.count %></span>
+    </div>
+  <% end %>
+</div>
+
+<h2>Activity by verb <span class="muted">(last <%= @window_days %> days)</span></h2>
+<div class="box">
+  <% if @verbs.empty? %>
+    <div class="empty">Nothing moved in the window.</div>
+  <% end %>
+  <% @verbs.each do |row| %>
+    <div class="box-row"><code><%= row.key %></code> &middot; <%= row.count %></div>
+  <% end %>
+</div>

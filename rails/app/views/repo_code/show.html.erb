@@ -1,0 +1,25 @@
+<%= render "shared/repo_header" %>
+
+<div class="box">
+  <div class="box-row"><strong>Default branch</strong> &middot; <code><%= @repo.default_branch %></code></div>
+  <div class="box-row"><strong>Checkout on this box</strong> &middot;
+    <% if @repo.checkout_path.present? %><code><%= @repo.checkout_path %></code><% else %><span class="muted">not configured (FLEET_REPO_PATHS)</span><% end %>
+  </div>
+  <div class="box-row"><strong>Stories</strong> &middot; <%= @story_count %></div>
+</div>
+
+<h2>Where the work is</h2>
+<p class="muted">Top-level directories this repository's stories cite, most-cited first.
+trailmap does not read the checkout — these are <code>story_paths</code> rows.</p>
+<div class="box">
+  <% if @directories.empty? %>
+    <div class="empty">No story cites a path in this repository.</div>
+  <% end %>
+  <% @directories.each do |dir| %>
+    <div class="item-row">
+      <span class="row-main">
+        <span class="titleline"><code class="row-title"><%= dir.name %></code><span class="tag prog"><%= dir.count %></span></span>
+      </span>
+    </div>
+  <% end %>
+</div>

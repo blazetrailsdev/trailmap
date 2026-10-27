@@ -1,0 +1,33 @@
+<div class="page-header">
+  <h1 class="page-title">Audits</h1>
+  <div class="page-subhead">
+    <span class="muted">Agent-written progress reports, newest first. Report cards and refinements are on ringo.</span>
+  </div>
+</div>
+
+<% if @audits.empty? %>
+  <div class="card">
+    <div class="card-head"><span class="card-title">No audits yet</span></div>
+    <div class="field-note"><% if @configured %>Agents write audits (markdown or self-contained HTML) into the audits directory.<% else %>This deployment has no <code>AUDITS_DIR</code>, so there is no directory to list.<% end %></div>
+  </div>
+<% else %>
+  <div class="audits-layout">
+    <div class="audits-side">
+      <div class="audits-group">Audits <span class="muted"><%= @audits.size %></span></div>
+      <% @audits.each do |audit| %>
+        <% stamp = audit.when.utc.iso8601(3) %>
+        <a class="audit-item<%= audit.name == @selected.name ? " active" : "" %>" href="/audits/<%= ERB::Util.url_encode(audit.to_param) %>">
+          <span class="audit-title"><%= audit.title %></span>
+          <time class="muted" datetime="<%= stamp %>"><%= stamp[0, 16].sub("T", " ") %></time>
+        </a>
+      <% end %>
+    </div>
+    <% if @body %>
+      <article class="markdown audits-doc"><%= @body %></article>
+    <% else %>
+      <div class="audits-frame">
+        <iframe sandbox src="/audits/<%= ERB::Util.url_encode(@selected.to_param) %>/raw" title="<%= @selected.title %>"></iframe>
+      </div>
+    <% end %>
+  </div>
+<% end %>

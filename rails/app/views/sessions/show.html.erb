@@ -1,0 +1,50 @@
+<div class="page-header">
+  <h1 class="page-title session-pr"><%= @owner %>/<%= @repo %>#<%= @pr %></h1>
+  <div class="page-subhead">
+    <% if @problem.nil? && @archives.any? %>
+      <span class="muted"><%= @archives.length %> archived pane(s). A PR reworked by more than one agent has one archive per pane.</span>
+    <% end %>
+    <a href="/sessions">All sessions</a>
+  </div>
+</div>
+
+<% if @problem %>
+  <div class="card ci-fixer paused">
+    <div class="card-head"><span class="card-title">No session data</span></div>
+    <div class="field-note"><%= @problem %></div>
+  </div>
+<% elsif @archives.empty? %>
+  <div class="card"><div class="field-note">No archive recorded for this PR.</div></div>
+<% else %>
+  <% @archives.each do |archive| %>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">pane <%= archive.pane %> · <%= or_dash(archive.branch) %></span>
+        <span class="muted"><%= session_time(archive.row["opened_at"]) %> → <%= archive.open? ? "open" : "closed (#{archive.reason})" %> · <%= short_dur(archive.duration(@now)) %> · <%= money(archive.cost) %> · cwd <%= or_dash(archive.cwd) %></span>
+      </div>
+      <% if archive.pane_log != "" %>
+        <div class="field-note">Pane log: <%= human_bytes(archive.pane_log_bytes) %><% if archive.truncated %> <span class="session-pill trunc">truncated at the size cap</span><% end %></div>
+      <% end %>
+      <% if archive.transcripts.empty? %>
+        <div class="field-note">No transcripts pinned.</div>
+      <% else %>
+        <div class="session-scroll"><table class="session-table">
+          <thead><tr><th>Session</th><th>Role</th><th>First</th><th>Last</th><th>Turns</th><th>Size</th><th>Cost</th></tr></thead>
+          <tbody>
+            <% archive.transcripts.each do |t| %>
+              <tr>
+                <td><code><%= short_id(t["session_id"]) %></code></td>
+                <td><% if t["role"] == "agent" || t["role"] == "reviewer" %><span class="session-role <%= t["role"] %>"><%= t["role"] %></span><% end %></td>
+                <td><%= session_time(t["first_at"]) %></td>
+                <td><%= session_time(t["last_at"]) %></td>
+                <td><%= t["user_turns"] || 0 %></td>
+                <td><%= human_bytes(t["bytes"]) %></td>
+                <td><%= money(t["cost"] || 0) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table></div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

@@ -1,0 +1,44 @@
+<div class="page-header">
+  <h1 class="page-title">Search</h1>
+  <div class="page-subhead">
+    <span class="muted">Stories and RFCs, by id, title and body.</span>
+  </div>
+</div>
+
+<form class="search-form" action="/search" method="get" role="search">
+  <input class="search-input" type="search" name="q" value="<%= @asked %>" maxlength="<%= @max_length %>" placeholder="serialize, has_many, est-loc…" aria-label="Search stories and RFCs" autofocus>
+  <button class="search-button" type="submit">Search</button>
+</form>
+
+<% if @phrase %>
+  <%= render "shared/pager", pager: @pager %>
+
+  <div class="box">
+    <div class="box-header">
+      <span class="muted"><%= @pager.total %> <%= @pager.total == 1 ? "result" : "results" %> for <strong><%= @phrase %></strong></span>
+    </div>
+    <% if @hits.empty? %>
+      <div class="empty">Nothing mentions <strong><%= @phrase %></strong>.</div>
+    <% end %>
+    <% @hits.each do |hit| %>
+      <div class="item-row">
+        <%= render "shared/status_badge", status: hit.status %>
+        <span class="row-main">
+          <span class="titleline">
+            <a class="row-title" href="/<%= hit.kind %>/<%= hit.id %>"><%= hit.title %></a>
+            <span class="tag"><%= hit.kind == "rfc" ? "RFC" : "story" %></span>
+            <% if hit.mentions.positive? %><span class="tag" title="mentions in the body"><%= hit.mentions %>&times;</span><% end %>
+          </span>
+          <div class="row-meta">
+            <code><%= hit.id %></code><% if hit.rfc_id.present? %> &middot; <a href="/rfc/<%= hit.rfc_id %>">RFC <%= hit.rfc_id %></a><% end %>
+          </div>
+          <% if hit.snippet.present? %><div class="row-meta search-snippet"><%= hit.snippet %></div><% end %>
+        </span>
+      </div>
+    <% end %>
+  </div>
+
+  <%= render "shared/pager", pager: @pager %>
+<% elsif @too_short %>
+  <div class="box"><div class="empty">Search for at least <%= @min_length %> characters.</div></div>
+<% end %>

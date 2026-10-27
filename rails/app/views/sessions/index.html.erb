@@ -1,0 +1,45 @@
+<div class="page-header">
+  <h1 class="page-title">Session archive</h1>
+  <div class="page-subhead">
+    <span class="muted">What the agents actually did, kept after the pane is gone. Read-only; relayed from ringo, which holds the archive. Cost figures are list-price equivalents rather than a bill.</span>
+  </div>
+</div>
+
+<% if @problem %>
+  <div class="card ci-fixer paused">
+    <div class="card-head"><span class="card-title">No session data</span></div>
+    <div class="field-note"><%= @problem %></div>
+  </div>
+<% else %>
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Archives</span>
+      <span class="muted"><%= @archives.length %> recorded — open panes first, then most recently closed</span>
+    </div>
+    <% if @archives.empty? %>
+      <div class="field-note">Nothing archived yet. A pane is enrolled when it is linked to a PR.</div>
+    <% else %>
+      <div class="session-scroll"><table class="session-table">
+        <thead><tr><th>PR</th><th>Branch</th><th>Pane</th><th>Opened</th><th>Duration</th><th>State</th><th>Sessions</th><th>Pane log</th><th>Cost</th></tr></thead>
+        <tbody>
+          <% @archives.each do |archive| %>
+            <tr>
+              <td><a href="/sessions/<%= archive.owner %>/<%= archive.repo %>/<%= archive.pr %>"><%= archive.owner %>/<%= archive.repo %>#<%= archive.pr %></a></td>
+              <td><code><%= or_dash(archive.branch) %></code></td>
+              <td><code><%= archive.pane %></code></td>
+              <td><%= session_time(archive.row["opened_at"]) %></td>
+              <td><%= short_dur(archive.duration(@now)) %></td>
+              <td>
+                <% if archive.open? %><span class="session-pill live">open</span><% else %><span class="session-pill"><%= archive.reason %></span><% end %>
+                <% if archive.truncated %><span class="session-pill trunc">truncated</span><% end %>
+              </td>
+              <td><%= render partial: "sessions/role_split", locals: { archive: archive } %></td>
+              <td><% if archive.pane_log != "" %><%= human_bytes(archive.pane_log_bytes) %><% else %><span class="muted">—</span><% end %></td>
+              <td><%= money(archive.cost) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table></div>
+    <% end %>
+  </div>
+<% end %>

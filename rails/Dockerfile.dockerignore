@@ -1,0 +1,15 @@
+# BuildKit reads this file, not the root .dockerignore, when the Dockerfile is
+# rails/Dockerfile. The context is the repo root (docs/deploy-rails.md), so
+# this repeats the root file's entries, keeps rails/, and drops the Rails
+# app's own build output and local state.
+.git
+.gitignore
+node_modules
+log/*
+tmp/*
+dist
+rails/log/*
+rails/tmp/*
+rails/storage/*
+rails/public/assets
+rails/vendor/bundle
