@@ -518,3 +518,20 @@ jobs:
           bundler-cache: true
       - run: bin/rails db:prepare
       - run: bin/rails test
+      # twin-diff reads this twin through Prism, and this is the job with
+      # Ruby 3.3: its end-to-end test skips in the unit job, which has none.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - name: twin-diff end to end
+        working-directory: .
+        run: |
+          pnpm exec vitest run test/scripts/twin-diff.test.ts --reporter=verbose | tee twin-diff-test.log
+          grep -q "runs end to end over rails/ and app/" twin-diff-test.log
+          ! grep -E "↓ .*runs end to end|runs end to end.*skipped" twin-diff-test.log
