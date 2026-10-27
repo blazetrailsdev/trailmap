@@ -1,2 +1,0 @@
-class TestCompareStat < CompareRun
-end

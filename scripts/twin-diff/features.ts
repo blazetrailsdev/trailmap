@@ -7,7 +7,13 @@
  */
 import type { N } from "./ir.ts";
 import { canon, constName } from "./model.ts";
-import { ENUM_VALUES, foldCall, STATUS_SYMBOLS, type Side } from "./idioms.ts";
+import {
+  EMPTY_CONTEXT,
+  foldCall,
+  STATUS_SYMBOLS,
+  type Side,
+  type TwinContext,
+} from "./idioms.ts";
 
 /**
  * A condition that only asks "is it there / is it this type": `x`, `!x`,
@@ -103,7 +109,7 @@ interface Pattern {
  * pushes is `map`, `xs.length > 0` is `any?`, and a controller's explicit
  * `render({ locals })` is Rails' implicit render of the action's ivars.
  */
-function tsPattern(node: N): Pattern | null {
+function tsPattern(node: N, ctx: TwinContext): Pattern | null {
   const COMPARE = new Set(["==", ">", ">=", "<", "<="]);
   // `story.status === "closed"` is the enum predicate `story.closed?`.
   if (
@@ -114,9 +120,9 @@ function tsPattern(node: N): Pattern | null {
   ) {
     const value = canon(String(node.args[0].value));
     const prefixed = canon(String(node.recv.name)) + value;
-    const concept = ENUM_VALUES.has(prefixed)
+    const concept = ctx.enums.has(prefixed)
       ? prefixed
-      : ENUM_VALUES.has(value)
+      : ctx.enums.has(value)
         ? value
         : null;
     if (concept)
@@ -211,7 +217,11 @@ export interface Features {
   unhandled: number;
 }
 
-export function features(body: N, side: Side): Features {
+export function features(
+  body: N,
+  side: Side,
+  ctx: TwinContext = EMPTY_CONTEXT,
+): Features {
   const items: Feature[] = [];
   const idioms = new Map<string, number>();
   let unhandled = 0;
@@ -269,7 +279,7 @@ export function features(body: N, side: Side): Features {
           }
           return;
         }
-        const pattern = side === "ts" ? tsPattern(node) : null;
+        const pattern = side === "ts" ? tsPattern(node, ctx) : null;
         if (pattern) {
           if (pattern.idiom)
             idioms.set(pattern.idiom, (idioms.get(pattern.idiom) ?? 0) + 1);
@@ -278,7 +288,7 @@ export function features(body: N, side: Side): Features {
           visit(pattern.visit);
           return;
         }
-        const folded = foldCall(node, side);
+        const folded = foldCall(node, side, ctx);
         if (folded.idiom)
           idioms.set(folded.idiom, (idioms.get(folded.idiom) ?? 0) + 1);
         if (folded.concept === "raise") {

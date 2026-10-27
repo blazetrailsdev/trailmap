@@ -1,9 +1,0 @@
-# dokku reads this through `ps:set trailmap-rails procfile-path rails/Procfile`
-# (docs/deploy-rails.md). Paths are relative to the image's WORKDIR, /app/rails.
-#
-# `release` migrates the HUB only: the tasks database and the stats database
-# are `database_tasks: false` in production (config/database.yml). The hub is
-# shared with the trails app and the migration versions are identical, so this
-# is a no-op whenever trailmap has already migrated it, and vice versa.
-release: bin/rails db:migrate
-web: bin/rails server -b 0.0.0.0 -p 8080

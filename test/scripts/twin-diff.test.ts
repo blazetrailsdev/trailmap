@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { Dir, getChildProcess, getFs, getPath } from "@blazetrails/ruby-compat";
+import {
+  Dir,
+  env,
+  getChildProcess,
+  getFs,
+  getPath,
+} from "@blazetrails/ruby-compat";
 import type { N } from "../../scripts/twin-diff/ir.ts";
 import { lowerTsFile } from "../../scripts/twin-diff/ts-ir.ts";
 import { diffFeatures, features } from "../../scripts/twin-diff/features.ts";
@@ -9,6 +15,7 @@ import {
   extractUnits,
 } from "../../scripts/twin-diff/model.ts";
 import { foldCall } from "../../scripts/twin-diff/idioms.ts";
+import type { TwinContext } from "../../scripts/twin-diff/idioms.ts";
 import {
   markupFeatures,
   tseToTs,
@@ -203,12 +210,33 @@ describe("twin-diff", () => {
     expect(ts[0].methods[0]).toMatchObject({ name: "x", private: true });
   });
 
-  // The Ruby front-end needs Prism (Ruby 3.3+). CI's unit job has no Ruby, so
-  // this end-to-end run is skipped there and runs wherever Prism is present.
-  const hasPrism =
+  it("folds through the run's context, not module state", () => {
+    const ctx: TwinContext = {
+      enums: new Map([["closed", "status"]]),
+      structs: new Set(["Row"]),
+    };
+    const newRow = call({ k: "const", path: ["Row"] }, "new", [lvar("x")]);
+    expect(foldCall(newRow, "ruby")).toMatchObject({ concept: "new:Row" });
+    expect(foldCall(newRow, "ruby", ctx)).toMatchObject({
+      concept: null,
+      idiom: "struct-inline",
+    });
+    const ts = tsBody(`export function f(s) { return s.status === "closed"; }`);
+    expect(keys(ts, "ts")).not.toContain("call:closed");
+    expect(features(ts, "ts", ctx).items.map((f) => f.key)).toContain(
+      "call:closed",
+    );
+  });
+
+  // The Ruby front-end needs Prism (Ruby 3.3+) and a Rails twin to read:
+  // `rails/app` once the twin is on main, or TWIN_DIFF_RAILS until then.
+  const railsApp =
+    env.TWIN_DIFF_RAILS ?? getPath().join(Dir.pwd(), "rails/app");
+  const runnable =
+    getFs().existsSync(railsApp) &&
     getChildProcess().spawnSync("ruby", ["-e", 'require "prism"']).status === 0;
 
-  it.skipIf(!hasPrism)(
+  it.skipIf(!runnable)(
     "runs end to end over rails/ and app/",
     () => {
       const { join } = getPath();
@@ -222,6 +250,8 @@ describe("twin-diff", () => {
           out,
           "--area",
           "models,views",
+          "--rails",
+          railsApp,
         ],
         {
           encoding: "utf8",

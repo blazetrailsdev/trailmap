@@ -327,16 +327,30 @@ const SHIMS: Record<string, string> = {
 const isLitKey = (n: N | undefined) => !!n && (n.k === "sym" || n.k === "str");
 
 /**
- * Enum values the twin declares (`enum :status, …`), keyed by canonical name,
- * so `story.closed?` meets `story.status === "closed"`. A prefixed enum's
- * predicate (`visibility_public?`) is keyed by attribute + value.
+ * What one run knows about the twin, handed to every fold rather than kept in
+ * module state, so a fold answers the same however the process got here.
  */
-export const ENUM_VALUES = new Map<string, string>();
+export interface TwinContext {
+  /**
+   * Enum values the twin declares (`enum :status, …`), keyed by canonical
+   * name, so `story.closed?` meets `story.status === "closed"`. A prefixed
+   * enum's predicate (`visibility_public?`) is keyed by attribute + value.
+   */
+  enums: ReadonlyMap<string, string>;
+  /** Ruby Struct names the twin builds where TS writes an object literal. */
+  structs: ReadonlySet<string>;
+}
 
-/** Ruby Struct names the twin builds where TS writes an object literal; `cli.ts` fills it. */
-export const STRUCTS = new Set<string>();
+export const EMPTY_CONTEXT: TwinContext = {
+  enums: new Map(),
+  structs: new Set(),
+};
 
-export function foldCall(node: N, side: Side): Folded {
+export function foldCall(
+  node: N,
+  side: Side,
+  ctx: TwinContext = EMPTY_CONTEXT,
+): Folded {
   const name = canon(String(node.name));
   const recvName = constName(node.recv);
   const args: N[] = node.args ?? [];
@@ -363,6 +377,16 @@ export function foldCall(node: N, side: Side): Folded {
       idiom: "hash-key",
       visit: [...recvVisit, ...args, ...blockVisit],
     };
+  // `xs[0]`, `xs[-1]`: Ruby's `first` / `last`, which fold to `[]` too.
+  if (node.name === "[]" && args.length === 1 && args[0].k === "int")
+    return { concept: "[]", idiom: "index", visit: recvVisit };
+  if (
+    side === "ruby" &&
+    node.name === "new" &&
+    recvName &&
+    ctx.structs.has(recvName.split("::").pop()!)
+  )
+    return { concept: null, idiom: "struct-inline", visit: args };
 
   const shim = SHIMS[`${recvName}.${node.name}`];
   if (side === "ruby" && shim)

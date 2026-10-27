@@ -15,6 +15,7 @@
 import {
   argv as ARGV,
   Dir,
+  exit,
   getChildProcessAsync,
   getFs,
   getPath,
@@ -31,7 +32,7 @@ import {
   type Unit,
 } from "./model.ts";
 import { diffFeatures, features, type Feature } from "./features.ts";
-import { ENUM_VALUES, STRUCTS } from "./idioms.ts";
+import type { TwinContext } from "./idioms.ts";
 
 const fs = getFs();
 const { join } = getPath();
@@ -43,6 +44,14 @@ const opt = (name: string, dflt: string) => {
   return i >= 0 ? argv[i + 1] : dflt;
 };
 const OUT = opt("out", join(ROOT, "tmp/twin-diff"));
+// The Rails twin's app/, `rails/app` once the twin is on main; any checkout of it until then.
+const RAILS_APP = opt("rails", join(ROOT, "rails/app"));
+if (!fs.existsSync(RAILS_APP)) {
+  console.error(
+    `twin-diff: no Rails twin at ${RAILS_APP}; pass --rails <dir>/app`,
+  );
+  exit(2);
+}
 const AREAS = opt(
   "area",
   "models,controllers,helpers,serializers,jobs,views",
@@ -61,20 +70,20 @@ function files(dir: string, ext: string): string[] {
 }
 
 const rubyFiles = AREAS.flatMap((a: string) =>
-  files(join(ROOT, "rails/app", a), ".rb"),
+  files(join(RAILS_APP, a), ".rb"),
 );
 const tsFiles = AREAS.flatMap((a: string) =>
   files(join(ROOT, "app", a), ".ts"),
 );
 
 const erbFiles = AREAS.includes("views")
-  ? files(join(ROOT, "rails/app/views"), ".erb")
+  ? files(join(RAILS_APP, "views"), ".erb")
   : [];
 const ruby = child.spawnSync(
   "ruby",
   [
     join(ROOT, "scripts/twin-diff/ruby-ir.rb"),
-    join(ROOT, "rails/app"),
+    RAILS_APP,
     ...rubyFiles,
     ...erbFiles,
   ],
@@ -95,6 +104,7 @@ const tsUnits: Unit[] = tsFiles.flatMap((f: string) => {
   return extractUnits(rel, lowerTsFile(rel, fs.readFileSync(f, "utf8")), "ts");
 });
 
+const enums = new Map<string, string>();
 for (const u of rubyUnits)
   for (const d of u.decls.filter((d) => d.name === "enum")) {
     const attr = d.args[0]?.k === "sym" ? String(d.args[0].value) : null;
@@ -109,13 +119,39 @@ for (const u of rubyUnits)
           ? values.elems.map((e: N) => String(e.value))
           : [];
     for (const v of names)
-      ENUM_VALUES.set(
+      enums.set(
         prefixed && attr ? canon(attr + "_" + v) : canon(v),
         attr ?? "",
       );
   }
-for (const u of rubyUnits)
-  if (u.superclass === "Struct") STRUCTS.add(u.name.split("::").pop()!);
+/**
+ * Method names `rails/DEVIATIONS.md` explains, each with the heading of the
+ * entry that explains it: `` `js_round` `` under "**Rounding.**".
+ */
+const DOCUMENTED = new Map<string, string>();
+{
+  const doc = join(RAILS_APP, "..", "DEVIATIONS.md");
+  if (fs.existsSync(doc)) {
+    let entry = "DEVIATIONS.md";
+    for (const line of fs.readFileSync(doc, "utf8").split("\n")) {
+      const head = line.match(/^- \*\*(.+?)\*\*/);
+      if (head) entry = `DEVIATIONS.md "${head[1]}"`;
+      for (const [, code] of line.matchAll(
+        /`(?:[A-Z]\w*[.#])?([a-z_][a-z0-9_]*[?!]?)`/g,
+      ))
+        if (!DOCUMENTED.has(code)) DOCUMENTED.set(code, entry);
+    }
+  }
+}
+
+const ctx: TwinContext = {
+  enums,
+  structs: new Set(
+    rubyUnits
+      .filter((u) => u.superclass === "Struct")
+      .map((u) => u.name.split("::").pop()!),
+  ),
+};
 
 /** `models/concerns/dep_graph.rb` → `models/concerns/dep-graph.ts` */
 const twinPath = (rb: string) => rb.replace(/_/g, "-").replace(/\.rb$/, ".ts");
@@ -208,7 +244,8 @@ function findTwin(r: Unit): { unit: Unit | null; how: PairReport["how"] } {
   const elsewhere = r.name.includes("::")
     ? []
     : (tsByName.get(canon(lastSeg(r.name))) ?? []).filter(eligible);
-  if (elsewhere.length) return { unit: elsewhere[0], how: "relocated" };
+  // Only an unambiguous name is trusted to have moved rather than collided.
+  if (elsewhere.length === 1) return { unit: elsewhere[0], how: "relocated" };
   return { unit: null, how: "unpaired" };
 }
 
@@ -338,10 +375,9 @@ const BUILTIN = new Set(
 function score(m: MethodReport): number {
   let s = 0;
   for (const f of [...m.missing, ...m.extra]) {
-    const [kind, rest] = [
-      f.key.slice(0, f.key.indexOf(":") >>> 0 || f.key.length),
-      f.key.slice(f.key.indexOf(":") + 1),
-    ];
+    const colon = f.key.indexOf(":");
+    const kind = colon === -1 ? f.key : f.key.slice(0, colon);
+    const rest = colon === -1 ? "" : f.key.slice(colon + 1);
     if (kind === "raise") s += 3;
     else if (kind === "call") s += BUILTIN.has(rest) ? 0.5 : 2;
     else if (kind === "lit") s += /\s/.test(rest) ? 2 : 1;
@@ -363,8 +399,8 @@ function bodyReport(
   rb: N,
   tsb: N,
 ): MethodReport {
-  const rf = features(rb, "ruby");
-  const tf = features(tsb, "ts");
+  const rf = features(rb, "ruby", ctx);
+  const tf = features(tsb, "ts", ctx);
   // A Rails partial reads its parent's ivars; TS hands them over as locals. When
   // the Ruby body passes no locals at all, the TS ones are that decision.
   if (!rf.items.some((f) => f.key.startsWith("local:")))
@@ -576,12 +612,17 @@ for (const r of rubyUnits) {
       });
 
   // Constants. A class constant is often a module-level `const` in TS, and
-  // prefixed with the class's name there (`Rfc::STATUSES` is `RFC_STATUSES`).
+  // prefixed with the class's name there (`Rfc::STATUSES` is `RFC_STATUSES`):
+  // that prefix, exactly, and not any name that merely ends the same way.
   const tConsts = [...new Set([t, ...(tsByFile.get(t.file) ?? [])])].flatMap(
     (u) => [...u.consts.keys()].map(canon),
   );
   for (const [name] of r.consts)
-    if (!tConsts.some((c) => c === canon(name) || c.endsWith(canon(name))))
+    if (
+      !tConsts.some(
+        (c) => c === canon(name) || c === canon(lastSeg(r.name) + name),
+      )
+    )
       report.findings.push({
         tier: "surface",
         kind: "const-missing",
@@ -687,13 +728,14 @@ for (const r of rubyUnits) {
     compareMethod(m, c.method, c.unit, "renamed");
   }
   for (const m of unpairedMethods)
-    if (!renamed.has(m) && /^js_/.test(m.name))
-      // `js_round`, `js_number`: the twin's spelling of a JS number rule, which TS gets from the language.
+    if (!renamed.has(m) && DOCUMENTED.has(m.name))
+      // A helper the twin's DEVIATIONS.md records (`js_round`, `js_num`): a
+      // JS rule Ruby has to spell out. Reported under the entry, not hidden.
       report.findings.push({
         tier: "idiom",
-        kind: "ruby-shim",
+        kind: "documented-deviation",
         ruby: loc(r, m.line),
-        detail: m.name,
+        detail: `${m.name} — ${DOCUMENTED.get(m.name)}`,
       });
     else if (!renamed.has(m))
       report.findings.push({
@@ -837,8 +879,8 @@ function nameSimilarity(ruby: string, ts: string, unitName: string): number {
 }
 
 function bodySimilarity(rb: N, tb: N): number {
-  const a = features(rb, "ruby").items.map((f) => f.key);
-  const b = features(tb, "ts").items.map((f) => f.key);
+  const a = features(rb, "ruby", ctx).items.map((f) => f.key);
+  const b = features(tb, "ts", ctx).items.map((f) => f.key);
   if (!a.length && !b.length) return 0;
   const d = diffFeatures(
     a.map((key) => ({ key, line: 0 })),
@@ -887,7 +929,7 @@ for (const v of erbIr) {
     tsBody,
   );
   const markup = diffFeatures(
-    markupFeatures(fs.readFileSync(join(ROOT, "rails/app", v.file), "utf8")),
+    markupFeatures(fs.readFileSync(join(RAILS_APP, v.file), "utf8")),
     markupFeatures(tse),
   );
   m.missing.push(...markup.missing);

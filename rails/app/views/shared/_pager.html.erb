@@ -1,8 +1,0 @@
-<%# A list's page links. Nothing for a list that fits one page. %>
-<% if pager.pages > 1 %>
-  <nav class="pager" data-pages="<%= pager.pages %>" aria-label="Pages">
-    <% if pager.prev_href %><a class="pager-link" rel="prev" href="<%= pager.prev_href %>">&larr; Previous</a><% else %><span class="pager-link disabled">&larr; Previous</span><% end %>
-    <span class="pager-at"><%= pager.from %>&ndash;<%= pager.to %> of <%= pager.total %> &middot; page <%= pager.page %> of <%= pager.pages %></span>
-    <% if pager.next_href %><a class="pager-link" rel="next" href="<%= pager.next_href %>">Next &rarr;</a><% else %><span class="pager-link disabled">Next &rarr;</span><% end %>
-  </nav>
-<% end %>

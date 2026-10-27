@@ -5,10 +5,3 @@ node_modules
 log/*
 tmp/*
 dist
-# The Rails app's own build output and local state (rails/Dockerfile builds
-# from this directory too).
-rails/log/*
-rails/tmp/*
-rails/storage/*
-rails/public/assets
-rails/vendor/bundle
