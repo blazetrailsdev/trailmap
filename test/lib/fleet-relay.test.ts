@@ -10,7 +10,7 @@ import {
   PING_INTERVAL_MS,
   UPSTREAM_CONNECT_TIMEOUT_MS,
   relayEvents,
-} from "../../lib/fleet-relay.js";
+} from "../../lib/fleet-relay.ts";
 
 let server: HttpServer | null = null;
 

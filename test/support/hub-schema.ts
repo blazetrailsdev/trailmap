@@ -1,7 +1,7 @@
 import { env } from "@blazetrails/ruby-compat";
-import { Hub } from "../../app/models/hub.js";
-import { loadHubSchemas } from "../../app/models/index.js";
-import { Setting } from "../../app/models/setting.js";
+import { Hub } from "../../app/models/hub.ts";
+import { loadHubSchemas } from "../../app/models/index.ts";
+import { Setting } from "../../app/models/setting.ts";
 
 /**
  * Connect `Hub` to a throwaway Postgres database and empty it —

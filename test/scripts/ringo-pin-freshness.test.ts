@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
-import { ringoPinFreshness } from "../../scripts/ringo-pin-freshness.js";
+import { ringoPinFreshness } from "../../scripts/ringo-pin-freshness.ts";
 
 /**
  * The failure this covers is the one `SHA256` cannot see: the snapshot is

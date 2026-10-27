@@ -46,7 +46,7 @@
   "devDependencies": {
     "@blazetrails/trails-tsc": "file:vendor/blazetrails-trails-tsc-0.1.0.tgz",
     "tsx": "^4.20.0",
-    "typescript": "^5.7.0",
+    "typescript": "^5.8.0",
     "vite": "^7.0.0",
     "vitest": "^3.0.0"
   }

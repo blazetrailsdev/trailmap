@@ -8,9 +8,9 @@
  * would let one bad row block every verb that touches it.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { migrateScratchDatabase } from "./schema.js";
-import { Rfc, Story, StoryDep, StoryRfcDep, loadModelSchemas } from "../../app/models/index.js";
-import { effectiveStoryStatus } from "../../app/models/concerns/effective-status.js";
+import { migrateScratchDatabase } from "./schema.ts";
+import { Rfc, Story, StoryDep, StoryRfcDep, loadModelSchemas } from "../../app/models/index.ts";
+import { effectiveStoryStatus } from "../../app/models/concerns/effective-status.ts";
 import {
   MAX_EST_LOC,
   checkDepGraph,
@@ -19,7 +19,7 @@ import {
   estLocErrors,
   isTerminalStatus,
   lifecycleErrors,
-} from "../../app/models/concerns/semantic-validation.js";
+} from "../../app/models/concerns/semantic-validation.ts";
 
 // The RFC auto-close rule reports on stdout; the assertions read rows.
 vi.spyOn(console, "log").mockImplementation(() => {});

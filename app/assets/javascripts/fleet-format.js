@@ -37,7 +37,10 @@ export function statusClass(next) {
 
 /*
  * The pane status dot: green working, yellow waiting on an answer, red API
- * error, purple half-circle out of quota, muted ring idle. The limit dot is its own GLYPH
+ * error, purple half-circle out of quota, muted ring idle. An idle pane with
+ * text in its input box is `suggested` (Claude Code's own dimmed suggestion, a
+ * muted filled dot) or `draft` (typed by the operator and not sent, blue), and
+ * the dot's title carries that text, as ringo's `paneDot` does. The limit dot is its own GLYPH
  * as well as its own colour -- an exhausted agent looks idle in every other
  * way, and a dot that differed only by hue would be missed in a column of
  * them. Colours are the shell's tokens, not ringo's literal hexes.
@@ -49,7 +52,16 @@ const PANE_DOTS = {
   limit: ["var(--purple)", "◑", "hit its session/usage limit — stopped until the quota resets"],
 };
 
-export function paneDot(status) {
+const INPUT_DOTS = {
+  suggested: ["var(--muted)", "●"],
+  draft: ["var(--accent)", "●"],
+};
+
+export function paneDot(status, input = "") {
+  if (INPUT_DOTS[status] && input) {
+    const [color, glyph] = INPUT_DOTS[status];
+    return ' <span style="color:' + color + '" title="' + esc(status + ": " + input) + '">' + glyph + "</span>";
+  }
   const [color, glyph, title] = PANE_DOTS[status] || ["var(--muted)", "○", "idle"];
   return ' <span style="color:' + color + '" title="' + title + '">' + glyph + "</span>";
 }
@@ -77,7 +89,7 @@ export function paneHref(pane) {
  * row puts its agent chip -- as ringo's `paneLine` puts the agent's logo
  * (`dashboard.go:575`).
  */
-export function paneLine(label, pane, status, lead = "") {
+export function paneLine(label, pane, status, input = "", lead = "") {
   if (!pane) return "";
   const role = label === WORK_EMOJI ? "worker" : "reviewer";
   const href = paneHref(pane);
@@ -86,7 +98,7 @@ export function paneLine(label, pane, status, lead = "") {
     '<div class="pcell"><span class="plabel" title="' + role + '">' + label + "</span>" +
     '<span class="pval">' + lead +
     (href ? '<a class="pane-link" href="' + href + '" title="watch this pane live">' + id + "</a>" : id) +
-    paneDot(status) + "</span></div>"
+    paneDot(status, input) + "</span></div>"
   );
 }
 
@@ -192,7 +204,7 @@ export function reviewerLine(pr, reviewers = null) {
   if (!reviewers) return "";
   const entry = reviewers[reviewerKey(pr.owner, pr.repo, pr.pr)];
   const chip = entry ? agentChip(entry.agent, entry.blocked_by_usage) : "";
-  if (entry && entry.pane_id) return paneLine(REV_EMOJI, entry.pane_id, entry.pane_status, chip);
+  if (entry && entry.pane_id) return paneLine(REV_EMOJI, entry.pane_id, entry.pane_status, entry.pane_input, chip);
   const args = { owner: pr.owner, repo: pr.repo, pr: pr.pr, ...(entry ? { respawn: "1" } : {}) };
   const title = entry ? "Respawn the reviewer for this PR" : "Spawn a reviewer for this PR";
   return unassignedLine(REV_EMOJI, "reviewer", chip, control("add-reviewer", args, { cls: "add-pane", title, label: "+" }));
@@ -204,7 +216,7 @@ export function reviewerLine(pr, reviewers = null) {
  * worktree is resolved from it (`workerLine`, `dashboard.go:849`).
  */
 export function workerLine(pr) {
-  if (pr.pane) return paneLine(WORK_EMOJI, pr.pane, pr.paneStatus);
+  if (pr.pane) return paneLine(WORK_EMOJI, pr.pane, pr.paneStatus, pr.paneInput);
   if (!pr.branch) return "";
   const args = { owner: pr.owner, repo: pr.repo, pr: pr.pr, branch: pr.branch };
   const title = "Re-attach a worker to this PR's worktree";
@@ -817,7 +829,7 @@ export function rfcSpawnRow(s, now = Date.now()) {
     iconCls: s.pane_status === "waiting" ? "waiting" : "",
     title: '<a class="rtitle" href="' + url + '">' + esc(s.title || s.story_id) + "</a>" + label,
     meta: meta.join(" &middot; "),
-    panes: paneLine(WORK_EMOJI, s.pane, s.pane_status),
+    panes: paneLine(WORK_EMOJI, s.pane, s.pane_status, s.pane_input),
     cls: " spawn",
   });
 }
@@ -860,7 +872,7 @@ export function spawnRow(s, fixers = [], now = Date.now()) {
             label: "&times;",
           })
         : "",
-    panes: paneLine(WORK_EMOJI, s.pane, s.pane_status),
+    panes: paneLine(WORK_EMOJI, s.pane, s.pane_status, s.pane_input),
     cls: " spawn" + (failed ? " failed" : ""),
   });
 }

@@ -1,9 +1,9 @@
 import type { AbstractController } from "@blazetrails/actionpack";
 import { RecordNotFound } from "@blazetrails/activerecord";
-import { ApplicationController } from "./application-controller.js";
-import { Repository } from "../models/repository.js";
-import { viewerOf } from "./concerns/viewer.js";
-import { ALL_TABS_ENABLED, type TabSwitches } from "../models/repository-setting.js";
+import { ApplicationController } from "./application-controller.ts";
+import { Repository } from "../models/repository.ts";
+import { viewerOf } from "./concerns/viewer.ts";
+import { ALL_TABS_ENABLED, type TabSwitches } from "../models/repository-setting.ts";
 
 /** One entry of the tab bar. */
 export interface RepoTab {

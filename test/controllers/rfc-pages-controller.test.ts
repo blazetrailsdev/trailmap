@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { setX } from "../support/config-x.js";
+import { setX } from "../support/config-x.ts";
 import { ActionController } from "@blazetrails/actionpack";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 async function show(id: string): Promise<{ status: number; body: string }> {
   const tc = await controllerTestCase(RfcPagesController);

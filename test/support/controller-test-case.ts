@@ -32,13 +32,14 @@
  */
 import { ActionController, RouteSet } from "@blazetrails/actionpack";
 import { Trails } from "@blazetrails/trailties";
-import "../../config/application.js";
-import "../../config/routes.js";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { ApplicationHelper } from "../../app/helpers/application-helper.js";
-import { DeploysHelper } from "../../app/helpers/deploys-helper.js";
+import "../../config/application.ts";
+import "../../config/routes.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { ApplicationHelper } from "../../app/helpers/application-helper.ts";
+import { DeploysHelper } from "../../app/helpers/deploys-helper.ts";
+import { SessionsHelper } from "../../app/helpers/sessions-helper.ts";
 import { getFs } from "@blazetrails/ruby-compat";
-import { STYLESHEET, boxRules, classListsIn, collisionsInList, type BoxRules } from "../../scripts/class-collisions.js";
+import { STYLESHEET, boxRules, classListsIn, collisionsInList, type BoxRules } from "../../scripts/class-collisions.ts";
 
 let rules: Promise<BoxRules> | undefined;
 
@@ -58,7 +59,7 @@ async function assertNoClassCollisions(tc: ActionController.TestCase): Promise<v
 }
 
 ApplicationController.helper(function (this: object, mod?: object) {
-  Object.assign(mod ?? this, ApplicationHelper, DeploysHelper);
+  Object.assign(mod ?? this, ApplicationHelper, DeploysHelper, SessionsHelper);
 });
 
 type Controller = Parameters<typeof ActionController.TestCase.tests>[0] & {

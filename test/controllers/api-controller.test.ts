@@ -1,8 +1,8 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { ActionController, DebugExceptions, ExceptionWrapper } from "@blazetrails/actionpack";
 import { RecordNotFound } from "@blazetrails/activerecord";
-import { ReadModelsController } from "../../app/controllers/read-models-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { ReadModelsController } from "../../app/controllers/read-models-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 const BROWSER_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 

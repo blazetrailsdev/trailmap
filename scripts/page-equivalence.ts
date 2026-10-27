@@ -47,9 +47,9 @@
  */
 import { Base } from "@blazetrails/activerecord";
 import { argv, Dir, env, exit, getFs } from "@blazetrails/ruby-compat";
-import { tasksDatabaseConfig } from "../config/database.js";
-import { Rfc, Story, loadModelSchemas } from "../app/models/index.js";
-import { storyStatusCounts } from "../app/models/concerns/rfc-progress.js";
+import { tasksDatabaseConfig } from "../config/database.ts";
+import { Rfc, Story, loadModelSchemas } from "../app/models/index.ts";
+import { storyStatusCounts } from "../app/models/concerns/rfc-progress.ts";
 import {
   ROWS_FILE,
   SNAPSHOT_FILE,
@@ -58,7 +58,7 @@ import {
   encodeSnapshot,
   type PageRecord,
   type RowRecord,
-} from "./page-snapshot.js";
+} from "./page-snapshot.ts";
 import {
   diffFacts,
   extractRingoRfc,
@@ -70,7 +70,7 @@ import {
   trailmapRfcBars,
   type RfcPageFacts,
   type StoryPageFacts,
-} from "./page-extract.js";
+} from "./page-extract.ts";
 
 /**
  * How many ids are in flight at once. The database holds thousands of

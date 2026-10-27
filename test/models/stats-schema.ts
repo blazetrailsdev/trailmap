@@ -1,5 +1,5 @@
-import { Stats } from "../../app/models/stats.js";
-import { loadStatsSchemas } from "../../app/models/index.js";
+import { Stats } from "../../app/models/stats.ts";
+import { loadStatsSchemas } from "../../app/models/index.ts";
 
 /**
  * A scratch stats database, on the same adapter production uses.

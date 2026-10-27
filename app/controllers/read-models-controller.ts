@@ -1,7 +1,7 @@
-import { ApiController } from "./api-controller.js";
-import { Event, Rfc, Story } from "../models/index.js";
-import { serializeStories } from "../serializers/story-json.js";
-import { serializeRfcs } from "../serializers/rfc-json.js";
+import { ApiController } from "./api-controller.ts";
+import { Event, Rfc, Story } from "../models/index.ts";
+import { serializeStories } from "../serializers/story-json.ts";
+import { serializeRfcs } from "../serializers/rfc-json.ts";
 
 /**
  * The two read-models `index.json` and `events.json` carried, served whole.

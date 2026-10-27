@@ -1,10 +1,10 @@
-import { ApplicationRecord } from "./application-record.js";
-import { pinTimestampColumns } from "./timestamps.js";
-import { Event } from "./event.js";
-import { Rfc } from "./rfc.js";
-import { closeRfcIfComplete } from "./rfc-close.js";
-import { StoryDep, StoryPackage, StoryPath, StoryRfcDep } from "./joins.js";
-import { VerbExit } from "./verb-exit.js";
+import { ApplicationRecord } from "./application-record.ts";
+import { pinTimestampColumns } from "./timestamps.ts";
+import { Event } from "./event.ts";
+import { Rfc } from "./rfc.ts";
+import { closeRfcIfComplete } from "./rfc-close.ts";
+import { StoryDep, StoryPackage, StoryPath, StoryRfcDep } from "./joins.ts";
+import { VerbExit } from "./verb-exit.ts";
 import {
   bestBundle,
   claimableIn,
@@ -19,16 +19,16 @@ import {
   type EmptyBundleReason,
   type RankedStory,
   type RankingIndex,
-} from "./concerns/ranking.js";
+} from "./concerns/ranking.ts";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 import {
   checkDepGraph,
   depGraphMessages,
   estLocErrors,
   lifecycleErrors,
-} from "./concerns/semantic-validation.js";
+} from "./concerns/semantic-validation.ts";
 import type { Temporal } from "@blazetrails/date";
-import type { SerializedStory } from "../serializers/story-json.js";
+import type { SerializedStory } from "../serializers/story-json.ts";
 
 export const STORY_STATUSES = [
   "draft",

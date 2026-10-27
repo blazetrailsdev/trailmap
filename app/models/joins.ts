@@ -1,5 +1,5 @@
-import { ApplicationRecord } from "./application-record.js";
-import type { Story } from "./story.js";
+import { ApplicationRecord } from "./application-record.ts";
+import type { Story } from "./story.ts";
 
 /** Self-referential join: `story_id` depends on `depends_on_id`. */
 export class StoryDep extends ApplicationRecord {

@@ -9,7 +9,7 @@
  * thing standing between an injected `<script>` and the show page.
  */
 import { describe, expect, it } from "vitest";
-import { MarkdownHelper, renderMarkdown } from "../../app/helpers/markdown-helper.js";
+import { MarkdownHelper, renderMarkdown } from "../../app/helpers/markdown-helper.ts";
 
 const render = (src: string): string => renderMarkdown(src).toString();
 

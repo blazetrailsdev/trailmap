@@ -9,10 +9,10 @@
  * codes onto HTTP status.
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { MutationsController } from "../../app/controllers/mutations-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { MutationsController } from "../../app/controllers/mutations-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
  * A real POST with a JSON body, through `ActionController::TestCase`.

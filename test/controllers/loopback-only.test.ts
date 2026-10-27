@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import {
   isLoopbackRequest,
   requireLoopback,
-} from "../../app/controllers/concerns/loopback-only.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+} from "../../app/controllers/concerns/loopback-only.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 class ProbeController extends ApplicationController {
   static {

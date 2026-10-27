@@ -1,24 +1,24 @@
 import { registerModel } from "@blazetrails/activerecord";
-import { Rfc } from "./rfc.js";
-import { Story } from "./story.js";
-import { StoryDep, StoryPackage, StoryPath, StoryRfcDep } from "./joins.js";
-import { Event } from "./event.js";
-import { Meta } from "./meta.js";
-import { Owner } from "./owner.js";
-import { Repository } from "./repository.js";
-import { RepositorySetting } from "./repository-setting.js";
-import { RepositoryCollaborator } from "./repository-collaborator.js";
-import { Setting } from "./setting.js";
-import { ParityDay } from "./parity-day.js";
-import { Hub } from "./hub.js";
-import { PullRequest } from "./pull-request.js";
+import { Rfc } from "./rfc.ts";
+import { Story } from "./story.ts";
+import { StoryDep, StoryPackage, StoryPath, StoryRfcDep } from "./joins.ts";
+import { Event } from "./event.ts";
+import { Meta } from "./meta.ts";
+import { Owner } from "./owner.ts";
+import { Repository } from "./repository.ts";
+import { RepositorySetting } from "./repository-setting.ts";
+import { RepositoryCollaborator } from "./repository-collaborator.ts";
+import { Setting } from "./setting.ts";
+import { ParityDay } from "./parity-day.ts";
+import { Hub } from "./hub.ts";
+import { PullRequest } from "./pull-request.ts";
 import {
   ApiCallArgsStat,
   ApiCallsStat,
   ApiCompareStat,
   ApiComparePrivatesStat,
   TestCompareStat,
-} from "./compare-stats.js";
+} from "./compare-stats.ts";
 
 // Association targets are named by STRING (`belongsTo("rfc")`,
 // `hasMany("deps", { through: "storyDeps", source: "dependsOn" })`). Rails
@@ -137,39 +137,39 @@ export async function missingHubTables(): Promise<string[]> {
     .sort();
 }
 
-export { Rfc, RFC_STATUSES, type RfcStatus } from "./rfc.js";
-export { Story, STORY_STATUSES, RESOLVED_DEP_STATUSES, type StoryStatus } from "./story.js";
-export { StoryDep, StoryRfcDep, StoryPath, StoryPackage } from "./joins.js";
-export { Event } from "./event.js";
-export { Meta } from "./meta.js";
-export { Hub } from "./hub.js";
-export { Owner, OWNER_KINDS, type OwnerKind } from "./owner.js";
+export { Rfc, RFC_STATUSES, type RfcStatus } from "./rfc.ts";
+export { Story, STORY_STATUSES, RESOLVED_DEP_STATUSES, type StoryStatus } from "./story.ts";
+export { StoryDep, StoryRfcDep, StoryPath, StoryPackage } from "./joins.ts";
+export { Event } from "./event.ts";
+export { Meta } from "./meta.ts";
+export { Hub } from "./hub.ts";
+export { Owner, OWNER_KINDS, type OwnerKind } from "./owner.ts";
 export {
   Repository,
   REPOSITORY_VISIBILITIES,
   type RepositoryVisibility,
-} from "./repository.js";
+} from "./repository.ts";
 export {
   RepositorySetting,
   OPTIONAL_TABS,
   ALL_TABS_ENABLED,
   type OptionalTab,
   type TabSwitches,
-} from "./repository-setting.js";
+} from "./repository-setting.ts";
 export {
   RepositoryCollaborator,
   COLLABORATOR_ROLES,
   type CollaboratorRole,
-} from "./repository-collaborator.js";
-export { Setting } from "./setting.js";
-export { ParityDay, measureRow } from "./parity-day.js";
-export { Stats } from "./stats.js";
-export { PullRequest } from "./pull-request.js";
-export { CompareRun } from "./compare-run.js";
+} from "./repository-collaborator.ts";
+export { Setting } from "./setting.ts";
+export { ParityDay, measureRow } from "./parity-day.ts";
+export { Stats } from "./stats.ts";
+export { PullRequest } from "./pull-request.ts";
+export { CompareRun } from "./compare-run.ts";
 export {
   ApiCompareStat,
   ApiComparePrivatesStat,
   TestCompareStat,
   ApiCallsStat,
   ApiCallArgsStat,
-} from "./compare-stats.js";
+} from "./compare-stats.ts";

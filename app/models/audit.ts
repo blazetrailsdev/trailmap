@@ -3,7 +3,7 @@ import { RecordNotFound } from "@blazetrails/activerecord";
 import { include } from "@blazetrails/activesupport";
 import { getFs, getPath } from "@blazetrails/ruby-compat";
 import { Trails } from "@blazetrails/trailties";
-import { AUDIT_FILE_RE } from "../../config/audit-files.js";
+import { AUDIT_FILE_RE } from "../../config/audit-files.ts";
 
 export { AUDIT_FILE_RE };
 

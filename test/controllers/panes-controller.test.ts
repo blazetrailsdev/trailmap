@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { PanesController } from "../../app/controllers/panes-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { PanesController } from "../../app/controllers/panes-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
  * `/panes/<n>`, the live view of one tmux pane.

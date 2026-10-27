@@ -1,4 +1,4 @@
-import { Stats } from "./stats.js";
+import { Stats } from "./stats.ts";
 import type { Relation } from "@blazetrails/activerecord";
 
 /**

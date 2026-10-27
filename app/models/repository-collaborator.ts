@@ -1,6 +1,6 @@
-import { Hub } from "./hub.js";
-import type { Owner } from "./owner.js";
-import type { Repository } from "./repository.js";
+import { Hub } from "./hub.ts";
+import type { Owner } from "./owner.ts";
+import type { Repository } from "./repository.ts";
 import type { Relation } from "@blazetrails/activerecord";
 
 export const COLLABORATOR_ROLES = ["read", "write", "admin"] as const;

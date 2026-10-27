@@ -1,9 +1,9 @@
-import { ApplicationController } from "./application-controller.js";
-import { hasStatsDatabase } from "../../config/database.js";
-import { PARITY_METRICS, lookupParityMetric, type ParityMetric } from "../models/parity-metric.js";
-import { serializeParitySeries, type ParitySeries } from "../serializers/parity-json.js";
-import { ParityDay } from "../models/parity-day.js";
-import { refreshProjectionIfStale } from "../models/parity-refresh.js";
+import { ApplicationController } from "./application-controller.ts";
+import { hasStatsDatabase } from "../../config/database.ts";
+import { PARITY_METRICS, lookupParityMetric, type ParityMetric } from "../models/parity-metric.ts";
+import { serializeParitySeries, type ParitySeries } from "../serializers/parity-json.ts";
+import { ParityDay } from "../models/parity-day.ts";
+import { refreshProjectionIfStale } from "../models/parity-refresh.ts";
 
 /**
  * How many packages one request may chart.

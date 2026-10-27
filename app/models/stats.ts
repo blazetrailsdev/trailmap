@@ -1,4 +1,4 @@
-import { ApplicationRecord } from "./application-record.js";
+import { ApplicationRecord } from "./application-record.ts";
 
 /**
  * The base class of everything that lives in the trails stats database — the

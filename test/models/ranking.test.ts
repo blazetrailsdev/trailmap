@@ -7,8 +7,8 @@
  * anyone's work.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { migrateScratchDatabase } from "./schema.js";
-import { Rfc, Story, StoryDep, StoryPath, StoryRfcDep, loadModelSchemas } from "../../app/models/index.js";
+import { migrateScratchDatabase } from "./schema.ts";
+import { Rfc, Story, StoryDep, StoryPath, StoryRfcDep, loadModelSchemas } from "../../app/models/index.ts";
 import {
   bestBundle,
   claimableIn,
@@ -18,9 +18,9 @@ import {
   listFilteredIn,
   priorityContext,
   summarizeBundle,
-} from "../../app/models/concerns/ranking.js";
+} from "../../app/models/concerns/ranking.ts";
 
-import { serializeStories } from "../../app/serializers/story-json.js";
+import { serializeStories } from "../../app/serializers/story-json.ts";
 
 // The RFC auto-close rule reports on stdout; the assertions read rows.
 vi.spyOn(console, "log").mockImplementation(() => {});

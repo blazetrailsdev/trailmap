@@ -41,13 +41,13 @@
  */
 
 import { argv, Dir, env, exit, getChildProcessAsync, getFs, getPath, setEnv } from "@blazetrails/ruby-compat";
-import { Stats } from "../app/models/stats.js";
-import { ParityDay } from "../app/models/parity-day.js";
-import { ApplicationController } from "../app/controllers/application-controller.js";
-import { ParityGraphsController } from "../app/controllers/parity-graphs-controller.js";
-import { controllerTestCase } from "../test/support/controller-test-case.js";
-import { connectHubTestDatabase, hasHubTestDatabase, releaseHubTestDatabase } from "../test/support/hub-schema.js";
-import { createScratchStatsDatabase } from "../test/models/stats-schema.js";
+import { Stats } from "../app/models/stats.ts";
+import { ParityDay } from "../app/models/parity-day.ts";
+import { ApplicationController } from "../app/controllers/application-controller.ts";
+import { ParityGraphsController } from "../app/controllers/parity-graphs-controller.ts";
+import { controllerTestCase } from "../test/support/controller-test-case.ts";
+import { connectHubTestDatabase, hasHubTestDatabase, releaseHubTestDatabase } from "../test/support/hub-schema.ts";
+import { createScratchStatsDatabase } from "../test/models/stats-schema.ts";
 
 const fixture = argv.includes("--fixture");
 const selfTest = argv.includes("--self-test");

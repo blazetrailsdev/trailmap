@@ -1,8 +1,8 @@
 import { MimeType } from "@blazetrails/actionpack";
-import { ApiController } from "./api-controller.js";
-import { Story } from "../models/index.js";
-import { listFilteredIn, summarizeBundle } from "../models/concerns/ranking.js";
-import { serializeStories, type SerializedStory, type StoryJsonContext } from "../serializers/story-json.js";
+import { ApiController } from "./api-controller.ts";
+import { Story } from "../models/index.ts";
+import { listFilteredIn, summarizeBundle } from "../models/concerns/ranking.ts";
+import { serializeStories, type SerializedStory, type StoryJsonContext } from "../serializers/story-json.ts";
 
 /** `next-bundle`'s default budget, matching the CLI's `--max-loc` default. */
 const DEFAULT_MAX_LOC = 250;

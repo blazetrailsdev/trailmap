@@ -1,5 +1,5 @@
-import { RepoController } from "./repo-controller.js";
-import { eventsForRepo, storiesForRepo } from "../models/concerns/repo-scope.js";
+import { RepoController } from "./repo-controller.ts";
+import { eventsForRepo, storiesForRepo } from "../models/concerns/repo-scope.ts";
 
 /** How many events the tab shows. A run log is read from the top. */
 const RUN_LIMIT = 100;

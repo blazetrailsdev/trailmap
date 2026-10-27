@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { setX } from "../support/config-x.js";
+import { setX } from "../support/config-x.ts";
 import { setEnv } from "@blazetrails/ruby-compat";
 import {
   connectHubTestDatabase,
@@ -7,17 +7,17 @@ import {
   hasHubTestDatabase,
   releaseHubTestDatabase,
   truncateHub,
-} from "../support/hub-schema.js";
-import { Owner } from "../../app/models/owner.js";
-import { Repository } from "../../app/models/repository.js";
+} from "../support/hub-schema.ts";
+import { Owner } from "../../app/models/owner.ts";
+import { Repository } from "../../app/models/repository.ts";
 import {
   ALL_TABS_ENABLED,
   OPTIONAL_TABS,
   RepositorySetting,
-} from "../../app/models/repository-setting.js";
-import { Setting } from "../../app/models/setting.js";
-import { fleetRepos } from "../../config/fleet.js";
-import { RepositoryCollaborator } from "../../app/models/repository-collaborator.js";
+} from "../../app/models/repository-setting.ts";
+import { Setting } from "../../app/models/setting.ts";
+import { fleetRepos } from "../../config/fleet.ts";
+import { RepositoryCollaborator } from "../../app/models/repository-collaborator.ts";
 
 /**
  * The hub models, against a real Postgres database.

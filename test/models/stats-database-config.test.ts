@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { env } from "@blazetrails/ruby-compat";
-import { hasStatsDatabase, statsDatabaseConfig } from "../../config/database.js";
-import { connectToStatsDatabase } from "../../config/initializers/stats-database.js";
-import { writeProtocol } from "../../config/write-protocol.js";
+import { hasStatsDatabase, statsDatabaseConfig } from "../../config/database.ts";
+import { connectToStatsDatabase } from "../../config/initializers/stats-database.ts";
+import { writeProtocol } from "../../config/write-protocol.ts";
 
 describe("statsDatabaseConfig", () => {
   it("agrees with hasStatsDatabase", () => {

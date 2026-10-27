@@ -17,8 +17,8 @@
  * MESSAGES ARE PART OF THE CONTRACT, copied verbatim from validate-lib.mjs: a
  * content author should not be able to tell which half rejected them.
  */
-import type { Rfc } from "../rfc.js";
-import type { Story } from "../story.js";
+import type { Rfc } from "../rfc.ts";
+import type { Story } from "../story.ts";
 
 /**
  * Upper bound on a story's `est-loc`, mirroring btwhooks' PR_MAX_LOC — the

@@ -5,10 +5,10 @@
  * structs that parsed those files are reused verbatim against these responses.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { ReadModelsController } from "../../app/controllers/read-models-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { ReadModelsController } from "../../app/controllers/read-models-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 async function get(
   action: string,

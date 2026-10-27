@@ -1,6 +1,6 @@
-import { RepoController } from "./repo-controller.js";
-import { eventsForRepo, storiesForRepo } from "../models/concerns/repo-scope.js";
-import { STORY_STATUSES } from "../models/story.js";
+import { RepoController } from "./repo-controller.ts";
+import { eventsForRepo, storiesForRepo } from "../models/concerns/repo-scope.ts";
+import { STORY_STATUSES } from "../models/story.ts";
 
 /** How far back the activity figures look. GitHub's Pulse offers a month. */
 const WINDOW_DAYS = 30;

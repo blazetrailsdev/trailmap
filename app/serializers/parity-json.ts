@@ -1,4 +1,4 @@
-import type { ParityDay } from "../models/parity-day.js";
+import type { ParityDay } from "../models/parity-day.ts";
 
 /** One package's standing at the end of one day, as the chart reads it. */
 export interface ParityPoint {

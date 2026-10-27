@@ -135,6 +135,37 @@ describe("paneDot", () => {
     expect(paneDot(undefined)).toContain("○");
     expect(paneDot("nonsense")).toContain("var(--muted)");
   });
+
+  it("draws a suggestion as a muted filled dot titled with its text", () => {
+    const dot = paneDot("suggested", "run the tests");
+    expect(dot).toContain("●");
+    expect(dot).toContain("var(--muted)");
+    expect(dot).toContain('title="suggested: run the tests"');
+  });
+
+  it("draws an unsent draft as a blue filled dot titled with its text", () => {
+    const dot = paneDot("draft", "fix the typo");
+    expect(dot).toContain("●");
+    expect(dot).toContain("var(--accent)");
+    expect(dot).toContain('title="draft: fix the typo"');
+  });
+
+  it("escapes the input text in the title attribute", () => {
+    const dot = paneDot("draft", '"><script>x</script>');
+    expect(dot).not.toContain("<script>");
+    expect(dot).toContain("&quot;&gt;&lt;script&gt;");
+  });
+
+  it("falls back to the idle ring when a suggested or draft pane has no text", () => {
+    for (const status of ["suggested", "draft"]) {
+      expect(paneDot(status)).toContain("○");
+      expect(paneDot(status, "")).toContain('title="idle"');
+    }
+  });
+
+  it("passes each row's input text through paneLine to the dot", () => {
+    expect(paneLine("💪", "%214", "draft", "half typed")).toContain('title="draft: half typed"');
+  });
 });
 
 describe("ciIcon", () => {
@@ -200,7 +231,7 @@ describe("paneLine", () => {
   });
 
   it("puts a lead -- the reviewer's agent chip -- before the id, as ringo does", () => {
-    const line = paneLine("📋", "%215", "idle", '<span class="agent-chip">claude</span>');
+    const line = paneLine("📋", "%215", "idle", "", '<span class="agent-chip">claude</span>');
 
     expect(line).toContain('<span class="pval"><span class="agent-chip">claude</span><a ');
   });

@@ -18,7 +18,7 @@
  * `TASKS_DIR` is `config.x.tasks.dir`; the database path is config/database.ts's.
  */
 import { Trails } from "@blazetrails/trailties";
-import { tasksDatabasePath } from "./database.js";
+import { tasksDatabasePath } from "./database.ts";
 
 /** The tasks checkout, or null when neither variable names one. */
 export function tasksContentDir(): string | null {

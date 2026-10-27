@@ -1,6 +1,6 @@
 import { Trails } from "@blazetrails/trailties";
-import { AUDIT_SEGMENT } from "./audit-files.js";
-import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "./owner-names.js";
+import { AUDIT_SEGMENT } from "./audit-files.ts";
+import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "./owner-names.ts";
 
 // Re-exported so `test/routes.test.ts` and anything reading the route table
 // can reach them from here, where they are used.
@@ -73,6 +73,12 @@ Trails.application!.routes().draw(function () {
   // log URL, `?id=`, is kept so a link copied from either page works on both.
   this.get("deploys", { to: "deploys#index" });
   this.get("deploys/log", { to: "deploys#log" });
+
+  // The session archive, relayed read-only from ringo (SessionsController):
+  // the index, one PR's archives at ringo's own path, and ringo's JSON.
+  this.get("sessions", { to: "sessions#index" });
+  this.get("sessions/:owner/:repo/:pr", { to: "sessions#show", constraints: { pr: /\d+/ } });
+  this.get("api/sessions", { to: "sessions#api" });
 
   // The list pages. Plural, and they come BEFORE the singular show routes only
   // by convention — the patterns cannot collide. The status/filter tab is a

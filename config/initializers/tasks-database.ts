@@ -1,7 +1,7 @@
 import { Base } from "@blazetrails/activerecord";
 import { env } from "@blazetrails/ruby-compat";
-import { hasTasksDatabase, tasksDatabaseConfig } from "../database.js";
-import { loadModelSchemas } from "../../app/models/index.js";
+import { hasTasksDatabase, tasksDatabaseConfig } from "../database.ts";
+import { loadModelSchemas } from "../../app/models/index.ts";
 
 /**
  * Point the models at the CLI's live `tasks.db` when `TASKS_DATABASE` names

@@ -1,8 +1,8 @@
 import { env, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
-import { ApiController } from "./api-controller.js";
-import { Story } from "../models/index.js";
-import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.js";
-import { tasksContentDir } from "../../config/tasks-content.js";
+import { ApiController } from "./api-controller.ts";
+import { Story } from "../models/index.ts";
+import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.ts";
+import { tasksContentDir } from "../../config/tasks-content.ts";
 
 /** One check's verdict. `error` is present exactly when `ok` is false. */
 export interface Check {

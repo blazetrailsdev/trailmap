@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 beforeAll(() => {
   ApplicationController.prependViewPath("app/views");

@@ -21,7 +21,7 @@
  * re-record produces a diff that reads page by page. Records carry no
  * timestamp for the same reason.
  */
-import type { RfcPageFacts, StoryPageFacts } from "./page-extract.js";
+import type { RfcPageFacts, StoryPageFacts } from "./page-extract.ts";
 
 /** Where the recorded facts live, relative to the repository root. */
 export const SNAPSHOT_FILE = "test/fixtures/ringo-show-pages.ndjson";

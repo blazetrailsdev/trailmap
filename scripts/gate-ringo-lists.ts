@@ -57,21 +57,21 @@
 import { Base } from "@blazetrails/activerecord";
 import { ActionController } from "@blazetrails/actionpack";
 import { argv, Dir, env, exit, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
-import { verifyRingoPin } from "./ringo-pin.js";
-import type { RfcListRow, StoryListRow } from "./page-extract.js";
+import { verifyRingoPin } from "./ringo-pin.ts";
+import type { RfcListRow, StoryListRow } from "./page-extract.ts";
 import {
   diffFacts,
   ringoRfcRows,
   ringoStoryRows,
   trailmapRfcRows,
   trailmapStoryRows,
-} from "./page-extract.js";
-import { tasksDatabaseConfig } from "../config/database.js";
-import { loadModelSchemas } from "../app/models/index.js";
-import { ApplicationController } from "../app/controllers/application-controller.js";
-import { RfcPagesController } from "../app/controllers/rfc-pages-controller.js";
-import { StoryPagesController } from "../app/controllers/story-pages-controller.js";
-import { controllerTestCase } from "../test/support/controller-test-case.js";
+} from "./page-extract.ts";
+import { tasksDatabaseConfig } from "../config/database.ts";
+import { loadModelSchemas } from "../app/models/index.ts";
+import { ApplicationController } from "../app/controllers/application-controller.ts";
+import { RfcPagesController } from "../app/controllers/rfc-pages-controller.ts";
+import { StoryPagesController } from "../app/controllers/story-pages-controller.ts";
+import { controllerTestCase } from "../test/support/controller-test-case.ts";
 
 /** The RFC list's tabs are RFC statuses; ringo names its counters `cnt-<status>`. */
 const RFC_TABS = ["active", "draft", "postponed", "closed", "superseded"] as const;

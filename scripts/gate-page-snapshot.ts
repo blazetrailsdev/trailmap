@@ -44,10 +44,10 @@
 import { ActionController } from "@blazetrails/actionpack";
 import { Base, MigrationContext } from "@blazetrails/activerecord";
 import { argv, Dir, exit, getFs, getPath } from "@blazetrails/ruby-compat";
-import { loadModelSchemas } from "../app/models/index.js";
-import { ApplicationController } from "../app/controllers/application-controller.js";
-import { RfcPagesController } from "../app/controllers/rfc-pages-controller.js";
-import { StoryPagesController } from "../app/controllers/story-pages-controller.js";
+import { loadModelSchemas } from "../app/models/index.ts";
+import { ApplicationController } from "../app/controllers/application-controller.ts";
+import { RfcPagesController } from "../app/controllers/rfc-pages-controller.ts";
+import { StoryPagesController } from "../app/controllers/story-pages-controller.ts";
 import {
   diffFacts,
   extractTrailmapRfc,
@@ -55,7 +55,7 @@ import {
   trailmapStoryPill,
   type RfcPageFacts,
   type StoryPageFacts,
-} from "./page-extract.js";
+} from "./page-extract.ts";
 import {
   ROWS_FILE,
   SNAPSHOT_FILE,
@@ -66,8 +66,8 @@ import {
   type RfcRecord,
   type RowRecord,
   type StoryRecord,
-} from "./page-snapshot.js";
-import { controllerTestCase } from "../test/support/controller-test-case.js";
+} from "./page-snapshot.ts";
+import { controllerTestCase } from "../test/support/controller-test-case.ts";
 
 /** How many mismatching ids to print before saying how many more there are. */
 const REPORTED = 20;

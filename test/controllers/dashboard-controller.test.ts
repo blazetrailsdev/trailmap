@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { setX } from "../support/config-x.js";
+import { setX } from "../support/config-x.ts";
 import { ActionController } from "@blazetrails/actionpack";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { DashboardController } from "../../app/controllers/dashboard-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { DashboardController } from "../../app/controllers/dashboard-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
  * `/dashboard`, the fleet dashboard ported from ringo's `/`.

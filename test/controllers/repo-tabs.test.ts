@@ -1,36 +1,36 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { setX } from "../support/config-x.js";
+import { setX } from "../support/config-x.ts";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
 import { Notifications } from "@blazetrails/activesupport";
 import { RecordNotFound } from "@blazetrails/activerecord";
-import { migrateScratchDatabase } from "../models/schema.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
 import {
   connectHubTestDatabase,
   HUB_SETUP_TIMEOUT,
   hasHubTestDatabase,
   releaseHubTestDatabase,
-} from "../support/hub-schema.js";
-import { Rfc, Story, Event, StoryPath, loadModelSchemas } from "../../app/models/index.js";
-import { Owner } from "../../app/models/owner.js";
-import { Repository } from "../../app/models/repository.js";
-import { RepositorySetting } from "../../app/models/repository-setting.js";
-import { RepositoryCollaborator } from "../../app/models/repository-collaborator.js";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { OwnersController } from "../../app/controllers/owners-controller.js";
-import { RepoCodeController } from "../../app/controllers/repo-code-controller.js";
+} from "../support/hub-schema.ts";
+import { Rfc, Story, Event, StoryPath, loadModelSchemas } from "../../app/models/index.ts";
+import { Owner } from "../../app/models/owner.ts";
+import { Repository } from "../../app/models/repository.ts";
+import { RepositorySetting } from "../../app/models/repository-setting.ts";
+import { RepositoryCollaborator } from "../../app/models/repository-collaborator.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { OwnersController } from "../../app/controllers/owners-controller.ts";
+import { RepoCodeController } from "../../app/controllers/repo-code-controller.ts";
 import {
   ISSUES_PAGE_SIZE,
   RepoIssuesController,
-} from "../../app/controllers/repo-issues-controller.js";
-import { RepoPullsController } from "../../app/controllers/repo-pulls-controller.js";
-import { RepoActionsController } from "../../app/controllers/repo-actions-controller.js";
-import { RepoProjectsController } from "../../app/controllers/repo-projects-controller.js";
-import { RepoWikiController } from "../../app/controllers/repo-wiki-controller.js";
-import { RepoInsightsController } from "../../app/controllers/repo-insights-controller.js";
-import { RepoSettingsController } from "../../app/controllers/repo-settings-controller.js";
-import { DashboardController } from "../../app/controllers/dashboard-controller.js";
-import { Setting } from "../../app/models/setting.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+} from "../../app/controllers/repo-issues-controller.ts";
+import { RepoPullsController } from "../../app/controllers/repo-pulls-controller.ts";
+import { RepoActionsController } from "../../app/controllers/repo-actions-controller.ts";
+import { RepoProjectsController } from "../../app/controllers/repo-projects-controller.ts";
+import { RepoWikiController } from "../../app/controllers/repo-wiki-controller.ts";
+import { RepoInsightsController } from "../../app/controllers/repo-insights-controller.ts";
+import { RepoSettingsController } from "../../app/controllers/repo-settings-controller.ts";
+import { DashboardController } from "../../app/controllers/dashboard-controller.ts";
+import { Setting } from "../../app/models/setting.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
  * The eight repo tabs and the owner page, end to end through the framework's

@@ -8,8 +8,8 @@
  * they are parsed here rather than being handed through — a consumer reading
  * `packages` expects a list, not the string `["activerecord"]`.
  */
-import type { Rfc } from "../models/index.js";
-import { isoMidnight, integerOrNull } from "./story-json.js";
+import type { Rfc } from "../models/index.ts";
+import { isoMidnight, integerOrNull } from "./story-json.ts";
 
 export interface RfcJson {
   id: string;

@@ -12,11 +12,11 @@
  * printing it: the model decides, the caller reports.
  */
 export class VerbExit extends Error {
-  constructor(
-    readonly code: number,
-    message: string,
-  ) {
+  readonly code: number;
+
+  constructor(code: number, message: string) {
     super(message);
+    this.code = code;
     this.name = "VerbExit";
   }
 }

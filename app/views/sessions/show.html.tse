@@ -1,0 +1,50 @@
+<div class="page-header">
+  <h1 class="page-title session-pr"><%= owner %>/<%= repo %>#<%= pr %></h1>
+  <div class="page-subhead">
+    <% if (problem === null && archives.length > 0) { %>
+      <span class="muted"><%= archives.length %> archived pane(s). A PR reworked by more than one agent has one archive per pane.</span>
+    <% } %>
+    <a href="/sessions">All sessions</a>
+  </div>
+</div>
+
+<% if (problem !== null) { %>
+  <div class="card ci-fixer paused">
+    <div class="card-head"><span class="card-title">No session data</span></div>
+    <div class="field-note"><%= problem %></div>
+  </div>
+<% } else if (archives.length === 0) { %>
+  <div class="card"><div class="field-note">No archive recorded for this PR.</div></div>
+<% } else { %>
+  <% for (const archive of archives) { %>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">pane <%= archive.pane %> · <%= orDash(archive.branch) %></span>
+        <span class="muted"><%= sessionTime(archive.row.opened_at) %> → <%= archive.isOpen() ? "open" : `closed (${archive.reason})` %> · <%= shortDur(archive.duration(now)) %> · <%= money(archive.cost) %> · cwd <%= orDash(archive.cwd) %></span>
+      </div>
+      <% if (archive.paneLog !== "") { %>
+        <div class="field-note">Pane log: <%= humanBytes(archive.paneLogBytes) %><% if (archive.truncated) { %> <span class="session-pill trunc">truncated at the size cap</span><% } %></div>
+      <% } %>
+      <% if (archive.transcripts.length === 0) { %>
+        <div class="field-note">No transcripts pinned.</div>
+      <% } else { %>
+        <div class="session-scroll"><table class="session-table">
+          <thead><tr><th>Session</th><th>Role</th><th>First</th><th>Last</th><th>Turns</th><th>Size</th><th>Cost</th></tr></thead>
+          <tbody>
+            <% for (const t of archive.transcripts) { %>
+              <tr>
+                <td><code><%= shortId(t.session_id) %></code></td>
+                <td><% if (t.role === "agent" || t.role === "reviewer") { %><span class="session-role <%= t.role %>"><%= t.role %></span><% } %></td>
+                <td><%= sessionTime(t.first_at) %></td>
+                <td><%= sessionTime(t.last_at) %></td>
+                <td><%= t.user_turns ?? 0 %></td>
+                <td><%= humanBytes(t.bytes) %></td>
+                <td><%= money(t.cost ?? 0) %></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table></div>
+      <% } %>
+    </div>
+  <% } %>
+<% } %>

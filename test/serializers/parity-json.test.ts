@@ -11,10 +11,10 @@
  * is a chart that draws wrong rather than a test that fails.
  */
 import { describe, expect, it } from "vitest";
-import type { ParityDay } from "../../app/models/parity-day.js";
-import { measureRow } from "../../app/models/parity-day.js";
-import { lookupParityMetric } from "../../app/models/parity-metric.js";
-import { serializeParitySeries } from "../../app/serializers/parity-json.js";
+import type { ParityDay } from "../../app/models/parity-day.ts";
+import { measureRow } from "../../app/models/parity-day.ts";
+import { lookupParityMetric } from "../../app/models/parity-metric.ts";
+import { serializeParitySeries } from "../../app/serializers/parity-json.ts";
 
 /** A projected row, as `ParityDay.forChart` hands it over: already measured. */
 function projected(attributes: Record<string, unknown>): ParityDay {

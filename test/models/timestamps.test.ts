@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { migrateScratchDatabase } from "./schema.js";
-import { pinTimestampColumns } from "../../app/models/timestamps.js";
-import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
+import { migrateScratchDatabase } from "./schema.ts";
+import { pinTimestampColumns } from "../../app/models/timestamps.ts";
+import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
 
 beforeAll(async () => {
   await migrateScratchDatabase();

@@ -1,4 +1,4 @@
-import { ApplicationRecord } from "./application-record.js";
+import { ApplicationRecord } from "./application-record.ts";
 
 /** Key/value watermarks. `last_ingested_sha` makes `tasks ingest` incremental. */
 export class Meta extends ApplicationRecord {

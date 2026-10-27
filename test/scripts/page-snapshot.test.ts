@@ -10,7 +10,7 @@ import {
   type PageRecord,
   type RowRecord,
   type StoryRecord,
-} from "../../scripts/page-snapshot.js";
+} from "../../scripts/page-snapshot.ts";
 
 /**
  * The fixture format, over fixed records rather than over the 8,953-page
