@@ -115,8 +115,10 @@ the owner/repository hierarchy is **Postgres**, under `Hub`
   produce byte-identical output over one database. A difference is a defect in
   the port, not a variance to tolerate.
 - Views are `.tse` templates under `app/views`, compiled by
-  `pnpm exec trails-tsc-views build --views app/views`. Rebuild after editing
-  one; a stale build is a confusing failure.
+  `pnpm views` (app views and test fixtures). Rebuild after editing one; a
+  stale build is a confusing failure. It boots the initializers, so it needs
+  both database variables; it is deliberately not a `prepare` hook, so
+  `pnpm install` never needs a database.
 
 ## Story state lives in a database
 
