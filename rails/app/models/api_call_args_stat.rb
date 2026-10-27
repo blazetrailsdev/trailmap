@@ -1,0 +1,2 @@
+class ApiCallArgsStat < CompareRun
+end

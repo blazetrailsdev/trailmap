@@ -1,0 +1,70 @@
+# Three databases, as trailmap has them (../README.md, "Two databases, two
+# adapters, and a third connection"):
+#
+#   primary  the task domain — the tasks CLI's live tasks.db (TASKS_DATABASE)
+#   hub      the owner/repository hierarchy, PostgreSQL (HUB_DATABASE_URL)
+#   stats    the trails comparison stats, read-only (STATS_DB, optional)
+#
+# Rails spells this as database.yml entries and `connects_to`; trails
+# establishes each connection by hand from an initializer
+# (../config/initializers/*-database.ts). DEVIATIONS.md has the why.
+#
+# `database_tasks: false` on the live tasks.db and on stats: `bin/rails
+# db:migrate` must never migrate or drop a file the tasks CLI or the stats
+# cron owns. The test environment migrates its own scratch copy of each.
+sqlite: &sqlite
+  adapter: sqlite3
+  # One writer at a time: ../config/write-protocol.ts.
+  pool: 1
+  timeout: 5000
+  pragmas:
+    journal_mode: wal
+
+hub: &hub
+  adapter: postgresql
+  migrations_paths: db/hub_migrate
+
+development:
+  primary:
+    <<: *sqlite
+    database: <%= ENV.fetch("TASKS_DATABASE") { "storage/development.sqlite3" }.strip %>
+    database_tasks: <%= ENV["TASKS_DATABASE"].to_s.strip.empty? %>
+  hub:
+    <<: *hub
+    url: <%= ENV["HUB_DATABASE_URL"] %>
+  stats:
+    <<: *sqlite
+    database: <%= ENV.fetch("STATS_DB") { "storage/stats.sqlite3" } %>
+    readonly: true
+    database_tasks: false
+
+test:
+  primary:
+    <<: *sqlite
+    database: storage/test.sqlite3
+  hub:
+    <<: *hub
+    url: <%= ENV["HUB_TEST_DATABASE_URL"] %>
+  stats:
+    <<: *sqlite
+    database: storage/test_stats.sqlite3
+    migrations_paths: db/stats_migrate
+
+production:
+  # READ-ONLY, enforced by SQLite: the deployed Rails app reads the CLI's live
+  # tasks.db and must not write it until both apps' writers are fixed and
+  # compared (DEVIATIONS.md, "every mutation verb refuses a request"). The
+  # mutation verbs answer 500 here, by design.
+  primary:
+    <<: *sqlite
+    database: <%= ENV["TASKS_DATABASE"].to_s.strip %>
+    readonly: true
+    database_tasks: false
+  hub:
+    <<: *hub
+    url: <%= ENV["HUB_DATABASE_URL"] %>
+  stats:
+    <<: *sqlite
+    database: <%= ENV["STATS_DB"] %>
+    readonly: true
+    database_tasks: false

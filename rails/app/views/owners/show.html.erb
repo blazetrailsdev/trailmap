@@ -1,0 +1,26 @@
+<div class="page-header">
+  <h1 class="page-title"><%= @owner.title %> <span class="tag"><%= @owner.kind %></span></h1>
+  <div class="page-subhead">
+    <span class="muted"><code><%= @owner.login %></code><% if @owner.description.present? %> &middot; <%= @owner.description %><% end %></span>
+  </div>
+</div>
+
+<div class="box">
+  <% if @rows.empty? %>
+    <div class="empty">No repositories.</div>
+  <% end %>
+  <% @rows.each do |row| %>
+    <div class="item-row">
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title" href="<%= row.href %>"><%= row.name %></a>
+          <% if row.visibility != "public" %><span class="tag"><%= row.visibility %></span><% end %>
+          <% if row.archived %><span class="tag">archived</span><% end %>
+          <% if row.open_count.positive? %><span class="tag prog" title="open stories"><%= row.open_count %> open</span><% end %>
+        </span>
+        <% if row.description.present? %><div class="row-meta"><%= row.description %></div><% end %>
+        <div class="row-meta"><code><%= row.default_branch %></code></div>
+      </span>
+    </div>
+  <% end %>
+</div>

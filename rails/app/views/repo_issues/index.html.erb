@@ -1,0 +1,32 @@
+<%= render "shared/repo_header" %>
+
+<%= render "shared/filter_tabs", tabs: [
+  RfcPagesController::Tab.new(href: "/#{@nwo}/issues?state=open", label: "Open", count: @tab_counts[:open], active: @state == "open"),
+  RfcPagesController::Tab.new(href: "/#{@nwo}/issues?state=closed", label: "Closed", count: @tab_counts[:closed], active: @state == "closed"),
+] %>
+
+<div class="box">
+  <% if @rows.empty? %>
+    <div class="empty">No <%= @state %> issues.</div>
+  <% end %>
+  <% @rows.each do |row| %>
+    <div class="item-row">
+      <span class="row-main">
+        <span class="titleline">
+          <a class="row-title" href="/<%= @nwo %>/issues/<%= row.id %>"><%= row.title %></a>
+          <%= render "shared/status_badge", status: row.status %>
+          <% unless row.priority.nil? %><span class="tag prio" title="story priority (lower = sooner)">P<%= row.priority %></span><% end %>
+          <% if row.est_loc.to_i != 0 %><span class="tag" title="estimated lines"><%= row.est_loc %> loc</span><% end %>
+        </span>
+        <div class="row-meta">
+          <code><%= row.id %></code>
+          &middot; <a href="/rfc/<%= row.rfc_id %>"><%= row.rfc_id %></a>
+          <% if row.pr.present? %> &middot; <%= row.pr %><% end %>
+          <% if row.assignee.present? %> &middot; <%= row.assignee %><% end %>
+        </div>
+      </span>
+    </div>
+  <% end %>
+</div>
+
+<%= render "shared/pager", pager: @pager %>

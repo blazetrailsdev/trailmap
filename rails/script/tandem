@@ -1,0 +1,105 @@
+#!/usr/bin/env ruby
+# Compare the trails app and the Rails app, path by path, against the same
+# databases. The two must answer identically; a difference is a defect in one
+# of them (../CLAUDE.md, "`rails/` is the same site in Rails").
+#
+#   script/tandem [--trails URL] [--rails URL] [--diff] [PATH...]
+#
+# JSON is compared as bytes. HTML is compared inside <main>, with whitespace
+# between and inside text collapsed and comments dropped: the layouts differ
+# on purpose (asset tags, the footer), and ERB and `.tse` lay out whitespace
+# differently, which no reader can see.
+require "bundler/setup"
+require "json"
+require "net/http"
+require "nokogiri"
+require "optparse"
+require "tempfile"
+
+trails = "http://localhost:4100"
+rails = "http://localhost:4200"
+show_diff = false
+OptionParser.new do |o|
+  o.on("--trails URL") { |v| trails = v }
+  o.on("--rails URL") { |v| rails = v }
+  o.on("--diff", "print a unified diff for each difference") { show_diff = true }
+end.parse!
+
+DEFAULT_PATHS = %w[
+  /stories/ready /stories/next-bundle /stories/next-bundle?max-loc=700 /stories /stories?status=ready
+  /stories?status=draft /stories/touching?path=packages/activerecord /index /events
+  / /rfcs /rfcs?status=draft /rfcs?status=closed /backlog /backlog?filter=ready /backlog?filter=done&page=2
+  /backlog?filter=icebox /search?q=serialize /search?q=has_many&page=2 /graphs/parity /audits /deploys
+  /dashboard /panes/42
+  /blazetrailsdev /blazetrailsdev/trails /blazetrailsdev/trails/issues /blazetrailsdev/trails/issues?state=closed
+  /blazetrailsdev/trails/pulls /blazetrailsdev/trails/pulls?state=merged /blazetrailsdev/trails/projects
+  /blazetrailsdev/trails/actions /blazetrailsdev/trails/pulse /blazetrailsdev/trails/settings
+  /blazetrailsdev/tasks/wiki /blazetrailsdev/trailmap/issues
+].freeze
+
+def fetch(base, path)
+  uri = URI(base + path)
+  Net::HTTP.start(uri.host, uri.port, read_timeout: 120) do |http|
+    req = Net::HTTP::Get.new(uri)
+    req["Host"] = "127.0.0.1:#{uri.port}" # the JSON API answers loopback only
+    http.request(req)
+  end
+end
+
+# Differences that are on purpose, each with its reason. Applied to both
+# sides before comparing; anything not listed here is a defect.
+INTENDED = [
+  # Each app names the framework serving it.
+  [ /served by (trails|Rails)/, "served by FRAMEWORK" ],
+  # Vite serves an asset by its source path in development and as
+  # `name-<8 chars>` in production, and names ringo's chart entries
+  # `ringo-parity*` (vite.config.ts). Propshaft fingerprints with 8 hex digits.
+  [ %r{/assets/ringo-parity-css-}, "/assets/parity-" ],
+  [ %r{/assets/ringo-parity-}, "/assets/parity-draw-" ],
+  [ %r{/assets/(?:javascripts/|stylesheets/)?([a-z-]+?)(?:-[A-Za-z0-9_-]{8})?\.(js|css)}, '/assets/\\1.\\2' ],
+  # A pointer to a file that exists only in the TypeScript app.
+  [ / — see<code>config\/initializers\/stats-database\.ts<\/code>\./, "." ]
+].freeze
+
+def comparable(response)
+  return response.body unless response["Content-Type"].to_s.include?("html")
+  doc = Nokogiri::HTML(response.body)
+  main = doc.at("main") || doc.at("body") || doc
+  main.xpath(".//comment()").each(&:remove)
+  main.to_html.gsub(/\s+/, " ").gsub(/>\s+</, "><").gsub(/>\s+/, ">").gsub(/\s+</, "<").gsub("><", ">\n<")
+    .then { |html| INTENDED.reduce(html) { |h, (pattern, with)| h.gsub(pattern, with) } }
+end
+
+def diff(a, b)
+  Tempfile.create("trails") do |fa|
+    Tempfile.create("rails") do |fb|
+      fa.write(a); fa.flush
+      fb.write(b); fb.flush
+      `diff -u --label trails --label rails #{fa.path} #{fb.path} | head -40`
+    end
+  end
+end
+
+paths = ARGV.empty? ? DEFAULT_PATHS : ARGV
+failed = 0
+paths.each do |path|
+  # Against live databases the fleet can write between the two fetches, so a
+  # difference is fetched once more before it counts.
+  a = b = ca = cb = nil
+  2.times do
+    a = fetch(trails, path)
+    b = fetch(rails, path)
+    ca = comparable(a)
+    cb = comparable(b)
+    break if a.code == b.code && ca == cb
+  end
+  if a.code == b.code && ca == cb
+    puts "SAME #{a.code} #{path}"
+  else
+    failed += 1
+    puts "DIFF #{a.code}/#{b.code} #{path} (trails #{ca.bytesize}B, rails #{cb.bytesize}B)"
+    puts diff(ca, cb) if show_diff
+  end
+end
+puts "#{paths.size - failed}/#{paths.size} the same"
+exit(failed.zero? ? 0 : 1)

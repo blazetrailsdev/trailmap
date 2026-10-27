@@ -1,0 +1,6 @@
+<%#
+  The status badge, in one place. A story status shown is an EFFECTIVE
+  status — the long form of that rule is ../../../app/views/shared/_status-badge.html.tse.
+%>
+<% shown = status_word(status) %>
+<span class="badge s-<%= shown %>"><%= shown %></span>

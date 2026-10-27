@@ -128,3 +128,31 @@ them by design, and the tasks repo's CI fails the PR.
 
 Story _prose_ — title, `est-loc`, `deps`, acceptance criteria — is the
 opposite: edit the file and open a PR.
+
+## `rails/` is the same site in Rails, and the two evolve in tandem
+
+`rails/` is trailmap written in Rails 8.0.2, the version trails ports
+(`trails/vendor/rails/RAILS_VERSION`). It is not a mirror kept for show. It
+exists to **prove similarity, functionality and compatibility** between trails
+and Rails:
+
+- **Same outputs.** For the same database and the same request, both apps must
+  produce the same output: pages, JSON, ranking order, and the result of each
+  mutation verb. When they differ, one of the two has a defect. Find out which
+  one; do not tolerate the difference.
+- **Shared runtime artefacts.** Each side must be able to read and write what
+  the other produces:
+  - `solid_queue` jobs: one side enqueues a job and the other runs it.
+  - `bcrypt` password digests: either side verifies a digest the other wrote.
+  - Active Record encrypted columns: either side decrypts a value the other
+    encrypted, given the same keys.
+  - MessagePack payloads.
+  Add each of these to both apps together, with a test on each side that reads
+  the other side's output.
+- **Idiomatic on each side.** `rails/` is written the way Rails wants it
+  written. Wherever the trails app has to differ, record it in
+  `rails/DEVIATIONS.md`. Each entry there is a trails story waiting to be filed,
+  or a decision someone made on purpose.
+
+A change to a page, verb or model lands in both apps in the same PR, unless
+the PR says why it does not.

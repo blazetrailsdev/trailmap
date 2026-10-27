@@ -1,0 +1,29 @@
+<div class="page-header">
+  <h1 class="page-title">Deploys</h1>
+  <div class="page-subhead">
+    <span class="muted">Every dokku deploy ringo has run, newest first. Read-only; relayed from ringo, which holds the history and the logs.</span>
+  </div>
+</div>
+
+<% if @problem %>
+  <div class="card ci-fixer paused">
+    <div class="card-head"><span class="card-title">No deploy data</span></div>
+    <div class="field-note"><%= @problem %></div>
+  </div>
+<% elsif @runs.empty? %>
+  <div class="card"><div class="field-note">No deploys yet.</div></div>
+<% else %>
+  <div class="card deploys">
+    <% @runs.each do |run| %>
+      <div class="deploy-row">
+        <span class="badge s-deploy-<%= run["status"] %>"><%= run["status"] %></span>
+        <span class="deploy-app"><%= run["app"] %></span>
+        <code class="muted"><%= run["sha"] %></code>
+        <span class="deploy-msg"><%= run["message"] %></span>
+        <% if run["error"].present? %><span class="deploy-err"><%= run["error"] %></span><% end %>
+        <time class="muted" datetime="<%= run["started"] %>"><%= run["started"].to_s[0, 16].sub("T", " ") %> UTC · <%= deploy_duration(run["seconds"].to_i) %></time>
+        <a href="/deploys/log?id=<%= ERB::Util.url_encode(run["id"].to_s) %>">log</a>
+      </div>
+    <% end %>
+  </div>
+<% end %>

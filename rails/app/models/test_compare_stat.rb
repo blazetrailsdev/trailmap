@@ -1,0 +1,2 @@
+class TestCompareStat < CompareRun
+end
