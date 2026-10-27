@@ -1,7 +1,7 @@
 import { Attributes, Model, type AttributesClassHalf } from "@blazetrails/activemodel";
 import { RecordNotFound } from "@blazetrails/activerecord";
 import { include } from "@blazetrails/activesupport";
-import { ringoFailure } from "../controllers/fleet-controller.ts";
+import { ringoFailure } from "./concerns/ringo-failure.ts";
 import { Setting } from "./setting.ts";
 
 /**
