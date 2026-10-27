@@ -140,7 +140,7 @@ for (const u of tsUnits)
     ]);
 
 type Finding = {
-  tier: "surface" | "body" | "idiom" | "rename" | "framework";
+  tier: "surface" | "body" | "idiom" | "rename";
   kind: string;
   ruby?: string;
   ts?: string;
@@ -510,7 +510,8 @@ for (const r of rubyUnits) {
     const ro = declOpts(evalDecl(d, r));
     const to = declOpts(match);
     // TS spelling out an association option Rails infers (`foreign_key:
-    // "owner_id"`, `class_name: "Owner"`) points at trails' inference, not the app.
+    // "owner_id"`, `class_name: "Owner"`). trails infers the same values, so
+    // this is redundant app code rather than a framework workaround.
     const optKeys = (x: Decl) =>
       new Map(
         x.args
@@ -528,8 +529,8 @@ for (const r of rubyUnits) {
         .every((k) => k === "foreignkey" || k === "classname");
     if (ro !== to && onlyInferable)
       report.findings.push({
-        tier: "framework",
-        kind: "explicit-inferable-option",
+        tier: "surface",
+        kind: "redundant-inferable-option",
         ruby: loc(r, d.line),
         ts: loc(t, match.line),
         detail: `${key}: ts adds (${[...tk]
@@ -1007,10 +1008,6 @@ for (const b of bodies.filter((b) => b.score >= BODY_THRESHOLD)) {
   if (b.extra.length) md.push(`  - ts only: ${fmt(b.extra)}`);
 }
 md.push("");
-section(
-  "Trails framework candidates (the TS works around something Rails infers)",
-  allFindings.filter((f) => f.tier === "framework"),
-);
 section(
   "Renames (paired by name words and body overlap)",
   allFindings.filter((f) => f.tier === "rename"),

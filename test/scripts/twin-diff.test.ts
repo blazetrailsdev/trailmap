@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { Dir, getChildProcess, getFs, getPath } from "@blazetrails/ruby-compat";
 import type { N } from "../../scripts/twin-diff/ir.ts";
 import { lowerTsFile } from "../../scripts/twin-diff/ts-ir.ts";
 import { diffFeatures, features } from "../../scripts/twin-diff/features.ts";
-import { canon, extractUnits } from "../../scripts/twin-diff/model.ts";
+import {
+  canon,
+  constName,
+  extractUnits,
+} from "../../scripts/twin-diff/model.ts";
+import { foldCall } from "../../scripts/twin-diff/idioms.ts";
 import {
   markupFeatures,
   tseToTs,
@@ -94,4 +100,152 @@ describe("twin-diff", () => {
       "views/repo-issues/_status-badge.html.tse",
     );
   });
+
+  it("names a constant, aliasing Ruby's root error to JS's", () => {
+    expect(
+      constName({ k: "const", path: ["ActiveRecord", "RecordNotFound"] }),
+    ).toBe("ActiveRecord::RecordNotFound");
+    expect(constName({ k: "const", path: ["StandardError"] })).toBe("Error");
+    expect(constName(call({ k: "const", path: ["JSON"] }, "parse"))).toBe(
+      "JSON.parse",
+    );
+    expect(constName(null)).toBeNull();
+  });
+
+  it("folds a call through the idiom table and records the row", () => {
+    expect(foldCall(call(lvar("s"), "strip"), "ruby")).toMatchObject({
+      concept: "strip",
+    });
+    expect(foldCall(call(lvar("s"), "trim"), "ts")).toMatchObject({
+      concept: "strip",
+      idiom: "strip",
+    });
+    expect(foldCall(call(lvar("h"), "freeze"), "ruby")).toMatchObject({
+      concept: null,
+      idiom: "freeze",
+    });
+    expect(
+      foldCall(
+        call({ k: "const", path: ["JSON"] }, "stringify", [lvar("v")]),
+        "ts",
+      ),
+    ).toMatchObject({ concept: "tojson" });
+    expect(
+      foldCall(call(lvar("m"), "get", [{ k: "str", value: "status" }]), "ts"),
+    ).toMatchObject({ concept: "status", idiom: "hash-key" });
+  });
+
+  it("lowers TS into the Ruby IR's node kinds", () => {
+    const ir = lowerTsFile(
+      "x.ts",
+      `class A extends B { static { this.hasMany("stories"); } async go(x) { if (x === null) throw new Err("no"); return await x?.y; } }`,
+    );
+    const cls = ir.body[0];
+    expect(cls).toMatchObject({
+      k: "class",
+      path: ["A"],
+      superclass: { k: "const", path: ["B"] },
+    });
+    const [decl, def] = cls.body.body;
+    expect(decl).toMatchObject({
+      k: "call",
+      recv: { k: "self" },
+      name: "hasMany",
+      args: [{ k: "str", value: "stories" }],
+    });
+    expect(def).toMatchObject({ k: "def", name: "go", singleton: false });
+    const [iff, ret] = def.body.body;
+    expect(iff.then.body[0]).toMatchObject({
+      k: "call",
+      name: "raise",
+      args: [
+        { k: "const", path: ["Err"] },
+        { k: "str", value: "no" },
+      ],
+    });
+    expect(ret.value).toMatchObject({ k: "call", name: "y", safe: true });
+  });
+
+  it("extracts units: decls, consts, visibility and module_function", () => {
+    const rubyModule: N = seq({
+      k: "module",
+      path: ["Ranking"],
+      body: seq(
+        { k: "casgn", path: ["UNSET"], value: { k: "int", value: "1" } },
+        call(null, "module_function"),
+        {
+          k: "def",
+          name: "rank",
+          singleton: false,
+          params: [{ kind: "req", name: "s" }],
+          body: seq(),
+        },
+      ),
+    });
+    const [m] = extractUnits("ranking.rb", rubyModule, "ruby");
+    expect(m).toMatchObject({ name: "Ranking", kind: "module" });
+    expect([...m.consts.keys()]).toEqual(["UNSET"]);
+    expect(m.methods[0]).toMatchObject({
+      name: "rank",
+      singleton: true,
+      params: ["s"],
+    });
+
+    const ts = extractUnits(
+      "rfc.ts",
+      lowerTsFile(
+        "rfc.ts",
+        `export class Rfc extends ApplicationRecord { static { for (const c of ["a", "b"]) this.serialize(c); } private x() {} }`,
+      ),
+      "ts",
+    );
+    expect(ts[0].decls.map((d) => d.args[0].value)).toEqual(["a", "b"]);
+    expect(ts[0].methods[0]).toMatchObject({ name: "x", private: true });
+  });
+
+  // The Ruby front-end needs Prism (Ruby 3.3+). CI's unit job has no Ruby, so
+  // this end-to-end run is skipped there and runs wherever Prism is present.
+  const hasPrism =
+    getChildProcess().spawnSync("ruby", ["-e", 'require "prism"']).status === 0;
+
+  it.skipIf(!hasPrism)(
+    "runs end to end over rails/ and app/",
+    () => {
+      const { join } = getPath();
+      const out = join(Dir.pwd(), "tmp", "twin-diff-test");
+      const run = getChildProcess().spawnSync(
+        "npx",
+        [
+          "tsx",
+          "scripts/twin-diff/cli.ts",
+          "--out",
+          out,
+          "--area",
+          "models,views",
+        ],
+        {
+          encoding: "utf8",
+        },
+      );
+      expect(run.status).toBe(0);
+      const report = JSON.parse(
+        getFs().readFileSync(join(out, "twin-diff.json"), "utf8"),
+      );
+      const findings = report.pairs.flatMap(
+        (p: { findings: { kind: string; detail: string }[] }) => p.findings,
+      );
+      expect(findings).toContainEqual(
+        expect.objectContaining({
+          kind: "unit-relocated",
+          detail: expect.stringContaining("JsonArray"),
+        }),
+      );
+      expect(
+        report.pairs.some((p: { ruby: string }) =>
+          p.ruby.startsWith("views/owners/show.html.erb"),
+        ),
+      ).toBe(true);
+    },
+    120_000,
+  );
 });

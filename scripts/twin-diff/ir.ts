@@ -20,19 +20,3 @@ export interface IrFile {
   file: string;
   body: N;
 }
-
-/** Visit every node below `n` (pre-order), including nested arrays/objects. */
-export function walk(n: unknown, fn: (node: N) => void | false): void {
-  if (Array.isArray(n)) {
-    for (const c of n) walk(c, fn);
-    return;
-  }
-  if (n === null || typeof n !== "object") return;
-  const node = n as N;
-  if (typeof node.k === "string") {
-    if (fn(node) === false) return;
-  }
-  for (const v of Object.values(node)) {
-    if (v !== null && typeof v === "object") walk(v, fn);
-  }
-}
