@@ -3,11 +3,10 @@
 class SessionsController < ApplicationController
   def index
     no_store
-    @archives = []
-    @problem = nil
     @now = Time.now
     @archives = SessionArchive.all
   rescue SessionArchive::Unavailable => e
+    @archives = []
     @problem = e.message
   end
 
@@ -18,11 +17,10 @@ class SessionsController < ApplicationController
     @owner = params[:owner].to_s
     @repo = params[:repo].to_s
     @pr = params[:pr].to_i
-    @archives = []
-    @problem = nil
     @now = Time.now
     @archives = SessionArchive.for_pr(owner: @owner, repo: @repo, pr: @pr)
   rescue SessionArchive::Unavailable => e
+    @archives = []
     @problem = e.message
   end
 
