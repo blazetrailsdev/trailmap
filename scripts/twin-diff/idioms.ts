@@ -224,7 +224,7 @@ const ROWS: Row[] = [
     names: ["require", "requirerelative"],
     to: null,
   },
-  { id: "ruby-equal", side: "both", names: ["=="], to: null },
+  { id: "ruby-equal", side: "both", names: ["==", "!=", "==="], to: null },
   {
     id: "operators",
     side: "both",
@@ -299,6 +299,9 @@ const SHIMS: Record<string, string> = {
 };
 
 const isLitKey = (n: N | undefined) => !!n && (n.k === "sym" || n.k === "str");
+
+/** Ruby Struct names the twin builds where TS writes an object literal; `cli.ts` fills it. */
+export const STRUCTS = new Set<string>();
 
 export function foldCall(node: N, side: Side): Folded {
   const name = canon(String(node.name));

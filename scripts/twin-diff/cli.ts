@@ -19,7 +19,7 @@ import {
   getFs,
   getPath,
 } from "@blazetrails/ruby-compat";
-import type { N } from "./ir.ts";
+import type { N, Param } from "./ir.ts";
 import { lowerTsFile } from "./ts-ir.ts";
 import {
   canon,
@@ -30,6 +30,7 @@ import {
   type Unit,
 } from "./model.ts";
 import { diffFeatures, features, type Feature } from "./features.ts";
+import { STRUCTS } from "./idioms.ts";
 
 const fs = getFs();
 const { join } = getPath();
@@ -85,6 +86,9 @@ const tsUnits: Unit[] = tsFiles.flatMap((f: string) => {
   const rel = f.slice(join(ROOT, "app").length + 1);
   return extractUnits(rel, lowerTsFile(rel, fs.readFileSync(f, "utf8")), "ts");
 });
+
+for (const u of rubyUnits)
+  if (u.superclass === "Struct") STRUCTS.add(u.name.split("::").pop()!);
 
 /** `models/concerns/dep_graph.rb` → `models/concerns/dep-graph.ts` */
 const twinPath = (rb: string) => rb.replace(/_/g, "-").replace(/\.rb$/, ".ts");
@@ -287,6 +291,33 @@ function declBlock(d: Decl): N | null {
   );
 }
 
+/** A body difference below this is builtin spelling the idiom table has not learned yet. */
+const BODY_THRESHOLD = 3;
+
+/** JS/Ruby library calls: a difference in these is usually spelling, in a domain call usually behaviour. */
+const BUILTIN = new Set(
+  "[] << each map select reject find any all length inject sort uniq first last flatmap keys values eachpair toh groupby isa tonumber round max strip downcase upcase startwith endwith sub match format jsonparse tojson include newset index indexof join split compact flatten zip eachslice eachwithobject eachwithindex count call not positive negative zero nonzero tally sum filtermap selectmap todate iso8601 toisostring utc days now parse new:Date getfullyear gettime abs delete deleteprefix deletesuffix chars bytes reverse concat merge update slice entries from array integer float key".split(
+    " ",
+  ),
+);
+
+function score(m: MethodReport): number {
+  let s = 0;
+  for (const f of [...m.missing, ...m.extra]) {
+    const [kind, rest] = [
+      f.key.slice(0, f.key.indexOf(":") >>> 0 || f.key.length),
+      f.key.slice(f.key.indexOf(":") + 1),
+    ];
+    if (kind === "raise") s += 3;
+    else if (kind === "call") s += BUILTIN.has(rest) ? 0.5 : 2;
+    else if (kind === "lit") s += /\s/.test(rest) ? 2 : 1;
+    else if (kind === "ivar") s += 1;
+    else if (kind === "branch" || kind === "rescue" || kind === "loop") s += 1;
+    else s += 0.5;
+  }
+  return s;
+}
+
 function bodyReport(
   name: string,
   rubyLoc: string,
@@ -474,10 +505,13 @@ for (const r of rubyUnits) {
         detail: `${key} ${declOpts(d)}`.trim(),
       });
 
-  // Constants.
-  const tConsts = new Set([...t.consts.keys()].map(canon));
+  // Constants. A class constant is often a module-level `const` in TS, and
+  // prefixed with the class's name there (`Rfc::STATUSES` is `RFC_STATUSES`).
+  const tConsts = [...new Set([t, ...(tsByFile.get(t.file) ?? [])])].flatMap(
+    (u) => [...u.consts.keys()].map(canon),
+  );
   for (const [name] of r.consts)
-    if (!tConsts.has(canon(name)))
+    if (!tConsts.some((c) => c === canon(name) || c.endsWith(canon(name))))
       report.findings.push({
         tier: "surface",
         kind: "const-missing",
@@ -610,15 +644,31 @@ for (const r of rubyUnits) {
         ts: loc(tUnit, tm.line),
         detail: `${m.name}: ${m.private ? "private" : "public"} in Ruby, ${tm.private ? "private" : "public"} in TS`,
       });
-    const rp = m.params.map(canon).join(",");
-    const tp = tm.params.map(canon).join(",");
-    if (rp !== tp)
+    // An instance method written as a free function takes its receiver first:
+    // `require_loopback` is `requireLoopback(controller)`.
+    const receiverParam =
+      tUnit.kind === "file" &&
+      !m.singleton &&
+      (tm.paramList?.length ?? 0) === (m.paramList?.length ?? 0) + 1;
+    const pd = compareParams(
+      m.paramList ?? [],
+      receiverParam ? (tm.paramList ?? []).slice(1) : (tm.paramList ?? []),
+    );
+    if (receiverParam)
       report.findings.push({
-        tier: "surface",
-        kind: "params",
+        tier: "idiom",
+        kind: "receiver-param",
         ruby: loc(r, m.line),
         ts: loc(tUnit, tm.line),
-        detail: `${m.name}(${m.params.join(", ")}) ≠ ${tm.name}(${tm.params.join(", ")})`,
+        detail: `${m.name} → ${tm.name}(${tm.paramList?.[0]?.name}, …)`,
+      });
+    if (pd)
+      report.findings.push({
+        tier: pd.arity ? "surface" : "rename",
+        kind: pd.arity ? "params" : "param-names",
+        ruby: loc(r, m.line),
+        ts: loc(tUnit, tm.line),
+        detail: `${m.name}(${(m.paramList ?? []).map(showParam).join(", ")}) ≠ ${tm.name}(${(tm.paramList ?? []).map(showParam).join(", ")})${pd.note ? ` — ${pd.note}` : ""}`,
       });
     const mr = bodyReport(
       m.name,
@@ -630,6 +680,72 @@ for (const r of rubyUnits) {
     );
     if (mr.missing.length || mr.extra.length) report.methods.push(mr);
   }
+}
+
+function showParam(p: Param): string {
+  if (p.destructure) return `{ ${p.destructure.join(", ")} }`;
+  const name = p.name ?? "_";
+  return (
+    {
+      rest: `*${name}`,
+      key: `${name}:`,
+      keyreq: `${name}:`,
+      keyrest: `**${name}`,
+      block: `&${name}`,
+      opt: `${name}=`,
+      req: name,
+      fwd: "...",
+    }[p.kind] ?? name
+  );
+}
+
+/**
+ * Ruby kwargs are one trailing options object in TS, and a block is a
+ * trailing function parameter; both are language decisions. What is left is
+ * a different positional arity (a deviation) or different names (a rename).
+ */
+function compareParams(
+  rp: Param[],
+  tp: Param[],
+): { arity: boolean; note?: string } | null {
+  const rPos = rp.filter(
+    (p) => p.kind === "req" || p.kind === "opt" || p.kind === "rest",
+  );
+  const rKw = rp.filter(
+    (p) => p.kind === "key" || p.kind === "keyreq" || p.kind === "keyrest",
+  );
+  const rBlock = rp.find((p) => p.kind === "block");
+  const tPos = [...tp];
+  let note = "";
+  if (rKw.length && tPos.length > rPos.length) {
+    const opts = tPos.pop()!;
+    if (opts.destructure) {
+      const want = rKw
+        .filter((p) => p.kind !== "keyrest")
+        .map((p) => canon(p.name ?? ""));
+      const have = opts.destructure.map((n) => canon(n ?? ""));
+      const missing = want.filter((w) => !have.includes(w));
+      const extra = have.filter((h) => !want.includes(h));
+      if (missing.length || extra.length)
+        note =
+          `kwargs ${missing.length ? `ruby only [${missing}]` : ""}${extra.length ? ` ts only [${extra}]` : ""}`.trim();
+    }
+  }
+  if (rBlock && tPos.length > rPos.length) tPos.pop();
+  if (
+    rPos.length !== tPos.length ||
+    (rKw.length > 0 &&
+      !note &&
+      tp.length === rPos.length &&
+      rPos.length === tPos.length &&
+      false)
+  )
+    return { arity: true, note: note || undefined };
+  if (note) return { arity: true, note };
+  const names = rPos.some(
+    (p, i) => canon(p.name ?? "") !== canon(tPos[i]?.name ?? ""),
+  );
+  return names ? { arity: false } : null;
 }
 
 function words(name: string): string[] {
@@ -707,45 +823,96 @@ fs.writeFileSync(
 );
 
 // Markdown.
-const md: string[] = ["# Twin diff: rails/ vs app/", ""];
-const counts = new Map<string, number>();
-for (const p of pairs)
-  for (const f of p.findings) counts.set(f.kind, (counts.get(f.kind) ?? 0) + 1);
-for (const f of extras) counts.set(f.kind, (counts.get(f.kind) ?? 0) + 1);
-const bodyCount = pairs.reduce((s, p) => s + p.methods.length, 0);
-md.push(
-  `Ruby units: ${rubyUnits.length}, TS units: ${tsUnits.length}. Methods with body deviations: ${bodyCount}.`,
-  "",
+const allFindings = [...pairs.flatMap((p) => p.findings), ...extras];
+const bodies = pairs.flatMap((p) =>
+  p.methods.map((m) => ({ ...m, score: score(m) })),
 );
+bodies.sort((a, b) => b.score - a.score);
+const md: string[] = ["# Twin diff: rails/ vs app/", ""];
 md.push(
-  "| finding | count |",
-  "| --- | --- |",
-  ...[...counts].sort((a, b) => b[1] - a[1]).map(([k, v]) => `| ${k} | ${v} |`),
+  `Ruby units ${rubyUnits.length}, TS units ${tsUnits.length}; ${bodies.length} paired bodies differ, ` +
+    `${bodies.filter((b) => b.score >= BODY_THRESHOLD).length} by more than builtin spelling (score ≥ ${BODY_THRESHOLD}).`,
+  "",
+  "| tier | finding | count |",
+  "| --- | --- | --- |",
+);
+const counts = new Map<string, number>();
+for (const f of allFindings)
+  counts.set(
+    `${f.tier}|${f.kind}`,
+    (counts.get(`${f.tier}|${f.kind}`) ?? 0) + 1,
+  );
+for (const [k, v] of [...counts].sort())
+  md.push(`| ${k.replace("|", " | ")} | ${v} |`);
+md.push("");
+
+const where = (f: Finding) => [f.ruby, f.ts].filter(Boolean).join(" ↔ ");
+const section = (title: string, fs: Finding[]) => {
+  if (!fs.length) return;
+  md.push(`## ${title}`, "");
+  const byKind = new Map<string, Finding[]>();
+  for (const f of fs) byKind.set(f.kind, [...(byKind.get(f.kind) ?? []), f]);
+  for (const [kind, list] of byKind) {
+    md.push(`### ${kind} (${list.length})`, "");
+    for (const f of list) md.push(`- ${f.detail} — ${where(f)}`);
+    md.push("");
+  }
+};
+section(
+  "Surface deviations",
+  allFindings.filter((f) => f.tier === "surface"),
+);
+
+md.push(
+  "## Body deviations",
+  "",
+  `Ranked by score: domain calls, raises and literals weigh most; builtin calls and bare numbers least.`,
   "",
 );
 const fmt = (fs: Feature[]) =>
   fs.map((f) => `\`${f.key}\`@${f.line}`).join(", ");
-for (const p of pairs) {
-  if (!p.findings.length && !p.methods.length) continue;
-  md.push(`## ${p.ruby} ↔ ${p.ts ?? "—"} (${p.how})`, "");
-  for (const f of p.findings)
-    md.push(
-      `- **${f.kind}** ${f.detail}${f.ruby && f.kind !== "unit-missing" ? ` — ${f.ruby}` : ""}${f.ts ? ` / ${f.ts}` : ""}`,
-    );
-  for (const m of p.methods) {
-    md.push(`- **body** \`${m.name}\` (${m.ruby} / ${m.ts})`);
-    if (m.missing.length) md.push(`  - ruby only: ${fmt(m.missing)}`);
-    if (m.extra.length) md.push(`  - ts only: ${fmt(m.extra)}`);
-  }
-  md.push("");
+for (const b of bodies.filter((b) => b.score >= BODY_THRESHOLD)) {
+  md.push(
+    `- **${b.name}** (${b.score.toFixed(1)}) ${b.ruby} ↔ ${b.ts}${b.how !== "same-unit" ? ` _${b.how}_` : ""}`,
+  );
+  if (b.missing.length) md.push(`  - ruby only: ${fmt(b.missing)}`);
+  if (b.extra.length) md.push(`  - ts only: ${fmt(b.extra)}`);
 }
-md.push(
-  "## TS-only surface",
-  "",
-  ...extras.map((f) => `- **${f.kind}** ${f.detail} — ${f.ts}`),
+md.push("");
+section(
+  "Renames (paired by name words and body overlap)",
+  allFindings.filter((f) => f.tier === "rename"),
 );
+
+md.push(
+  "## Language decisions applied",
+  "",
+  "Folds the body diff made, by idiom row (`idioms.ts`), summed over every paired body:",
+  "",
+);
+const idiomTotals = new Map<string, number>();
+for (const b of pairs.flatMap((p) => p.methods))
+  for (const [k, v] of Object.entries(b.idioms))
+    idiomTotals.set(k, (idiomTotals.get(k) ?? 0) + v);
+md.push(
+  [...idiomTotals]
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `\`${k}\` ${v}`)
+    .join(", "),
+  "",
+);
+section(
+  "Idiom-tier findings (not deviations)",
+  allFindings.filter((f) => f.tier === "idiom"),
+);
+md.push("## Low-score body differences", "");
+for (const b of bodies.filter((b) => b.score < BODY_THRESHOLD))
+  md.push(
+    `- ${b.name} (${b.score.toFixed(1)}) ${b.ruby} ↔ ${b.ts}: ruby only ${fmt(b.missing) || "—"}; ts only ${fmt(b.extra) || "—"}`,
+  );
 fs.writeFileSync(join(OUT, "twin-diff.md"), md.join("\n") + "\n");
 console.log(
-  `twin-diff: ${pairs.length} pairs, ${bodyCount} bodies differ; ${[...counts].map(([k, v]) => `${k}=${v}`).join(" ")}`,
+  `twin-diff: ${pairs.length} pairs; ${bodies.filter((b) => b.score >= BODY_THRESHOLD).length}/${bodies.length} bodies over threshold; ` +
+    [...counts].map(([k, v]) => `${k.split("|")[1]}=${v}`).join(" "),
 );
 console.log(`wrote ${join(OUT, "twin-diff.md")}`);

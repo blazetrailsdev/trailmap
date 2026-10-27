@@ -59,6 +59,8 @@ export function lowerTsFile(file: string, text: string): N {
   function block(b: ts.Node | undefined): N {
     if (!b) return seq([]);
     if (ts.isBlock(b)) return seq(stmts(b.statements));
+    if (ts.isExpression(b as ts.Node) && !ts.isStatement(b as ts.Node))
+      return seq([expr(b)]);
     const s = stmt(b as ts.Statement);
     return seq(s ? (Array.isArray(s) ? s : [s]) : []);
   }
@@ -364,12 +366,10 @@ export function lowerTsFile(file: string, text: string): N {
       return {
         k: "case",
         subject: expr(s.expression),
-        whens: s.caseBlock.clauses
-          .filter(ts.isCaseClause)
-          .map((c) => ({
-            conds: [expr(c.expression)],
-            body: seq(stmts(c.statements)),
-          })),
+        whens: s.caseBlock.clauses.filter(ts.isCaseClause).map((c) => ({
+          conds: [expr(c.expression)],
+          body: seq(stmts(c.statements)),
+        })),
         else: (() => {
           const d = s.caseBlock.clauses.find(ts.isDefaultClause);
           return d ? seq(stmts(d.statements)) : null;

@@ -7,7 +7,7 @@
  * `has_many` / `validate` / `before_action` calls, which a TS class makes in
  * a `static {}` block — its constants, and its methods.
  */
-import type { N } from "./ir.ts";
+import type { N, Param } from "./ir.ts";
 
 export interface Decl {
   name: string;
@@ -21,6 +21,7 @@ export interface Method {
   singleton: boolean;
   private: boolean;
   params: string[];
+  paramList?: Param[];
   body: N;
   line: number;
   declared?: boolean;
@@ -151,9 +152,10 @@ export function extractUnits(
             side === "ts"
               ? !!n.private
               : visibility !== "public" && visibility !== "module_function",
-          params: ((n.params ?? []) as { name?: string | null; kind: string }[])
-            .filter((p) => p.kind !== "block")
-            .map((p) => p.name ?? "_"),
+          params: (
+            (n.params ?? []) as { name?: string | null; kind: string }[]
+          ).map((p) => p.name ?? "_"),
+          paramList: (n.params ?? []) as Param[],
           body: n.body,
           line: n.l ?? 0,
         });
@@ -183,6 +185,7 @@ export function extractUnits(
               params: (p.value.params ?? []).map(
                 (x: { name?: string }) => x.name ?? "_",
               ),
+              paramList: (p.value.params ?? []) as Param[],
               body: p.value.body,
               line: n.l ?? 0,
             })),
