@@ -252,16 +252,16 @@ async function main(): Promise<number> {
    * Bring the recorded facts and the rows to one moment. Each round dumps the
    * rows, names the pages the writes since the last dump reach, and fetches
    * those from both sides again, until a dump finds nothing moved. Answers the
-   * rows to write, or `null` when the database would not hold still — or a
-   * re-fetched page really differs — within `SETTLE_ROUNDS`.
+   * rows to write, or that it did not settle: the database would not hold
+   * still — or a re-fetched page really differs — within `SETTLE_ROUNDS`.
    */
-  const settle = async (): Promise<RowRecord[] | null> => {
+  const settle = async (): Promise<{ settled: true; rows: RowRecord[] } | { settled: false }> => {
     let unsettled: string[] = [];
     for (let round = 1; round <= SETTLE_ROUNDS; round++) {
       const rowsAfter = await snapshotRows();
       const touched = pagesTouchedBy(rowsBefore, rowsAfter);
       for (const page of unsettled) touched[page.startsWith("rfc:") ? "rfcs" : "stories"].add(page.slice(page.indexOf(":") + 1));
-      if (touched.rfcs.size === 0 && touched.stories.size === 0) return rowsAfter;
+      if (touched.rfcs.size === 0 && touched.stories.size === 0) return { settled: true, rows: rowsAfter };
       console.log(`settle ${round}: ${touched.rfcs.size} RFC and ${touched.stories.size} story pages moved under the run`);
       const closedNow = new Set(
         rowsAfter.filter((r) => r.table === "rfcs" && r.row.status === "closed").map((r) => String(r.row.id)),
@@ -284,7 +284,7 @@ async function main(): Promise<number> {
       rowsBefore = rowsAfter;
     }
     console.error(`settle: still moving after ${SETTLE_ROUNDS} rounds`);
-    return null;
+    return { settled: false };
   };
 
   console.log(
@@ -302,19 +302,19 @@ async function main(): Promise<number> {
 
   if (problems.length === 0) {
     console.log(`\nEQUIVALENT: ${rfcIds.length + storyIds.length} pages agree, value for value.`);
-    const rows = RECORD ? await settle() : null;
-    if (RECORD && rows === null) {
-      console.error("\nNOT RECORDED — the database did not hold still long enough to record.");
-      (await Base.leaseConnection()).disconnectBang();
-      return 1;
-    }
-    if (rows !== null) {
+    if (RECORD) {
+      const settled = await settle();
+      if (!settled.settled) {
+        console.error("\nNOT RECORDED — the database did not hold still long enough to record.");
+        (await Base.leaseConnection()).disconnectBang();
+        return 1;
+      }
       const fixture = `${Dir.pwd()}/${SNAPSHOT_FILE}`;
       await fs.mkdir!(fixture.slice(0, fixture.lastIndexOf("/")), { recursive: true });
       await fs.writeFile!(fixture, encodeSnapshot([...records.values()]));
       console.log(`recorded ${records.size} pages to ${SNAPSHOT_FILE}`);
-      await fs.writeFile!(`${Dir.pwd()}/${ROWS_FILE}`, encodeRows(rows));
-      console.log(`recorded ${rows.length} rows to ${ROWS_FILE}`);
+      await fs.writeFile!(`${Dir.pwd()}/${ROWS_FILE}`, encodeRows(settled.rows));
+      console.log(`recorded ${settled.rows.length} rows to ${ROWS_FILE}`);
     }
     (await Base.leaseConnection()).disconnectBang();
     return 0;
