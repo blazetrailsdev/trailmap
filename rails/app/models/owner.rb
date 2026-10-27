@@ -3,7 +3,7 @@
 class Owner < Hub
   # The top-level paths that are PAGES, not owners. The router's `:owner`
   # constraint and this model share them, so the two cannot drift.
-  RESERVED_NAMES = %w[assets audits backlog dashboard deploys events fleet index panes rfc rfcs stories story up].freeze
+  RESERVED_NAMES = %w[api assets audits backlog dashboard deploys events fleet index panes rfc rfcs sessions stories story up].freeze
 
   # A GitHub login: alphanumerics and interior single hyphens.
   LOGIN_FORMAT = /[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9]))*/

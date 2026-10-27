@@ -30,7 +30,10 @@ the directory writable for the WAL `-shm` file even when nothing is written.
 
 The stylesheet, the fleet scripts and ringo's chart engine are symlinks from
 `rails/` into the trails app, so a build that only sees `rails/` would ship
-them dangling. dokku is pointed at the subdirectory's files explicitly:
+them dangling. The two images share that context but not an ignore file: the
+root `.dockerignore` drops `rails/` from the trails image, and BuildKit reads
+`rails/Dockerfile.dockerignore` in its place for this one. dokku is pointed at
+the subdirectory's files explicitly:
 
 ```sh
 dokku apps:create trailmap-rails

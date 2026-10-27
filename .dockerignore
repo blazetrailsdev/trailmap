@@ -5,10 +5,6 @@ node_modules
 log/*
 tmp/*
 dist
-# The Rails app's own build output and local state (rails/Dockerfile builds
-# from this directory too).
-rails/log/*
-rails/tmp/*
-rails/storage/*
-rails/public/assets
-rails/vendor/bundle
+# The Rails twin is its own image (rails/Dockerfile, which reads
+# rails/Dockerfile.dockerignore instead of this file).
+rails

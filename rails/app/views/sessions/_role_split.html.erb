@@ -1,0 +1,9 @@
+<% split = archive.role_split %>
+<% if split[:agents] + split[:reviewers] == 0 %>
+  <% if archive.transcripts.empty? %><span class="muted">—</span><% else %><%= archive.transcripts.length %><% end %>
+<% else %>
+  <% if split[:agents] > 0 %><%= split[:agents] %> <span class="session-role agent">agent</span><% end %>
+  <% if split[:agents] > 0 && split[:reviewers] > 0 %> · <% end %>
+  <% if split[:reviewers] > 0 %><%= split[:reviewers] %> <span class="session-role reviewer">reviewer</span><% end %>
+  <% if split[:passes] > split[:agents] + split[:reviewers] %> <span class="muted">· <%= split[:passes] %> passes</span><% end %>
+<% end %>

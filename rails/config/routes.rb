@@ -26,6 +26,10 @@ Rails.application.routes.draw do
   get "deploys", to: "deploys#index"
   get "deploys/log", to: "deploys#log"
 
+  get "sessions", to: "sessions#index"
+  get "sessions/:owner/:repo/:pr", to: "sessions#show", constraints: { pr: /\d+/ }
+  get "api/sessions", to: "sessions#api"
+
   get "rfcs", to: "rfc_pages#index"
   get "backlog", to: "story_pages#index"
   get "search", to: "searches#show"

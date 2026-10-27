@@ -30,7 +30,7 @@ DEFAULT_PATHS = %w[
   /stories?status=draft /stories/touching?path=packages/activerecord /index /events
   / /rfcs /rfcs?status=draft /rfcs?status=closed /backlog /backlog?filter=ready /backlog?filter=done&page=2
   /backlog?filter=icebox /search?q=serialize /search?q=has_many&page=2 /graphs/parity /audits /deploys
-  /dashboard /panes/42
+  /dashboard /panes/42 /sessions /sessions/blazetrailsdev/trails/1 /api/sessions
   /blazetrailsdev /blazetrailsdev/trails /blazetrailsdev/trails/issues /blazetrailsdev/trails/issues?state=closed
   /blazetrailsdev/trails/pulls /blazetrailsdev/trails/pulls?state=merged /blazetrailsdev/trails/projects
   /blazetrailsdev/trails/actions /blazetrailsdev/trails/pulse /blazetrailsdev/trails/settings
