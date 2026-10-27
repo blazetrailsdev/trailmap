@@ -229,7 +229,8 @@ describe("twin-diff", () => {
   });
 
   // The Ruby front-end needs Prism (Ruby 3.3+) and a Rails twin to read:
-  // `rails/app` once the twin is on main, or TWIN_DIFF_RAILS until then.
+  // `rails/app` by default, or TWIN_DIFF_RAILS to point at another checkout of
+  // the twin. CI's rails job has both; the unit job has no Ruby and skips.
   const railsApp =
     env.TWIN_DIFF_RAILS ?? getPath().join(Dir.pwd(), "rails/app");
   const runnable =
