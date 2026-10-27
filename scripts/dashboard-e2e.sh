@@ -48,4 +48,4 @@ setsid "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usa
 pids+=($!)
 
 E2E_RINGO_PORT="$ringo" E2E_APP="http://127.0.0.1:$app" E2E_CDP="http://127.0.0.1:$cdp" \
-  pnpm exec tsx scripts/dashboard-e2e.ts || { tail -20 "$work/server.log" "$work/chrome.log" >&2; exit 1; }
+  pnpm exec tsx scripts/dashboard-e2e.ts || { tail -n 20 "$work/server.log" "$work/chrome.log" >&2; exit 1; }
