@@ -314,6 +314,14 @@ to what the pages say.** It is legitimate in exactly two cases:
   status vocabulary change. Say in the PR body which pages changed and why,
   and expect the diff to be read.
 
+**A recording holds still even though the database does not.** Agents write
+`tasks.db` throughout a ~15-minute run, so the rows dumped at the end can
+disagree with page facts fetched at the start, and the fixture then replays red
+on a page nothing changed. `--record` therefore settles before it writes: it
+dumps the rows, names the pages any write since the run began can reach
+(`pagesTouchedBy`), fetches those from both sides again, and repeats until a
+dump finds nothing moved. It gives up, writing nothing, after five rounds.
+
 It is NOT legitimate to re-record because the gate went red and the fixture is
 what stands between you and a green check. That is the defect the gate exists
 to find. Re-recording also needs ringo's own read model still standing: the
