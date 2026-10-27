@@ -56,6 +56,7 @@ import {
   SNAPSHOT_TABLES,
   encodeRows,
   encodeSnapshot,
+  pagesTouchedBy,
   type PageRecord,
   type RowRecord,
 } from "./page-snapshot.ts";
@@ -98,6 +99,15 @@ const REPORT_FILE = "tmp/page-equivalence-problems.txt";
  * README, "Re-recording the show-page snapshot".
  */
 const RECORD = argv.includes("--record");
+
+/**
+ * How many times `--record` fetches again the pages the database moved under
+ * before it gives up. Agents write the database throughout a run, so the rows
+ * dumped at the end can disagree with facts fetched at the start; each round
+ * re-fetches only the pages those writes reach (`pagesTouchedBy`), which takes
+ * seconds, so a round's own window is small and a few rounds settle.
+ */
+const SETTLE_ROUNDS = 5;
 /** `--self-test=bar`: only the `/rfcs` bar, with trailmap's side deliberately wrong. */
 const BAR_SELF_TEST = argv.includes("--self-test=bar");
 
@@ -130,10 +140,10 @@ async function main(): Promise<number> {
   // trailmap chose, not one it drifted into, so the gate accounts for those
   // ids rather than failing on 4,573 of them and burying everything else.
   const closedRfc = new Set(rfcs.filter((r) => r.status === "closed").map((r) => r.id));
-  const underClosedRfc = new Set(
+  let underClosedRfc = new Set(
     stories.filter((s) => closedRfc.has(s.rfc_id)).map((s) => s.id),
   );
-  let exempt = 0;
+  const exempt = new Set<string>();
   console.log(`ringo:    ${ringoBase}`);
   console.log(`trailmap: ${trailmapBase}`);
   console.log(`${rfcIds.length} RFCs, ${storyIds.length} stories\n`);
@@ -156,68 +166,6 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const problems: string[] = [];
-  const records: PageRecord[] = [];
-  const bars = new Map<string, Record<string, number>>();
-  for (const tab of [...new Set(rfcs.map((r) => String(r.status)))]) {
-    const url = `${trailmapBase}/rfcs?status=${encodeURIComponent(tab)}`;
-    const first = (await get(url)).html;
-    const pages = Number.parseInt(/class="pager" data-pages="(\d+)"/.exec(first)?.[1] ?? "1", 10);
-    for (let page = 1; page <= pages; page++) {
-      const html = page === 1 ? first : (await get(`${url}&page=${page}`)).html;
-      try {
-        for (const [id, bar] of trailmapRfcBars(html)) bars.set(id, bar);
-      } catch (error) {
-        problems.push(`/rfcs bar: ${url} page ${page}: ${(error as Error).message}`);
-      }
-    }
-  }
-  problems.push(...(await compareBars(ringoBase, rfcIds, bars)));
-  problems.push(
-    ...(await compareAll("rfc", rfcIds, async (id) => {
-      // ringo's story list lives on its stories TAB; its default tab is the
-      // document. trailmap has no tabs and puts both on one page, so the two
-      // URLs are not the same shape and cannot be.
-      const [ringo, trailmap] = await Promise.all([
-        get(`${ringoBase}/rfc/${encodeURIComponent(id)}/stories`),
-        get(`${trailmapBase}/rfc/${encodeURIComponent(id)}`),
-      ]);
-      const differences = compare<RfcPageFacts>(
-        ringo,
-        trailmap,
-        extractRingoRfc,
-        extractTrailmapRfc,
-      );
-      if (RECORD && differences.length === 0 && !ringoNotFound(ringo.html)) {
-        records.push({ kind: "rfc", id, ...extractRingoRfc(ringo.html) });
-      }
-      return differences;
-    })),
-  );
-  problems.push(
-    ...(await compareAll("story", storyIds, async (id) => {
-      const [ringo, trailmap] = await Promise.all([
-        get(`${ringoBase}/story/${encodeURIComponent(id)}`),
-        get(`${trailmapBase}/story/${encodeURIComponent(id)}`),
-      ]);
-      if (underClosedRfc.has(id) && ringoNotFound(ringo.html) && trailmap.status === 200) {
-        exempt++;
-        if (RECORD) records.push({ kind: "story", id, exempt: true });
-        return [];
-      }
-      const differences = compare<StoryPageFacts>(
-        ringo,
-        trailmap,
-        extractRingoStory,
-        extractTrailmapStory,
-      );
-      if (RECORD && differences.length === 0 && !ringoNotFound(ringo.html)) {
-        records.push({ kind: "story", id, ...extractRingoStory(ringo.html) });
-      }
-      return differences;
-    })),
-  );
-
   // Rows come out in rowid order, and the replay inserts them in that order.
   // `story_deps` carries no ordering column, so a story's dependency list IS
   // its insertion order — and "deps returned alphabetically" was one of the
@@ -233,9 +181,114 @@ async function main(): Promise<number> {
     }
     return rows;
   };
+  // The rows as the run starts, for `settle` to tell what moved under it.
+  let rowsBefore = RECORD ? await snapshotRows() : [];
+
+  const problems: string[] = [];
+  // Keyed by page, so `settle` replaces a page it fetches again in place.
+  const records = new Map<string, PageRecord>();
+  const record = (page: PageRecord): void => {
+    records.set(`${page.kind}:${page.id}`, page);
+  };
+  const bars = new Map<string, Record<string, number>>();
+  for (const tab of [...new Set(rfcs.map((r) => String(r.status)))]) {
+    const url = `${trailmapBase}/rfcs?status=${encodeURIComponent(tab)}`;
+    const first = (await get(url)).html;
+    const pages = Number.parseInt(/class="pager" data-pages="(\d+)"/.exec(first)?.[1] ?? "1", 10);
+    for (let page = 1; page <= pages; page++) {
+      const html = page === 1 ? first : (await get(`${url}&page=${page}`)).html;
+      try {
+        for (const [id, bar] of trailmapRfcBars(html)) bars.set(id, bar);
+      } catch (error) {
+        problems.push(`/rfcs bar: ${url} page ${page}: ${(error as Error).message}`);
+      }
+    }
+  }
+  problems.push(...(await compareBars(ringoBase, rfcIds, bars)));
+  const compareRfc = async (id: string): Promise<string[]> => {
+    // ringo's story list lives on its stories TAB; its default tab is the
+    // document. trailmap has no tabs and puts both on one page, so the two
+    // URLs are not the same shape and cannot be.
+    const [ringo, trailmap] = await Promise.all([
+      get(`${ringoBase}/rfc/${encodeURIComponent(id)}/stories`),
+      get(`${trailmapBase}/rfc/${encodeURIComponent(id)}`),
+    ]);
+    const differences = compare<RfcPageFacts>(
+      ringo,
+      trailmap,
+      extractRingoRfc,
+      extractTrailmapRfc,
+    );
+    if (RECORD && differences.length === 0 && !ringoNotFound(ringo.html)) {
+      record({ kind: "rfc", id, ...extractRingoRfc(ringo.html) });
+    }
+    return differences;
+  };
+  const compareStory = async (id: string): Promise<string[]> => {
+    const [ringo, trailmap] = await Promise.all([
+      get(`${ringoBase}/story/${encodeURIComponent(id)}`),
+      get(`${trailmapBase}/story/${encodeURIComponent(id)}`),
+    ]);
+    if (underClosedRfc.has(id) && ringoNotFound(ringo.html) && trailmap.status === 200) {
+      exempt.add(id);
+      if (RECORD) record({ kind: "story", id, exempt: true });
+      return [];
+    }
+    const differences = compare<StoryPageFacts>(
+      ringo,
+      trailmap,
+      extractRingoStory,
+      extractTrailmapStory,
+    );
+    if (RECORD && differences.length === 0 && !ringoNotFound(ringo.html)) {
+      record({ kind: "story", id, ...extractRingoStory(ringo.html) });
+    }
+    return differences;
+  };
+  problems.push(...(await compareAll("rfc", rfcIds, compareRfc)));
+  problems.push(...(await compareAll("story", storyIds, compareStory)));
+
+  /**
+   * Bring the recorded facts and the rows to one moment. Each round dumps the
+   * rows, names the pages the writes since the last dump reach, and fetches
+   * those from both sides again, until a dump finds nothing moved. Answers the
+   * rows to write, or `null` when the database would not hold still — or a
+   * re-fetched page really differs — within `SETTLE_ROUNDS`.
+   */
+  const settle = async (): Promise<RowRecord[] | null> => {
+    let unsettled: string[] = [];
+    for (let round = 1; round <= SETTLE_ROUNDS; round++) {
+      const rowsAfter = await snapshotRows();
+      const touched = pagesTouchedBy(rowsBefore, rowsAfter);
+      for (const page of unsettled) touched[page.startsWith("rfc:") ? "rfcs" : "stories"].add(page.slice(page.indexOf(":") + 1));
+      if (touched.rfcs.size === 0 && touched.stories.size === 0) return rowsAfter;
+      console.log(`settle ${round}: ${touched.rfcs.size} RFC and ${touched.stories.size} story pages moved under the run`);
+      const closedNow = new Set(
+        rowsAfter.filter((r) => r.table === "rfcs" && r.row.status === "closed").map((r) => String(r.row.id)),
+      );
+      const rfcNow = new Set(rowsAfter.filter((r) => r.table === "rfcs").map((r) => String(r.row.id)));
+      const storyNow = new Map(
+        rowsAfter.filter((r) => r.table === "stories").map((r) => [String(r.row.id), String(r.row.rfc_id)]),
+      );
+      underClosedRfc = new Set([...storyNow].filter(([, rfc]) => closedNow.has(rfc)).map(([id]) => id));
+      unsettled = [];
+      for (const id of touched.rfcs) {
+        records.delete(`rfc:${id}`);
+        if (rfcNow.has(id) && (await compareRfc(id)).length > 0) unsettled.push(`rfc:${id}`);
+      }
+      for (const id of touched.stories) {
+        records.delete(`story:${id}`);
+        exempt.delete(id);
+        if (storyNow.has(id) && (await compareStory(id)).length > 0) unsettled.push(`story:${id}`);
+      }
+      rowsBefore = rowsAfter;
+    }
+    console.error(`settle: still moving after ${SETTLE_ROUNDS} rounds`);
+    return null;
+  };
 
   console.log(
-    `\n${exempt} story pages ringo hides under a closed RFC and trailmap serves ` +
+    `\n${exempt.size} story pages ringo hides under a closed RFC and trailmap serves ` +
       `(a deliberate divergence, not a difference in what the two say)`,
   );
 
@@ -249,12 +302,17 @@ async function main(): Promise<number> {
 
   if (problems.length === 0) {
     console.log(`\nEQUIVALENT: ${rfcIds.length + storyIds.length} pages agree, value for value.`);
-    if (RECORD) {
+    const rows = RECORD ? await settle() : null;
+    if (RECORD && rows === null) {
+      console.error("\nNOT RECORDED — the database did not hold still long enough to record.");
+      (await Base.leaseConnection()).disconnectBang();
+      return 1;
+    }
+    if (rows !== null) {
       const fixture = `${Dir.pwd()}/${SNAPSHOT_FILE}`;
       await fs.mkdir!(fixture.slice(0, fixture.lastIndexOf("/")), { recursive: true });
-      await fs.writeFile!(fixture, encodeSnapshot(records));
-      console.log(`recorded ${records.length} pages to ${SNAPSHOT_FILE}`);
-      const rows = await snapshotRows();
+      await fs.writeFile!(fixture, encodeSnapshot([...records.values()]));
+      console.log(`recorded ${records.size} pages to ${SNAPSHOT_FILE}`);
       await fs.writeFile!(`${Dir.pwd()}/${ROWS_FILE}`, encodeRows(rows));
       console.log(`recorded ${rows.length} rows to ${ROWS_FILE}`);
     }

@@ -7,6 +7,7 @@ import {
   encodeSnapshot,
   factsOf,
   isExempt,
+  pagesTouchedBy,
   type PageRecord,
   type RowRecord,
   type StoryRecord,
@@ -125,5 +126,55 @@ describe("the show-page snapshot format", () => {
   it("refuses a column name it would have to quote into SQL", () => {
     const line = `${JSON.stringify({ table: "rfcs", row: { 'id" from rfcs; --': "x" } })}\n`;
     expect(() => decodeRows(line)).toThrow(/unusable column name/);
+  });
+});
+
+describe("pagesTouchedBy", () => {
+  const rows: RowRecord[] = [
+    { table: "rfcs", row: { id: "0001", status: "active" } },
+    { table: "rfcs", row: { id: "0002", status: "active" } },
+    { table: "stories", row: { id: "a", rfc_id: "0001", status: "ready" } },
+    { table: "stories", row: { id: "b", rfc_id: "0001", status: "ready" } },
+    { table: "stories", row: { id: "c", rfc_id: "0002", status: "ready" } },
+    { table: "stories", row: { id: "d", rfc_id: "0002", status: "ready" } },
+    { table: "story_deps", row: { story_id: "c", depends_on_id: "a" } },
+    { table: "story_rfc_deps", row: { story_id: "d", rfc_id: "0001" } },
+  ];
+  const sorted = (t: { rfcs: Set<string>; stories: Set<string> }) => ({
+    rfcs: [...t.rfcs].sort(),
+    stories: [...t.stories].sort(),
+  });
+  const withRow = (index: number, row: Record<string, unknown>) =>
+    rows.map((r, i) => (i === index ? { ...r, row } : r));
+
+  it("names nothing when nothing moved", () => {
+    expect(sorted(pagesTouchedBy(rows, rows))).toEqual({ rfcs: [], stories: [] });
+  });
+
+  it("reaches a moved story's page, its RFC's page, and its dependents' pages", () => {
+    const after = withRow(2, { id: "a", rfc_id: "0001", status: "done" });
+    expect(sorted(pagesTouchedBy(rows, after))).toEqual({ rfcs: ["0001", "0002"], stories: ["a", "c"] });
+  });
+
+  it("reaches both RFCs of a story that moved between them", () => {
+    const after = withRow(3, { id: "b", rfc_id: "0002", status: "ready" });
+    expect(sorted(pagesTouchedBy(rows, after))).toEqual({ rfcs: ["0001", "0002"], stories: ["b"] });
+  });
+
+  it("reaches an RFC's stories and the stories waiting on it when the RFC moves", () => {
+    const after = withRow(0, { id: "0001", status: "closed" });
+    expect(sorted(pagesTouchedBy(rows, after))).toEqual({
+      rfcs: ["0001", "0002"],
+      stories: ["a", "b", "c", "d"],
+    });
+  });
+
+  it("reaches a new story and a story whose deps changed", () => {
+    const after: RowRecord[] = [
+      ...rows,
+      { table: "stories", row: { id: "e", rfc_id: "0002", status: "draft" } },
+      { table: "story_deps", row: { story_id: "b", depends_on_id: "e" } },
+    ];
+    expect(sorted(pagesTouchedBy(rows, after))).toEqual({ rfcs: ["0001", "0002"], stories: ["b", "e"] });
   });
 });
