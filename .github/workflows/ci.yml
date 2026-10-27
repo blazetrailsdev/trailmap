@@ -199,6 +199,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec trails-tsc-views build --views app/views
       - run: pnpm db:migrate
       - run: ./scripts/dashboard-e2e.sh
 
@@ -270,6 +271,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec trails-tsc-views build --views app/views
       - run: pnpm install --frozen-lockfile
         working-directory: tasks
       - name: Ingest the content tree into a database both sides can read
