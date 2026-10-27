@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Rfc, Story, StoryDep, loadModelSchemas } from "../../app/models/index.js";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
-import { StoryPagesController } from "../../app/controllers/story-pages-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Rfc, Story, StoryDep, loadModelSchemas } from "../../app/models/index.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
+import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
  * ONE status vocabulary, across every page that shows one.

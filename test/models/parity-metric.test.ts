@@ -18,8 +18,8 @@ import {
   metricAvailable,
   metricColumns,
   numeratorColumn,
-} from "../../app/models/parity-metric.js";
-import { createScratchStatsDatabase } from "./stats-schema.js";
+} from "../../app/models/parity-metric.ts";
+import { createScratchStatsDatabase } from "./stats-schema.ts";
 
 beforeAll(async () => {
   await createScratchStatsDatabase();

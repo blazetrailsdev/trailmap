@@ -20,12 +20,12 @@ import {
   hasHubTestDatabase,
   releaseHubTestDatabase,
   truncateHub,
-} from "../support/hub-schema.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { ParityGraphsController } from "../../app/controllers/parity-graphs-controller.js";
-import { ParityDay } from "../../app/models/parity-day.js";
-import * as refresh from "../../app/models/parity-refresh.js";
+} from "../support/hub-schema.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { ParityGraphsController } from "../../app/controllers/parity-graphs-controller.ts";
+import { ParityDay } from "../../app/models/parity-day.ts";
+import * as refresh from "../../app/models/parity-refresh.ts";
 
 /** One projected row. */
 function row(attributes: Record<string, unknown> = {}): Record<string, unknown> {

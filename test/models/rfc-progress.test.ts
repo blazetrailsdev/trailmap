@@ -8,8 +8,8 @@ import {
   storyBarScale,
   storyStatusCounts,
   storyStatusRank,
-} from "../../app/models/concerns/rfc-progress.js";
-import type { Story } from "../../app/models/index.js";
+} from "../../app/models/concerns/rfc-progress.ts";
+import type { Story } from "../../app/models/index.ts";
 
 /** A story is its id, status and priority here; nothing else is read. */
 function story(id: string, status: string, priority: number | null = null): Story {

@@ -22,7 +22,7 @@ import {
   storyStateLabel,
   text,
   trailmapStoryPill,
-} from "../../scripts/page-extract.js";
+} from "../../scripts/page-extract.ts";
 
 /**
  * The markup here is COPIED from the two implementations, not invented:

@@ -1,7 +1,7 @@
-import { Rfc } from "../rfc.js";
-import { StoryDep } from "../joins.js";
-import type { Story } from "../story.js";
-import { effectiveStoryStatus } from "./effective-status.js";
+import { Rfc } from "../rfc.ts";
+import { StoryDep } from "../joins.ts";
+import type { Story } from "../story.ts";
+import { effectiveStoryStatus } from "./effective-status.ts";
 
 /** One story reached from the page's own, and how far away it is. */
 export interface DepNode {

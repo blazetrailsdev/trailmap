@@ -13,16 +13,16 @@
  * you want after changing how a row is measured.
  */
 import { argv, exit } from "@blazetrails/ruby-compat";
-import { Hub } from "../app/models/hub.js";
-import { Stats } from "../app/models/stats.js";
-import { loadHubSchemas, loadStatsSchemas, ParityDay } from "../app/models/index.js";
+import { Hub } from "../app/models/hub.ts";
+import { Stats } from "../app/models/stats.ts";
+import { loadHubSchemas, loadStatsSchemas, ParityDay } from "../app/models/index.ts";
 import {
   hasHubDatabase,
   hasStatsDatabase,
   hubDatabaseConfig,
   statsDatabaseConfig,
-} from "../config/database.js";
-import { projectionIsStale, refreshProjectionIfStale } from "../app/models/parity-refresh.js";
+} from "../config/database.ts";
+import { projectionIsStale, refreshProjectionIfStale } from "../app/models/parity-refresh.ts";
 
 const force = argv.includes("--force");
 

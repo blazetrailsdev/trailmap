@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "./schema.js";
-import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
+import { migrateScratchDatabase } from "./schema.ts";
+import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
 
 /**
  * Its own file on purpose: column information is cached per model class, so

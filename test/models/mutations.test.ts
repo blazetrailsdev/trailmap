@@ -6,9 +6,9 @@
  * are what these tests are for, not the happy paths.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { migrateScratchDatabase } from "./schema.js";
-import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { VerbExit } from "../../app/models/verb-exit.js";
+import { migrateScratchDatabase } from "./schema.ts";
+import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { VerbExit } from "../../app/models/verb-exit.ts";
 
 vi.spyOn(console, "log").mockImplementation(() => {});
 

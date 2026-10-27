@@ -1,4 +1,4 @@
-import { ApplicationRecord } from "./application-record.js";
+import { ApplicationRecord } from "./application-record.ts";
 import type { Temporal } from "@blazetrails/date";
 
 /**

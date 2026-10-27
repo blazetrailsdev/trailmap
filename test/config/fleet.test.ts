@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { setX } from "../support/config-x.js";
+import { setX } from "../support/config-x.ts";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash } from "../../config/fleet.js";
+import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash } from "../../config/fleet.ts";
 
 /**
  * The dashboard's two configured pieces, unit-tested rather than only through

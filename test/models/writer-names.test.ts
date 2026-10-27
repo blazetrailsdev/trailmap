@@ -9,8 +9,8 @@
  * with an out-of-memory crash rather than a failure.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "./schema.js";
-import { Event, Meta, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
+import { migrateScratchDatabase } from "./schema.ts";
+import { Event, Meta, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
 
 beforeAll(async () => {
   await migrateScratchDatabase();

@@ -1,4 +1,4 @@
-import { Owner } from "../../models/owner.js";
+import { Owner } from "../../models/owner.ts";
 
 interface ViewerRequest {
   getHeader(key: string): unknown;

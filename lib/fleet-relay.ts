@@ -1,5 +1,5 @@
 import websocket, { type DriverRequest } from "websocket-driver";
-import { sseData } from "./sse.js";
+import { sseData } from "./sse.ts";
 
 /** The hijacked connection, as the framework's handler hands it over. */
 export interface RelaySocket {

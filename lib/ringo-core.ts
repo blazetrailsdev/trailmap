@@ -48,17 +48,22 @@ const RANDOM_CHUNK = 65536;
 
 /** Thrown through the module's stack by `proc_exit`, which must not return. */
 class Exit {
-  constructor(readonly code: number) {}
+  readonly code: number;
+
+  constructor(code: number) {
+    this.code = code;
+  }
 }
 
 /** `core` exited non-zero; `message` is what it wrote to stderr. */
 export class RingoCoreError extends Error {
-  constructor(
-    readonly args: readonly string[],
-    readonly code: number,
-    stderr: string,
-  ) {
+  readonly args: readonly string[];
+  readonly code: number;
+
+  constructor(args: readonly string[], code: number, stderr: string) {
     super(`ringo core ${args.join(" ")} exited ${code}: ${stderr.trim() || "(nothing on stderr)"}`);
+    this.args = args;
+    this.code = code;
     this.name = "RingoCoreError";
   }
 }

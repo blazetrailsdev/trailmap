@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { env, getFs, getPath } from "@blazetrails/ruby-compat";
-import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.js";
-import { migrateScratchDatabase } from "../models/schema.js";
+import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.ts";
+import { migrateScratchDatabase } from "../models/schema.ts";
 import {
   Rfc,
   Story,
@@ -11,8 +11,8 @@ import {
   StoryPath,
   StoryRfcDep,
   loadModelSchemas,
-} from "../../app/models/index.js";
-import { serializeStories, serializeStory } from "../../app/serializers/story-json.js";
+} from "../../app/models/index.ts";
+import { serializeStories, serializeStory } from "../../app/serializers/story-json.ts";
 
 describe("the serializer", () => {
   beforeAll(async () => {

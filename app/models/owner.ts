@@ -1,8 +1,8 @@
-import { Hub } from "./hub.js";
-import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "../../config/owner-names.js";
+import { Hub } from "./hub.ts";
+import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "../../config/owner-names.ts";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
-import type { Repository } from "./repository.js";
-import type { RepositoryCollaborator } from "./repository-collaborator.js";
+import type { Repository } from "./repository.ts";
+import type { RepositoryCollaborator } from "./repository-collaborator.ts";
 
 export const OWNER_KINDS = ["user", "organization"] as const;
 export type OwnerKind = (typeof OWNER_KINDS)[number];

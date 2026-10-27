@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { env, getFs, setEnv } from "@blazetrails/ruby-compat";
-import { tasksDatabaseConfig } from "../../config/database.js";
-import { ringoBusyTimeoutPragma, tableOwners, tablesOwnedBy, writeProtocol } from "../../config/write-protocol.js";
-import * as models from "../../app/models/index.js";
-import { Hub } from "../../app/models/hub.js";
-import { Stats } from "../../app/models/stats.js";
+import { tasksDatabaseConfig } from "../../config/database.ts";
+import { ringoBusyTimeoutPragma, tableOwners, tablesOwnedBy, writeProtocol } from "../../config/write-protocol.ts";
+import * as models from "../../app/models/index.ts";
+import { Hub } from "../../app/models/hub.ts";
+import { Stats } from "../../app/models/stats.ts";
 
 /**
  * The write protocol, enforced rather than promised: every table has exactly

@@ -9,8 +9,8 @@
  * counting it would make every RFC that ever closed one look permanently
  * unfinished.
  */
-import type { Story } from "../story.js";
-import { effectiveStoryStatus } from "./effective-status.js";
+import type { Story } from "../story.ts";
+import { effectiveStoryStatus } from "./effective-status.ts";
 
 /**
  * Sort key: in-progress first, done last, anything else in between.

@@ -17,9 +17,9 @@
  */
 import { Base } from "@blazetrails/activerecord";
 import { Dir, env, exit, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
-import { tasksDatabaseConfig } from "../config/database.js";
-import { Rfc, Story, StoryPath, loadModelSchemas } from "../app/models/index.js";
-import { claimableIn } from "../app/models/concerns/ranking.js";
+import { tasksDatabaseConfig } from "../config/database.ts";
+import { Rfc, Story, StoryPath, loadModelSchemas } from "../app/models/index.ts";
+import { claimableIn } from "../app/models/concerns/ranking.ts";
 
 /** The `--max-loc` budgets the spawn loop actually asks for. */
 const BUDGETS = [100, 250, 500, 700];

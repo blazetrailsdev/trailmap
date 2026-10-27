@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "./schema.js";
-import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { closeRfcIfComplete } from "../../app/models/rfc-close.js";
+import { migrateScratchDatabase } from "./schema.ts";
+import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { closeRfcIfComplete } from "../../app/models/rfc-close.ts";
 
 beforeEach(async () => {
   await migrateScratchDatabase();

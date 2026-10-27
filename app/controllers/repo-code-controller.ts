@@ -1,5 +1,5 @@
-import { RepoController } from "./repo-controller.js";
-import { pathsForStories, storiesForRepo } from "../models/concerns/repo-scope.js";
+import { RepoController } from "./repo-controller.ts";
+import { pathsForStories, storiesForRepo } from "../models/concerns/repo-scope.ts";
 
 /**
  * `/:owner/:repo` — the code tab, which IS the repository page, as it is on

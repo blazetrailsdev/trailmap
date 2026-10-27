@@ -11,7 +11,7 @@
  * over its DevTools protocol with the platform's `fetch` and `WebSocket`.
  */
 import { env, exit, getFs, getHttpAsync } from "@blazetrails/ruby-compat";
-import { STYLESHEET, boxRules, collisionsInList } from "./class-collisions.js";
+import { STYLESHEET, boxRules, collisionsInList } from "./class-collisions.ts";
 
 const APP = String(env.E2E_APP);
 const PR = { owner: "o", repo: "r", pr: 7, title: "A pull request", branch: "a-branch" };

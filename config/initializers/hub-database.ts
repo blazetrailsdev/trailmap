@@ -1,7 +1,7 @@
 import { env } from "@blazetrails/ruby-compat";
-import { hasHubDatabase, hubDatabaseConfig } from "../database.js";
-import { Hub } from "../../app/models/hub.js";
-import { loadHubSchemas, missingHubTables } from "../../app/models/index.js";
+import { hasHubDatabase, hubDatabaseConfig } from "../database.ts";
+import { Hub } from "../../app/models/hub.ts";
+import { loadHubSchemas, missingHubTables } from "../../app/models/index.ts";
 
 /**
  * Connect the owner/repository hierarchy to the `hub` Postgres database.

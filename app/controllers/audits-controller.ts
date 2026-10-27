@@ -1,8 +1,8 @@
 import { htmlSafe } from "@blazetrails/activesupport";
-import { ApplicationController } from "./application-controller.js";
-import { Audit, auditsDir } from "../models/audit.js";
-import { renderMarkdown } from "../helpers/markdown-helper.js";
-import { stripFrontmatter } from "../models/concerns/document.js";
+import { ApplicationController } from "./application-controller.ts";
+import { Audit, auditsDir } from "../models/audit.ts";
+import { renderMarkdown } from "../helpers/markdown-helper.ts";
+import { stripFrontmatter } from "../models/concerns/document.ts";
 
 /**
  * `/audits` — the agent-written progress reports, newest first;

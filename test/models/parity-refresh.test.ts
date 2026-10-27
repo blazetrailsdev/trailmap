@@ -23,12 +23,12 @@ import {
   hubTestUrl,
   releaseHubTestDatabase,
   truncateHub,
-} from "../support/hub-schema.js";
-import { Hub } from "../../app/models/hub.js";
-import { ParityDay } from "../../app/models/parity-day.js";
-import { projectionIsStale, refreshProjectionIfStale } from "../../app/models/parity-refresh.js";
-import { createScratchStatsDatabase, seedApiCompare } from "./stats-schema.js";
-import { Stats } from "../../app/models/stats.js";
+} from "../support/hub-schema.ts";
+import { Hub } from "../../app/models/hub.ts";
+import { ParityDay } from "../../app/models/parity-day.ts";
+import { projectionIsStale, refreshProjectionIfStale } from "../../app/models/parity-refresh.ts";
+import { createScratchStatsDatabase, seedApiCompare } from "./stats-schema.ts";
+import { Stats } from "../../app/models/stats.ts";
 
 /** The lock `parity-refresh.ts` uses; taken here to drive the "locked" path. */
 const REFRESH_LOCK = 0x7a11_0001;

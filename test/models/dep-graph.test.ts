@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Notifications } from "@blazetrails/activesupport";
-import { migrateScratchDatabase } from "./schema.js";
-import { Rfc, Story, StoryDep, loadModelSchemas } from "../../app/models/index.js";
-import { depGraphFor } from "../../app/models/concerns/dep-graph.js";
+import { migrateScratchDatabase } from "./schema.ts";
+import { Rfc, Story, StoryDep, loadModelSchemas } from "../../app/models/index.ts";
+import { depGraphFor } from "../../app/models/concerns/dep-graph.ts";
 
 async function chain(...ids: string[]): Promise<void> {
   for (let i = 0; i + 1 < ids.length; i += 1) {

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { HomeController } from "../../app/controllers/home-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { HomeController } from "../../app/controllers/home-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
  * The engine's `add_view_paths` initializer prepends `app/views` at boot; a

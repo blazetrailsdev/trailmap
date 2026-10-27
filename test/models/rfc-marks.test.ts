@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { collectRfcMarks, markTitle, type MarkEvent } from "../../app/models/concerns/rfc-marks.js";
-import { rfcStalled } from "../../app/models/concerns/rfc-progress.js";
+import { collectRfcMarks, markTitle, type MarkEvent } from "../../app/models/concerns/rfc-marks.ts";
+import { rfcStalled } from "../../app/models/concerns/rfc-progress.ts";
 
 const event = (at: string, verb: string, storyId: string | null, rfcId: string, source = ""): MarkEvent => ({
   at,

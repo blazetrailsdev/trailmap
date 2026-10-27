@@ -8,8 +8,8 @@
  * to cross that boundary in each direction, at sizes that force it to matter.
  */
 import { describe, expect, it } from "vitest";
-import { RingoCoreError, renderPaneLog, runRingoCore } from "../../lib/ringo-core.js";
-import { renderMarkdown } from "../../app/helpers/markdown-helper.js";
+import { RingoCoreError, renderPaneLog, runRingoCore } from "../../lib/ringo-core.ts";
+import { renderMarkdown } from "../../app/helpers/markdown-helper.ts";
 
 const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
 const text = (b: Uint8Array): string => new TextDecoder().decode(b);

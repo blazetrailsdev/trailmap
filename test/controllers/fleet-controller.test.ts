@@ -14,8 +14,8 @@ import {
   FleetController,
   REVIEWERS_TIMEOUT_MS,
   SCREEN_TIMEOUT_MS,
-} from "../../app/controllers/fleet-controller.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+} from "../../app/controllers/fleet-controller.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 interface Received {
   url: string | undefined;

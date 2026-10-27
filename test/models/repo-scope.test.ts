@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Notifications } from "@blazetrails/activesupport";
-import { migrateScratchDatabase } from "./schema.js";
-import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
+import { migrateScratchDatabase } from "./schema.ts";
+import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
 import {
   CONTENT_REPO,
   eventsForRepo,
@@ -12,8 +12,8 @@ import {
   prRefsOf,
   storiesForRepo,
   storyForRepo,
-} from "../../app/models/concerns/repo-scope.js";
-import { StoryPath } from "../../app/models/joins.js";
+} from "../../app/models/concerns/repo-scope.ts";
+import { StoryPath } from "../../app/models/joins.ts";
 
 /**
  * The rule that decides which repository a story belongs to.

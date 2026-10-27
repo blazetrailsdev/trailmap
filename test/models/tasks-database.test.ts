@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.js";
-import { RFC_STATUSES, Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
+import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.ts";
+import { RFC_STATUSES, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
 
 /**
  * Spot-check the moved models against the LIVE database the CLI writes.

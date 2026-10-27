@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sseData } from "../../lib/sse.js";
+import { sseData } from "../../lib/sse.ts";
 
 describe("sseData", () => {
   it("returns each complete event's data and keeps the unfinished tail", () => {

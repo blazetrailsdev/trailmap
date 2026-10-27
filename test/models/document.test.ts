@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { setX } from "../support/config-x.js";
+import { setX } from "../support/config-x.ts";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
-import { readDocument, stripFrontmatter } from "../../app/models/concerns/document.js";
-import { tasksContentDir } from "../../config/tasks-content.js";
+import { readDocument, stripFrontmatter } from "../../app/models/concerns/document.ts";
+import { tasksContentDir } from "../../config/tasks-content.ts";
 
 describe("stripFrontmatter", () => {
   it("drops a leading frontmatter block", () => {

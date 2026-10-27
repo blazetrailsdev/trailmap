@@ -1,6 +1,6 @@
 import { ExceptionWrapper } from "@blazetrails/actionpack";
-import { ApplicationController } from "./application-controller.js";
-import { requireLoopback } from "./concerns/loopback-only.js";
+import { ApplicationController } from "./application-controller.ts";
+import { requireLoopback } from "./concerns/loopback-only.ts";
 
 /**
  * The loopback JSON API's base: `/stories/*`, the mutation verbs, the two

@@ -1,5 +1,5 @@
-import { Hub } from "./hub.js";
-import type { Repository } from "./repository.js";
+import { Hub } from "./hub.ts";
+import type { Repository } from "./repository.ts";
 
 /** The tabs a repository can turn off, in the order the nav renders them. */
 export const OPTIONAL_TABS = [

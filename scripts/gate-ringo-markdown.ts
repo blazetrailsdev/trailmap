@@ -21,9 +21,9 @@
  *     TASKS_DIR=<tasks checkout> pnpm gate:markdown [--self-test]
  */
 import { argv, Dir, env, exit, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
-import { verifyRingoPin } from "./ringo-pin.js";
-import { renderMarkdown } from "../app/helpers/markdown-helper.js";
-import { stripFrontmatter } from "../app/models/concerns/document.js";
+import { verifyRingoPin } from "./ringo-pin.ts";
+import { renderMarkdown } from "../app/helpers/markdown-helper.ts";
+import { stripFrontmatter } from "../app/models/concerns/document.ts";
 
 /** How many differing documents to name before the report stops being useful. */
 const REPORT_LIMIT = 5;

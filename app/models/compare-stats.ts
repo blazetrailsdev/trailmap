@@ -1,4 +1,4 @@
-import { CompareRun } from "./compare-run.js";
+import { CompareRun } from "./compare-run.ts";
 
 /**
  * The five comparison tables, one subclass each.

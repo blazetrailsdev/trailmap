@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { getFs, getPath } from "@blazetrails/ruby-compat";
-import { verifyRingoPin } from "../../scripts/ringo-pin.js";
+import { verifyRingoPin } from "../../scripts/ringo-pin.ts";
 
 /**
  * `vendor/ringo/` is the reference implementation both ringo gates diff

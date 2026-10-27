@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { getFs } from "@blazetrails/ruby-compat";
-import { migrateScratchDatabase } from "../models/schema.js";
-import { Rfc, Story, loadModelSchemas } from "../../app/models/index.js";
-import { ApplicationController } from "../../app/controllers/application-controller.js";
-import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.js";
-import { StoryPagesController } from "../../app/controllers/story-pages-controller.js";
-import { STYLESHEET, boxRules, classListsIn, collisionsInList } from "../../scripts/class-collisions.js";
-import { controllerTestCase } from "../support/controller-test-case.js";
+import { migrateScratchDatabase } from "../models/schema.ts";
+import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
+import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
+import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";
+import { STYLESHEET, boxRules, classListsIn, collisionsInList } from "../../scripts/class-collisions.ts";
+import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
  * The class-collision rule (`scripts/class-collisions.ts`) over the class

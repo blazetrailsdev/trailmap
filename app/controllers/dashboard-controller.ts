@@ -1,12 +1,12 @@
-import { ApplicationController } from "./application-controller.js";
+import { ApplicationController } from "./application-controller.ts";
 import {
   FLEET_CONTROL_PATH,
   FLEET_READ_PATH,
   FLEET_REVIEWERS_PATH,
   FLEET_SOCKET_PATH,
-} from "../../config/fleet.js";
-import { Setting } from "../models/setting.js";
-import { Repository } from "../models/repository.js";
+} from "../../config/fleet.ts";
+import { Setting } from "../models/setting.ts";
+import { Repository } from "../models/repository.ts";
 
 /**
  * `/dashboard` — the fleet dashboard, ported from ringo's `/`.

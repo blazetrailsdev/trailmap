@@ -22,9 +22,9 @@ import {
   hasHubTestDatabase,
   releaseHubTestDatabase,
   truncateHub,
-} from "../support/hub-schema.js";
-import { ParityDay } from "../../app/models/parity-day.js";
-import { createScratchStatsDatabase, seedApiCompare } from "./stats-schema.js";
+} from "../support/hub-schema.ts";
+import { ParityDay } from "../../app/models/parity-day.ts";
+import { createScratchStatsDatabase, seedApiCompare } from "./stats-schema.ts";
 
 /** The seeded stats rows: two PRs merged on the 1st, one on the 3rd. */
 const SEED = [

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pagerFor, requestedPage } from "../../app/models/concerns/pager.js";
+import { pagerFor, requestedPage } from "../../app/models/concerns/pager.ts";
 
 const href = (page: number) => `/list?page=${page}`;
 

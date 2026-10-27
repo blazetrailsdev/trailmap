@@ -1,6 +1,6 @@
-import { hasStatsDatabase, statsDatabaseConfig } from "../database.js";
-import { Stats } from "../../app/models/stats.js";
-import { loadStatsSchemas } from "../../app/models/index.js";
+import { hasStatsDatabase, statsDatabaseConfig } from "../database.ts";
+import { Stats } from "../../app/models/stats.ts";
+import { loadStatsSchemas } from "../../app/models/index.ts";
 
 /**
  * Connect the trails comparison stats to the stats database, read-only.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { env } from "@blazetrails/ruby-compat";
-import { writeProtocol } from "../../config/write-protocol.js";
-import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.js";
+import { writeProtocol } from "../../config/write-protocol.ts";
+import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.ts";
 
 describe("tasksDatabaseConfig", () => {
   it("agrees with hasTasksDatabase", () => {
