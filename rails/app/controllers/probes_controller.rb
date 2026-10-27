@@ -30,7 +30,7 @@ class ProbesController < ApiController
   # A real ready queue, timed and bounded; overlapping calls share one run.
   def deep
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    rows = shared_queue.value(deep_timeout)
+    rows = shared_queue.join(deep_timeout)&.value
     latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
     raise_timeout if rows.nil? || latency_ms > deep_timeout * 1000
     render json: { status: "ok", ready: { rows: rows, latency_ms: latency_ms } }
