@@ -201,9 +201,14 @@ export interface TouchedPages {
  * saying one thing and replayed over rows that say another. This names what
  * to re-fetch, from what a page's facts read:
  *
- * - a story page states its own status, title, RFC and dep ids — and its
- *   status is `blocked` while a dep is unfinished, so a story's change
- *   reaches the pages of the stories that depend on it, one level up;
+ * - a story page states its own status, title, RFC and dep ids
+ *   (`StoryPageFacts`) — and its status is `blocked` while a dep is
+ *   unfinished, so a story's change reaches the pages of the stories that
+ *   depend on it. ONE level, not transitively: "unfinished" is the dep's
+ *   AUTHORED status, neither done nor closed (`isDepResolved`), and a dep held
+ *   on its own deps is still authored `ready`, so a change two levels down
+ *   cannot flip it. Nor does the page state who depends on it, so a
+ *   `story_deps` row reaches its `story_id` and not its `depends_on_id`;
  * - an RFC page lists its stories with their statuses, in status order — so a
  *   story's change reaches its RFC's page (both before and after a move);
  * - an RFC's own status rewrites its stories' effective statuses, and closing

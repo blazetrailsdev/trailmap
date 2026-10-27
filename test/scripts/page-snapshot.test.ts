@@ -156,6 +156,23 @@ describe("pagesTouchedBy", () => {
     expect(sorted(pagesTouchedBy(rows, after))).toEqual({ rfcs: ["0001", "0002"], stories: ["a", "c"] });
   });
 
+  it("stops one level up: a dependent's dependent is not reached", () => {
+    // `e` waits on `c`, which waits on `a`. `a` finishing resolves `c`'s dep,
+    // but `c` is still authored `ready`, so nothing `e` shows can change.
+    const chain: RowRecord[] = [
+      ...rows,
+      { table: "stories", row: { id: "e", rfc_id: "0002", status: "ready" } },
+      { table: "story_deps", row: { story_id: "e", depends_on_id: "c" } },
+    ];
+    const after = chain.map((r) => (r.row.id === "a" ? { ...r, row: { ...r.row, status: "done" } } : r));
+    expect(sorted(pagesTouchedBy(chain, after)).stories).toEqual(["a", "c"]);
+  });
+
+  it("reaches the depending story, not the depended-on one, when a dep edge changes", () => {
+    const after: RowRecord[] = [...rows, { table: "story_deps", row: { story_id: "d", depends_on_id: "b" } }];
+    expect(sorted(pagesTouchedBy(rows, after))).toEqual({ rfcs: ["0002"], stories: ["d"] });
+  });
+
   it("reaches both RFCs of a story that moved between them", () => {
     const after = withRow(3, { id: "b", rfc_id: "0002", status: "ready" });
     expect(sorted(pagesTouchedBy(rows, after))).toEqual({ rfcs: ["0001", "0002"], stories: ["b"] });

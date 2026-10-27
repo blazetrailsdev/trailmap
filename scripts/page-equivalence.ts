@@ -175,7 +175,7 @@ async function main(): Promise<number> {
     const rows: RowRecord[] = [];
     for (const table of SNAPSHOT_TABLES) {
       const selected = (
-      await (await Base.leaseConnection()).selectAll(`SELECT * FROM ${table} ORDER BY rowid`)
+        await (await Base.leaseConnection()).selectAll(`SELECT * FROM ${table} ORDER BY rowid`)
       ).toArray() as unknown as Record<string, unknown>[];
       for (const row of selected) rows.push({ table, row });
     }
@@ -251,47 +251,90 @@ async function main(): Promise<number> {
   /**
    * Bring the recorded facts and the rows to one moment. Each round dumps the
    * rows, names the pages the writes since the last dump reach, and fetches
-   * those from both sides again, until a dump finds nothing moved. Answers the
-   * rows to write, or that it did not settle: the database would not hold
-   * still — or a re-fetched page really differs — within `SETTLE_ROUNDS`.
+   * those from both sides again — `compareAll`, so a round that an RFC's
+   * status change spreads over hundreds of stories still takes seconds — until
+   * a dump finds nothing moved.
+   *
+   * A page that still differs after a re-fetch is fetched again next round
+   * whether or not its rows moved: agents writing between the two fetches look
+   * exactly like that. One that differs on the last round is reported with its
+   * differences, which is how a real defect surfaced by a re-fetch is told
+   * apart from a database that would not hold still.
    */
-  const settle = async (): Promise<{ settled: true; rows: RowRecord[] } | { settled: false }> => {
-    let unsettled: string[] = [];
+  const settle = async (): Promise<{ settled: true; rows: RowRecord[] } | { settled: false; problems: string[] }> => {
+    let unsettled = { rfcs: new Set<string>(), stories: new Set<string>() };
+    let differences: string[] = [];
     for (let round = 1; round <= SETTLE_ROUNDS; round++) {
       const rowsAfter = await snapshotRows();
       const touched = pagesTouchedBy(rowsBefore, rowsAfter);
-      for (const page of unsettled) touched[page.startsWith("rfc:") ? "rfcs" : "stories"].add(page.slice(page.indexOf(":") + 1));
+      for (const id of unsettled.rfcs) touched.rfcs.add(id);
+      for (const id of unsettled.stories) touched.stories.add(id);
       if (touched.rfcs.size === 0 && touched.stories.size === 0) return { settled: true, rows: rowsAfter };
-      console.log(`settle ${round}: ${touched.rfcs.size} RFC and ${touched.stories.size} story pages moved under the run`);
+      console.log(
+        `settle ${round}: ${touched.rfcs.size} RFC and ${touched.stories.size} story pages moved under the run`,
+      );
+      const ids = (table: string) =>
+        new Set(rowsAfter.filter((r) => r.table === table).map((r) => String(r.row.id)));
+      const rfcNow = ids("rfcs");
+      const storyNow = ids("stories");
       const closedNow = new Set(
         rowsAfter.filter((r) => r.table === "rfcs" && r.row.status === "closed").map((r) => String(r.row.id)),
       );
-      const rfcNow = new Set(rowsAfter.filter((r) => r.table === "rfcs").map((r) => String(r.row.id)));
-      const storyNow = new Map(
-        rowsAfter.filter((r) => r.table === "stories").map((r) => [String(r.row.id), String(r.row.rfc_id)]),
+      underClosedRfc = new Set(
+        rowsAfter
+          .filter((r) => r.table === "stories" && closedNow.has(String(r.row.rfc_id)))
+          .map((r) => String(r.row.id)),
       );
-      underClosedRfc = new Set([...storyNow].filter(([, rfc]) => closedNow.has(rfc)).map(([id]) => id));
-      unsettled = [];
+
       // A page fetched again replaces its record where it stands, so the
       // fixture keeps its order; one that is gone, or now differs, is dropped.
-      for (const id of touched.rfcs) {
-        if (!rfcNow.has(id) || (await compareRfc(id)).length > 0) {
-          records.delete(`rfc:${id}`);
-          if (rfcNow.has(id)) unsettled.push(`rfc:${id}`);
-        }
-      }
+      unsettled = { rfcs: new Set(), stories: new Set() };
+      const refetch = (kind: "rfcs" | "stories", compareOne: (id: string) => Promise<string[]>) =>
+        async (id: string): Promise<string[]> => {
+          const found = await compareOne(id);
+          if (found.length > 0) {
+            records.delete(`${kind === "rfcs" ? "rfc" : "story"}:${id}`);
+            unsettled[kind].add(id);
+          }
+          return found;
+        };
+      for (const id of touched.rfcs) if (!rfcNow.has(id)) records.delete(`rfc:${id}`);
       for (const id of touched.stories) {
         exempt.delete(id);
-        if (!storyNow.has(id) || (await compareStory(id)).length > 0) {
-          records.delete(`story:${id}`);
-          if (storyNow.has(id)) unsettled.push(`story:${id}`);
-        }
+        if (!storyNow.has(id)) records.delete(`story:${id}`);
       }
+      differences = [
+        ...(await compareAll("rfc", [...touched.rfcs].filter((id) => rfcNow.has(id)), refetch("rfcs", compareRfc))),
+        ...(await compareAll(
+          "story",
+          [...touched.stories].filter((id) => storyNow.has(id)),
+          refetch("stories", compareStory),
+        )),
+      ];
       rowsBefore = rowsAfter;
     }
-    console.error(`settle: still moving after ${SETTLE_ROUNDS} rounds`);
-    return { settled: false };
+    return {
+      settled: false,
+      problems: [
+        ...differences,
+        `settle: still moving after ${SETTLE_ROUNDS} rounds ` +
+          `(${unsettled.rfcs.size} RFC and ${unsettled.stories.size} story pages last differed)`,
+      ],
+    };
   };
+
+  // Settled BEFORE anything is counted or reported, so the counts below are
+  // of what was recorded, new pages included.
+  let rows: RowRecord[] = [];
+  let unsettled = false;
+  if (RECORD && problems.length === 0) {
+    const settled = await settle();
+    if (settled.settled) rows = settled.rows;
+    else {
+      unsettled = true;
+      problems.push(...settled.problems);
+    }
+  }
 
   console.log(
     `\n${exempt.size} story pages ringo hides under a closed RFC and trailmap serves ` +
@@ -307,20 +350,15 @@ async function main(): Promise<number> {
   console.log(`all differences: ${report}`);
 
   if (problems.length === 0) {
-    console.log(`\nEQUIVALENT: ${rfcIds.length + storyIds.length} pages agree, value for value.`);
+    const pages = RECORD ? records.size : rfcIds.length + storyIds.length;
+    console.log(`\nEQUIVALENT: ${pages} pages agree, value for value.`);
     if (RECORD) {
-      const settled = await settle();
-      if (!settled.settled) {
-        console.error("\nNOT RECORDED — the database did not hold still long enough to record.");
-        (await Base.leaseConnection()).disconnectBang();
-        return 1;
-      }
       const fixture = `${Dir.pwd()}/${SNAPSHOT_FILE}`;
       await fs.mkdir!(fixture.slice(0, fixture.lastIndexOf("/")), { recursive: true });
       await fs.writeFile!(fixture, encodeSnapshot([...records.values()]));
       console.log(`recorded ${records.size} pages to ${SNAPSHOT_FILE}`);
-      await fs.writeFile!(`${Dir.pwd()}/${ROWS_FILE}`, encodeRows(settled.rows));
-      console.log(`recorded ${settled.rows.length} rows to ${ROWS_FILE}`);
+      await fs.writeFile!(`${Dir.pwd()}/${ROWS_FILE}`, encodeRows(rows));
+      console.log(`recorded ${rows.length} rows to ${ROWS_FILE}`);
     }
     (await Base.leaseConnection()).disconnectBang();
     return 0;
@@ -328,7 +366,13 @@ async function main(): Promise<number> {
   // A fixture is written only by an equivalent run. Recording a difference
   // would freeze the defect into the thing CI replays, which is the one state
   // worse than not having a snapshot at all.
-  if (RECORD) console.error("\nNOT RECORDED — the run was not equivalent.");
+  if (RECORD) {
+    console.error(
+      unsettled
+        ? "\nNOT RECORDED — the database did not hold still, or a page fetched again differs (below)."
+        : "\nNOT RECORDED — the run was not equivalent.",
+    );
+  }
   (await Base.leaseConnection()).disconnectBang();
 
   console.error(`\nNOT EQUIVALENT — ${problems.length} differences:`);
