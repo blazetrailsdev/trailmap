@@ -7,7 +7,54 @@
  */
 import type { N } from "./ir.ts";
 import { canon, constName } from "./model.ts";
-import { foldCall, STATUS_SYMBOLS, type Side } from "./idioms.ts";
+import { ENUM_VALUES, foldCall, STATUS_SYMBOLS, type Side } from "./idioms.ts";
+
+/**
+ * A condition that only asks "is it there / is it this type": `x`, `!x`,
+ * `x == nil`, `typeof x === "string"`, `x.is_a?(String)`, `x.nil?`. TS
+ * spells those as branches where Ruby leans on `&.`, `||`, `presence` and
+ * duck typing, so they weigh little.
+ */
+function isGuard(c: N | undefined): boolean {
+  if (!c) return false;
+  if (c.k === "not")
+    return (
+      isGuard(c.value) ||
+      c.value?.k === "lvar" ||
+      (c.value?.k === "call" && !c.value.args?.length)
+    );
+  if (c.k === "lvar" || c.k === "ivar") return true;
+  if (c.k === "and" || c.k === "or") return isGuard(c.left) && isGuard(c.right);
+  if (c.k === "call") {
+    if (
+      [
+        "nil?",
+        "blank?",
+        "present?",
+        "is_a?",
+        "kind_of?",
+        "instance_of?",
+        "class",
+        "empty?",
+        "any?",
+      ].includes(c.name)
+    )
+      return true;
+    if (
+      c.name === "==" &&
+      (c.args?.[0]?.k === "nil" ||
+        (c.args?.[0]?.k === "str" &&
+          c.recv?.k === "call" &&
+          c.recv.name === "class"))
+    )
+      return true;
+    if (c.name === "isNaN" || c.name === "isArray" || c.name === "isInteger")
+      return true;
+    if (!c.args?.length && !c.block && c.recv && c.recv.k !== "self")
+      return true;
+  }
+  return false;
+}
 
 const isLengthRead = (n: N | undefined) =>
   n?.k === "call" &&
@@ -58,6 +105,23 @@ interface Pattern {
  */
 function tsPattern(node: N): Pattern | null {
   const COMPARE = new Set(["==", ">", ">=", "<", "<="]);
+  // `story.status === "closed"` is the enum predicate `story.closed?`.
+  if (
+    node.name === "==" &&
+    node.recv?.k === "call" &&
+    !node.recv.args?.length &&
+    node.args?.[0]?.k === "str"
+  ) {
+    const value = canon(String(node.args[0].value));
+    const prefixed = canon(String(node.recv.name)) + value;
+    const concept = ENUM_VALUES.has(prefixed)
+      ? prefixed
+      : ENUM_VALUES.has(value)
+        ? value
+        : null;
+    if (concept)
+      return { concept, idiom: "enum-predicate", visit: [node.recv.recv] };
+  }
   // `n > 0` is Ruby's `n.positive?`, `n === 0` its `n.zero?`.
   if (
     COMPARE.has(node.name) &&
@@ -118,6 +182,21 @@ function tsPattern(node: N): Pattern | null {
       };
     }
   }
+  // An app-local `renderPage(locals, status)` wrapper is the same implicit render.
+  if (
+    /^render[A-Z]/.test(node.name) &&
+    (node.recv === null || node.recv?.k === "self") &&
+    (node.args?.[0]?.k === "kwargs" || node.args?.[0]?.k === "hash")
+  ) {
+    const localPairs: { key: N; value: N }[] = node.args[0].pairs;
+    const rest: N[] = node.args.slice(1);
+    return {
+      concept: rest.length ? "render" : null,
+      idiom: "explicit-render",
+      ivars: localPairs.map((p) => String(p.key.value)),
+      visit: [localPairs.map((p) => p.value), rest],
+    };
+  }
   return null;
 }
 
@@ -149,6 +228,33 @@ export function features(body: N, side: Side): Features {
     if (typeof node.l === "number") lastLine = node.l;
     switch (node.k) {
       case "call": {
+        if (
+          side === "ruby" &&
+          node.name === "head" &&
+          !node.recv &&
+          node.args?.[0]?.k === "sym" &&
+          STATUS_SYMBOLS[node.args[0].value] !== undefined
+        ) {
+          add("call:head");
+          add(`num:${STATUS_SYMBOLS[node.args[0].value]}`);
+          return;
+        }
+        if (
+          side === "ruby" &&
+          node.name === "count" &&
+          node.recv &&
+          !node.args?.length &&
+          !node.block
+        ) {
+          // Array#count with no argument is `.length`; a relation's `count` is SQL and stays.
+          add(
+            node.recv.k === "lvar" || node.recv.k === "ivar"
+              ? "call:length"
+              : "call:count",
+          );
+          visit(node.recv);
+          return;
+        }
         if (node.name === "__out" && !node.recv) {
           visit(node.args);
           return;
@@ -188,7 +294,7 @@ export function features(body: N, side: Side): Features {
         return;
       }
       case "if":
-        add("branch:if");
+        add(isGuard(node.cond) ? "branch:guard" : "branch:if");
         break;
       case "case":
         add("branch:case");
@@ -204,10 +310,29 @@ export function features(body: N, side: Side): Features {
         if (String(node.value).trim())
           add(`lit:${JSON.stringify(normLit(node.value))}`);
         return;
+      case "str":
+        if (side === "ts" && node.value === "asc") return;
+        if (String(node.value).trim())
+          add(`lit:${JSON.stringify(normLit(node.value))}`);
+        return;
       case "sym":
-        if (side === "ruby" && STATUS_SYMBOLS[node.value] !== undefined)
-          add(`num:${STATUS_SYMBOLS[node.value]}`);
-        else add(`lit:${JSON.stringify(normLit(node.value))}`);
+        add(`lit:${JSON.stringify(normLit(node.value))}`);
+        return;
+      case "hash":
+      case "kwargs":
+        // `status: :not_found` is `status: 404`; only a status VALUE folds,
+        // never a key spelled like one (`{ ok: true }`).
+        for (const p of (node.pairs ?? []) as { key: N; value: N }[]) {
+          visit(p.key);
+          if (
+            side === "ruby" &&
+            p.key?.value === "status" &&
+            p.value?.k === "sym" &&
+            STATUS_SYMBOLS[p.value.value] !== undefined
+          )
+            add(`num:${STATUS_SYMBOLS[p.value.value]}`);
+          else visit(p.value);
+        }
         return;
       case "not":
         if (isLengthRead(node.value)) {
@@ -236,7 +361,16 @@ export function features(body: N, side: Side): Features {
       if (k !== "k" && v && typeof v === "object") visit(v);
   }
   visit(body);
-  return { items, idioms, unhandled };
+  // The ivars an action leaves for its template are a set: two render arms
+  // naming `story` are one ivar, as two Ruby assignments of `@story` are.
+  const seenIvar = new Set<string>();
+  const deduped = items.filter((f) => {
+    if (!f.key.startsWith("ivar:")) return true;
+    if (seenIvar.has(f.key)) return false;
+    seenIvar.add(f.key);
+    return true;
+  });
+  return { items: deduped, idioms, unhandled };
 }
 
 /** Ruby `\\A…\\z` and JS `^…$` anchor the same way on a single-line value. */

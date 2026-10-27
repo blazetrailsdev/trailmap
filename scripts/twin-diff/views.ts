@@ -43,7 +43,12 @@ export function markupFeatures(src: string): Feature[] {
     /<\/?([a-zA-Z][\w-]*)((?:\s+[^\s=>]+(?:=(?:"[^"]*"|'[^']*'|[^\s>]+))?)*)\s*\/?>/g;
   let last = 0;
   const pushText = (s: string, at: number) => {
-    const t = s.replace(/§\s*/g, "§").replace(/\s+/g, " ").trim();
+    // The twin names its own framework where the site names trails.
+    const t = s
+      .replace(/§\s*/g, "§")
+      .replace(/\s+/g, " ")
+      .replace(/\bRails\b/g, "trails")
+      .trim();
     if (t && t !== "§" && /[^\s§]/.test(t))
       out.push({ key: `text:${JSON.stringify(t)}`, line: lineAt(src, at) });
   };

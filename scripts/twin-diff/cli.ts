@@ -31,7 +31,7 @@ import {
   type Unit,
 } from "./model.ts";
 import { diffFeatures, features, type Feature } from "./features.ts";
-import { STRUCTS } from "./idioms.ts";
+import { ENUM_VALUES, STRUCTS } from "./idioms.ts";
 
 const fs = getFs();
 const { join } = getPath();
@@ -96,6 +96,25 @@ const tsUnits: Unit[] = tsFiles.flatMap((f: string) => {
 });
 
 for (const u of rubyUnits)
+  for (const d of u.decls.filter((d) => d.name === "enum")) {
+    const attr = d.args[0]?.k === "sym" ? String(d.args[0].value) : null;
+    const prefixed = d.args.some((a) =>
+      (a.pairs ?? []).some((p: { key: N }) => p.key.value === "prefix"),
+    );
+    const values = evalDecl(d, u).args[1];
+    const names: string[] =
+      values?.k === "hash"
+        ? values.pairs.map((p: { key: N }) => String(p.key.value))
+        : values?.k === "array"
+          ? values.elems.map((e: N) => String(e.value))
+          : [];
+    for (const v of names)
+      ENUM_VALUES.set(
+        prefixed && attr ? canon(attr + "_" + v) : canon(v),
+        attr ?? "",
+      );
+  }
+for (const u of rubyUnits)
   if (u.superclass === "Struct") STRUCTS.add(u.name.split("::").pop()!);
 
 /** `models/concerns/dep_graph.rb` → `models/concerns/dep-graph.ts` */
@@ -121,7 +140,7 @@ for (const u of tsUnits)
     ]);
 
 type Finding = {
-  tier: "surface" | "body" | "idiom" | "rename";
+  tier: "surface" | "body" | "idiom" | "rename" | "framework";
   kind: string;
   ruby?: string;
   ts?: string;
@@ -293,6 +312,13 @@ function evalDecl(d: Decl, u: Unit): Decl {
   return { ...d, args: d.args.map(ev) };
 }
 
+const ASSOCIATIONS = new Set([
+  "belongsto",
+  "hasmany",
+  "hasone",
+  "hasandbelongstomany",
+]);
+
 function declBlock(d: Decl): N | null {
   return (
     d.block ?? d.args.find((a) => a.k === "lambda" || a.k === "block") ?? null
@@ -322,6 +348,7 @@ function score(m: MethodReport): number {
     else if (kind === "text" || kind === "render") s += 2;
     else if (kind === "html" || kind === "local") s += 1;
     else if (kind === "ivar") s += 1;
+    else if (f.key === "branch:guard") s += 0.25;
     else if (kind === "branch" || kind === "rescue" || kind === "loop") s += 1;
     else s += 0.5;
   }
@@ -338,6 +365,10 @@ function bodyReport(
 ): MethodReport {
   const rf = features(rb, "ruby");
   const tf = features(tsb, "ts");
+  // A Rails partial reads its parent's ivars; TS hands them over as locals. When
+  // the Ruby body passes no locals at all, the TS ones are that decision.
+  if (!rf.items.some((f) => f.key.startsWith("local:")))
+    tf.items = tf.items.filter((f) => !f.key.startsWith("local:"));
   const d = diffFeatures(rf.items, tf.items);
   const idioms: Record<string, number> = {};
   for (const [k, v] of [...rf.idioms, ...tf.idioms])
@@ -478,7 +509,35 @@ for (const r of rubyUnits) {
     const key = declKey(d);
     const ro = declOpts(evalDecl(d, r));
     const to = declOpts(match);
-    if (ro !== to)
+    // TS spelling out an association option Rails infers (`foreign_key:
+    // "owner_id"`, `class_name: "Owner"`) points at trails' inference, not the app.
+    const optKeys = (x: Decl) =>
+      new Map(
+        x.args
+          .filter((a) => a.k === "kwargs" || a.k === "hash")
+          .flatMap((a) => a.pairs as { key: N; value: N }[])
+          .map((p) => [canon(String(p.key.value)), render(p.value)] as const),
+      );
+    const rk = optKeys(evalDecl(d, r));
+    const tk = optKeys(match);
+    const onlyInferable =
+      ASSOCIATIONS.has(canon(d.name)) &&
+      [...rk].every(([k, v]) => tk.get(k) === v) &&
+      [...tk.keys()]
+        .filter((k) => !rk.has(k))
+        .every((k) => k === "foreignkey" || k === "classname");
+    if (ro !== to && onlyInferable)
+      report.findings.push({
+        tier: "framework",
+        kind: "explicit-inferable-option",
+        ruby: loc(r, d.line),
+        ts: loc(t, match.line),
+        detail: `${key}: ts adds (${[...tk]
+          .filter(([k]) => !rk.has(k))
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(", ")})`,
+      });
+    else if (ro !== to)
       report.findings.push({
         tier: "surface",
         kind: "decl-options",
@@ -948,6 +1007,10 @@ for (const b of bodies.filter((b) => b.score >= BODY_THRESHOLD)) {
   if (b.extra.length) md.push(`  - ts only: ${fmt(b.extra)}`);
 }
 md.push("");
+section(
+  "Trails framework candidates (the TS works around something Rails infers)",
+  allFindings.filter((f) => f.tier === "framework"),
+);
 section(
   "Renames (paired by name words and body overlap)",
   allFindings.filter((f) => f.tier === "rename"),

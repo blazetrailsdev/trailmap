@@ -213,6 +213,19 @@ const ROWS: Row[] = [
     names: ["positive", "negative", "zero", "nonzero"],
     to: null,
   },
+  {
+    id: "replace",
+    side: "ruby",
+    names: ["deleteprefix", "deletesuffix", "squish", "chomp"],
+    to: "sub",
+  },
+  { id: "index", side: "ts", names: ["indexof", "findindex"], to: "index" },
+  {
+    id: "each",
+    side: "ruby",
+    names: ["eachwithindex", "eachwithobject", "eachvalue", "eachkey", "times"],
+    to: "each",
+  },
   // Ruby truthiness helpers whose JS spelling is no call (`!x`, `x ?? d`).
   {
     id: "truthiness",
@@ -312,6 +325,13 @@ const SHIMS: Record<string, string> = {
 };
 
 const isLitKey = (n: N | undefined) => !!n && (n.k === "sym" || n.k === "str");
+
+/**
+ * Enum values the twin declares (`enum :status, …`), keyed by canonical name,
+ * so `story.closed?` meets `story.status === "closed"`. A prefixed enum's
+ * predicate (`visibility_public?`) is keyed by attribute + value.
+ */
+export const ENUM_VALUES = new Map<string, string>();
 
 /** Ruby Struct names the twin builds where TS writes an object literal; `cli.ts` fills it. */
 export const STRUCTS = new Set<string>();
