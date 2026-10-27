@@ -157,11 +157,12 @@ echo "smoke-boot: $checked assets intact"
 # 500 on the first page that reads a row.
 #
 # This is a process-level boot, not a call to the exported function: it runs
-# `config/environment.ts`, so `Trails.initialize()` runs the
-# `load_config_initializers` initializer (Rails' `engine.rb:644-648`) and
-# imports `config/initializers/*` in sorted order. A unit test that imports
-# the module has already run it, and would keep passing if the initializer
-# stopped being LOADED at boot — which is the failure this asserts against.
+# `config.ts`, so `Trails.initialize()` imports `config/initializers/*` in
+# sorted order (Rails' `engine.rb:644-648`) and `loadServer()` then runs the
+# `server` blocks they registered (trails#9375). A unit test that calls the
+# function directly would keep passing if the initializer stopped being LOADED
+# at boot, or stopped registering the check — the failures this asserts
+# against.
 #
 # On the pre-fix initializer this step passes the boot and fails here, which is
 # what makes it a regression rather than a restatement.

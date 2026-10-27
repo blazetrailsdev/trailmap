@@ -42,3 +42,9 @@ export class Trailmap extends Application {
 }
 
 Application.register(Trailmap);
+
+declare module "@blazetrails/trailties" {
+  interface ApplicationRegistry {
+    application: Trailmap;
+  }
+}

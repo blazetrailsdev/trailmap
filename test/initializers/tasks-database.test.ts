@@ -2,17 +2,21 @@ import { describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { env, setEnv } from "@blazetrails/ruby-compat";
 import { hasTasksDatabase } from "../../config/database.ts";
+import { Trailmap } from "../../config/application.ts";
 import { connectToTasksDatabase } from "../../config/initializers/tasks-database.ts";
 import { writeProtocol } from "../../config/write-protocol.ts";
 import { Story } from "../../app/models/index.ts";
 
 /**
- * Importing the initializer already RAN it — that is the whole contract for a
- * `config/initializers` file, since `loadConfigInitializer` imports the module
- * and calls nothing. So these assert the state that import left behind, and
- * then that calling it again is safe.
+ * Importing the initializer registers `connectToTasksDatabase` as a `server`
+ * block, which `trails server` awaits before it binds; these call that block
+ * directly, and calling it more than once is safe.
  */
 describe("connectToTasksDatabase", () => {
+  it("is registered as a server block", () => {
+    expect(Trailmap.registeredBlocksFor("server")).toContain(connectToTasksDatabase);
+  });
+
   it("leaves the connection alone when TASKS_DATABASE names nothing under test", async () => {
     if (hasTasksDatabase()) {
       // The other branch is asserted below; with a live database present there
