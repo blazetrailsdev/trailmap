@@ -273,15 +273,16 @@ async function main(): Promise<number> {
       if (touched.rfcs.size === 0 && touched.stories.size === 0) {
         return { settled: true, rows: rowsAfter };
       }
-      console.log(
-        `settle ${round}: ${touched.rfcs.size} RFC and ${touched.stories.size} story pages moved under the run`,
-      );
+      const moved = `${touched.rfcs.size} RFC and ${touched.stories.size} story pages`;
+      console.log(`settle ${round}: ${moved} moved under the run`);
       const ids = (table: string) =>
         new Set(rowsAfter.filter((r) => r.table === table).map((r) => String(r.row.id)));
       const rfcNow = ids("rfcs");
       const storyNow = ids("stories");
       const closedNow = new Set(
-        rowsAfter.filter((r) => r.table === "rfcs" && r.row.status === "closed").map((r) => String(r.row.id)),
+        rowsAfter
+          .filter((r) => r.table === "rfcs" && r.row.status === "closed")
+          .map((r) => String(r.row.id)),
       );
       underClosedRfc = new Set(
         rowsAfter
@@ -376,7 +377,8 @@ async function main(): Promise<number> {
   if (RECORD) {
     console.error(
       unsettled
-        ? "\nNOT RECORDED — the database did not hold still, or a page fetched again differs (below)."
+        ? "\nNOT RECORDED — the database did not hold still, " +
+          "or a page fetched again differs (below)."
         : "\nNOT RECORDED — the run was not equivalent.",
     );
   }
