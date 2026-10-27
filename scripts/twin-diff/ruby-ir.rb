@@ -9,6 +9,9 @@
 # Usage: ruby scripts/twin-diff/ruby-ir.rb <root> file.rb ...
 
 
+# Prism 1.0 is where ConstantPathNode#name and the node API this builder
+# reads arrived; Ruby 3.3 ships 0.19, so say so rather than crash mid-file.
+gem "prism", ">= 1.0"
 require "prism"
 require "json"
 require "fileutils"

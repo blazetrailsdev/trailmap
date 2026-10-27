@@ -15,6 +15,7 @@ import {
   extractUnits,
 } from "../../scripts/twin-diff/model.ts";
 import { foldCall } from "../../scripts/twin-diff/idioms.ts";
+import { rubyFor } from "../../scripts/twin-diff/ruby-env.ts";
 import type { TwinContext } from "../../scripts/twin-diff/idioms.ts";
 import {
   markupFeatures,
@@ -228,13 +229,32 @@ describe("twin-diff", () => {
     );
   });
 
+  it("runs Ruby under the twin's bundle when it has one", () => {
+    const { join } = getPath();
+    const withBundle = rubyFor(join(Dir.pwd(), "rails/app"));
+    expect(withBundle.args).toEqual(["-rbundler/setup"]);
+    expect(withBundle.env.BUNDLE_GEMFILE).toBe(
+      join(Dir.pwd(), "rails/Gemfile"),
+    );
+    expect(withBundle.env.PATH).toBe(env.PATH);
+    const without = rubyFor("/nonexistent/app");
+    expect(without.args).toEqual([]);
+    expect(without.env.BUNDLE_GEMFILE).toBe(env.BUNDLE_GEMFILE);
+  });
+
   // The Ruby front-end needs Prism (Ruby 3.3+) and a Rails twin to read:
-  // `rails/app` once the twin is on main, or TWIN_DIFF_RAILS until then.
+  // `rails/app` by default, or TWIN_DIFF_RAILS to point at another checkout of
+  // the twin. CI's rails job has both; the unit job has no Ruby and skips.
   const railsApp =
     env.TWIN_DIFF_RAILS ?? getPath().join(Dir.pwd(), "rails/app");
+  const invocation = rubyFor(railsApp);
   const runnable =
     getFs().existsSync(railsApp) &&
-    getChildProcess().spawnSync("ruby", ["-e", 'require "prism"']).status === 0;
+    getChildProcess().spawnSync(
+      "ruby",
+      [...invocation.args, "-e", 'gem "prism", ">= 1.0"'],
+      { env: invocation.env },
+    ).status === 0;
 
   it.skipIf(!runnable)(
     "runs end to end over rails/ and app/",
@@ -257,7 +277,7 @@ describe("twin-diff", () => {
           encoding: "utf8",
         },
       );
-      expect(run.status).toBe(0);
+      expect(run.status, run.stderr).toBe(0);
       const report = JSON.parse(
         getFs().readFileSync(join(out, "twin-diff.json"), "utf8"),
       );
