@@ -21,7 +21,6 @@ import { LoopbackOnly } from "./concerns/loopback-only.ts";
  * 404 and `ParameterMissing`'s 400 into 500s. Whatever `rescueResponses`
  * gives another status is raised again, and reaches that mapping untouched.
  */
-
 export class ApiController extends ApplicationController {
   static {
     include(this, LoopbackOnly);
