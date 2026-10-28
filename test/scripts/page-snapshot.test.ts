@@ -7,6 +7,7 @@ import {
   encodeSnapshot,
   factsOf,
   isExempt,
+  pagesTouchedBy,
   type PageRecord,
   type RowRecord,
   type StoryRecord,
@@ -125,5 +126,45 @@ describe("the show-page snapshot format", () => {
   it("refuses a column name it would have to quote into SQL", () => {
     const line = `${JSON.stringify({ table: "rfcs", row: { 'id" from rfcs; --': "x" } })}\n`;
     expect(() => decodeRows(line)).toThrow(/unusable column name/);
+  });
+});
+
+// What a recording fetches again before its facts and its rows agree. Each
+// case is one edge of `pagesTouchedBy`'s reach, and one it must not take.
+describe("pagesTouchedBy", () => {
+  const story = (id: string, rfc: string, status = "ready"): RowRecord => ({
+    table: "stories",
+    row: { id, rfc_id: rfc, status },
+  });
+  const rfc = (id: string, status = "active"): RowRecord => ({ table: "rfcs", row: { id, status } });
+  const dep = (storyId: string, dependsOn: string): RowRecord => ({
+    table: "story_deps",
+    row: { story_id: storyId, depends_on_id: dependsOn },
+  });
+  const sorted = (t: { rfcs: Set<string>; stories: Set<string> }) => ({
+    rfcs: [...t.rfcs].sort(),
+    stories: [...t.stories].sort(),
+  });
+
+  it("names nothing when nothing moved", () => {
+    const rows = [rfc("r"), story("a", "r")];
+    expect(sorted(pagesTouchedBy(rows, rows))).toEqual({ rfcs: [], stories: [] });
+  });
+
+  it("reaches a changed story's RFC and its direct dependents, not their dependents", () => {
+    const base = [rfc("r"), rfc("s"), story("b", "s"), story("c", "s"), dep("b", "a"), dep("c", "b")];
+    const touched = pagesTouchedBy([...base, story("a", "r")], [...base, story("a", "r", "done")]);
+    expect(sorted(touched)).toEqual({ rfcs: ["r", "s"], stories: ["a", "b"] });
+  });
+
+  it("reaches a story_deps row's dependent, not what it depends on", () => {
+    const base = [rfc("r"), story("a", "r"), story("b", "r")];
+    expect(sorted(pagesTouchedBy(base, [...base, dep("b", "a")]))).toEqual({ rfcs: ["r"], stories: ["b"] });
+  });
+
+  it("reaches every story under an RFC whose status changed", () => {
+    const base = [story("a", "r"), story("b", "r"), story("c", "s"), rfc("s")];
+    const touched = pagesTouchedBy([...base, rfc("r")], [...base, rfc("r", "closed")]);
+    expect(sorted(touched)).toEqual({ rfcs: ["r"], stories: ["a", "b"] });
   });
 });

@@ -185,3 +185,73 @@ function ordered(record: PageRecord): Record<string, unknown> {
   }
   return out;
 }
+
+/** The show pages a set of row changes can have changed, by kind. */
+export interface TouchedPages {
+  rfcs: Set<string>;
+  stories: Set<string>;
+}
+
+/**
+ * Every show page whose facts can differ between two dumps of the rows — the
+ * pages a recording must fetch again before its facts and its rows agree.
+ *
+ * A recording fetches pages for ~15 minutes against a database agents keep
+ * writing, and dumps the rows once; a story that moved meanwhile is recorded
+ * saying one thing and replayed over rows that say another. This names what
+ * to re-fetch, from what a page's facts read:
+ *
+ * - a story page states its own status, title, RFC and dep ids
+ *   (`StoryPageFacts`) — and its status is `blocked` while a dep is
+ *   unfinished, so a story's change reaches the pages of the stories that
+ *   depend on it. ONE level, not transitively: "unfinished" is the dep's
+ *   AUTHORED status, neither done nor closed (`isDepResolved`), and a dep held
+ *   on its own deps is still authored `ready`, so a change two levels down
+ *   cannot flip it. Nor does the page state who depends on it, so a
+ *   `story_deps` row reaches its `story_id` and not its `depends_on_id`;
+ * - an RFC page lists its stories with their statuses, in status order — so a
+ *   story's change reaches its RFC's page (both before and after a move);
+ * - an RFC's own status rewrites its stories' effective statuses, and closing
+ *   it resolves the stories that wait on it.
+ */
+export function pagesTouchedBy(before: readonly RowRecord[], after: readonly RowRecord[]): TouchedPages {
+  const key = (r: RowRecord) => `${r.table}\t${JSON.stringify(r.row)}`;
+  const was = new Set(before.map(key));
+  const is = new Set(after.map(key));
+  const changed = [...before.filter((r) => !is.has(key(r))), ...after.filter((r) => !was.has(key(r)))];
+
+  const touched: TouchedPages = { rfcs: new Set(), stories: new Set() };
+  const changedStories = new Set<string>();
+  const changedRfcs = new Set<string>();
+  for (const { table, row } of changed) {
+    if (table === "rfcs") changedRfcs.add(String(row.id));
+    else if (table === "stories") {
+      changedStories.add(String(row.id));
+      touched.rfcs.add(String(row.rfc_id));
+    } else changedStories.add(String(row.story_id));
+  }
+
+  const rfcOf = new Map<string, string>();
+  const dependents = new Map<string, string[]>();
+  const rfcDependents = new Map<string, string[]>();
+  const push = (m: Map<string, string[]>, k: string, v: string) => m.set(k, [...(m.get(k) ?? []), v]);
+  for (const { table, row } of [...before, ...after]) {
+    if (table === "stories") rfcOf.set(String(row.id), String(row.rfc_id));
+    if (table === "story_deps") push(dependents, String(row.depends_on_id), String(row.story_id));
+    if (table === "story_rfc_deps") push(rfcDependents, String(row.rfc_id), String(row.story_id));
+  }
+  for (const [id, rfc] of rfcOf) if (changedRfcs.has(rfc)) changedStories.add(id);
+  for (const rfc of changedRfcs) {
+    touched.rfcs.add(rfc);
+    for (const id of rfcDependents.get(rfc) ?? []) touched.stories.add(id);
+  }
+  for (const id of changedStories) {
+    touched.stories.add(id);
+    for (const dependent of dependents.get(id) ?? []) touched.stories.add(dependent);
+  }
+  for (const id of touched.stories) {
+    const rfc = rfcOf.get(id);
+    if (rfc !== undefined) touched.rfcs.add(rfc);
+  }
+  return touched;
+}
