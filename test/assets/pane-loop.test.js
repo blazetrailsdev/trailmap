@@ -40,7 +40,10 @@ describe("pane loop", () => {
     const { page, fetchScreen, loop } = harness();
     loop.start();
     await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(POLL_MS - 100);
     page.hidden = true;
+    loop.pollNow();
+    await vi.advanceTimersByTimeAsync(POLL_MS);
     page.hidden = false;
     loop.pollNow();
     await vi.advanceTimersByTimeAsync(0);
