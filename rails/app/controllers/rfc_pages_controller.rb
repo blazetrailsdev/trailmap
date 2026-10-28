@@ -13,10 +13,13 @@ class RfcPagesController < ApplicationController
   def index
     rfcs = Rfc.all.to_a
     by_rfc = Hash.new { |h, k| h[k] = [] }
+    held_by_rfc = Hash.new { |h, k| h[k] = [] }
     story_rfc = {}
+    held = Story.dep_held_ids
     Story.pluck(:rfc_id, :status, :id).each do |rfc_id, status, id|
       story_rfc[id] = rfc_id
       by_rfc[rfc_id] << status
+      held_by_rfc[rfc_id] << held.include?(id)
     end
     events = Event.where(verb: %w[new spawn]).order(:at, :id).pluck(:at, :verb, :story_id, :rfc_id, :detail).map do |at, verb, story_id, rfc_id, detail|
       RfcMarks::MarkEvent.new(at: at.to_s, verb: verb, story_id: story_id, rfc_id: rfc_id, detail: detail)
@@ -42,7 +45,7 @@ class RfcPagesController < ApplicationController
       end
       Row.new(id: rfc.id, title: rfc.title || rfc.id, owner: rfc.owner, priority: rfc.priority,
               superseded_by: rfc.superseded_by, clusters: rfc.clusters, counts: RfcProgress.story_counts(own),
-              bar: RfcProgress.status_counts(own, rfc.status), bar_length: bar_length,
+              bar: RfcProgress.status_counts(own, rfc.status, held_by_rfc.fetch(rfc.id, [])), bar_length: bar_length,
               stalled: RfcProgress.stalled?(rfc.status, own),
               # A tick at the bar's own end says nothing and smears the tip.
               ticks: ticks.select { |t| (t.pct - bar_length.pct).abs >= 0.5 },
@@ -59,9 +62,11 @@ class RfcPagesController < ApplicationController
     @error = ""
     return render status: :not_found if @rfc.nil?
 
-    stories = RfcProgress.order_stories_for_rfc(Story.where(rfc_id: @id).to_a, @rfc.status)
+    own = Story.where(rfc_id: @id).to_a
+    held = Story.dep_held_ids(own.map(&:id))
+    stories = RfcProgress.order_stories_for_rfc(own, @rfc.status, held)
     @stories = stories.map do |s|
-      StoryRow.new(id: s.id, title: s.title || s.id, status: EffectiveStatus.of(@rfc.status, s.status).to_s,
+      StoryRow.new(id: s.id, title: s.title || s.id, status: EffectiveStatus.shown(@rfc.status, s.status, held.include?(s.id)).to_s,
                    est_loc: s.est_loc, cluster: s.cluster, priority: s.priority)
     end
     @counts = RfcProgress.story_counts(stories.map(&:status))

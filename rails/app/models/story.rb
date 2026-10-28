@@ -124,6 +124,21 @@ class Story < ApplicationRecord
       Ranking.stories_touching_in(index || ranking_index, query, all: all)
     end
 
+    # Which of `ids` (every story, when nil) wait on an unfinished dep, for a
+    # page with no ranking index in hand: the edges, then what they point at.
+    def dep_held_ids(ids = nil)
+      return Set.new if ids&.empty?
+      scope = ids.nil? ? {} : { story_id: ids }
+      group = ->(rows) { rows.group_by(&:first).transform_values { |v| v.map(&:last) } }
+      deps = group.call(StoryDep.where(scope).pluck(:story_id, :depends_on_id))
+      rfc_deps = group.call(StoryRfcDep.where(scope).pluck(:story_id, :rfc_id))
+      wanted = deps.values.flatten.uniq
+      story_status = wanted.empty? ? {} : Story.where(id: wanted).pluck(:id, :status).to_h
+      wanted_rfcs = rfc_deps.values.flatten.uniq
+      rfc_status = wanted_rfcs.empty? ? {} : Rfc.where(id: wanted_rfcs).pluck(:id, :status).to_h
+      (deps.keys | rfc_deps.keys).select { |id| Ranking.dep_held?(id, deps, rfc_deps, story_status, rfc_status) }.to_set
+    end
+
     # ISO seconds, matching the `claim:` format the CLI writes.
     def now_iso
       Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")

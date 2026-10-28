@@ -1,17 +1,18 @@
 require "websocket/driver"
 
 module Fleet
-  # Relay ringo's event stream to one browser over a hijacked WebSocket:
-  # each SSE event's JSON goes out as one text message, unchanged. One
-  # upstream per browser, ending when the browser's does. When ringo's stream
-  # ends the socket closes with 1012 and the page reconnects.
+  # Relay ringo's event stream to a browser over a hijacked WebSocket: each
+  # SSE event's JSON goes out as one text message, unchanged. ONE upstream
+  # read however many browsers (`SharedStream`): ringo's stream is whole
+  # snapshots, so a viewer joining mid-stream is sent the latest frame at
+  # once. When ringo's stream ends the socket closes with 1012 and the page
+  # reconnects.
   #
   # The `websocket-driver` gem is the Ruby twin of the npm package
   # ../../../lib/fleet-relay.ts drives, by the same author.
   class SocketRelay
     PING_INTERVAL = 25
     CLOSE_GRACE = 5
-    CONNECT_TIMEOUT = 10
 
     # The driver's view of the hijacked IO.
     Wire = Struct.new(:env, :io) do
@@ -39,42 +40,30 @@ module Fleet
       @reader = Thread.new { read_browser }
     end
 
+
+    # SharedStream's viewer side.
+    def frame(message)
+      synchronize { @driver.text(message) }
+    end
+
+    def ended
+      @unsubscribe = nil
+      return if @closed
+      synchronize { @driver.close("upstream ended", 1012) }
+      Thread.new { sleep CLOSE_GRACE; finish }
+    end
+
     private
 
     def open
       @keepalive = Thread.new { loop { sleep PING_INTERVAL; synchronize { @driver.ping } } }
-      @pump = Thread.new do
-        pump
-      ensure
-        unless @closed
-          synchronize { @driver.close("upstream ended", 1012) }
-          Thread.new { sleep CLOSE_GRACE; finish }
-        end
-      end
+      @unsubscribe = SharedStream.subscribe(@events_url, self)
     end
 
     def read_browser
       loop { @driver.parse(@io.readpartial(4096)) }
     rescue IOError, SystemCallError
       finish
-    end
-
-    def pump
-      Net::HTTP.start(@events_url.host, @events_url.port, open_timeout: CONNECT_TIMEOUT, read_timeout: nil) do |http|
-        req = Net::HTTP::Get.new(@events_url)
-        req["Accept"] = "text/event-stream"
-        http.request(req) do |response|
-          return unless response.is_a?(Net::HTTPSuccess)
-          pending = +""
-          response.read_body do |chunk|
-            return if @closed
-            data, pending = Sse.data(pending + chunk.force_encoding(Encoding::UTF_8))
-            data.each { |message| synchronize { @driver.text(message) } }
-          end
-        end
-      end
-    rescue StandardError
-      # ringo unreachable, or the browser left: nothing to forward.
     end
 
     def synchronize(&block)
@@ -85,7 +74,7 @@ module Fleet
       return if @closed
       @closed = true
       @keepalive&.kill
-      @pump&.kill unless Thread.current == @pump
+      @unsubscribe&.call
       @io.close unless @io.closed?
     rescue IOError
       nil

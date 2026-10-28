@@ -656,6 +656,27 @@ export const spawnLoopControls = () =>
   });
 
 /**
+ * "last spawn at 10:42 (2m ago) · next spawn in 7 min" while the loop runs;
+ * only "latest: 2m ago" while it is paused, since a paused loop spawns
+ * nothing. ringo's `next_tick_at` is the last tick plus the stagger, so a
+ * stagger change counts from that tick rather than restarting the clock.
+ */
+function spawnTiming(s, now) {
+  const parts = [];
+  if (s.last_spawn_at) {
+    parts.push(s.enabled
+      ? "last spawn at " + new Date(s.last_spawn_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) +
+        " (" + timeAgo(s.last_spawn_at, now) + ")"
+      : "latest: " + timeAgo(s.last_spawn_at, now));
+  }
+  if (s.enabled && s.next_tick_at) {
+    const mins = Math.ceil((new Date(s.next_tick_at).getTime() - now) / 60000);
+    parts.push(mins > 0 ? "next spawn in " + mins + " min" : "next spawn due now");
+  }
+  return parts.length ? "(" + parts.join(" · ") + ")" : "";
+}
+
+/**
  * What the panel says for one loop state — ringo's `/spawnloop/config` answer.
  * Ported from `renderSpawnLoop` (`webhook/dashboard.go`).
  *
@@ -689,7 +710,7 @@ export function spawnLoopView(s, now = Date.now()) {
     interval: Math.round((s.stagger_seconds || 0) / 60),
     bundleMode: !!s.bundle_mode,
     liveNow: "(now: " + (s.live_now || 0) + ")", openNow: "(now: " + (s.open_now || 0) + ")",
-    lastSpawn: s.last_spawn_at ? "(latest: " + timeAgo(s.last_spawn_at, now) + ")" : "",
+    lastSpawn: spawnTiming(s, now),
     next, nextTitle,
     skip: !s.bundle_mode && !!(s.next && s.next.id),
     bundleList: bundle

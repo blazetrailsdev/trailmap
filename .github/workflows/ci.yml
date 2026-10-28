@@ -286,6 +286,8 @@ jobs:
           # ingest writes rows; it does not create the schema.
           pnpm db:migrate
           ./bin/tasks ingest
+          # index.json from the same rows, for story-json.test.ts below.
+          ./bin/tasks reindex
       - name: trailmap's ready queue == the CLI's, byte for byte
         env:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
@@ -295,17 +297,18 @@ jobs:
       # database, so there they skip — and three of them rotted unseen. This
       # job already has one, so they run here on every PR.
       #
-      # NOT test/serializers/story-json.test.ts, the fourth: it diffs against
-      # the `index.json` the CLI publishes beside a live checkout, which is
-      # untracked and so does not exist here. It still runs only on the box.
+      # story-json.test.ts diffs the serializer against the index.json the
+      # CLI published from this database, named by TASKS_INDEX_JSON.
       - name: The live-database tests, against the ingested database
         env:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
+          TASKS_INDEX_JSON: ${{ github.workspace }}/tasks/index.json
         run: >-
           pnpm exec vitest run
           test/initializers/tasks-database.test.ts
           test/models/tasks-database-config.test.ts
           test/models/tasks-database.test.ts
+          test/serializers/story-json.test.ts
 
       # The two ringo gates. Both run ringo's OWN code — the list pages'
       # browser scripts and ringo's `core` Go package, vendored verbatim under

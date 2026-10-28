@@ -1,7 +1,8 @@
 <%#
   The page-header state pill: the same vocabulary as shared/_status_badge,
   solid. One helper call — a `.tse` cannot import, so the TypeScript app
-  copies the expression; ERB reaches the helper.
+  copies the expression; ERB reaches the helper. `label`, when given,
+  replaces the text and never the class: the story page's "blocked on deps".
 %>
 <% shown = status_word(status) %>
-<span class="state s-<%= shown %>"><%= shown %></span>
+<span class="state s-<%= shown %>"><%= local_assigns[:label] || shown %></span>

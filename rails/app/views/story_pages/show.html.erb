@@ -7,7 +7,7 @@
     <h1 class="page-title"><%= @story.title || @story.id %></h1>
     <div class="page-subhead">
       <span class="id"><%= @story.id %></span>
-      <%= render "shared/status_state", status: @shown_status %>
+      <%= render "shared/status_state", status: @shown_status, label: @held_label %>
       <span class="muted">
         in <a href="/rfc/<%= @story.rfc_id %>"><%= rfc_label %></a><% unless @story.pr.nil? %>, PR <%= @story.pr %><% end %>
       </span>

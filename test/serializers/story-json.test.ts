@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { env, getFs, getPath } from "@blazetrails/ruby-compat";
+import { env, getFs } from "@blazetrails/ruby-compat";
 import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.ts";
 import { migrateScratchDatabase } from "../models/schema.ts";
 import {
@@ -128,19 +128,16 @@ describe("the serializer", () => {
  * criterion — a spot-check on a fixture would not catch a field that only ever
  * appears on a handful of the 7k real stories.
  *
- * Skipped unless `TASKS_DATABASE` points at a `tasks.db`: the file and the
- * `index.json` beside it live in another repo's checkout, so CI has no copy
- * and there is nothing here worth faking. Run it as:
+ * Skipped unless `TASKS_DATABASE` points at a `tasks.db` AND
+ * `TASKS_INDEX_JSON` names the `index.json` the CLI published from it. The
+ * path is a setting, not derived from the database's: CI's database is
+ * `tmp/ci-tasks.db`, nowhere near the checkout the CLI publishes into. CI's
+ * `gate` job runs `tasks reindex` after ingest and sets both. On the box:
  *
- *     TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db pnpm test
+ *     TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db \
+ *     TASKS_INDEX_JSON=~/github/blazetrailsdev/tasks/index.json pnpm test
  */
-const withLiveDatabase = hasTasksDatabase() ? describe : describe.skip;
-
-/** `<checkout>/.git/tasks.db` → `<checkout>/index.json`, the published copy. */
-async function publishedIndexPath(): Promise<string> {
-  const path = getPath();
-  return path.join(path.dirname(path.dirname(String(env.TASKS_DATABASE))), "index.json");
-}
+const withLiveDatabase = hasTasksDatabase() && env.TASKS_INDEX_JSON ? describe : describe.skip;
 
 withLiveDatabase("the published index.json", () => {
   beforeAll(async () => {
@@ -150,7 +147,7 @@ withLiveDatabase("the published index.json", () => {
 
   async function readPublished(): Promise<string> {
     const fs = getFs();
-    return String(await fs.readFile!(await publishedIndexPath(), "utf8"));
+    return String(await fs.readFile!(String(env.TASKS_INDEX_JSON), "utf8"));
   }
 
   it("matches the serialized stories field for field", async (ctx) => {

@@ -47,4 +47,75 @@ class FleetLibTest < ActiveSupport::TestCase
       "HTTP_CONNECTION" => "Upgrade", "HTTP_UPGRADE" => "websocket", "HTTP_SEC_WEBSOCKET_VERSION" => "13",
       "HTTP_SEC_WEBSOCKET_KEY" => "dGhlIHNhbXBsZSBub25jZQ==", "HTTP_ORIGIN" => "http://127.0.0.1" }
   end
+
+  # A viewer that records frames and whether it was ended.
+  class Viewer
+    attr_reader :frames, :ended_at
+
+    def initialize = (@frames = Queue.new)
+    def frame(message) = @frames << message
+    def ended = (@ended_at = true)
+  end
+
+  # An SSE ringo counting its connections; it sends `frames`, then holds.
+  def with_sse_ringo(frames)
+    server = TCPServer.new("127.0.0.1", 0)
+    connections = Queue.new
+    thread = Thread.new do
+      loop do
+        client = server.accept
+        connections << client
+        client.gets("\r\n\r\n")
+        client.write("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\n")
+        frames.each { |f| client.write("data: #{f}\n\n") }
+      end
+    end
+    yield "http://127.0.0.1:#{server.addr[1]}/events", connections
+  ensure
+    thread&.kill
+    server&.close
+  end
+
+  test "holds one upstream connection for any number of viewers" do
+    with_sse_ringo(%w[one]) do |url, connections|
+      a = Viewer.new
+      b = Viewer.new
+      leave_a = Fleet::SharedStream.subscribe(url, a)
+      leave_b = Fleet::SharedStream.subscribe(url, b)
+      assert_equal "one", a.frames.pop(timeout: 5)
+      assert_equal "one", b.frames.pop(timeout: 5)
+      assert_equal 1, connections.size
+      assert_equal 1, Fleet::SharedStream.reads(url)
+      leave_a.call
+      leave_b.call
+    end
+  end
+
+  test "sends a viewer joining mid-stream the latest frame at once" do
+    with_sse_ringo(%w[one two]) do |url, _|
+      first = Viewer.new
+      leave_first = Fleet::SharedStream.subscribe(url, first)
+      2.times { first.frames.pop(timeout: 5) }
+      late = Viewer.new
+      leave_late = Fleet::SharedStream.subscribe(url, late)
+      assert_equal "two", late.frames.pop(timeout: 1)
+      leave_first.call
+      leave_late.call
+    end
+  end
+
+  test "ends the upstream read with the last viewer, and restarts it for the next" do
+    with_sse_ringo(%w[one]) do |url, connections|
+      viewer = Viewer.new
+      leave = Fleet::SharedStream.subscribe(url, viewer)
+      viewer.frames.pop(timeout: 5)
+      leave.call
+      assert_equal 0, Fleet::SharedStream.reads(url)
+      again = Viewer.new
+      leave_again = Fleet::SharedStream.subscribe(url, again)
+      assert_equal "one", again.frames.pop(timeout: 5)
+      assert_equal 2, connections.size
+      leave_again.call
+    end
+  end
 end

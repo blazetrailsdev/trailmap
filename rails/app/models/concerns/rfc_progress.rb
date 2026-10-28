@@ -31,9 +31,9 @@ module RfcProgress
   end
 
   # Status rank, then priority with unset last, then id in byte order.
-  def order_stories_for_rfc(stories, rfc_status)
+  def order_stories_for_rfc(stories, rfc_status, dep_held = Set.new)
     stories.sort_by do |s|
-      [ story_status_rank(EffectiveStatus.of(rfc_status, s.status)), s.priority || PRIORITY_UNSET, s.id.b ]
+      [ story_status_rank(EffectiveStatus.shown(rfc_status, s.status, dep_held.include?(s.id))), s.priority || PRIORITY_UNSET, s.id.b ]
     end
   end
 
@@ -54,9 +54,13 @@ module RfcProgress
   end
 
   # Statuses counted in bar order; unrecognised ones appended by name.
-  def status_counts(statuses, rfc_status)
+  # `dep_held` runs parallel to `statuses`: a dep-held `ready` story is drawn
+  # `blocked`, as ringo's bar draws it.
+  def status_counts(statuses, rfc_status, dep_held = [])
     counts = Hash.new(0)
-    statuses.each { |s| counts[(EffectiveStatus.of(rfc_status, s) || "unknown").to_s] += 1 }
+    statuses.each_with_index do |s, i|
+      counts[(EffectiveStatus.shown(rfc_status, s, dep_held[i] || false) || "unknown").to_s] += 1
+    end
     known = STORY_BAR_ORDER.select { |s| counts.key?(s) }
     rest = (counts.keys - STORY_BAR_ORDER).sort
     total = statuses.size

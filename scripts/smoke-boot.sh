@@ -36,7 +36,11 @@ pnpm exec trails-tsc-views build --views app/views
 # The rows are not the point here (the gate job is what runs against real
 # content), so this is the schema and nothing else: trailmap owns the tasks
 # migrations under db/migrate, so `db create` + `db migrate` produce a valid,
-# empty tasks database to point TASKS_DATABASE at.
+# empty tasks database to point TASKS_DATABASE at. They run in the TEST
+# environment, whose primary is a plain scratch database: the served
+# environments will name `env.TASKS_DATABASE` with `databaseTasks: false`, and
+# `db migrate` skips such a database by design, so a recipe that relied on
+# them would build nothing.
 #
 # `db migrate` with no `--database` migrates BOTH of the environment's
 # databases (config/database.ts): the SQLite primary below, and the `hub`
@@ -45,9 +49,9 @@ pnpm exec trails-tsc-views build --views app/views
 # also why there is no `--database` flag here — see the note on the CI step
 # that prepares the hub schema.
 trails="bin/trails"
-"$trails" db create
-"$trails" db migrate
-export TASKS_DATABASE="$work/storage/development.sqlite3"
+NODE_ENV=test "$trails" db create
+NODE_ENV=test "$trails" db migrate
+export TASKS_DATABASE="$work/storage/test.sqlite3"
 export TASKS_DIR="$work"
 
 # PRODUCTION, laid out as the image is. The Dockerfile sets NODE_ENV=production
@@ -173,7 +177,10 @@ if env -u TASKS_DATABASE -u TASKS_DIR pnpm exec tsx scripts/boot-probe.ts \
   echo "  It would answer /up green and 500 on every page that reads a row." >&2
   exit 1
 fi
-if ! grep -q "TASKS_DATABASE is not set" "$work/no-database-boot.log"; then
+# Two messages say the same thing: the initializer's own, and the one the
+# framework's `active_record.initialize_database` raises first once the served
+# environments name `env.TASKS_DATABASE`.
+if ! grep -qE "TASKS_DATABASE is not set|No database file specified" "$work/no-database-boot.log"; then
   echo "smoke-boot: the boot failed, but not for the missing database:" >&2
   tail -20 "$work/no-database-boot.log" >&2
   exit 1

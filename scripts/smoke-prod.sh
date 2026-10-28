@@ -99,11 +99,13 @@ json() {
   fi
 }
 
-# page <name> <path> <heading> [<id>] — 200, HTML, inside the layout, with its
-# heading. A show page's heading is its title, which this cannot know, so it
-# is recognised by the id it was asked for, in the element the show views
-# render it in. Anywhere in the body would not do: the not-found view echoes
-# the id too, and a short id turns up in prose and links.
+# page <name> <path> <heading> [<id>] [<marker>] — 200, HTML, inside the
+# layout, with its heading. A show page's heading is its title, which this
+# cannot know, so it is recognised by the id it was asked for, in the element
+# the show views render it in. Anywhere in the body would not do: the
+# not-found view echoes the id too, and a short id turns up in prose and links.
+# A hub page has no id element; `<marker>` is the literal markup only that
+# page draws (its active tab, or the owner's login in the subhead).
 page() {
   fetch "$LOOPBACK$2"
   if [ -n "$late" ]; then
@@ -118,6 +120,8 @@ page() {
     fail "$1" "$2 rendered without its heading" "$2 has no <h1> starting \"$3\""
   elif [ -n "${4:-}" ] && ! grep -Fq "<span class=\"id\">$4</span>" "$work/body"; then
     fail "$1" "$2 rendered without naming $4 as its id"
+  elif [ -n "${5:-}" ] && ! grep -Fq "$5" "$work/body"; then
+    fail "$1" "$2 rendered without its marker" "$2 has no $5"
   else
     pass "$1" "$2 200"
   fi
@@ -258,6 +262,8 @@ tier2() {
   page tier2.page-rfcs "/rfcs" "RFCs"
   page tier2.page-backlog "/backlog" "Backlog"
   page tier2.page-graphs-parity "/graphs/parity" "Parity over time"
+
+  tier2Hub
 
   tier2Cli "$stories" "$id"
 }
@@ -407,6 +413,25 @@ tier2Cli() {
   fi
 }
 
+# The pages under the GitHub-shaped hierarchy, the only ones served from the
+# hub (Postgres) database: with it down, these are what go red. The owner and
+# repository are SMOKE_OWNER and SMOKE_REPO, by default blazetrailsdev/trailmap,
+# a repository the hub always carries.
+#
+# `/panes/:id` stays out of the tier: the page is drawn for any numeric id
+# without asking anything (its screen is polled from the browser through
+# `/fleet/pane/:id/screen`), so a 200 for it proves nothing, and the screen
+# relay needs a live tmux pane that a scheduled run cannot count on.
+tier2Hub() {
+  local owner="${SMOKE_OWNER:-blazetrailsdev}" repo="${SMOKE_REPO:-trailmap}"
+  local nwo="$owner/$repo" tab
+  page tier2.page-owner "/$owner" "" "" "<code>$owner</code>"
+  page tier2.page-repo "/$nwo" "" "" "<a class=\"tab active\" href=\"/$nwo\">"
+  for tab in issues pulls projects actions wiki pulse settings; do
+    page "tier2.page-repo-$tab" "/$nwo/$tab" "" "" "<a class=\"tab active\" href=\"/$nwo/$tab\">"
+  done
+}
+
 # ── self-test ──────────────────────────────────────────────────────────────
 #
 # A canned `curl` goes first on PATH and this script is run again AS A CHILD,
@@ -465,6 +490,12 @@ healthy() {
   can _graphs_parity 200 text/html "${html}Parity over time</h1>"
   can _story_story-a 200 text/html "${html}A story</h1><span class=\"id\">story-a</span>"
   can _rfc_rfc-r 200 text/html "${html}An RFC</h1><span class=\"id\">rfc-r</span>"
+  local nwo=blazetrailsdev/trailmap tab
+  can _blazetrailsdev 200 text/html "${html}Dean</h1><code>blazetrailsdev</code>"
+  can _blazetrailsdev_trailmap 200 text/html "${html}</h1><a class=\"tab active\" href=\"/$nwo\">"
+  for tab in issues pulls projects actions wiki pulse settings; do
+    can "_blazetrailsdev_trailmap_$tab" 200 text/html "${html}</h1><a class=\"tab active\" href=\"/$nwo/$tab\">"
+  done
   cliCan where "tasks dir: $fake/worktree/tasks"
   cliCan ready "[$s]"
   cliCan next-bundle "{\"stories\":[$s],\"bundle_total_loc\":1,\"max_loc\":2}"
@@ -566,6 +597,22 @@ TASKS
   healthy
   can _story_story-a 200 text/html '<main class="site-main"><h1>Not found</h1><p>No story in the index has the id <code>story-a</code>.</p>'
   expect "a show page answering 200 for something else is caught" 2 1 tier2.page-story
+
+  healthy
+  can _blazetrailsdev_trailmap_pulls 200 text/html \
+    '<main class="site-main"><h1></h1><a class="tab active" href="/blazetrailsdev/trailmap/issues">'
+  expect "a hub tab answering 200 as another tab is caught" 2 1 tier2.page-repo-pulls
+
+  # The hub database stopped: every page under /:owner 500s, and nothing else.
+  healthy
+  local hubRows=tier2.page-owner,tier2.page-repo tab
+  can _blazetrailsdev 500 text/html 'relation "repositories" does not exist'
+  can _blazetrailsdev_trailmap 500 text/html ''
+  for tab in issues pulls projects actions wiki pulse settings; do
+    can "_blazetrailsdev_trailmap_$tab" 500 text/html ''
+    hubRows+=",tier2.page-repo-$tab"
+  done
+  expect "a stopped hub database fails tier 2 naming the hub pages" 2 1 "$hubRows"
 
   local cliRows=tier2.cli-where,tier2.cli-ready,tier2.cli-ready-matches-api,tier2.cli-next-bundle,tier2.cli-list,tier2.cli-show
 

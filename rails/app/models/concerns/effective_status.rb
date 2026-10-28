@@ -8,4 +8,12 @@ module EffectiveStatus
     return "draft" if story_status == "ready" && rfc_status != "active"
     story_status
   end
+
+  # The status a page SHOWS: ringo's `markDepBlocked` over the effective one.
+  # A `ready` story the queue holds on an unfinished dep reads `blocked`.
+  # Display only; nothing that decides claimability may read it.
+  def self.shown(rfc_status, story_status, dep_held)
+    effective = of(rfc_status, story_status)
+    effective == "ready" && dep_held ? "blocked" : effective
+  end
 end
