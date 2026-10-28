@@ -71,7 +71,9 @@ if [ "$SHA" = "$PIN" ]; then
   exit 0
 fi
 BRANCH="chore/track-trails-${SHA:0:9}"
-if git -C "$HERE" ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+# Proposed means an open PR, not a pushed branch: a run whose `gh pr create`
+# failed deletes its branch, and an orphan left by a kill is replaced below.
+if [ -n "$(cd "$HERE" && gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
   say "$BRANCH is already proposed"
   exit 0
 fi
@@ -112,9 +114,12 @@ git -C "$SCRATCH" commit --quiet -m "chore(vendor): track trails ${SHA:0:9}
 
 Verified by \`pnpm smoke\` in a scratch worktree by scripts/track-trails.sh.
 Revert this commit to return to ${PIN:0:9}."
-git -C "$SCRATCH" push --quiet origin "HEAD:refs/heads/$BRANCH"
-PUSHED=1
-( cd "$SCRATCH" && gh pr create --draft --head "$BRANCH" --base main \
+git -C "$SCRATCH" push --quiet --force origin "HEAD:refs/heads/$BRANCH"
+if ! ( cd "$SCRATCH" && gh pr create --draft --head "$BRANCH" --base main \
     --title "chore(vendor): track trails ${SHA:0:9}" \
-    --body "Automatic bump from ${PIN:0:9} to ${SHA:0:9}, verified by \`pnpm smoke\` in a scratch worktree. Nothing else is in this PR, so reverting it returns to the previous pin." )
+    --body "Automatic bump from ${PIN:0:9} to ${SHA:0:9}, verified by \`pnpm smoke\` in a scratch worktree. Nothing else is in this PR, so reverting it returns to the previous pin." ); then
+  git -C "$SCRATCH" push --quiet origin --delete "$BRANCH" || true
+  fail open-pr "$LOG"
+fi
+PUSHED=1
 say "proposed trails ${SHA:0:9} (was ${PIN:0:9})"
