@@ -1,16 +1,21 @@
 import websocket, { type DriverRequest } from "websocket-driver";
 import { sseData } from "./sse.ts";
 
-/** The hijacked connection, as the framework's handler hands it over. */
+/**
+ * The hijacked connection, as the framework's handler hands it over: a
+ * ruby-compat `TCPSocket`, read and written the way an IO is in Ruby.
+ */
 export interface RelaySocket {
-  /** False when the chunk was queued because the peer is not keeping up. */
-  write(chunk: string | Uint8Array): unknown;
-  end(): unknown;
-  destroy(): unknown;
-  on(event: "data", listener: (chunk: Uint8Array) => void): unknown;
-  on(event: "close" | "end" | "drain", listener: () => void): unknown;
-  on(event: "error", listener: (error: Error) => void): unknown;
+  readNonblock(len: number, buf: null, options: { exception: false }): Uint8Array | "wait_readable" | null;
+  waitReadable(): Promise<unknown>;
+  /** As many bytes as fit, or `wait_writable` when none do. */
+  writeNonblock(buf: Uint8Array, options: { exception: false }): number | "wait_writable";
+  waitWritable(): Promise<unknown>;
+  close(): unknown;
 }
+
+/** How much one read takes off the socket. */
+const READ_CHUNK = 16 * 1024;
 
 /**
  * How often the relay pings the browser. Under nginx's 60 s read timeout, so
@@ -65,38 +70,67 @@ export function relayEvents(
     closed = true;
     if (keepalive !== null) clearInterval(keepalive);
     unsubscribe?.();
-    socket.end();
+    socket.close();
   };
 
   // A viewer on a slow link must not make this process buffer for them. Every
   // frame from ringo is a whole snapshot that replaces the last, so while the
   // socket is backed up only the NEWEST frame is kept, and it goes out when
   // the socket drains.
+  const outbox: Uint8Array[] = [];
   let congested = false;
   let latest: string | null = null;
-  driver.io.on("data", (chunk) => {
-    if (socket.write(chunk) === false) congested = true;
-  });
-  socket.on("drain", () => {
+  const flush = (): void => {
+    try {
+      while (outbox.length > 0 && !closed) {
+        const head = outbox[0]!;
+        const sent = socket.writeNonblock(head, { exception: false });
+        if (sent === "wait_writable") {
+          if (!congested) {
+            congested = true;
+            socket.waitWritable().then(drained, finish);
+          }
+          return;
+        }
+        if (sent >= head.length) outbox.shift();
+        else outbox[0] = head.subarray(sent);
+      }
+    } catch {
+      // The peer has gone (EPIPE, ECONNRESET).
+      finish();
+    }
+  };
+  const drained = (): void => {
     congested = false;
-    if (latest !== null && !closed) {
+    flush();
+    if (!congested && latest !== null && !closed) {
       const frame = latest;
       latest = null;
       driver.text(frame);
     }
+  };
+  driver.io.on("data", (chunk) => {
+    outbox.push(typeof chunk === "string" ? new TextEncoder().encode(chunk) : chunk);
+    if (!congested) flush();
   });
   const forward = (frame: string): void => {
     if (congested) latest = frame;
     else driver.text(frame);
   };
 
-  socket.on("data", (chunk) => driver.parse(chunk));
-  socket.on("close", finish);
-  socket.on("end", finish);
-  socket.on("error", () => {
+  const read = async (): Promise<void> => {
+    try {
+      while (!closed) {
+        const chunk = socket.readNonblock(READ_CHUNK, null, { exception: false });
+        if (chunk === null) break;
+        if (chunk === "wait_readable") await socket.waitReadable();
+        else driver.parse(chunk);
+      }
+    } catch {
+      // Reset by the peer, or closed under the read.
+    }
     finish();
-    socket.destroy();
-  });
+  };
   driver.on("close", finish);
   driver.on("error", finish);
   driver.on("open", () => {
@@ -116,6 +150,7 @@ export function relayEvents(
   // The request is already parsed, so there is no `connect` to wait for:
   // `start` writes the 101 and emits `open` before it returns.
   driver.start();
+  void read();
 }
 
 /** One viewer of a shared upstream read. */

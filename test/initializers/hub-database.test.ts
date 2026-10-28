@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { env, setEnv } from "@blazetrails/ruby-compat";
+import { Trailmap } from "../../config/application.ts";
 import { connectToHubDatabase } from "../../config/initializers/hub-database.ts";
 import { Hub } from "../../app/models/hub.ts";
 import { Owner } from "../../app/models/owner.ts";
@@ -7,11 +8,14 @@ import { missingHubTables } from "../../app/models/index.ts";
 
 /**
  * The hub initializer, as `tasks-database.test.ts` tests the other one:
- * importing the module already RAN it (that is the whole contract for a
- * `config/initializers` file), so these assert the state the import left and
- * then that calling it again is safe.
+ * importing it registers `connectToHubDatabase` as a `server` block, and these
+ * call that block directly; calling it more than once is safe.
  */
 describe("connectToHubDatabase", () => {
+  it("is registered as a server block", () => {
+    expect(Trailmap.registeredBlocksFor("server")).toContain(connectToHubDatabase);
+  });
+
   it("leaves the connection alone when HUB_DATABASE_URL names nothing under test", async () => {
     if (env.HUB_DATABASE_URL) {
       // The other branch is asserted below; with a URL present there is no

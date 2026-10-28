@@ -144,15 +144,18 @@ written in Ruby's file spelling rather than TypeScript's, and an
 
 ```sh
 pnpm install
-pnpm exec trails-tsc-views build --views app/views
-TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db \
-TASKS_DIR=~/github/blazetrailsdev/tasks \
-HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub-dev --dsn)" \
-  bin/trails server
+export TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db
+export TASKS_DIR=~/github/blazetrailsdev/tasks
+export HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub-dev --dsn)"
+pnpm views
+bin/trails server
 ```
 
 Both database variables are required: each one's initializer refuses to boot
-without it rather than serving pages that 500 on their first row.
+without it rather than serving pages that 500 on their first row. The view
+build boots the application's initializers too, so `pnpm views` needs them as
+well — which is why it is its own step and not a `prepare` hook on
+`pnpm install`.
 
 ## Deployment
 

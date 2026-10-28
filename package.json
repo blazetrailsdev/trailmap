@@ -26,7 +26,7 @@
     "db:seed": "bin/trails db seed",
     "db:setup": "bin/trails db create && bin/trails db migrate && bin/trails db seed",
     "db:reset": "bin/trails db drop && bin/trails db create && bin/trails db migrate && bin/trails db seed",
-    "prepare": "trails-tsc-views build --views app/views && trails-tsc-views build --views test/fixtures/views --in-place",
+    "views": "trails-tsc-views build --views app/views && trails-tsc-views build --views test/fixtures/views --in-place",
     "gate:snapshot": "tsx scripts/gate-page-snapshot.ts"
   },
   "dependencies": {

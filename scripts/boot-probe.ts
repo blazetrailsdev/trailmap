@@ -1,21 +1,22 @@
 /**
  * BOOT THE APPLICATION, and say so — the whole probe.
  *
- * `config/environment.ts` is what a served process loads: it imports
- * `config/application.ts` and awaits `Trails.initialize()`, which runs the
- * `load_config_initializers` initializer (Rails' `engine.rb:644-648`,
- * mirrored at `@blazetrails/trailties/dist/engine.js:266`) and so imports
- * every file under `config/initializers` in sorted order.
+ * `config.ts` is what a served process loads: it imports
+ * `config/environment.ts`, which awaits `Trails.initialize()` and so imports
+ * every file under `config/initializers` in sorted order (Rails'
+ * `engine.rb:644-648`), then awaits `loadServer()`, which runs the `server`
+ * blocks those initializers registered — the database checks among them
+ * (trails#9375). `trails server` runs the same two steps.
  *
  * That is the path the deployed 500 came down, and it is the path a unit test
- * calling `connectToTasksDatabase()` by hand cannot reach: a test that imports
- * the module has already run it, and would keep passing if the initializer
- * stopped being LOADED at boot. This runs the real thing in its own process,
+ * calling `connectToTasksDatabase()` by hand cannot reach: it would keep
+ * passing if the initializer stopped being LOADED at boot, or stopped
+ * registering the check as a `server` block. This runs the real thing in its own process,
  * so `scripts/smoke-boot.sh` can assert both directions — boots with a
  * database, refuses without one.
  */
 import { exit } from "@blazetrails/ruby-compat";
-import "../config/environment.ts";
+import "../config.ts";
 
 console.log("boot-probe: booted");
 
