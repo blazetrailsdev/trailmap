@@ -66,8 +66,11 @@ module Fleet
       finish
     end
 
+    # A write to a browser that has already gone ends the relay, not the thread.
     def synchronize(&block)
       @mutex.synchronize(&block) unless @closed
+    rescue IOError, SystemCallError
+      finish
     end
 
     def finish

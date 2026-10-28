@@ -118,4 +118,35 @@ class FleetLibTest < ActiveSupport::TestCase
       leave_again.call
     end
   end
+
+  # A relay over one end of a socket pair; the test reads the other end.
+  def relay_to(events_url)
+    browser, server = UNIXSocket.pair
+    relay = Fleet::SocketRelay.new(upgrade_env.merge("rack.hijack" => -> { server }), events_url)
+    relay.start
+    browser.readpartial(4096) # the 101 handshake
+    [ relay, browser ]
+  end
+
+  test "SocketRelay#frame sends one text message to the browser" do
+    with_sse_ringo([]) do |url, _|
+      relay, browser = relay_to(url)
+      relay.frame("hello")
+      assert_equal "\x81\x05hello".b, browser.readpartial(4096)
+    ensure
+      browser&.close
+    end
+  end
+
+  test "SocketRelay#ended closes the socket with 1012 so the page reconnects" do
+    with_sse_ringo([]) do |url, _|
+      relay, browser = relay_to(url)
+      relay.ended
+      frame = browser.readpartial(4096)
+      assert_equal 0x88, frame.getbyte(0)
+      assert_equal 1012, frame.byteslice(2, 2).unpack1("n")
+    ensure
+      browser&.close
+    end
+  end
 end
