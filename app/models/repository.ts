@@ -128,11 +128,11 @@ export class Repository extends Hub {
   async isAdministrableBy(viewer: Owner | null): Promise<boolean> {
     if (viewer === null) return false;
     if (viewer.id === this.owner_id) return true;
-    const row = await RepositoryCollaborator.findBy({
+    return RepositoryCollaborator.isExists({
       repository_id: this.id,
       owner_id: viewer.id,
+      role: "admin",
     });
-    return row?.role === "admin";
   }
 
   /**
