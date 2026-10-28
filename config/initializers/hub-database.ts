@@ -68,5 +68,10 @@ export async function connectToHubDatabase(): Promise<void> {
   }
 }
 
+// Registration, for every path that loads initializers without serving
+// (`trails db`, the console, the suite): Rails' own initializer
+// `establish_connection` is only this. The server block establishes again
+// from the environment as it stands when the server starts, which is what
+// lets it be called alone (boot-probe, and tests that repoint the variable).
 if (hasHubDatabase()) await Hub.establishConnection(hubDatabaseConfig());
 Trails.application.server(connectToHubDatabase);

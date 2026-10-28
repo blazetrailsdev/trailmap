@@ -199,8 +199,8 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec trails-tsc-views build --views app/views
       - run: pnpm db:migrate
+      # Builds the views itself.
       - run: ./scripts/dashboard-e2e.sh
 
   # THE SHOW-PAGE SNAPSHOT. `pnpm gate:pages` diffs trailmap's /rfc/<id> and
