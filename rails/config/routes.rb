@@ -27,6 +27,9 @@ Rails.application.routes.draw do
   get "deploys/log", to: "deploys#log"
 
   get "sessions", to: "sessions#index"
+  get "sessions/file", to: "sessions#file"
+  get "sessions/transcript", to: "sessions#transcript"
+  get "sessions/pane", to: "sessions#pane"
   get "sessions/:owner/:repo/:pr", to: "sessions#show", constraints: { pr: /\d+/ }
   get "api/sessions", to: "sessions#api"
 
@@ -37,12 +40,15 @@ Rails.application.routes.draw do
   get "rfc/:id", to: "rfc_pages#show", format: false
   get "story/:id", to: "story_pages#show", format: false
 
-  # The named collection routes come BEFORE `stories/:id`.
-  get "stories/ready", to: "stories#ready"
-  get "stories/next-bundle", to: "stories#next_bundle"
-  get "stories/touching", to: "stories#touching"
-  get "stories", to: "stories#index"
-  get "stories/:id", to: "stories#show", format: false
+  # The loopback JSON API: its clients parse every answer as JSON.
+  scope defaults: { format: :json } do
+    # The named collection routes come BEFORE `stories/:id`.
+    get "stories/ready", to: "stories#ready"
+    get "stories/next-bundle", to: "stories#next_bundle"
+    get "stories/touching", to: "stories#touching"
+    get "stories", to: "stories#index"
+    get "stories/:id", to: "stories#show", format: false
+  end
 
   get "graphs/parity/data", to: "parity_graphs#data"
   get "graphs/parity", to: "parity_graphs#show"
@@ -53,18 +59,20 @@ Rails.application.routes.draw do
   get "audits/view/:file", to: redirect { |params, _| "/audits/#{ERB::Util.url_encode(params[:file])}/raw" },
                            constraints: { file: Audit::SEGMENT }, format: false
 
-  get "index", to: "read_models#index"
-  get "events", to: "read_models#events"
+  scope defaults: { format: :json } do
+    get "index", to: "read_models#index"
+    get "events", to: "read_models#events"
 
-  post "stories/claim", to: "mutations#claim"
-  post "stories/release", to: "mutations#release"
-  post "stories/in-progress", to: "mutations#in_progress"
-  post "stories/done", to: "mutations#done"
-  post "stories/record-spawn", to: "mutations#record_spawn"
-  post "stories/block", to: "mutations#block"
-  post "stories/close", to: "mutations#close"
-  post "stories/status-set", to: "mutations#status_set"
-  post "stories/priority", to: "mutations#priority"
+    post "stories/claim", to: "mutations#claim"
+    post "stories/release", to: "mutations#release"
+    post "stories/in-progress", to: "mutations#in_progress"
+    post "stories/done", to: "mutations#done"
+    post "stories/record-spawn", to: "mutations#record_spawn"
+    post "stories/block", to: "mutations#block"
+    post "stories/close", to: "mutations#close"
+    post "stories/status-set", to: "mutations#status_set"
+    post "stories/priority", to: "mutations#priority"
+  end
 
   # ──────────── the GitHub-shaped hierarchy — DRAWN LAST ────────────
   constraints owner: owner_segment, repo: repo_segment do

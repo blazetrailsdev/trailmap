@@ -21,9 +21,11 @@ class StoryPagesController < ApplicationController
 
     @filter = Backlog.filter?(params[:filter].to_s) ? params[:filter] : "open"
 
-    # Stories under closed RFCs are not in play; statuses are effective.
+    # Stories under closed RFCs are not in play; statuses are shown ones: a
+    # dep-held `ready` story reads `blocked`, so Ready is only what can be picked.
+    held = Ranking.dep_held_in(index)
     listed = index.stories.reject { |s| index.rfc_status[s.rfc_id] == "closed" }.map do |s|
-      Backlog::Row.new(id: s.id, rfc_id: s.rfc_id, status: EffectiveStatus.of(index.rfc_status[s.rfc_id], s.status).to_s)
+      Backlog::Row.new(id: s.id, rfc_id: s.rfc_id, status: EffectiveStatus.shown(index.rfc_status[s.rfc_id], s.status, held.include?(s.id)).to_s)
     end
     @tabs = Backlog::FILTERS.map do |key|
       Tab.new(key: key, label: TAB_LABELS[key], count: listed.count { |s| Backlog.matches?(s, key, index.rfc_status) },
@@ -56,6 +58,7 @@ class StoryPagesController < ApplicationController
     @body = nil
     @error = ""
     @shown_status = ""
+    @held_label = nil
     return render status: :not_found if @story.nil?
 
     # ORDERED BY ROWID: the order the frontmatter listed them in.
@@ -68,7 +71,10 @@ class StoryPagesController < ApplicationController
       @packages = @rfc.packages
       @inherited = @packages.any?
     end
-    @shown_status = EffectiveStatus.of(@rfc&.status, @story.status).to_s
+    held = Story.dep_held_ids([ @id ]).include?(@id)
+    @shown_status = EffectiveStatus.shown(@rfc&.status, @story.status, held).to_s
+    # ringo's pill names WHY a ready story reads blocked (story.go:213).
+    @held_label = held && EffectiveStatus.of(@rfc&.status, @story.status) == "ready" ? "blocked on deps" : nil
     @deps = story_statuses_for(dep_ids)
     @rfc_deps = rfc_statuses_for(rfc_dep_ids)
     @graph = DepGraph.for(@id)
@@ -94,7 +100,8 @@ class StoryPagesController < ApplicationController
     return [] if ids.empty?
     stories = Story.where(id: ids).pluck(:id, :rfc_id, :status)
     rfc_status = Rfc.where(id: stories.map { |_, r, _| r }.uniq).pluck(:id, :status).to_h
-    found = stories.to_h { |id, rfc_id, status| [ id, EffectiveStatus.of(rfc_status[rfc_id], status).to_s ] }
+    held = Story.dep_held_ids(ids)
+    found = stories.to_h { |id, rfc_id, status| [ id, EffectiveStatus.shown(rfc_status[rfc_id], status, held.include?(id)).to_s ] }
     ids.map { |id| DepRow.new(id, found[id].to_s) }
   end
 end

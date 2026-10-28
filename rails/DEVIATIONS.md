@@ -58,6 +58,32 @@ whose RFC does not exist yet, which passes there and fails under Rails, whose
 suite boots the app (`test/models/ranking_test.rb` has the note). The CSRF
 defect above hides behind the same gap.
 
+### language: the pane replay runs ringo's renderer, which Ruby cannot load
+
+`/sessions/pane` in the trails app replays a pane log through ringo's own
+terminal emulator, compiled to WASI (`lib/ringo-core.ts`). Ruby has no
+WebAssembly runtime without a new gem, so the Rails app validates the path and
+sends a transcript to its page, as the trails app does, but answers a pane log
+with 501 rather than a replay. `/sessions/file` and `/sessions/transcript`
+match. Porting the emulator, or adding a WASI runtime, closes this.
+
+### language: `/sessions/file` holds the whole answer before the size check
+
+The trails app reads ringo's answer as a stream and stops at 128 MiB
+(`readBounded`). `Fleet::Relay` here reads the body whole, as `Net::HTTP`
+does by default, so a file past the cap is in memory before the 413. The
+answer matches; the memory bound does not. Streaming `read_body` in
+`Fleet::Relay` closes it.
+
+### trails: a concern's `before_action` method cannot be private
+
+`LoopbackOnly` here is a concern whose `require_loopback` is `private`, and
+`before_action :require_loopback` names it. trails' `beforeAction` takes no
+method name (`before-action-does-not-accept-a-method-name`, RFC 0141), and
+`actionMethods` counts every public prototype method as an action, so
+`app/controllers/concerns/loopback-only.ts` registers the guard as a block
+and keeps it off the class.
+
 ## trails differs from Rails
 
 - **Connections.** trails opens each database from an initializer with

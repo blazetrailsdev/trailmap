@@ -13,9 +13,10 @@ module DepGraph
     reached = up[:reached] + down[:reached]
     rfc_ids = reached.filter_map { |r| r[:story]&.rfc_id }.uniq
     rfc_status = rfc_ids.empty? ? {} : Rfc.where(id: rfc_ids).pluck(:id, :status).to_h
+    held = Story.dep_held_ids(reached.map { |r| r[:id] })
     node = lambda do |r|
       story = r[:story]
-      status = story.nil? ? "" : EffectiveStatus.of(rfc_status[story.rfc_id], story.status).to_s
+      status = story.nil? ? "" : EffectiveStatus.shown(rfc_status[story.rfc_id], story.status, held.include?(story.id)).to_s
       Node.new(id: r[:id], title: story&.title, status: status, depth: r[:depth], via: r[:via])
     end
     Graph.new(blocked_by: up[:reached].map(&node), blocks: down[:reached].map(&node), cyclic: up[:cyclic])

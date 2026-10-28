@@ -44,15 +44,26 @@ module Ranking
     ctx.remaining[a.rfc_id] <=> ctx.remaining[b.rfc_id]
   end
 
+  # Whether a story waits on a dep: a story dep not resolved, or an RFC dep
+  # not closed. The queue's dep gate, and `EffectiveStatus.shown`'s `dep_held`.
+  def dep_held?(id, deps, rfc_deps, story_status, rfc_status)
+    deps.fetch(id, []).any? { |d| !dep_resolved?(story_status[d]) } ||
+      rfc_deps.fetch(id, []).any? { |d| rfc_status[d] != "closed" }
+  end
+
+  # `dep_held?` over a whole snapshot: the ids of every story waiting on a dep.
+  def dep_held_in(index)
+    story_status = index.stories.to_h { |s| [ s.id, s.status ] }
+    index.stories.filter_map { |s| s.id if dep_held?(s.id, index.deps, index.rfc_deps, story_status, index.rfc_status) }.to_set
+  end
+
   def claimable_in(index, rfc: nil)
     ctx = priority_context(index)
     story_status = index.stories.to_h { |s| [ s.id, s.status ] }
     picked = index.stories.select do |s|
       next false unless EffectiveStatus.of(index.rfc_status[s.rfc_id], s.status) == "ready"
       next false if rfc.present? && s.rfc_id != rfc
-      next false if index.deps.fetch(s.id, []).any? { |d| !dep_resolved?(story_status[d]) }
-      next false if index.rfc_deps.fetch(s.id, []).any? { |d| index.rfc_status[d] != "closed" }
-      true
+      !dep_held?(s.id, index.deps, index.rfc_deps, story_status, index.rfc_status)
     end
     StableSort.sort(picked) { |a, b| compare_priority(a, b, ctx) }
   end

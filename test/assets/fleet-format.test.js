@@ -902,11 +902,21 @@ describe("the spawn loop's controls", () => {
       liveNow: "(now: 4)", openNow: "(now: 9)", next: "next: A <story>", nextTitle: "a-story",
       skip: true, bundleList: "",
     });
-    expect(view.lastSpawn).toMatch(/^\(latest: .+\)$/);
+    expect(view.lastSpawn).toMatch(/^\(last spawn at .+ \(.+\)\)$/);
     expect(spawnLoopView({}, NOW)).toMatchObject({
       enabled: false, toggle: "play", interval: 0, liveNow: "(now: 0)", lastSpawn: "",
       next: "next: nothing ready", skip: false,
     });
+  });
+
+  it("counts down to the next spawn while running, and shows none while paused", () => {
+    const at = NOW - 120000;
+    const running = spawnLoopView({ enabled: true, last_spawn_at: at, next_tick_at: NOW + 7 * 60000 - 1 }, NOW);
+    expect(running.lastSpawn).toMatch(/^\(last spawn at .+ \(.+\) · next spawn in 7 min\)$/);
+    expect(spawnLoopView({ enabled: true, next_tick_at: NOW - 1 }, NOW).lastSpawn).toBe("(next spawn due now)");
+    const paused = spawnLoopView({ enabled: false, last_spawn_at: at, next_tick_at: NOW + 60000 }, NOW);
+    expect(paused.lastSpawn).toMatch(/^\(latest: [^·]+\)$/);
+    expect(spawnLoopView({ enabled: true, last_spawn_at: at, next_tick_at: "" }, NOW).lastSpawn).not.toContain("next spawn");
   });
 
   it("names the whole bundle in bundle mode, and offers no skip", () => {
