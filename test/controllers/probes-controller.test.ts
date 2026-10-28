@@ -244,6 +244,30 @@ describe("GET /up/ready", () => {
     expect(body.checks.checkout.dir).toBe(awkward);
   });
 
+  it("sweeps a probe directory orphaned by a kill, but not a concurrent one", async () => {
+    const old = `${tasksDir}/.up-ready-killed`;
+    const fresh = `${tasksDir}/.up-ready-running`;
+    getFs().mkdirSync(old);
+    getFs().mkdirSync(fresh);
+    const longAgo = new Date(Date.now() - ProbesController.probeSweepAgeMs - 60_000);
+    getFs().utimesSync!(old, longAgo, longAgo);
+    try {
+      const { body } = await getJson("ready");
+
+      expect(body.checks.checkout.ok).toBe(true);
+      expect(getFs().readdirSync(tasksDir).sort()).toEqual([".git", ".up-ready-running"]);
+    } finally {
+      getFs().rmdirSync(fresh);
+    }
+  });
+
+  it("does not go red when the sweep cannot read the checkout", async () => {
+    vi.spyOn(getFs() as Required<FsAdapter>, "readdir").mockRejectedValue(new Error("EIO: sweep failed"));
+    const { body } = await getJson("ready");
+
+    expect(body.checks.checkout.ok).toBe(true);
+  });
+
   it("names the leftover when the probe directory cannot be removed", async () => {
     vi.spyOn(getFs() as Required<FsAdapter>, "rmdir").mockRejectedValue(new Error("EBUSY: resource busy"));
     const { status, body } = await getJson("ready");

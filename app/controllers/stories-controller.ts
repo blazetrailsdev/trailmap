@@ -1,7 +1,7 @@
 import { ApiController } from "./api-controller.ts";
 import { integerParam, presentParam } from "./concerns/api-params.ts";
 import { Story } from "../models/index.ts";
-import { listFilteredIn, summarizeBundle } from "../models/concerns/ranking.ts";
+import { listFilteredIn, storiesTouchingIn, summarizeBundle } from "../models/concerns/ranking.ts";
 import { serializeStories, type SerializedStory, type StoryJsonContext } from "../serializers/story-json.ts";
 
 /** `next-bundle`'s default budget, matching the CLI's `--max-loc` default. */
@@ -75,11 +75,12 @@ export class StoriesController extends ApiController {
    *
    * Found in the snapshot rather than by its own `findBy`, exactly as the CLI
    * does (`index.stories.find`): the story still has to be serialized, and the
-   * serialization needs the snapshot anyway.
+   * serialization needs the snapshot anyway. The snapshot is plucked rows, so
+   * no record is built for the stories it does not return.
    */
   async show(): Promise<void> {
     const id = presentParam(this.params, "id") ?? "";
-    const index = await Story.rankingIndex();
+    const index = await Story.rankingRows();
     const story = index.stories.find((s) => s.id === id);
     if (!story) {
       await this.render({ json: { error: `story "${id}" not found` }, status: 404 });
@@ -102,8 +103,8 @@ export class StoriesController extends ApiController {
       await this.render({ json: { error: "touching requires a path" }, status: 400 });
       return;
     }
-    const index = await Story.rankingIndex();
-    const rows = await Story.touching(path, { index, all: presentParam(this.params, "all") !== undefined });
+    const index = await Story.rankingRows();
+    const rows = storiesTouchingIn(index, path, { all: presentParam(this.params, "all") !== undefined });
     await this.renderStories(rows, index);
   }
 

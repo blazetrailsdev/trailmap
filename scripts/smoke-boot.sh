@@ -243,6 +243,28 @@ expect_status "a handshake naming the http form of the origin" 404 \
   "$(socket_status -H 'Origin: http://trailmap.example')"
 expect_status "a handshake with no origin" 404 "$(socket_status)"
 
+# THE PANE PAGE and the relay it polls. A production boot that 500s on either
+# would otherwise pass: nothing above asks for them.
+echo "smoke-boot: /panes/<n> renders, and refuses what is not a pane number"
+page_status() {
+  curl -s -o "$work/page.html" -w '%{http_code}' "http://127.0.0.1:$port$1"
+}
+expect_status "/panes/42" 200 "$(page_status /panes/42)"
+if ! grep -q 'data-screen-path="/fleet/pane/42/screen"' "$work/page.html"; then
+  echo "smoke-boot: /panes/42 does not name its screen relay" >&2
+  exit 1
+fi
+expect_status "/panes/4x" 404 "$(page_status /panes/4x)"
+expect_status "/fleet/pane/4x/screen" 400 "$(page_status /fleet/pane/4x/screen)"
+
+# ONE JSON ENDPOINT: the API ringo and the CLI read, over the migrated database.
+echo "smoke-boot: GET /stories.json"
+expect_status "/stories.json" 200 "$(page_status /stories.json)"
+if ! node -e 'if (!Array.isArray(JSON.parse(require("fs").readFileSync(0, "utf8")))) throw 0' < "$work/page.html"; then
+  echo "smoke-boot: /stories.json is not a JSON array" >&2
+  exit 1
+fi
+
 # THE SECRET. A production process with no `secret_key_base` must never look
 # healthy, because a healthy answer is what lets dokku swap it in.
 #

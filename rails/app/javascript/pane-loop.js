@@ -1,0 +1,1 @@
+../../../app/assets/javascripts/pane-loop.js

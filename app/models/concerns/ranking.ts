@@ -285,18 +285,18 @@ export function listFilteredIn<S extends BundledStory>(
 // Matched in tiers — exact, then directory-prefix, then substring. Only the
 // first tier that matches is returned, so a precise query is never diluted by
 // the loose fallbacks.
-export function storiesTouchingIn(
-  index: RankingIndex,
+export function storiesTouchingIn<S extends RankedStory>(
+  index: RankingIndex<S>,
   query: string,
   opts: { all?: boolean } = {},
-): Story[] {
+): S[] {
   const q = query.replace(/^\.\//, "");
   const dir = q.endsWith("/") ? q : `${q}/`;
   const scoped = index.stories.filter((s) => {
     const status = effectiveStoryStatus(index.rfcStatus.get(s.rfc_id), s.status);
     return opts.all || (status != null && OPEN_STORY_STATUSES.includes(status));
   });
-  const tier = (match: (p: string) => boolean): Story[] =>
+  const tier = (match: (p: string) => boolean): S[] =>
     scoped.filter((s) => (index.paths.get(s.id) ?? []).some(match));
   const exact = tier((p) => p === q);
   if (exact.length) return exact;
