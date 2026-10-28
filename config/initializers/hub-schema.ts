@@ -1,28 +1,18 @@
 import { Trails } from "@blazetrails/trailties";
 import { env } from "@blazetrails/ruby-compat";
-import { hasHubDatabase, hubDatabaseConfig } from "../database.ts";
-import { Hub } from "../../app/models/hub.ts";
+import { hasHubDatabase } from "../database.ts";
 import { loadHubSchemas, missingHubTables } from "../../app/models/index.ts";
 
 /**
- * Connect the owner/repository hierarchy to the `hub` Postgres database.
- *
- * Two connections, one process: this one is established on `Hub`
- * (app/models/hub.ts), and `tasks-database.ts` establishes the task domain's on
- * `ActiveRecord::Base` itself. Neither disturbs the other — a pool is keyed by
- * the connection specification name, and `Hub` has its own.
+ * Check the hub before serving. NOT a connection: `Hub` connects itself with
+ * `connectsTo` (app/models/hub.ts), and loading this file opens nothing, so
+ * anything that loads initializers without serving — `pnpm views` builds
+ * templates this way (trails#9284) — needs no database. The I/O runs in a
+ * `server` block (trails#9375), which `trails server` awaits before it binds.
  *
  * Schemas load here for the reason they do there: `enum` resolves its storage
  * type from the reflected column, reflection is lazy, and reaching a model for
  * the first time THROUGH AN ASSOCIATION never loads it. See `loadHubSchemas`.
- *
- * Two halves, split the way a Rails app splits them. Importing this file only
- * registers the connection, and `establishConnection` opens no socket, so
- * anything that loads initializers without serving — `pnpm views` builds
- * templates this way (trails#9284) — needs no database. The I/O runs in a
- * `server` block (trails#9375), which `trails server` awaits before it binds,
- * so a misconfigured process still never serves. The named export is that
- * block, and the test calls it directly.
  *
  * An unset `HUB_DATABASE_URL` is a BOOT FAILURE outside `test`, as an unset
  * `TASKS_DATABASE` is: a process that comes up without it answers dokku's
@@ -45,7 +35,7 @@ import { loadHubSchemas, missingHubTables } from "../../app/models/index.ts";
  * including when a database is replaced underneath a container that is
  * already running.
  */
-export async function connectToHubDatabase(): Promise<void> {
+export async function checkHubDatabase(): Promise<void> {
   if (!hasHubDatabase()) {
     if ((env.NODE_ENV ?? "development") === "test") return;
     throw new Error(
@@ -54,7 +44,6 @@ export async function connectToHubDatabase(): Promise<void> {
         "Postgres database (`dokku postgres:info trailmap-hub --dsn`); see docs/deploy.md.",
     );
   }
-  await Hub.establishConnection(hubDatabaseConfig());
   await loadHubSchemas();
 
   const missing = await missingHubTables();
@@ -68,10 +57,4 @@ export async function connectToHubDatabase(): Promise<void> {
   }
 }
 
-// Registration, for every path that loads initializers without serving
-// (`trails db`, the console, the suite): Rails' own initializer
-// `establish_connection` is only this. The server block establishes again
-// from the environment as it stands when the server starts, which is what
-// lets it be called alone (boot-probe, and tests that repoint the variable).
-if (hasHubDatabase()) await Hub.establishConnection(hubDatabaseConfig());
-Trails.application.server(connectToHubDatabase);
+Trails.application.server(checkHubDatabase);

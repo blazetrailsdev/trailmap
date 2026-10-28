@@ -20,7 +20,7 @@ describe("the database configuration", () => {
 
     expect(Object.keys(configs).sort()).toEqual(["development", "production", "test"]);
     for (const [name, entry] of Object.entries(configs)) {
-      expect(Object.keys(entry).sort(), name).toEqual(["hub", "primary"]);
+      expect(Object.keys(entry).sort(), name).toEqual(["hub", "primary", "stats"]);
       expect(entry.primary!.adapter, name).toBe("sqlite3");
       expect(entry.hub!.adapter, name).toBe("postgresql");
     }

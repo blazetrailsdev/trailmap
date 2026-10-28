@@ -16,8 +16,7 @@ import { hasHubDatabase } from "../config/database.ts";
  *
  * NOTHING HERE ESTABLISHES A CONNECTION, and that is deliberate. `trails db
  * seed` boots the application before it imports this file (trails#8768), so
- * `config/initializers/hub-database.ts` has already run
- * `Hub.establishConnection` and `loadHubSchemas` — which is why
+ * `Hub` has already connected itself (`connectsTo`, app/models/hub.ts) — which is why
  * `Owner.findByLogin` below reaches Postgres rather than falling through to
  * the SQLite primary. This file used to do that work a second time by hand,
  * and then undo it with `Hub.removeConnection()` so the command could exit.

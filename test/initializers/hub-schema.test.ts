@@ -1,19 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { env, setEnv } from "@blazetrails/ruby-compat";
 import { Trailmap } from "../../config/application.ts";
-import { connectToHubDatabase } from "../../config/initializers/hub-database.ts";
+import { checkHubDatabase } from "../../config/initializers/hub-schema.ts";
 import { Hub } from "../../app/models/hub.ts";
 import { Owner } from "../../app/models/owner.ts";
 import { missingHubTables } from "../../app/models/index.ts";
 
 /**
- * The hub initializer, as `tasks-database.test.ts` tests the other one:
- * importing it registers `connectToHubDatabase` as a `server` block, and these
- * call that block directly; calling it more than once is safe.
+ * The hub's boot check: importing it registers `checkHubDatabase` as a
+ * `server` block, and these call that block directly. The connection itself
+ * is `Hub`'s `connectsTo`.
  */
-describe("connectToHubDatabase", () => {
+describe("checkHubDatabase", () => {
   it("is registered as a server block", () => {
-    expect(Trailmap.registeredBlocksFor("server")).toContain(connectToHubDatabase);
+    expect(Trailmap.registeredBlocksFor("server")).toContain(checkHubDatabase);
+  });
+
+  it("connects Hub to the hub entry of config/database.ts, not Base's", () => {
+    if (!env.HUB_DATABASE_URL) return;
+    expect(Hub.connectionPool().dbConfig.name).toBe("hub");
   });
 
   it("leaves the connection alone when HUB_DATABASE_URL names nothing under test", async () => {
@@ -23,7 +28,7 @@ describe("connectToHubDatabase", () => {
       expect(env.HUB_DATABASE_URL).toBeTruthy();
       return;
     }
-    await connectToHubDatabase();
+    await checkHubDatabase();
 
     // Nothing was substituted: asking for the connection is what fails, so a
     // hub model cannot silently read an empty database.
@@ -32,7 +37,7 @@ describe("connectToHubDatabase", () => {
 
   it("connects the hub models when it names one", async () => {
     if (!env.HUB_DATABASE_URL) return;
-    await connectToHubDatabase();
+    await checkHubDatabase();
 
     expect(Hub.connectionPool().dbConfig.adapter).toBe("postgresql");
     // A query, not just a pool: schema reflection is what `loadHubSchemas`
@@ -53,7 +58,7 @@ describe("connectToHubDatabase", () => {
     setEnv("HUB_DATABASE_URL", undefined);
     setEnv("NODE_ENV", "production");
     try {
-      await expect(connectToHubDatabase()).rejects.toThrow(/HUB_DATABASE_URL is not set/);
+      await expect(checkHubDatabase()).rejects.toThrow(/HUB_DATABASE_URL is not set/);
     } finally {
       setEnv("HUB_DATABASE_URL", url);
       setEnv("NODE_ENV", nodeEnv);
@@ -76,7 +81,7 @@ describe("connectToHubDatabase", () => {
    */
   it("refuses to boot against a database that has no hub schema", async () => {
     if (!env.HUB_DATABASE_URL) return;
-    await connectToHubDatabase();
+    await checkHubDatabase();
 
     expect(await missingHubTables()).toEqual([]);
 
@@ -93,11 +98,6 @@ describe("connectToHubDatabase", () => {
     const url = String(env.HUB_DATABASE_URL);
     const empty = url.replace(/\/[^/?]+(\?|$)/, `/${scratch}$1`);
     try {
-      // The ENVIRONMENT, not just the pool: `connectToHubDatabase` builds its
-      // config from `HUB_DATABASE_URL` every time it runs, so pointing only
-      // the pool at the scratch database left it reconnecting to the real hub
-      // and finding every table.
-      setEnv("HUB_DATABASE_URL", empty);
       await Hub.establishConnection({ adapter: "postgresql", url: empty, pool: 1 });
 
       // Every table a hub model names, sorted — `missingHubTables` derives the
@@ -112,15 +112,14 @@ describe("connectToHubDatabase", () => {
         "settings",
       ]);
 
-      await expect(connectToHubDatabase()).rejects.toThrow(
+      await expect(checkHubDatabase()).rejects.toThrow(
         /database without the hub schema/,
       );
     } finally {
       // Back to the real hub, then drop the scratch — in that order, because
       // a database cannot be dropped from a connection that is using it.
-      setEnv("HUB_DATABASE_URL", url);
       await Hub.removeConnection();
-      await connectToHubDatabase();
+      await Hub.connectsTo({ database: { writing: ":hub" } });
       await Hub.connectionPool().withConnection((connection) =>
         connection.execute(`DROP DATABASE IF EXISTS ${scratch}`),
       );

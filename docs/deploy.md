@@ -93,7 +93,7 @@ dokku run trailmap bin/trails db seed
 ```
 
 `HUB_DATABASE_URL` is as NOT optional as `TASKS_DATABASE`:
-`config/initializers/hub-database.ts` refuses to boot without it, for the
+`config/initializers/hub-schema.ts` refuses to boot without it, for the
 reason that initializer records — a container that comes up without a
 connection answers `/up` green and 500s on the first page that reads a row.
 
@@ -217,7 +217,7 @@ which SQLite enforces at the driver.
 `TASKS_DATABASE` and `HUB_DATABASE_URL`. Those two back every page, so
 `config/initializers/*.ts` refuse to boot without them. This one backs a single
 page, on a multi-gigabyte host file most deployments do not have, so
-`config/initializers/stats-database.ts` skips the connection and the page says
+`config/initializers/stats-schema.ts` skips the connection and the page says
 the source is missing. Every other page is unaffected. A deployment with no
 stats database is supported, not broken.
 

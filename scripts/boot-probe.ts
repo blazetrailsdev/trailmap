@@ -22,8 +22,8 @@ console.log("boot-probe: booted");
 
 // END THE PROBE, explicitly.
 //
-// Booting now opens a PostgreSQL pool — the `hub` database, established by
-// `config/initializers/hub-database.ts` — and an open pool's sockets keep
+// Booting now opens a PostgreSQL pool — the `hub` database, which `Hub` reaches with `connectsTo`
+// (app/models/hub.ts) — and an open pool's sockets keep
 // Node's event loop alive. A process that ended by itself while every
 // connection was SQLite (better-sqlite3 is synchronous and holds no libuv
 // handle) now never would, and `scripts/smoke-boot.sh` waits on this

@@ -48,7 +48,7 @@ export class Setting extends Hub {
    * nothing.
    *
    * With no hub CONNECTION — a process that never ran
-   * `config/initializers/hub-database.ts`, which is most of the test suite and
+   * `config/initializers/hub-schema.ts`, which is most of the test suite and
    * every `trails db` command — this reads the environment and nothing else.
    * That is what keeps the fleet surface working, and testable, on a process
    * that has only `RINGO_BASE`: moving a value into the table becomes a
@@ -141,7 +141,7 @@ export class Setting extends Hub {
    * The row for `key`, or null — including when nothing is connected.
    *
    * THIS BRANCH EXISTS FOR THE TEST SUITE. Saying so plainly is the honest
-   * version: `config/initializers/hub-database.ts` refuses to boot without
+   * version: `config/initializers/hub-schema.ts` refuses to boot without
    * `HUB_DATABASE_URL` and then reflects the hub's columns, which needs a live
    * connection — so a running server always has a pool and never reaches here.
    * The processes that do are the ones that load no initializers: most of the
