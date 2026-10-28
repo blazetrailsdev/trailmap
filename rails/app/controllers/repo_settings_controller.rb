@@ -22,9 +22,11 @@ class RepoSettingsController < RepoController
     @has_switches = !row.nil?
     @switches = RepositorySetting::OPTIONAL_TABS.map { |t| Switch.new(tab: t, enabled: row.nil? || row.enabled?(t)) }
     @form = row || RepositorySetting.new(repository_id: @repo.id)
+    @can_administer = @repo.administrable_by?(viewer)
   end
 
   def update
+    raise ActiveRecord::RecordNotFound, "#{@repo.name_with_owner} has no settings this viewer may change" unless @repo.administrable_by?(viewer)
     row = @repo.settings || @repo.build_settings
     row.update!(switch_params)
     redirect_to "/#{@repo.name_with_owner}/settings", status: :see_other

@@ -3,6 +3,8 @@ import { RepoController } from "./repo-controller.ts";
 import { OPTIONAL_TABS, RepositorySetting } from "../models/repository-setting.ts";
 import { Setting } from "../models/setting.ts";
 import { RepositoryCollaborator } from "../models/repository-collaborator.ts";
+import { RecordNotFound } from "@blazetrails/activerecord";
+import { viewerOf } from "./concerns/viewer.ts";
 
 /**
  * `/:owner/:repo/settings` — the repository's record and its feature switches.
@@ -65,6 +67,7 @@ export class RepoSettingsController extends RepoController {
         // The form's model: the row, or an unsaved one whose column defaults
         // (all on) are what `ALL_TABS_ENABLED` answers for a missing row.
         form: switches ?? new RepositorySetting({ repository_id: this.repo.id }),
+        canAdminister: await this.repo.isAdministrableBy(await viewerOf(this.request)),
         switches: OPTIONAL_TABS.map((tab) => ({
           tab,
           enabled: switches === null ? true : switches.enabled(tab),
@@ -75,7 +78,9 @@ export class RepoSettingsController extends RepoController {
   }
 
   /**
-   * `PATCH /:owner/:repo/settings`. A repository with no row gets one on its
+   * `PATCH /:owner/:repo/settings`, for the owner or an admin collaborator
+   * only (`Repository#isAdministrableBy`); anyone else gets the same 404 as
+   * every other refusal here. A repository with no row gets one on its
    * first save. The redirect is back to the tab, as Rails' scaffold does, so a
    * reload does not resubmit, and the next request reads the row afresh —
    * `loadRepository` preloads it per request, so no restart is involved.
@@ -85,10 +90,11 @@ export class RepoSettingsController extends RepoController {
    * page change every other's behaviour.
    */
   async update(): Promise<void> {
-    const row =
-      this.repo.settings ?? new RepositorySetting({ repository_id: this.repo.id });
-    row.assignAttributes(this.switchParams());
-    await row.saveBang();
+    if (!(await this.repo.isAdministrableBy(await viewerOf(this.request)))) {
+      throw new RecordNotFound(`${this.repo.nameWithOwner()} has no settings this viewer may change`);
+    }
+    const row = this.repo.settings ?? this.repo.buildSettings();
+    await row.updateBang(this.switchParams());
     this.redirectTo(`/${this.repo.nameWithOwner()}/settings`, { status: 303 });
   }
 

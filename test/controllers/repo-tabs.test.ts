@@ -346,16 +346,19 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
   });
 
   /** A settings form submission, as the page's checkboxes post it. */
+  const OWNER = { "Remote-User": "blazetrailsdev" };
+
   async function patchSettings(
     params: Record<string, unknown>,
+    headers: Record<string, string> = OWNER,
   ): Promise<{ status: number; location: string | undefined }> {
-    const tc = await controllerTestCase(RepoSettingsController);
+    const tc = await controllerTestCase(RepoSettingsController, headers);
     await tc.patch("update", { params: { ...TASKS, ...params } });
     return { status: tc.response.status, location: tc.response.getHeader("Location") as string | undefined };
   }
 
   it("draws a form posting the six switches back to the tab", async () => {
-    const { body } = await get(RepoSettingsController, "show", TASKS);
+    const { body } = await get(RepoSettingsController, "show", TASKS, OWNER);
 
     expect(body).toContain('action="/blazetrailsdev/tasks/settings"');
     expect(body).toContain('name="_method" value="patch"');
@@ -378,6 +381,30 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
       await patchSettings({ repository_setting: { wiki_enabled: "1" } });
     }
     expect((await get(RepoWikiController, "index", TASKS)).status).toBe(200);
+  });
+
+  it("refuses a settings change from anyone who is not the owner or an admin", async () => {
+    const tasks = await Repository.findByNwo("blazetrailsdev", "tasks");
+    const reader = await Owner.create({ login: "settings-reader", kind: "user" });
+    const admin = await Owner.create({ login: "settings-admin", kind: "user" });
+    await RepositoryCollaborator.create({ repository_id: tasks!.id, owner_id: reader.id, role: "read" });
+    await RepositoryCollaborator.create({ repository_id: tasks!.id, owner_id: admin.id, role: "admin" });
+    const wikiOff = { repository_setting: { wiki_enabled: "0" } };
+    try {
+      await expect(patchSettings(wikiOff, {})).rejects.toThrow(RecordNotFound);
+      await expect(patchSettings(wikiOff, { "Remote-User": "settings-reader" })).rejects.toThrow(RecordNotFound);
+      expect((await RepositorySetting.findBy({ repository_id: tasks!.id }))!.wiki_enabled).toBe(true);
+
+      const anonymous = await get(RepoSettingsController, "show", TASKS);
+      expect(anonymous.body).not.toContain('name="_method"');
+
+      expect((await patchSettings(wikiOff, { "Remote-User": "settings-admin" })).status).toBe(303);
+      expect((await RepositorySetting.findBy({ repository_id: tasks!.id }))!.wiki_enabled).toBe(false);
+    } finally {
+      await patchSettings({ repository_setting: { wiki_enabled: "1" } });
+      await RepositoryCollaborator.where({ repository_id: tasks!.id }).deleteAll();
+      await Owner.where({ login: ["settings-reader", "settings-admin"] }).deleteAll();
+    }
   });
 
   it("assigns only the six switches, never repository_id or id", async () => {

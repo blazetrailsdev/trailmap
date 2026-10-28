@@ -3,6 +3,8 @@ require "test_helper"
 # Every page renders, against a small task domain and hub. A smoke test: the
 # detailed rules have their own tests.
 class PagesTest < ActionDispatch::IntegrationTest
+  OWNER = { "Remote-User" => "blazetrailsdev" }.freeze
+
   setup do
     rfc!("0001-alpha", priority: 1, packages: [ "activerecord" ], created_on: "2026-01-01")
     rfc!("0002-beta", status: "draft")
@@ -55,7 +57,7 @@ class PagesTest < ActionDispatch::IntegrationTest
   test "turns a tab off from the form, and the tab then 404s with no restart" do
     require_hub!
     hub_repo!("tasks")
-    patch "/blazetrailsdev/tasks/settings", params: { repository_setting: { wiki_enabled: "0" } }
+    patch "/blazetrailsdev/tasks/settings", params: { repository_setting: { wiki_enabled: "0" } }, headers: OWNER
     assert_redirected_to "/blazetrailsdev/tasks/settings"
     assert_response :see_other
     get "/blazetrailsdev/tasks/wiki"
@@ -70,7 +72,7 @@ class PagesTest < ActionDispatch::IntegrationTest
     trails = hub_repo!("trails")
     row = tasks.settings
     patch "/blazetrailsdev/tasks/settings",
-          params: { repository_setting: { pulls_enabled: "1", repository_id: trails.id, id: 999 } }
+          params: { repository_setting: { pulls_enabled: "1", repository_id: trails.id, id: 999 } }, headers: OWNER
     assert_equal tasks.id, row.reload.repository_id
     assert_equal 1, RepositorySetting.where(repository_id: trails.id).count
   end
@@ -79,10 +81,33 @@ class PagesTest < ActionDispatch::IntegrationTest
     require_hub!
     tasks = hub_repo!("tasks")
     tasks.settings.destroy!
-    patch "/blazetrailsdev/tasks/settings", params: { repository_setting: { insights_enabled: "0" } }
+    patch "/blazetrailsdev/tasks/settings", params: { repository_setting: { insights_enabled: "0" } }, headers: OWNER
     assert_response :see_other
     row = RepositorySetting.find_by!(repository_id: tasks.id)
     assert_equal false, row.insights_enabled
     assert_equal true, row.wiki_enabled
+  end
+
+  test "refuses a settings change from anyone who is not the owner or an admin" do
+    require_hub!
+    tasks = hub_repo!("tasks")
+    reader = Owner.create!(login: "settings-reader", kind: "user")
+    admin = Owner.create!(login: "settings-admin", kind: "user")
+    RepositoryCollaborator.create!(repository: tasks, owner: reader, role: "read")
+    RepositoryCollaborator.create!(repository: tasks, owner: admin, role: "admin")
+    wiki_off = { repository_setting: { wiki_enabled: "0" } }
+
+    patch "/blazetrailsdev/tasks/settings", params: wiki_off
+    assert_response :not_found
+    patch "/blazetrailsdev/tasks/settings", params: wiki_off, headers: { "Remote-User" => "settings-reader" }
+    assert_response :not_found
+    assert tasks.settings.reload.wiki_enabled
+
+    get "/blazetrailsdev/tasks/settings"
+    assert_not_includes response.body, 'name="_method"'
+
+    patch "/blazetrailsdev/tasks/settings", params: wiki_off, headers: { "Remote-User" => "settings-admin" }
+    assert_response :see_other
+    assert_not tasks.settings.reload.wiki_enabled
   end
 end
