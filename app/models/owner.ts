@@ -42,13 +42,11 @@ export class Owner extends Hub {
     // `destroy` for repositories so their own dependents run; `deleteAll` for
     // the collaboration rows, which are a join with no callbacks of their own.
     this.hasMany("repositories", {
-      foreignKey: "owner_id",
       inverseOf: "owner",
       dependent: "destroy",
     });
     this.hasMany("collaborations", {
       className: "RepositoryCollaborator",
-      foreignKey: "owner_id",
       inverseOf: "owner",
       dependent: "deleteAll",
     });

@@ -52,17 +52,15 @@ export class Repository extends Hub {
   declare isVisibilityPrivate: () => boolean;
 
   static {
-    this.belongsTo("owner", { className: "Owner", foreignKey: "owner_id" });
+    this.belongsTo("owner");
     // `dependent` for the same reason as Owner's: real FKs mean a destroy
     // without it raises instead of cascading.
     this.hasOne("settings", {
       className: "RepositorySetting",
-      foreignKey: "repository_id",
       dependent: "destroy",
     });
     this.hasMany("collaborators", {
       className: "RepositoryCollaborator",
-      foreignKey: "repository_id",
       inverseOf: "repository",
       dependent: "deleteAll",
     });
