@@ -24,7 +24,7 @@
         <span class="badge s-<%= row.enabled ? "done" : "closed" %>"><%= row.enabled ? "on" : "off" %></span>
       </div>
     <% } %>
-    <div class="box-row"><%= f.submit("Save features") %></div>
+    <div class="box-row"><%= f.submit("Save features", { class: "btn btn-green btn-sm" }) %></div>
   </div>
 <% }) %>
 
