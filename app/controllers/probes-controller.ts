@@ -244,7 +244,7 @@ export class ProbesController extends ApiController {
    * the last file under `db/hub-migrate`. `Hub`'s pool carries that path
    * (`hubDatabaseConfig()`), so its `MigrationContext` lists the hub's
    * history and not the task domain's. The boot guard
-   * (config/initializers/hub-schema.ts) only sees a hub with NO schema;
+   * (config/initializers/hub-database.ts) only sees a hub with NO schema;
    * this sees one a migration behind, or ahead.
    *
    * With `HUB_DATABASE_URL` unset it is SKIPPED, green with a `skipped`

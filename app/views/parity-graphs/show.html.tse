@@ -29,7 +29,7 @@
         no <code>STATS_DB</code> to fill it from. Run <code>pnpm parity:sync</code>
         from a host that has the stats database, pointed at this hub. The chart
         itself needs only the projection — see
-        <code>config/initializers/stats-schema.ts</code>.
+        <code>config/initializers/stats-database.ts</code>.
       <% } %>
     </div>
   </div>

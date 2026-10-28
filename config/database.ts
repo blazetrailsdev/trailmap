@@ -23,12 +23,7 @@ export const HUB_MIGRATIONS_PATH = "db/hub-migrate";
  * `hub` carries `migrationsPaths` because its migrations are NOT `db/migrate`:
  * that directory is the task domain's history, shared with the tasks CLI, and
  * `trails db migrate` would otherwise try to run it against Postgres.
- * `pnpm db:migrate` — with NO `--database` flag — migrates both.
- *
- * `stats` is the third, read-only (`statsEntry`), and `trails db` never
- * touches it. `Hub` and `Stats` reach theirs with `connectsTo`, as the Rails
- * twin's `connects_to database: { writing: :hub }` does: the trailtie sets
- * `Base.configurations` from this file at boot. That flag
+ * `pnpm db:migrate` — with NO `--database` flag — migrates both. That flag
  * loads `db/schema.ts` into whichever database it targets; docs/deploy.md and
  * CLAUDE.md both say never to pass it.
  */
@@ -39,7 +34,6 @@ export default {
       database: "storage/development.sqlite3",
     },
     hub: hubEntry(),
-    stats: statsEntry(),
   },
   test: {
     primary: {
@@ -47,7 +41,6 @@ export default {
       database: "storage/test.sqlite3",
     },
     hub: hubEntry(),
-    stats: statsEntry(),
   },
   production: {
     primary: {
@@ -55,7 +48,6 @@ export default {
       database: "storage/production.sqlite3",
     },
     hub: hubEntry(),
-    stats: statsEntry(),
   },
 };
 
@@ -83,24 +75,7 @@ function hubEntry(): Record<string, unknown> {
 }
 
 /**
- * The `stats` entry: `statsDatabaseConfig()` without its throw, and
- * `databaseTasks: false` so `trails db migrate` and `drop` skip it — the
- * nightly stats-sync cron owns that schema. Unset `STATS_DB` leaves
- * `database` undefined, which fails at first use, not at import.
- */
-function statsEntry(): Record<string, unknown> {
-  return {
-    adapter: "node-sqlite",
-    database: env.STATS_DB,
-    readonly: true,
-    pool: 1,
-    timeout: writeProtocol.busyTimeoutMs,
-    databaseTasks: false,
-  };
-}
-
-/**
- * The hub connection, as scripts outside the application open it.
+ * The hub connection, as `app/models/hub.ts` opens it.
  *
  * Separate from the entries above for the same reason `tasksDatabaseConfig()`
  * is: those are what `trails db` fans out over, and this is what the running

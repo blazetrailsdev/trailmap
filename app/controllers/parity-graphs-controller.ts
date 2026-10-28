@@ -86,7 +86,7 @@ export class ParityGraphsController extends ApplicationController {
    * The page. Static: every number on it arrives from `data`.
    *
    * It renders even with no stats database, because an unset `STATS_DB` is a
-   * supported way to run trailmap (config/initializers/stats-schema.ts) —
+   * supported way to run trailmap (config/initializers/stats-database.ts) —
    * the page then says the source is missing instead of 500ing.
    */
   async show(): Promise<void> {

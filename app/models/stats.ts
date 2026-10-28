@@ -1,5 +1,4 @@
 import { ApplicationRecord } from "./application-record.ts";
-import { hasStatsDatabase } from "../../config/database.ts";
 
 /**
  * The base class of everything that lives in the trails stats database — the
@@ -10,11 +9,12 @@ import { hasStatsDatabase } from "../../config/database.ts";
  * The third connection in this process, and the third adapter: the task domain
  * is better-sqlite3 on `ActiveRecord::Base` itself, the hub is PostgreSQL on
  * `Hub`, and this is `node-sqlite` on `Stats`. Same pattern as `Hub`
- * (app/models/hub.ts): `connectsTo` the `stats` entry of `config/database.ts`.
- * A pool is keyed by the connection specification name, and each of the three
- * has its own, so none of them disturbs the others.
+ * (app/models/hub.ts, which has the long version of why it is
+ * `establishConnection` from an initializer rather than `connectsTo`) — a pool
+ * is keyed by the connection specification name, and each of the three has its
+ * own, so none of them disturbs the others.
  *
- * READ-ONLY, and enforced at the driver: the `stats` entry passes
+ * READ-ONLY, and enforced at the driver: `statsDatabaseConfig()` passes
  * `readonly: true`, so SQLite refuses a write on this connection. trailmap does
  * not own this schema — the cron does — and nothing here should ever write it.
  *
@@ -30,7 +30,5 @@ export class Stats extends ApplicationRecord {
     // inherited, and every subclass then reads `abstractClass === true` and
     // raises "X is an abstract class and cannot be instantiated" on create.
     this.abstractClass = true;
-    // Only with `STATS_DB`, for the reason `Hub` connects only with a URL.
-    if (hasStatsDatabase()) void this.connectsTo({ database: { writing: ":stats" } });
   }
 }

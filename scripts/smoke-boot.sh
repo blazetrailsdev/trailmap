@@ -45,7 +45,7 @@ pnpm exec trails-tsc-views build --views app/views
 # `db migrate` with no `--database` migrates BOTH of the environment's
 # databases (config/database.ts): the SQLite primary below, and the `hub`
 # Postgres one when HUB_DATABASE_URL is set, which it is in CI because
-# `config/initializers/hub-schema.ts` refuses to boot without it. That is
+# `config/initializers/hub-database.ts` refuses to boot without it. That is
 # also why there is no `--database` flag here — see the note on the CI step
 # that prepares the hub schema.
 trails="bin/trails"

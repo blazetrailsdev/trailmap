@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # The same service as `test`, for a different reason:
-    # `config/initializers/hub-schema.ts` refuses to boot without
+    # `config/initializers/hub-database.ts` refuses to boot without
     # `HUB_DATABASE_URL`, exactly as the tasks-database initializer refuses
     # without `TASKS_DATABASE`. A boot smoke test that skipped it would be
     # testing a process the deployment never runs.

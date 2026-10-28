@@ -33,8 +33,8 @@ const MODELS = [Rfc, Story, StoryDep, StoryRfcDep, StoryPath, StoryPackage, Even
  * (app/models/hub.ts).
  *
  * A separate list because `loadModelSchemas` reflects columns, and reflecting
- * these needs the hub connection, which `Hub`'s `connectsTo`
- * registers and a process without `HUB_DATABASE_URL` never has. Registration
+ * these needs the hub connection, which `config/initializers/hub-database.ts`
+ * establishes and a process without `HUB_DATABASE_URL` never has. Registration
  * is shared — that is process-global constant resolution, not a connection —
  * so `hasOne("settings")` resolves whether or not the database is reachable.
  */
@@ -55,8 +55,8 @@ const HUB_MODELS = [
  * (app/models/stats.ts).
  *
  * A separate list for the same reason `HUB_MODELS` is one: reflecting these
- * needs the stats connection, which `Stats`'s `connectsTo`
- * registers and a process without `STATS_DB` never has. Unlike the hub,
+ * needs the stats connection, which `config/initializers/stats-database.ts`
+ * establishes and a process without `STATS_DB` never has. Unlike the hub,
  * that is a supported way to run — the parity page says the source is missing
  * and every other page is unaffected.
  */
@@ -91,8 +91,9 @@ export async function loadModelSchemas(): Promise<void> {
 /**
  * The same warm-up for the hub models, on the hub connection.
  *
- * Called by `config/initializers/hub-schema.ts` before the server binds, on
- * the pool `Hub`'s `connectsTo` registered.
+ * Called by `config/initializers/hub-database.ts` right after it establishes
+ * that connection — and only there, because without it these models have no
+ * pool to reflect against.
  */
 export async function loadHubSchemas(): Promise<void> {
   await Promise.all(HUB_MODELS.map((model) => model.loadSchema()));

@@ -147,7 +147,7 @@ export function gapsFor(metric: ParityMetric): string[] | null {
 export function metricAvailable(metric: ParityMetric): boolean {
   // Synchronous, and that is safe only because reflection is already warm:
   // `loadStatsSchemas()` awaits it once from
-  // config/initializers/stats-schema.ts. Without that warm-up this answers
+  // config/initializers/stats-database.ts. Without that warm-up this answers
   // false for every metric and the page comes up empty — see the note there.
   const columns = metric.model.columnNames();
   if (columns.length === 0) return false;

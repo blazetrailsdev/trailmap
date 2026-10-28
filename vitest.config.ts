@@ -9,7 +9,5 @@ export default defineConfig({
     // browser JavaScript (it is served to the page, not compiled), so its
     // test is plain JavaScript too.
     include: ["test/**/*.test.ts", "test/**/*.test.js"],
-    // `Base.configurations`, which `Hub` and `Stats` resolve `connectsTo` against.
-    setupFiles: ["test/support/database-configurations.ts"],
   },
 });
