@@ -478,6 +478,21 @@ dokku config:set trailmap AUDITS_DIR=/audits
 
 Unset, `/audits` renders and says there is no directory to list.
 
+`/deploys/log` reads each run's log from ringo's pane-log directory (`<data dir>/sessions/panes`), read-only,
+so a log reads with ringo down. The capture is the `pipe-pane` file ringo's
+`DeployRun.LogFile` names; trailmap reads its base name, raw or as the `.gz`
+ringo's sweep leaves, so every run already finished is readable as it stands —
+there is nothing to backfill. Mount it and name it:
+
+```sh
+dokku storage:mount trailmap /home/dean/.btwhooks/data/sessions/panes:/deploy-logs:ro
+dokku config:set trailmap DEPLOY_LOGS_DIR=/deploy-logs
+```
+
+Unset, the log is relayed from ringo as before. The run HISTORY is still
+ringo's until `move-deploys-and-sweeps-into-the-database`; the row is what
+names the file.
+
 **Decided: the mount is read-write.** Authoring and ingest commit into the
 checkout from inside the container, and the mutation endpoints exist to write.
 The CLI still opens the same file, so the guard against two writers is

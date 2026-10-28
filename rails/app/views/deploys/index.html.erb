@@ -1,9 +1,15 @@
 <div class="page-header">
   <h1 class="page-title">Deploys</h1>
   <div class="page-subhead">
-    <span class="muted">Every dokku deploy ringo has run, newest first. Read-only; relayed from ringo, which holds the history and the logs.</span>
+    <span class="muted">Every dokku deploy ringo has run, newest first. Read-only; the history is relayed from ringo, and each log is read from ringo's pane-log directory.</span>
   </div>
 </div>
+
+<% if @runs.any? { |run| run["status"] == "running" } %>
+  <!-- A deploy is running: deploys.js re-reads the page. Config as an
+       element rather than an inline script, as on the pane page. -->
+  <div id="deploysConfig" hidden data-refresh-ms="5000"></div>
+<% end %>
 
 <% if @problem %>
   <div class="card ci-fixer paused">
@@ -22,8 +28,14 @@
         <span class="deploy-msg"><%= run["message"] %></span>
         <% if run["error"].present? %><span class="deploy-err"><%= run["error"] %></span><% end %>
         <time class="muted" datetime="<%= run["started"] %>"><%= run["started"].to_s[0, 16].sub("T", " ") %> UTC · <%= deploy_duration(run["seconds"].to_i) %></time>
-        <a href="/deploys/log?id=<%= ERB::Util.url_encode(run["id"].to_s) %>">log</a>
+        <details class="deploy-log" data-run="<%= run["id"] %>">
+          <summary>log</summary>
+          <pre data-src="<%= deploy_log_path(run) %>"></pre>
+          <a href="<%= deploy_log_path(run) %>">raw</a>
+        </details>
       </div>
     <% end %>
   </div>
 <% end %>
+
+<script src="<%= javascript_path("deploys") %>" type="module"></script>

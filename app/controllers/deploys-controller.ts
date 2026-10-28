@@ -1,6 +1,7 @@
 import { ApplicationController } from "./application-controller.ts";
 import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { Setting } from "../models/setting.ts";
+import { readDeployLog } from "../models/deploy-log.ts";
 
 /**
  * How long ringo has to answer for the deploy history or one run's log. A
@@ -21,6 +22,8 @@ export interface DeployRow {
   exitCode: number;
   started: string;
   seconds: number;
+  /** The pane log's path as the tmux server wrote it; only its base name is read. */
+  logFile?: string;
   error?: string;
 }
 
@@ -28,11 +31,14 @@ export interface DeployRow {
  * `/deploys` and `/deploys/log?id=<run>`, read-only, beside ringo's own.
  *
  * Neither reads a model. The deploy history is ringo's `DeployStore`: a JSON
- * file on ringo's disk, and each run's log is the `pipe-pane` capture of the
- * tmux pane the deploy ran in, also a file on ringo's disk. trailmap has no
- * copy of either, so both are relayed from ringo over the private network, as
- * the fleet page's reads are. The rows are rendered here, in the order ringo
- * keeps them: newest first.
+ * file on ringo's disk, relayed over the private network as the fleet page's
+ * reads are, and rendered here in the order ringo keeps it: newest first.
+ *
+ * Each run's log is the `pipe-pane` capture of the tmux pane the deploy ran
+ * in. Those are read from ringo's pane-log directory, mounted read-only
+ * (`DEPLOY_LOGS_DIR`, `readDeployLog`), so a log reads with ringo down; the
+ * row names the file. Without the mount, or for a link that names no file,
+ * the log is relayed from ringo as before.
  */
 export class DeploysController extends ApplicationController {
   async index(): Promise<void> {
@@ -58,7 +64,10 @@ export class DeploysController extends ApplicationController {
         }
       }
     }
-    await this.render({ locals: { runs, problem } });
+    // While a deploy runs the page re-reads itself (app/assets/javascripts/deploys.js),
+    // as ringo's polls `/api/deploys`; a finished history is left still.
+    const refreshing = runs.some((run) => run.status === "running");
+    await this.render({ locals: { runs, problem, refreshing } });
   }
 
   /** One run's log, as ringo serves it: the capture verbatim, as plain text. */
@@ -67,6 +76,13 @@ export class DeploysController extends ApplicationController {
     const id = String(this.params.get("id") ?? "");
     if (id === "") {
       await this.render({ plain: "unknown deploy", status: 404 });
+      return;
+    }
+    const file = String(this.params.get("file") ?? "");
+    const read = file === "" ? null : await readDeployLog(file);
+    if (read !== null) {
+      // ringo answers a missing capture 200 with the reason as the text.
+      await this.render({ plain: "text" in read ? read.text : read.missing });
       return;
     }
     const base = await Setting.ringoBase();
