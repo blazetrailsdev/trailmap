@@ -110,6 +110,12 @@ export class SessionsController extends ApplicationController {
     // ringo's page is a whole document, so it gets no layout. It is served on
     // trailmap's origin, and any field ringo leaves unescaped would run there,
     // so it is sandboxed as the audit pages are: a unique origin, no scripts.
+    //
+    // Checked against ringo 5f7fa9f (webhook/transcript_page.go): every field
+    // from the session — prompts, text, thinking, tool input and output — goes
+    // through `html.EscapeString`, and the page has no script to stop. Its
+    // folding is `<details>` and its links are plain anchors, both of which
+    // work in a sandboxed document, so `allow-scripts` would buy nothing.
     this.response.setHeader("Content-Security-Policy", "sandbox");
     await this.render({ html: htmlSafe(new TextDecoder().decode(read.bytes)) });
   }
