@@ -1,9 +1,7 @@
 module DeploysHelper
-  # Where a run's log is read: the id, and the base name of the capture ringo
-  # recorded, which `DeploysController#log` reads off the mount.
+  # Where a run's log is read: by id alone; the controller finds the file from the run.
   def deploy_log_path(run)
-    file = File.basename(run["logFile"].to_s)
-    "/deploys/log?id=#{ERB::Util.url_encode(run["id"].to_s)}" + (file.empty? ? "" : "&file=#{ERB::Util.url_encode(file)}")
+    "/deploys/log?id=#{ERB::Util.url_encode(run["id"].to_s)}"
   end
 
   # A run's length as ringo's page writes it: `42s`, `2m 5s`.

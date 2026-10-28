@@ -37,8 +37,7 @@ describe("DeployLog", () => {
     );
   });
 
-  it("deployLogPath names the file only when ringo recorded one", () => {
+  it("deployLogPath names the run alone, never a file", () => {
     expect(DeploysHelper.deployLogPath({ id: "a b" })).toBe("/deploys/log?id=a%20b");
-    expect(DeploysHelper.deployLogPath({ id: "x", logFile: "/p/12-1.log" })).toBe("/deploys/log?id=x&file=12-1.log");
   });
 });

@@ -3,7 +3,8 @@
  * the history in, as ringo's page polls `/api/deploys` (webhook/deploys_page.go).
  *
  * Present only when `#deploysConfig` is, which the server renders only while
- * a row is `running`; the re-read page decides whether to keep going. A log
+ * a row is `running`. A failed re-read retries; only a history with no
+ * running row stops it. A log
  * row left open stays open, and an open log is re-read with its row.
  */
 const LIST = ".card.deploys";
@@ -27,22 +28,27 @@ function wire(root) {
 }
 
 async function refresh(ms) {
+  const again = () => setTimeout(() => refresh(ms), ms);
   const open = new Set([...document.querySelectorAll("details.deploy-log[open]")].map((d) => d.dataset.run));
   let next;
   try {
-    next = new DOMParser().parseFromString(await (await fetch(location.href, { cache: "no-store" })).text(), "text/html");
+    const response = await fetch(location.href, { cache: "no-store" });
+    if (!response.ok) return again();
+    next = new DOMParser().parseFromString(await response.text(), "text/html");
   } catch {
-    return setTimeout(() => refresh(ms), ms);
+    return again();
   }
   const list = document.querySelector(LIST);
   const fresh = next.querySelector(LIST);
-  if (list && fresh) {
-    for (const details of fresh.querySelectorAll("details.deploy-log")) details.open = open.has(details.dataset.run);
-    list.replaceWith(fresh);
-    wire(fresh);
-    for (const details of fresh.querySelectorAll("details.deploy-log[open]")) loadLog(details);
-  }
-  if (next.getElementById("deploysConfig")) setTimeout(() => refresh(ms), ms);
+  // No history in the answer (ringo unreachable, or not JSON) says nothing
+  // about whether the deploy finished: keep asking. Only a history with no
+  // running row stops the loop.
+  if (!list || !fresh) return again();
+  for (const details of fresh.querySelectorAll("details.deploy-log")) details.open = open.has(details.dataset.run);
+  list.replaceWith(fresh);
+  wire(fresh);
+  for (const details of fresh.querySelectorAll("details.deploy-log[open]")) loadLog(details);
+  if (next.getElementById("deploysConfig")) again();
 }
 
 wire(document);

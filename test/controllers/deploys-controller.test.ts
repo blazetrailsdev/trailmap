@@ -101,7 +101,7 @@ describe("DeploysController#index", () => {
     expect(body).not.toMatch(/<script>|<script type="module">/);
     // Each row's log expands in place, naming the capture ringo recorded.
     expect(body).toContain('<details class="deploy-log" data-run="trailmap-200">');
-    expect(body).toContain('data-src="/deploys/log?id=trailmap-200&amp;file=pane-12.log"');
+    expect(body).toContain('data-src="/deploys/log?id=trailmap-200"');
   });
 
   it("stays still once every run has finished", async () => {
@@ -160,26 +160,25 @@ describe("DeploysController#log", () => {
     expect(asked).toEqual(["/deploys/log?id=nope%26x%3D1"]);
   });
 
-  it("reads a run's log off the mounted pane-log directory without asking ringo", async () => {
+  it("reads a run's own capture off the mounted pane-log directory, not ringo's relay", async () => {
     Trails.application!.config.x.deploys.logsDir = "test/fixtures/deploy-logs/";
+    setEnv("RINGO_BASE", ringoBaseUrl);
 
-    const raw = await get("log", { id: "trailmap-200", file: "pane-12.log" });
+    const raw = await get("log", { id: "trailmap-200" });
     expect(raw.status).toBe(200);
     expect(raw.body).toBe("-----> Building trailmap\n");
-    // A finished run's capture, gzipped by ringo's sweep: the backfill is the directory.
-    expect((await get("log", { id: "old", file: "pane-13.log" })).body).toBe("=====> Application deployed\n");
-    expect((await get("log", { id: "gone", file: "pane-99.log" })).body).toBe(
-      "(pane log unreadable: test/fixtures/deploy-logs/pane-99.log: no such file or directory)",
-    );
-    expect(asked).toEqual([]);
+    // The history is read to find the file; the log itself is not relayed.
+    expect(asked).toEqual(["/api/deploys"]);
   });
 
-  it("relays ringo for a name that is not a bare file name", async () => {
+  it("opens only the file the run names, whatever the request adds", async () => {
     Trails.application!.config.x.deploys.logsDir = "test/fixtures/deploy-logs";
     setEnv("RINGO_BASE", ringoBaseUrl);
 
-    await get("log", { id: "ringo-100", file: ".." });
-    expect(asked).toEqual(["/deploys/log?id=ringo-100"]);
+    // ringo-100 names no file, so a `file` parameter reaches nothing on disk.
+    const response = await get("log", { id: "ringo-100", file: "pane-13.log" });
+    expect(response.body).toBe("-----> Building ringo\n ! push rejected\n");
+    expect(asked).toEqual(["/api/deploys", "/deploys/log?id=ringo-100"]);
   });
 
   it("refuses a request with no id without calling ringo", async () => {

@@ -1,14 +1,9 @@
-import { deployLogName } from "../models/deploy-log.ts";
 import type { DeployRow } from "../controllers/deploys-controller.ts";
 
 export const DeploysHelper = {
-  /**
-   * Where a run's log is read: the id, and the base name of the capture ringo
-   * recorded, which `DeploysController#log` reads off the mount.
-   */
-  deployLogPath(run: Pick<DeployRow, "id" | "logFile">): string {
-    const file = run.logFile ? deployLogName(run.logFile) : "";
-    return `/deploys/log?id=${encodeURIComponent(run.id)}` + (file ? `&file=${encodeURIComponent(file)}` : "");
+  /** Where a run's log is read: by id alone; the controller finds the file from the run. */
+  deployLogPath(run: Pick<DeployRow, "id">): string {
+    return `/deploys/log?id=${encodeURIComponent(run.id)}`;
   },
 
   /** A run's length as ringo's page writes it: `42s`, `2m 5s`. */
