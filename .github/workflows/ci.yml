@@ -97,6 +97,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: ./scripts/check-nginx-sigil.sh
+      # The Rails app's copy (rails/nginx.conf.sigil), which differs only in its
+      # loopback port and carries the same two comment hazards.
+      - run: SIGIL_PATH=rails/nginx.conf.sigil ./scripts/check-nginx-sigil.sh
       # Proves the guard still detects both regressions, rather than passing
       # because it stopped looking.
       - run: ./scripts/check-nginx-sigil.sh --self-test
@@ -480,3 +483,62 @@ jobs:
             exit 1
           fi
           echo "No forbidden Claude attribution found in commit messages."
+
+  # The Rails twin of the app (rails/, ../CLAUDE.md "`rails/` is the same site
+  # in Rails"). Its own Postgres, for the reason the `test` job has one: the
+  # hub tests skip without HUB_TEST_DATABASE_URL, and a silent skip is how
+  # tests rot.
+  rails:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trailmap_rails_hub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      RAILS_ENV: test
+      HUB_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_rails_hub_test
+    defaults:
+      run:
+        working-directory: rails
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: rails
+          bundler-cache: true
+      - run: bin/rails db:prepare
+      - run: bin/rails test
+      # twin-diff reads this twin through Prism, and this is the job with
+      # Ruby 3.3: its end-to-end test skips in the unit job, which has none.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      # `shell: bash` is `bash -eo pipefail`, so a failing vitest fails the step
+      # through the pipe; the grep then requires the PASS marker, so a skipped
+      # or missing end-to-end case fails it too.
+      - name: twin-diff end to end
+        working-directory: .
+        shell: bash
+        # CI=true can turn vitest's colour on without a TTY; the grep needs the
+        # plain `✓ ` marker.
+        env:
+          NO_COLOR: "1"
+        run: |
+          pnpm exec vitest run test/scripts/twin-diff.test.ts --reporter=verbose | tee twin-diff-test.log
+          grep -q "✓ .*runs end to end over rails/ and app/" twin-diff-test.log

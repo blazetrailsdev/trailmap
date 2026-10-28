@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Compare the two deployed apps from the host crontab, on loopback: the trails
+# app's API on 127.0.0.1:8080 and the Rails app's on 127.0.0.1:8081
+# (rails/nginx.conf.sigil). One block per run is appended to the log:
+#
+#   === 2026-10-26T12:00:00-04:00 ===
+#   SAME 200 /stories/ready
+#   DIFF 200/200 /search?q=serialize (…)
+#   [tandem-cron] exit=1 duration=41s
+#
+# Locked, so a slow run is skipped rather than stacked, and bounded under the
+# cadence. Install with:
+#
+#   17 * * * * '<checkout>/rails/script/tandem-cron'
+set -uo pipefail
+
+here="$(cd "$(dirname "$0")/.." && pwd)"
+LOG="${TANDEM_LOG:-$HOME/github/blazetrailsdev/tandem.log}"
+LOCK="${TANDEM_LOCK:-$LOG.lock}"
+DEADLINE="${TANDEM_DEADLINE:-45m}"
+
+exec 9>"$LOCK"
+{
+  echo "=== $(date -Iseconds) ==="
+  if ! flock -n 9; then
+    echo "[tandem-cron] skipped: the previous run still holds $LOCK"
+    exit 0
+  fi
+  started=$(date +%s)
+  cd "$here" && timeout "$DEADLINE" bin/bundle exec script/tandem \
+    --trails "${TANDEM_TRAILS:-http://127.0.0.1:8080}" --rails "${TANDEM_RAILS:-http://127.0.0.1:8081}"
+  status=$?
+  echo "[tandem-cron] exit=$status duration=$(( $(date +%s) - started ))s"
+} >>"$LOG" 2>&1

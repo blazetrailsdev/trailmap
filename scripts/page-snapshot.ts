@@ -214,11 +214,17 @@ export interface TouchedPages {
  * - an RFC's own status rewrites its stories' effective statuses, and closing
  *   it resolves the stories that wait on it.
  */
-export function pagesTouchedBy(before: readonly RowRecord[], after: readonly RowRecord[]): TouchedPages {
+export function pagesTouchedBy(
+  before: readonly RowRecord[],
+  after: readonly RowRecord[],
+): TouchedPages {
   const key = (r: RowRecord) => `${r.table}\t${JSON.stringify(r.row)}`;
   const was = new Set(before.map(key));
   const is = new Set(after.map(key));
-  const changed = [...before.filter((r) => !is.has(key(r))), ...after.filter((r) => !was.has(key(r)))];
+  const changed = [
+    ...before.filter((r) => !is.has(key(r))),
+    ...after.filter((r) => !was.has(key(r))),
+  ];
 
   const touched: TouchedPages = { rfcs: new Set(), stories: new Set() };
   const changedStories = new Set<string>();
@@ -234,7 +240,8 @@ export function pagesTouchedBy(before: readonly RowRecord[], after: readonly Row
   const rfcOf = new Map<string, string>();
   const dependents = new Map<string, string[]>();
   const rfcDependents = new Map<string, string[]>();
-  const push = (m: Map<string, string[]>, k: string, v: string) => m.set(k, [...(m.get(k) ?? []), v]);
+  const push = (m: Map<string, string[]>, k: string, v: string) =>
+    m.set(k, [...(m.get(k) ?? []), v]);
   for (const { table, row } of [...before, ...after]) {
     if (table === "stories") rfcOf.set(String(row.id), String(row.rfc_id));
     if (table === "story_deps") push(dependents, String(row.depends_on_id), String(row.story_id));

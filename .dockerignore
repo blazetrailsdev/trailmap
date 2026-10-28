@@ -5,3 +5,6 @@ node_modules
 log/*
 tmp/*
 dist
+# The Rails twin is its own image (rails/Dockerfile, which reads
+# rails/Dockerfile.dockerignore instead of this file).
+rails

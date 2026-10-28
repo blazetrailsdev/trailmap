@@ -129,42 +129,69 @@ describe("the show-page snapshot format", () => {
   });
 });
 
-// What a recording fetches again before its facts and its rows agree. Each
-// case is one edge of `pagesTouchedBy`'s reach, and one it must not take.
 describe("pagesTouchedBy", () => {
-  const story = (id: string, rfc: string, status = "ready"): RowRecord => ({
-    table: "stories",
-    row: { id, rfc_id: rfc, status },
-  });
-  const rfc = (id: string, status = "active"): RowRecord => ({ table: "rfcs", row: { id, status } });
-  const dep = (storyId: string, dependsOn: string): RowRecord => ({
-    table: "story_deps",
-    row: { story_id: storyId, depends_on_id: dependsOn },
-  });
+  const rows: RowRecord[] = [
+    { table: "rfcs", row: { id: "0001", status: "active" } },
+    { table: "rfcs", row: { id: "0002", status: "active" } },
+    { table: "stories", row: { id: "a", rfc_id: "0001", status: "ready" } },
+    { table: "stories", row: { id: "b", rfc_id: "0001", status: "ready" } },
+    { table: "stories", row: { id: "c", rfc_id: "0002", status: "ready" } },
+    { table: "stories", row: { id: "d", rfc_id: "0002", status: "ready" } },
+    { table: "story_deps", row: { story_id: "c", depends_on_id: "a" } },
+    { table: "story_rfc_deps", row: { story_id: "d", rfc_id: "0001" } },
+  ];
   const sorted = (t: { rfcs: Set<string>; stories: Set<string> }) => ({
     rfcs: [...t.rfcs].sort(),
     stories: [...t.stories].sort(),
   });
+  const withRow = (index: number, row: Record<string, unknown>) =>
+    rows.map((r, i) => (i === index ? { ...r, row } : r));
 
   it("names nothing when nothing moved", () => {
-    const rows = [rfc("r"), story("a", "r")];
     expect(sorted(pagesTouchedBy(rows, rows))).toEqual({ rfcs: [], stories: [] });
   });
 
-  it("reaches a changed story's RFC and its direct dependents, not their dependents", () => {
-    const base = [rfc("r"), rfc("s"), story("b", "s"), story("c", "s"), dep("b", "a"), dep("c", "b")];
-    const touched = pagesTouchedBy([...base, story("a", "r")], [...base, story("a", "r", "done")]);
-    expect(sorted(touched)).toEqual({ rfcs: ["r", "s"], stories: ["a", "b"] });
+  it("reaches a moved story's page, its RFC's page, and its dependents' pages", () => {
+    const after = withRow(2, { id: "a", rfc_id: "0001", status: "done" });
+    expect(sorted(pagesTouchedBy(rows, after))).toEqual({ rfcs: ["0001", "0002"], stories: ["a", "c"] });
   });
 
-  it("reaches a story_deps row's dependent, not what it depends on", () => {
-    const base = [rfc("r"), story("a", "r"), story("b", "r")];
-    expect(sorted(pagesTouchedBy(base, [...base, dep("b", "a")]))).toEqual({ rfcs: ["r"], stories: ["b"] });
+  it("stops one level up: a dependent's dependent is not reached", () => {
+    // `e` waits on `c`, which waits on `a`. `a` finishing resolves `c`'s dep,
+    // but `c` is still authored `ready`, so nothing `e` shows can change.
+    const chain: RowRecord[] = [
+      ...rows,
+      { table: "stories", row: { id: "e", rfc_id: "0002", status: "ready" } },
+      { table: "story_deps", row: { story_id: "e", depends_on_id: "c" } },
+    ];
+    const after = chain.map((r) => (r.row.id === "a" ? { ...r, row: { ...r.row, status: "done" } } : r));
+    expect(sorted(pagesTouchedBy(chain, after)).stories).toEqual(["a", "c"]);
   });
 
-  it("reaches every story under an RFC whose status changed", () => {
-    const base = [story("a", "r"), story("b", "r"), story("c", "s"), rfc("s")];
-    const touched = pagesTouchedBy([...base, rfc("r")], [...base, rfc("r", "closed")]);
-    expect(sorted(touched)).toEqual({ rfcs: ["r"], stories: ["a", "b"] });
+  it("reaches the depending story, not the depended-on one, when a dep edge changes", () => {
+    const after: RowRecord[] = [...rows, { table: "story_deps", row: { story_id: "d", depends_on_id: "b" } }];
+    expect(sorted(pagesTouchedBy(rows, after))).toEqual({ rfcs: ["0002"], stories: ["d"] });
+  });
+
+  it("reaches both RFCs of a story that moved between them", () => {
+    const after = withRow(3, { id: "b", rfc_id: "0002", status: "ready" });
+    expect(sorted(pagesTouchedBy(rows, after))).toEqual({ rfcs: ["0001", "0002"], stories: ["b"] });
+  });
+
+  it("reaches an RFC's stories and the stories waiting on it when the RFC moves", () => {
+    const after = withRow(0, { id: "0001", status: "closed" });
+    expect(sorted(pagesTouchedBy(rows, after))).toEqual({
+      rfcs: ["0001", "0002"],
+      stories: ["a", "b", "c", "d"],
+    });
+  });
+
+  it("reaches a new story and a story whose deps changed", () => {
+    const after: RowRecord[] = [
+      ...rows,
+      { table: "stories", row: { id: "e", rfc_id: "0002", status: "draft" } },
+      { table: "story_deps", row: { story_id: "b", depends_on_id: "e" } },
+    ];
+    expect(sorted(pagesTouchedBy(rows, after))).toEqual({ rfcs: ["0001", "0002"], stories: ["b", "e"] });
   });
 });

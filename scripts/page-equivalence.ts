@@ -261,7 +261,8 @@ async function main(): Promise<number> {
    * differences, which is how a real defect surfaced by a re-fetch is told
    * apart from a database that would not hold still.
    */
-  const settle = async (): Promise<{ settled: true; rows: RowRecord[] } | { settled: false; problems: string[] }> => {
+  type Settled = { settled: true; rows: RowRecord[] } | { settled: false; problems: string[] };
+  const settle = async (): Promise<Settled> => {
     let unsettled = { rfcs: new Set<string>(), stories: new Set<string>() };
     let differences: string[] = [];
     for (let round = 1; round <= SETTLE_ROUNDS; round++) {
@@ -269,16 +270,19 @@ async function main(): Promise<number> {
       const touched = pagesTouchedBy(rowsBefore, rowsAfter);
       for (const id of unsettled.rfcs) touched.rfcs.add(id);
       for (const id of unsettled.stories) touched.stories.add(id);
-      if (touched.rfcs.size === 0 && touched.stories.size === 0) return { settled: true, rows: rowsAfter };
-      console.log(
-        `settle ${round}: ${touched.rfcs.size} RFC and ${touched.stories.size} story pages moved under the run`,
-      );
+      if (touched.rfcs.size === 0 && touched.stories.size === 0) {
+        return { settled: true, rows: rowsAfter };
+      }
+      const moved = `${touched.rfcs.size} RFC and ${touched.stories.size} story pages`;
+      console.log(`settle ${round}: ${moved} moved under the run`);
       const ids = (table: string) =>
         new Set(rowsAfter.filter((r) => r.table === table).map((r) => String(r.row.id)));
       const rfcNow = ids("rfcs");
       const storyNow = ids("stories");
       const closedNow = new Set(
-        rowsAfter.filter((r) => r.table === "rfcs" && r.row.status === "closed").map((r) => String(r.row.id)),
+        rowsAfter
+          .filter((r) => r.table === "rfcs" && r.row.status === "closed")
+          .map((r) => String(r.row.id)),
       );
       underClosedRfc = new Set(
         rowsAfter
@@ -304,7 +308,11 @@ async function main(): Promise<number> {
         if (!storyNow.has(id)) records.delete(`story:${id}`);
       }
       differences = [
-        ...(await compareAll("rfc", [...touched.rfcs].filter((id) => rfcNow.has(id)), refetch("rfcs", compareRfc))),
+        ...(await compareAll(
+          "rfc",
+          [...touched.rfcs].filter((id) => rfcNow.has(id)),
+          refetch("rfcs", compareRfc),
+        )),
         ...(await compareAll(
           "story",
           [...touched.stories].filter((id) => storyNow.has(id)),
@@ -369,7 +377,8 @@ async function main(): Promise<number> {
   if (RECORD) {
     console.error(
       unsettled
-        ? "\nNOT RECORDED — the database did not hold still, or a page fetched again differs (below)."
+        ? "\nNOT RECORDED — the database did not hold still, " +
+          "or a page fetched again differs (below)."
         : "\nNOT RECORDED — the run was not equivalent.",
     );
   }
@@ -390,10 +399,14 @@ async function main(): Promise<number> {
  *
  * ringo's map is the EFFECTIVE status — its index applies the parent-RFC
  * override on load (`effectiveStoryStatus`, webhook/tasksdb.go) — so the one
- * status rule (`app/views/shared/_status-badge`) agrees with it. ringo also
- * draws a `ready` story with unfinished deps as `blocked` (`markDepBlocked`),
- * and so does trailmap (`shownStoryStatus`), so `ready` and `blocked` are
- * compared as two counts like every other status.
+ * status rule (`app/views/shared/_status-badge`) agrees with it.
+ *
+ * ONE KNOWN DIFFERENCE, stated rather than tolerated silently: since btwhooks
+ * `6a18453` ringo also draws a `ready` story with unfinished deps as `blocked`
+ * (`markDepBlocked`). trailmap does not port that yet
+ * (`show-dep-held-ready-stories-as-blocked`, RFC 0136), so the two are
+ * compared as ONE count (`barKey`). The override still crosses that line:
+ * `ready` to `draft` leaves the folded count.
  */
 async function compareBars(
   ringoBase: string,

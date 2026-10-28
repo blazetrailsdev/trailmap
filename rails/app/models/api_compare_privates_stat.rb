@@ -1,0 +1,2 @@
+class ApiComparePrivatesStat < CompareRun
+end

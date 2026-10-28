@@ -1,0 +1,8 @@
+<%# A rendered markdown document, or the reason there isn't one. %>
+<% if error.present? %>
+  <p class="note">Could not read the document: <%= error %></p>
+<% elsif body %>
+  <article class="markdown"><%= body %></article>
+<% else %>
+  <p class="muted">No document.</p>
+<% end %>

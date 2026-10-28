@@ -1,0 +1,60 @@
+source "https://rubygems.org"
+
+# Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
+# Exactly the Rails trails ports (trails/vendor/rails/RAILS_VERSION), so a
+# difference between the two apps is a trails deviation, not a version gap.
+gem "rails", "8.0.2"
+# The gems trails ports, at the versions it vendors (trails/vendor/<gem>/v*),
+# for the same reason Rails is pinned exactly.
+gem "rack", "3.1.14"
+gem "rack-session", "2.1.0"
+gem "i18n", "1.14.8"
+gem "pg", "1.5.9"
+gem "bcrypt", "3.1.20"
+gem "msgpack", "1.8.0"
+group :test do
+  gem "minitest", "5.27.0"
+  gem "rack-test", "2.2.0"
+  gem "rails-dom-testing", "2.2.0"
+end
+
+# json 3 dropped the `quirks_mode:` keyword Active Support 8.0 passes.
+gem "json", "< 3"
+# The modern asset pipeline for Rails [https://github.com/rails/propshaft]
+gem "propshaft"
+# Use sqlite3 as the database for Active Record
+gem "sqlite3", ">= 2.1"
+# Use the Puma web server [https://github.com/puma/puma]
+gem "puma", ">= 5.0"
+# Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
+gem "importmap-rails"
+
+# Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
+# gem "bcrypt", "~> 3.1.7"
+
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+# Reduces boot times through caching; required in config/boot.rb
+gem "bootsnap", require: false
+
+group :development, :test do
+  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+
+  # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
+  gem "brakeman", require: false
+
+  # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
+  gem "rubocop-rails-omakase", require: false
+end
+
+group :development do
+  # Use console on exceptions pages [https://github.com/rails/web-console]
+  gem "web-console"
+end
+
+group :test do
+  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
+end
+gem "websocket-driver"
