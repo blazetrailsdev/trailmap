@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { setX } from "../support/config-x.ts";
-import { getChildProcess, getFs, setEnv, registeredConstant, type FsAdapter } from "@blazetrails/ruby-compat";
+import { env, getChildProcess, getFs, setEnv, registeredConstant, type FsAdapter } from "@blazetrails/ruby-compat";
 import { MigrationContext } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
@@ -54,8 +54,12 @@ function checkout(): string {
 
 const dirs: string[] = [];
 let tasksDir: string;
+// CI sets HUB_DATABASE_URL for the whole job. The task-domain cases expect the
+// hub check skipped; the hub block below sets it for its own cases.
+const ambientHubUrl = env.HUB_DATABASE_URL;
 
 beforeAll(async () => {
+  setEnv("HUB_DATABASE_URL", undefined);
   // Only the checkout's own config may supply an identity, or the developer's
   // global one would keep the identity check green whatever the checkout says.
   setEnv("GIT_CONFIG_GLOBAL", "/dev/null");
@@ -82,6 +86,7 @@ afterAll(() => {
   setX("tasks", "dir", undefined);
   setEnv("GIT_CONFIG_GLOBAL", undefined);
   setEnv("GIT_CONFIG_NOSYSTEM", undefined);
+  setEnv("HUB_DATABASE_URL", ambientHubUrl);
 });
 
 describe("GET /up/ready", () => {
