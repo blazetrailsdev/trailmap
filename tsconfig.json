@@ -26,6 +26,7 @@
     "lib",
     "scripts",
     "test",
-    ".trails/template-registry-augmentation.d.ts"
+    ".trails/template-registry-augmentation.d.ts",
+    ".trails/views"
   ]
 }

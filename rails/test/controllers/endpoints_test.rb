@@ -73,6 +73,18 @@ class EndpointsTest < ActionDispatch::IntegrationTest
     assert_equal 1, body.dig("checks", "stories", "count")
   end
 
+  test "ready sweeps a probe directory orphaned by a kill, but not a concurrent one" do
+    Dir.mktmpdir do |dir|
+      Open3.capture2e("git", "init", "-q", dir)
+      Dir.mkdir(old = File.join(dir, ".up-ready-killed"))
+      Dir.mkdir(File.join(dir, ".up-ready-running"))
+      File.utime(10.minutes.ago.to_time, 10.minutes.ago.to_time, old)
+      with_config(:tasks, :dir, dir) { get "/up/ready", headers: LOOPBACK }
+      assert_equal true, JSON.parse(response.body).dig("checks", "checkout", "ok")
+      assert_equal %w[.up-ready-running], Dir.glob(".up-ready-*", base: dir)
+    end
+  end
+
   test "ready names each failing check" do
     with_config(:tasks, :dir, "/nonexistent/tasks") { get "/up/ready", headers: LOOPBACK }
     assert_response :service_unavailable

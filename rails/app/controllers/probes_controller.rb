@@ -88,9 +88,15 @@ class ProbesController < ApiController
     { ok: false, **versions, error: "schema_migrations is at #{actual || 'no version'}, and db/migrate expects #{expected}: #{why}" }
   end
 
+  # How old an orphaned `.up-ready-*` directory must be before it is swept.
+  PROBE_SWEEP_AGE = 5.minutes
+
   # Writable is proven by writing an empty directory, which git cannot track.
+  # A kill between the two calls leaves one; those older than PROBE_SWEEP_AGE
+  # are swept first, and younger ones may be a concurrent probe's.
   def check_checkout
     dir = Document.tasks_content_dir or return { ok: false, error: "TASKS_DIR names no tasks checkout" }
+    sweep_probes(dir)
     probe = begin
       Dir.mktmpdir(".up-ready-", dir)
     rescue SystemCallError => e
@@ -102,6 +108,19 @@ class ProbesController < ApiController
       return { ok: false, dir: dir, error: "left #{probe} behind: #{e.message}" }
     end
     { ok: true, dir: dir }
+  end
+
+  # Best effort: a failed sweep leaves the leftovers, and never decides the check.
+  def sweep_probes(dir)
+    cutoff = PROBE_SWEEP_AGE.ago
+    Dir.glob(".up-ready-*", base: dir).each do |name|
+      path = File.join(dir, name)
+      Dir.rmdir(path) if File.mtime(path) < cutoff
+    rescue SystemCallError
+      next
+    end
+  rescue SystemCallError
+    nil
   end
 
   # `git var` resolves each identity exactly as a commit would.

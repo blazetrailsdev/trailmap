@@ -229,6 +229,11 @@ export class ProbesController extends ApiController {
    * A directory that was made and could not be removed is a red check naming
    * the leftover, so it is cleaned up by a person rather than accumulating
    * unseen — `git status` does not show an empty directory.
+   *
+   * A kill between the two calls leaves one too, with nobody to see the
+   * check go red. Those are swept first, but only once they are older than
+   * `probeSweepAgeMs`: a younger one may be a concurrent probe's, and
+   * removing it would turn that probe red.
    */
   private async checkCheckout(): Promise<Check> {
     const dir = tasksContentDir();
@@ -237,6 +242,7 @@ export class ProbesController extends ApiController {
     if (!fs.mkdtemp || !fs.rmdir) {
       return { ok: false, dir, error: "the filesystem adapter cannot make a directory asynchronously" };
     }
+    await ProbesController.sweepProbes(dir);
     let probe: string;
     try {
       probe = await fs.mkdtemp(getPath().join(dir, ".up-ready-"));
@@ -249,6 +255,32 @@ export class ProbesController extends ApiController {
       return { ok: false, dir, error: `left ${probe} behind: ${(e as Error).message}` };
     }
     return { ok: true, dir };
+  }
+
+  /** How old an orphaned `.up-ready-*` directory must be before it is swept. */
+  static probeSweepAgeMs = 5 * 60_000;
+
+  /**
+   * Best effort: a sweep that fails leaves the leftovers where they were,
+   * which is no worse than before it ran, so it never decides the check.
+   */
+  private static async sweepProbes(dir: string): Promise<void> {
+    const fs = getFs();
+    if (!fs.readdir || !fs.stat || !fs.rmdir) return;
+    const cutoff = Date.now() - ProbesController.probeSweepAgeMs;
+    try {
+      for (const name of await fs.readdir(dir)) {
+        if (!name.startsWith(".up-ready-")) continue;
+        const path = getPath().join(dir, name);
+        try {
+          if ((await fs.stat(path)).mtime.getTime() < cutoff) await fs.rmdir(path);
+        } catch {
+          // Gone already, or not ours to remove: the next probe tries again.
+        }
+      }
+    } catch {
+      // An unreadable checkout is the mkdtemp below's to report.
+    }
   }
 
   /**
