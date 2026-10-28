@@ -149,4 +149,30 @@ class FleetLibTest < ActiveSupport::TestCase
       browser&.close
     end
   end
+
+  test "never joins a stream that has finished, and starts a fresh one" do
+    stream = Fleet::SharedStream.new("http://127.0.0.1:1/events")
+    stream.stop
+    assert_not stream.add(Viewer.new)
+    with_sse_ringo(%w[one]) do |url, connections|
+      first = Viewer.new
+      leave = Fleet::SharedStream.subscribe(url, first)
+      first.frames.pop(timeout: 5)
+      leave.call
+      again = Viewer.new
+      leave_again = Fleet::SharedStream.subscribe(url, again)
+      assert_equal "one", again.frames.pop(timeout: 5)
+      assert_equal 2, connections.size
+      leave_again.call
+    end
+  end
+
+  test "ends every viewer when upstream cannot be reached" do
+    viewer = Viewer.new
+    Fleet::SharedStream.subscribe("http://127.0.0.1:1/events", viewer)
+    deadline = Time.now + 5
+    sleep 0.01 until viewer.ended_at || Time.now > deadline
+    assert viewer.ended_at
+    assert_equal 0, Fleet::SharedStream.reads("http://127.0.0.1:1/events")
+  end
 end

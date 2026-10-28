@@ -40,7 +40,6 @@ module Fleet
       @reader = Thread.new { read_browser }
     end
 
-
     # SharedStream's viewer side.
     def frame(message)
       synchronize { @driver.text(message) }
@@ -58,6 +57,9 @@ module Fleet
     def open
       @keepalive = Thread.new { loop { sleep PING_INTERVAL; synchronize { @driver.ping } } }
       @unsubscribe = SharedStream.subscribe(@events_url, self)
+      # The replay of the latest frame inside `subscribe` can find the browser
+      # gone and `finish` before there was anything to leave: leave now.
+      @unsubscribe.call if @closed
     end
 
     def read_browser

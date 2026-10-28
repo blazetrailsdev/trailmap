@@ -9,14 +9,19 @@ module Fleet
     @lock = Mutex.new
 
     class << self
-      # Join the read of `url`; answers the lambda that leaves it.
+      # Join the read of `url`; answers the lambda that leaves it. A stream
+      # that has finished is replaced, never joined: its viewers were already
+      # ended, and one added after that would wait on it forever.
       def subscribe(url, viewer)
-        stream = @lock.synchronize { @streams[url.to_s] ||= new(url).tap(&:start) }
-        stream.add(viewer)
-        lambda do
-          last = stream.remove(viewer)
-          @lock.synchronize { @streams.delete(url.to_s) if @streams[url.to_s] == stream } if last
-          stream.stop if last
+        key = url.to_s
+        loop do
+          stream = @lock.synchronize do
+            current = @streams[key]
+            current = @streams[key] = new(key).tap(&:start) if current.nil? || current.finished?
+            current
+          end
+          next unless stream.add(viewer)
+          return -> { leave(key, stream, viewer) }
         end
       end
 
@@ -25,15 +30,28 @@ module Fleet
         @lock.synchronize { @streams.key?(url.to_s) ? 1 : 0 }
       end
 
-      def forget(stream, url)
-        @lock.synchronize { @streams.delete(url.to_s) if @streams[url.to_s] == stream }
+      def forget(stream, key)
+        @lock.synchronize { @streams.delete(key) if @streams[key] == stream }
+      end
+
+      private
+
+      # Removing the last viewer and retiring the stream are one critical
+      # section, so no `subscribe` can join it in between.
+      def leave(key, stream, viewer)
+        last = @lock.synchronize do
+          stream.remove(viewer).tap { |l| @streams.delete(key) if l && @streams[key] == stream }
+        end
+        stream.stop if last
       end
     end
 
-    def initialize(url)
-      @url = URI(url)
+    def initialize(key)
+      @key = key
+      @url = URI(key)
       @viewers = []
       @latest = nil
+      @finished = false
       @mutex = Mutex.new
     end
 
@@ -41,22 +59,35 @@ module Fleet
       @thread = Thread.new do
         pump
       ensure
-        self.class.forget(self, @url)
-        left = @mutex.synchronize { @viewers.dup.tap { @viewers.clear } }
+        left = @mutex.synchronize { @finished = true; @viewers.dup.tap { @viewers.clear } }
+        self.class.forget(self, @key)
         left.each(&:ended)
       end
     end
 
-    def stop = @thread&.kill
+    def finished? = @mutex.synchronize { @finished }
 
-    def add(viewer)
-      latest = @mutex.synchronize { @viewers << viewer; @latest }
-      viewer.frame(latest) if latest
+    def stop
+      @mutex.synchronize { @finished = true }
+      @thread&.kill
     end
 
-    # True when `viewer` was the last one.
+    # False, adding nothing, when the stream has finished.
+    def add(viewer)
+      latest = @mutex.synchronize do
+        return false if @finished
+        @viewers << viewer
+        @latest
+      end
+      viewer.frame(latest) if latest
+      true
+    end
+
+    # True when `viewer` was the last one; that retires the stream.
     def remove(viewer)
-      @mutex.synchronize { !@viewers.delete(viewer).nil? && @viewers.empty? }
+      @mutex.synchronize do
+        (!@viewers.delete(viewer).nil? && @viewers.empty?).tap { |last| @finished = true if last }
+      end
     end
 
     private
@@ -64,7 +95,11 @@ module Fleet
     def fan_out(message)
       viewers = @mutex.synchronize { @latest = message; @viewers.dup }
       # One viewer's closed socket must not cost the others this frame.
-      viewers.each { |v| v.frame(message) rescue nil }
+      viewers.each do |v|
+        v.frame(message)
+      rescue IOError, SystemCallError
+        nil
+      end
     end
 
     def pump

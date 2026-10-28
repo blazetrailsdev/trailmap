@@ -287,7 +287,11 @@ jobs:
           pnpm db:migrate
           ./bin/tasks ingest
           # index.json from the same rows, for story-json.test.ts below.
+          # reindex writes it into this checkout (publishReadModels'
+          # mainWorktree()), wherever TASKS_DB is. Checked here, because the
+          # test skips without it and a silent skip is how it rotted before.
           ./bin/tasks reindex
+          test -s index.json
       - name: trailmap's ready queue == the CLI's, byte for byte
         env:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
