@@ -12,8 +12,23 @@
 </div>
 
 <h2>Features</h2>
-<p class="muted">A tab turned off is not drawn above and answers 404. Read-only here —
-the form that writes these is its own story.</p>
+<p class="muted">A tab turned off is not drawn above and answers 404.</p>
+<% if (canAdminister) { %>
+<%= formWith({ model: form, url: `/${nwo}/settings`, method: "patch", scope: "repository_setting" }, (f) => { %>
+  <div class="box">
+    <% if (!hasSwitches) { %>
+      <div class="box-row muted">This repository has no settings row, so every tab is on. Saving writes one.</div>
+    <% } %>
+    <% for (const row of switches) { %>
+      <div class="box-row">
+        <label><%= f.checkBox(`${row.tab}_enabled`) %> <code><%= row.tab %></code></label> &middot;
+        <span class="badge s-<%= row.enabled ? "done" : "closed" %>"><%= row.enabled ? "on" : "off" %></span>
+      </div>
+    <% } %>
+    <div class="box-row"><%= f.submit("Save features", { class: "btn btn-green btn-sm" }) %></div>
+  </div>
+<% }) %>
+<% } else { %>
 <div class="box">
   <% if (!hasSwitches) { %>
     <div class="box-row muted">This repository has no settings row, so every tab is on.</div>
@@ -23,7 +38,9 @@ the form that writes these is its own story.</p>
       <span class="badge s-<%= row.enabled ? "done" : "closed" %>"><%= row.enabled ? "on" : "off" %></span>
     </div>
   <% } %>
+  <div class="box-row muted">Only the owner or an admin collaborator can change these.</div>
 </div>
+<% } %>
 
 <h2>Collaborators</h2>
 <p class="muted">Who may push here. The row's identity is the pair

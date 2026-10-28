@@ -6,7 +6,7 @@
 #   scripts/smoke-prod.sh --self-test
 #
 #   0  liveness    /up on loopback
-#   1  readiness   /up/ready, the migration head, the loopback API, the public vhost
+#   1  readiness   /up/ready, both migration heads, the loopback API, the public vhost
 #   2  read smoke  every read verb and page, by shape rather than by status,
 #                  and the installed `tasks` binary from an agent's worktree
 #
@@ -143,7 +143,7 @@ tier1() {
   # deploy.sh gates on this tier and needed no jq before it did. Only the
   # migration head needs it, so a host without one fails that by name and
   # still runs the four assertions that are a status code — a scheduled run
-  # reports the same five rows either way.
+  # reports the same six rows either way.
   local hasJq=1
   command -v jq >/dev/null || { hasJq=0; fail tier1.jq-installed "jq is not on PATH"; }
   # One request, two assertions: the migration head is the check /up/ready
@@ -163,6 +163,17 @@ tier1() {
   else
     fail tier1.migration-head \
       "$(jq -r '.checks.migrations.error // "/up/ready reported no migrations check"' "$work/body" 2>/dev/null || echo "/up/ready answered no JSON")"
+  fi
+  # The hub's head, from the same body. A `skipped` check is a FAIL here:
+  # production cannot boot without HUB_DATABASE_URL, so a deployment answering
+  # that it has no hub is not the deployment this script was pointed at.
+  if [ "$hasJq" = 0 ]; then
+    fail tier1.hub-migration-head "not read: jq is not on PATH"
+  elif [ "$(jq -r '.checks.hub_migrations | (.ok == true and .skipped == null)' "$work/body" 2>/dev/null)" = "true" ]; then
+    pass tier1.hub-migration-head "hub schema_migrations at $(jq -r '.checks.hub_migrations.actual' "$work/body")"
+  else
+    fail tier1.hub-migration-head \
+      "$(jq -r '.checks.hub_migrations | .error // .skipped // "/up/ready reported no hub_migrations check"' "$work/body" 2>/dev/null || echo "/up/ready answered no JSON")"
   fi
 
   # /up is UNGUARDED, so a 200 there says nothing about the thing that has
@@ -473,7 +484,7 @@ healthy() {
   parity+='"metrics":[{"key":"api","label":"api:compare","gaps":["missing"]}],'
   parity+='"packages":["activerecord"],"unknown_packages":[],"max_packages":8,"series":[]}'
   can _up 200 text/html '<!DOCTYPE html><html><body style="background-color: green"></body></html>'
-  can _up_ready 200 application/json '{"status":"ok","failing":[],"checks":{"migrations":{"ok":true,"expected":7,"actual":7}}}'
+  can _up_ready 200 application/json '{"status":"ok","failing":[],"checks":{"migrations":{"ok":true,"expected":7,"actual":7},"hub_migrations":{"ok":true,"expected":6,"actual":6}}}'
   can public 302 text/html ''
   can _stories 200 application/json "[$s]"
   can _stories_ready 200 application/json "[$s]"
@@ -566,11 +577,19 @@ TASKS
     tier1.loopback-api-serving
 
   healthy
-  can _up_ready 503 application/json '{"status":"unready","failing":["migrations"],"checks":{"migrations":{"ok":false,"expected":7,"actual":6,"error":"schema_migrations is at 6, and db/migrate expects 7: a migration did not run"}}}'
+  can _up_ready 503 application/json '{"status":"unready","failing":["migrations"],"checks":{"migrations":{"ok":false,"expected":7,"actual":6,"error":"schema_migrations is at 6, and db/migrate expects 7: a migration did not run"},"hub_migrations":{"ok":true,"expected":6,"actual":6}}}'
   expect "a migration that did not run is named" 1 1 tier1.up-ready,tier1.migration-head
 
   healthy
-  can _up_ready 503 application/json '{"status":"unready","failing":["checkout"],"checks":{"migrations":{"ok":true,"expected":7,"actual":7}}}'
+  can _up_ready 503 application/json '{"status":"unready","failing":["hub_migrations"],"checks":{"migrations":{"ok":true,"expected":7,"actual":7},"hub_migrations":{"ok":false,"expected":6,"actual":5,"error":"schema_migrations is at 5, and db/hub-migrate expects 6: a migration did not run"}}}'
+  expect "a hub migration that did not run is named" 1 1 tier1.up-ready,tier1.hub-migration-head
+
+  healthy
+  can _up_ready 200 application/json '{"status":"ok","failing":[],"checks":{"migrations":{"ok":true,"expected":7,"actual":7},"hub_migrations":{"ok":true,"skipped":"HUB_DATABASE_URL is not set"}}}'
+  expect "a deployment with no hub is not passed" 1 1 tier1.hub-migration-head
+
+  healthy
+  can _up_ready 503 application/json '{"status":"unready","failing":["checkout"],"checks":{"migrations":{"ok":true,"expected":7,"actual":7},"hub_migrations":{"ok":true,"expected":6,"actual":6}}}'
   expect "an unready probe with the head in place fails only the probe" 1 1 tier1.up-ready
 
   healthy
@@ -698,10 +717,10 @@ TASKS
   for tool in bash mktemp rm cat grep; do ln -sf "$(command -v "$tool")" "$fake/nojq/$tool"; done
   basePath="$fake/nojq"
   expect "a host without jq fails by name and still runs the status assertions" 1 1 \
-    tier1.jq-installed,tier1.migration-head
+    tier1.jq-installed,tier1.migration-head,tier1.hub-migration-head
   can public 200 text/html ''
   expect "a host without jq still names a dashboard served without SSO" 1 1 \
-    tier1.jq-installed,tier1.migration-head,tier1.public-vhost-redirects
+    tier1.jq-installed,tier1.migration-head,tier1.hub-migration-head,tier1.public-vhost-redirects
   unset basePath
 
   rm -f "$fake"/*.head "$fake"/*.body
@@ -712,7 +731,7 @@ echo "000 "
 exit 7
 CURL
   expect "a host where nothing answers fails every tier 1 assertion, reading no stale body" 1 1 \
-    tier1.up-ready,tier1.migration-head,tier1.loopback-api-not-refused,tier1.loopback-api-serving,tier1.public-vhost-redirects
+    tier1.up-ready,tier1.migration-head,tier1.hub-migration-head,tier1.loopback-api-not-refused,tier1.loopback-api-serving,tier1.public-vhost-redirects
 
   if "$0" --tier 9 >/dev/null 2>&1; then
     echo "self-test FAILED: an unknown tier exited 0" >&2

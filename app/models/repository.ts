@@ -41,6 +41,7 @@ export class Repository extends Hub {
    * `set<Attribute>` rule is about.
    */
   declare settings: RepositorySetting | null;
+  declare buildSettings: (attributes?: Record<string, unknown>) => RepositorySetting;
 
   /** Who may push here — the composite-key join, see RepositoryCollaborator. */
   declare collaborators: AssociationProxy<RepositoryCollaborator>;
@@ -117,6 +118,21 @@ export class Repository extends Hub {
       owner_id: viewer.id,
     });
     return row != null;
+  }
+
+  /**
+   * Whether `viewer` may change this repository's settings: its owner, or a
+   * collaborator whose role is `admin` — GitHub's rule for the Settings tab.
+   * Readability is not enough; a public repository is readable by anyone.
+   */
+  async isAdministrableBy(viewer: Owner | null): Promise<boolean> {
+    if (viewer === null) return false;
+    if (viewer.id === this.owner_id) return true;
+    return RepositoryCollaborator.isExists({
+      repository_id: this.id,
+      owner_id: viewer.id,
+      role: "admin",
+    });
   }
 
   /**

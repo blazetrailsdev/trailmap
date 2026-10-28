@@ -345,6 +345,97 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     expect(body).toContain("RINGO_BASE (environment)");
   });
 
+  /** A settings form submission, as the page's checkboxes post it. */
+  const OWNER = { "Remote-User": "blazetrailsdev" };
+
+  async function patchSettings(
+    params: Record<string, unknown>,
+    headers: Record<string, string> = OWNER,
+  ): Promise<{ status: number; location: string | undefined }> {
+    const tc = await controllerTestCase(RepoSettingsController, headers);
+    await tc.patch("update", { params: { ...TASKS, ...params } });
+    return { status: tc.response.status, location: tc.response.getHeader("Location") as string | undefined };
+  }
+
+  it("draws a form posting the six switches back to the tab", async () => {
+    const { body } = await get(RepoSettingsController, "show", TASKS, OWNER);
+
+    expect(body).toContain('action="/blazetrailsdev/tasks/settings"');
+    expect(body).toContain('name="_method" value="patch"');
+    expect(body).toContain('name="authenticity_token"');
+    for (const tab of ["issues", "pulls", "actions", "projects", "wiki", "insights"]) {
+      expect(body).toContain(`name="repository_setting[${tab}_enabled]"`);
+    }
+  });
+
+  it("turns a tab off from the form, and the tab then 404s with no restart", async () => {
+    try {
+      const { status, location } = await patchSettings({ repository_setting: { wiki_enabled: "0" } });
+
+      expect(status).toBe(303);
+      expect(location).toMatch(/\/blazetrailsdev\/tasks\/settings$/);
+      await expect(get(RepoWikiController, "index", TASKS)).rejects.toThrow(RecordNotFound);
+      const code = await get(RepoCodeController, "show", TASKS);
+      expect(code.body).not.toContain('href="/blazetrailsdev/tasks/wiki"');
+    } finally {
+      await patchSettings({ repository_setting: { wiki_enabled: "1" } });
+    }
+    expect((await get(RepoWikiController, "index", TASKS)).status).toBe(200);
+  });
+
+  it("refuses a settings change from anyone who is not the owner or an admin", async () => {
+    const tasks = await Repository.findByNwo("blazetrailsdev", "tasks");
+    const reader = await Owner.create({ login: "settings-reader", kind: "user" });
+    const admin = await Owner.create({ login: "settings-admin", kind: "user" });
+    await RepositoryCollaborator.create({ repository_id: tasks!.id, owner_id: reader.id, role: "read" });
+    await RepositoryCollaborator.create({ repository_id: tasks!.id, owner_id: admin.id, role: "admin" });
+    const wikiOff = { repository_setting: { wiki_enabled: "0" } };
+    try {
+      await expect(patchSettings(wikiOff, {})).rejects.toThrow(RecordNotFound);
+      await expect(patchSettings(wikiOff, { "Remote-User": "settings-reader" })).rejects.toThrow(RecordNotFound);
+      expect((await RepositorySetting.findBy({ repository_id: tasks!.id }))!.wiki_enabled).toBe(true);
+
+      const anonymous = await get(RepoSettingsController, "show", TASKS);
+      expect(anonymous.body).not.toContain('name="_method"');
+
+      expect((await patchSettings(wikiOff, { "Remote-User": "settings-admin" })).status).toBe(303);
+      expect((await RepositorySetting.findBy({ repository_id: tasks!.id }))!.wiki_enabled).toBe(false);
+    } finally {
+      await patchSettings({ repository_setting: { wiki_enabled: "1" } });
+      await RepositoryCollaborator.where({ repository_id: tasks!.id }).deleteAll();
+      await Owner.where({ login: ["settings-reader", "settings-admin"] }).deleteAll();
+    }
+  });
+
+  it("assigns only the six switches, never repository_id or id", async () => {
+    const tasks = await Repository.findByNwo("blazetrailsdev", "tasks");
+    const trails = await Repository.findByNwo("blazetrailsdev", "trails");
+    const before = tasks!.settings!;
+    await patchSettings({
+      repository_setting: { pulls_enabled: "1", repository_id: String(trails!.id), id: "999" },
+    });
+
+    const after = await RepositorySetting.find(before.id);
+    expect(after.repository_id).toBe(tasks!.id);
+    expect(await RepositorySetting.where({ repository_id: trails!.id }).count()).toBe(1);
+  });
+
+  it("writes a settings row on the first save of a repository without one", async () => {
+    const tasks = await Repository.findByNwo("blazetrailsdev", "tasks");
+    await tasks!.settings!.destroy();
+    try {
+      const { status } = await patchSettings({ repository_setting: { insights_enabled: "0" } });
+
+      expect(status).toBe(303);
+      const row = await RepositorySetting.findBy({ repository_id: tasks!.id });
+      expect(row!.insights_enabled).toBe(false);
+      expect(row!.wiki_enabled).toBe(true);
+    } finally {
+      await RepositorySetting.where({ repository_id: tasks!.id }).deleteAll();
+      await RepositorySetting.create({ repository_id: tasks!.id });
+    }
+  });
+
   it("404s an unknown repository, and a tab its owner turned off", async () => {
     await expect(
       get(RepoIssuesController, "index", { owner: "blazetrailsdev", repo: "nothing" }),

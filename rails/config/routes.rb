@@ -87,6 +87,7 @@ Rails.application.routes.draw do
       get "wiki", to: "repo_wiki#index"
       get "pulse", to: "repo_insights#show"
       get "settings", to: "repo_settings#show"
+      patch "settings", to: "repo_settings#update"
     end
   end
 end

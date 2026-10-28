@@ -85,6 +85,35 @@ class EndpointsTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "ready goes red when the database file was replaced after the connection opened it" do
+    Dir.mktmpdir do |dir|
+      file = File.join(dir, "replaced.db")
+      File.write(file, "opened")
+      TasksDatabase.record!(file)
+      File.write("#{file}.restored", "restored")
+      File.rename("#{file}.restored", file)
+      ENV["TASKS_DATABASE"] = file
+      get "/up/ready", headers: LOOPBACK
+      assert_match(/replaced\.db was replaced: the connection opened dev \d+ ino \d+, and the path is now dev \d+ ino \d+/,
+                   JSON.parse(response.body).dig("checks", "database", "error"))
+    end
+  ensure
+    ENV.delete("TASKS_DATABASE")
+    TasksDatabase.identity = nil
+  end
+
+  test "ready goes red on the hub head alone when its last migration did not run" do
+    require_hub!
+    head = Hub.connection_pool.migration_context.migrations.last.version
+    Hub.connection.execute("DELETE FROM schema_migrations WHERE version = '#{head}'")
+    get "/up/ready", headers: LOOPBACK
+    check = JSON.parse(response.body).dig("checks", "hub_migrations")
+    assert_equal false, check["ok"]
+    assert_match(/and db\/hub-migrate expects #{head}: a migration did not run/, check["error"])
+  ensure
+    Hub.connection.execute("INSERT INTO schema_migrations (version) VALUES ('#{head}')") if head
+  end
+
   test "ready names each failing check" do
     with_config(:tasks, :dir, "/nonexistent/tasks") { get "/up/ready", headers: LOOPBACK }
     assert_response :service_unavailable

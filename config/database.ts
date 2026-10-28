@@ -1,4 +1,4 @@
-import { env } from "@blazetrails/ruby-compat";
+import { env, getFs } from "@blazetrails/ruby-compat";
 import { writeProtocol } from "./write-protocol.ts";
 
 /**
@@ -207,4 +207,38 @@ export function statsDatabaseConfig(): Record<string, unknown> {
 /** Whether `STATS_DB` names a database to read. */
 export function hasStatsDatabase(): boolean {
   return Boolean(env.STATS_DB);
+}
+
+/** The file the connection opened: its path, and the path's `dev`/`ino` then. */
+export interface TasksDatabaseIdentity {
+  path: string;
+  dev: number | undefined;
+  ino: number;
+}
+
+let opened: TasksDatabaseIdentity | null = null;
+
+/**
+ * What `/up/ready` compares the path against, to see a file REPLACED under the
+ * open connection (app/controllers/probes-controller.ts). Null when nothing
+ * was recorded, which the probe reports as an existence-only check.
+ */
+export function tasksDatabaseIdentity(): TasksDatabaseIdentity | null {
+  return opened;
+}
+
+/**
+ * Recorded AFTER `loadModelSchemas`, whose queries are what make SQLite open
+ * the file: `establishConnection` alone opens nothing, so a stat taken before
+ * them would describe whatever was at the path, not what was opened. An
+ * adapter that reports no `ino` records nothing.
+ */
+export async function recordTasksDatabaseIdentity(path: string): Promise<void> {
+  const stat = getFs().stat ? await getFs().stat!(path) : null;
+  opened = stat?.ino === undefined ? null : { path, dev: stat.dev, ino: stat.ino };
+}
+
+/** Drop the record, so the probe falls back to existence. For tests. */
+export function forgetTasksDatabaseIdentity(): void {
+  opened = null;
 }

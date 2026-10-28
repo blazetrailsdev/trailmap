@@ -1,7 +1,11 @@
 import { Trails } from "@blazetrails/trailties";
 import { Base } from "@blazetrails/activerecord";
 import { env } from "@blazetrails/ruby-compat";
-import { hasTasksDatabase, tasksDatabaseConfig } from "../database.ts";
+import {
+  hasTasksDatabase,
+  recordTasksDatabaseIdentity,
+  tasksDatabaseConfig,
+} from "../database.ts";
 import { loadModelSchemas } from "../../app/models/index.ts";
 
 /**
@@ -51,6 +55,7 @@ export async function connectToTasksDatabase(): Promise<void> {
   }
   await Base.establishConnection(tasksDatabaseConfig());
   await loadModelSchemas();
+  await recordTasksDatabaseIdentity(String(tasksDatabaseConfig().database));
 }
 
 // Registration, for every path that loads initializers without serving

@@ -32,6 +32,13 @@ class Repository < Hub
     RepositoryCollaborator.exists?(repository_id: id, owner_id: viewer.id)
   end
 
+  # Who may change the settings: the owner, or an `admin` collaborator.
+  def administrable_by?(viewer)
+    return false if viewer.nil?
+    return true if viewer.id == owner_id
+    RepositoryCollaborator.exists?(repository_id: id, owner_id: viewer.id, role: "admin")
+  end
+
   # The repository `/:owner/:repo` names, owner and settings loaded.
   def self.find_by_nwo(login, name)
     owner = Owner.find_by_login(login) or return nil
