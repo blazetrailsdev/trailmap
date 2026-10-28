@@ -77,6 +77,11 @@ Trails.application!.routes().draw(function () {
   // The session archive, relayed read-only from ringo (SessionsController):
   // the index, one PR's archives at ringo's own path, and ringo's JSON.
   this.get("sessions", { to: "sessions#index" });
+  // One archive file: raw, a transcript's page, a pane log's scrollback. The
+  // path is ringo's `?p=`, checked by `archivePathProblem` before ringo is asked.
+  this.get("sessions/file", { to: "sessions#file" });
+  this.get("sessions/transcript", { to: "sessions#transcript" });
+  this.get("sessions/pane", { to: "sessions#pane" });
   this.get("sessions/:owner/:repo/:pr", { to: "sessions#show", constraints: { pr: /\d+/ } });
   this.get("api/sessions", { to: "sessions#api" });
 
@@ -97,16 +102,6 @@ Trails.application!.routes().draw(function () {
   // loopback-only read verb and not a page.
   this.get("rfc/:id", { to: "rfc_pages#show" });
   this.get("story/:id", { to: "story_pages#show" });
-
-  // The read verbs, one route per CLI verb. The named collection routes come
-  // BEFORE `stories/:id` because recognition takes the first match, and
-  // `/stories/ready` is a perfectly good story id as far as the pattern is
-  // concerned.
-  this.get("stories/ready", { to: "stories#ready" });
-  this.get("stories/next-bundle", { to: "stories#nextBundle" });
-  this.get("stories/touching", { to: "stories#touching" });
-  this.get("stories", { to: "stories#index" });
-  this.get("stories/:id", { to: "stories#show" });
 
   // The parity graphs, ported from ringo's `/graphs/parity`. Two routes, not
   // one with content negotiation: the page is a static document and the data
@@ -139,30 +134,49 @@ Trails.application!.routes().draw(function () {
     format: false,
   });
 
-  // The read-models ringo consumes whole, replacing the `index.json` and
-  // `events.json` it used to unmarshal from disk.
-  // `read_models` is the controller PATH the autoloader keys
-  // `read-models-controller.ts` by (Rails' `underscore`), not a camelCase
-  // identifier — recognition looks the route's controller string up in that
-  // table verbatim, so a camelCase spelling here is a 404 at dispatch.
-  this.get("index", { to: "read_models#index" });
-  this.get("events", { to: "read_models#events" });
+  // ─────────────────────────── the JSON API ───────────────────────────
+  //
+  // Loopback-only (ApiController), for the CLI and ringo's Go process. The
+  // format is fixed here, as Rails' `scope defaults: { format: :json }` does,
+  // because ringo's client sends no `Accept` and `request.format` would answer
+  // html for it. Every action renders JSON, so a browser's `text/html` gets
+  // JSON too: no browser is this API's audience.
+  this.defaults({ format: "json" }, () => {
+    // The read verbs, one route per CLI verb. The named collection routes come
+    // BEFORE `stories/:id` because recognition takes the first match, and
+    // `/stories/ready` is a perfectly good story id as far as the pattern is
+    // concerned.
+    this.get("stories/ready", { to: "stories#ready" });
+    this.get("stories/next-bundle", { to: "stories#nextBundle" });
+    this.get("stories/touching", { to: "stories#touching" });
+    this.get("stories", { to: "stories#index" });
+    this.get("stories/:id", { to: "stories#show" });
 
-  // The mutation verbs. POST, one route per CLI verb, path segment spelled the
-  // way the CLI spells it — `stories/status-set`, not a REST-shaped update —
-  // so a caller reading the CLI's usage can find the endpoint, and so a verb
-  // that is not a field write (`record-spawn`, `claim`) is not dressed up as
-  // one. Ids travel in the JSON body, never in the path, because every batch
-  // verb takes a list.
-  this.post("stories/claim", { to: "mutations#claim" });
-  this.post("stories/release", { to: "mutations#release" });
-  this.post("stories/in-progress", { to: "mutations#inProgress" });
-  this.post("stories/done", { to: "mutations#done" });
-  this.post("stories/record-spawn", { to: "mutations#recordSpawn" });
-  this.post("stories/block", { to: "mutations#block" });
-  this.post("stories/close", { to: "mutations#close" });
-  this.post("stories/status-set", { to: "mutations#statusSet" });
-  this.post("stories/priority", { to: "mutations#priority" });
+    // The read-models ringo consumes whole, replacing the `index.json` and
+    // `events.json` it used to unmarshal from disk.
+    // `read_models` is the controller PATH the autoloader keys
+    // `read-models-controller.ts` by (Rails' `underscore`), not a camelCase
+    // identifier — recognition looks the route's controller string up in that
+    // table verbatim, so a camelCase spelling here is a 404 at dispatch.
+    this.get("index", { to: "read_models#index" });
+    this.get("events", { to: "read_models#events" });
+
+    // The mutation verbs. POST, one route per CLI verb, path segment spelled the
+    // way the CLI spells it — `stories/status-set`, not a REST-shaped update —
+    // so a caller reading the CLI's usage can find the endpoint, and so a verb
+    // that is not a field write (`record-spawn`, `claim`) is not dressed up as
+    // one. Ids travel in the JSON body, never in the path, because every batch
+    // verb takes a list.
+    this.post("stories/claim", { to: "mutations#claim" });
+    this.post("stories/release", { to: "mutations#release" });
+    this.post("stories/in-progress", { to: "mutations#inProgress" });
+    this.post("stories/done", { to: "mutations#done" });
+    this.post("stories/record-spawn", { to: "mutations#recordSpawn" });
+    this.post("stories/block", { to: "mutations#block" });
+    this.post("stories/close", { to: "mutations#close" });
+    this.post("stories/status-set", { to: "mutations#statusSet" });
+    this.post("stories/priority", { to: "mutations#priority" });
+  });
 
   // ──────────────────── the GitHub-shaped hierarchy ────────────────────
   //

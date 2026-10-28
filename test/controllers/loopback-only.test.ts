@@ -1,15 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
-import {
-  isLoopbackRequest,
-  requireLoopback,
-} from "../../app/controllers/concerns/loopback-only.ts";
+import { include } from "@blazetrails/activesupport";
+import { isLoopbackRequest, LoopbackOnly } from "../../app/controllers/concerns/loopback-only.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
 class ProbeController extends ApplicationController {
   static {
-    this.beforeAction(requireLoopback);
+    include(this, LoopbackOnly);
   }
 
   async index(): Promise<void> {
@@ -69,7 +67,7 @@ describe("isLoopbackRequest", () => {
   });
 });
 
-describe("requireLoopback", () => {
+describe("LoopbackOnly", () => {
   it("runs the action for a loopback request", async () => {
     const tc = await controllerTestCase(ProbeController, { Host: "127.0.0.1" });
     await tc.get("index");
@@ -87,5 +85,13 @@ describe("requireLoopback", () => {
 
     expect(tc.response.status).toBe(404);
     expect(JSON.parse(tc.response.body)).toEqual({ error: "not_found" });
+  });
+});
+
+// Rails' concern keeps its guard `private`, so it is never an action. trails
+// counts every public prototype method, so the guard must stay off the class.
+describe("LoopbackOnly", () => {
+  it("adds no action to the class it guards", () => {
+    expect([...ProbeController.actionMethods()]).not.toContain("requireLoopback");
   });
 });

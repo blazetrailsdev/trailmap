@@ -464,9 +464,9 @@ describe("trailmapRfcBars / barKey", () => {
     );
   });
 
-  it("folds ready and blocked into one count and compares every other status exactly", () => {
-    expect(barKey({ ready: 2, blocked: 1, done: 4, draft: 0 })).toBe("4 done · 3 ready+blocked");
-    expect(barKey({ ready: 1, blocked: 2, done: 4 })).toBe(barKey({ ready: 3, done: 4 }));
+  it("compares every status exactly, ready and blocked as two counts", () => {
+    expect(barKey({ ready: 2, blocked: 1, done: 4, draft: 0 })).toBe("1 blocked · 4 done · 2 ready");
+    expect(barKey({ ready: 1, blocked: 2, done: 4 })).not.toBe(barKey({ ready: 3, done: 4 }));
     expect(barKey({ draft: 3, done: 4 })).not.toBe(barKey({ ready: 3, done: 4 }));
   });
 });

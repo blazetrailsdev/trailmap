@@ -3,7 +3,7 @@ import { ApplicationController } from "./application-controller.ts";
 import { Event, Rfc, Story } from "../models/index.ts";
 import { collectRfcMarks, markTitle, type MarkEvent } from "../models/concerns/rfc-marks.ts";
 import { readDocument } from "../models/concerns/document.ts";
-import { effectiveStoryStatus } from "../models/concerns/effective-status.ts";
+import { shownStoryStatus } from "../models/concerns/effective-status.ts";
 import {
   orderRfcsForIndex,
   orderStoriesForRfc,
@@ -121,7 +121,9 @@ export class RfcPagesController extends ApplicationController {
     ]);
 
     const byRfc = new Map<string, (string | null)[]>();
+    const heldByRfc = new Map<string, boolean[]>();
     const storyRfc = new Map<string, string>();
+    const held = await Story.depHeldIds();
     for (const row of statuses) {
       if (!Array.isArray(row)) continue;
       const [rfcId, status, id] = row;
@@ -130,6 +132,9 @@ export class RfcPagesController extends ApplicationController {
       const value = status == null ? null : String(status);
       if (bucket) bucket.push(value);
       else byRfc.set(String(rfcId), [value]);
+      const heldBucket = heldByRfc.get(String(rfcId)) ?? [];
+      heldBucket.push(held.has(String(id)));
+      heldByRfc.set(String(rfcId), heldBucket);
     }
 
     const tabCounts = new Map<string, number>();
@@ -178,7 +183,7 @@ export class RfcPagesController extends ApplicationController {
             supersededBy: rfc.superseded_by,
             clusters: rfc.clusters,
             counts: rfcStoryCounts(own),
-            bar: storyStatusCounts(own, rfc.status),
+            bar: storyStatusCounts(own, rfc.status, heldByRfc.get(rfc.id)),
             barLength,
             stalled: rfcStalled(rfc.status, own),
             // A tick at the bar's own end says nothing and smears the tip.
@@ -206,7 +211,9 @@ export class RfcPagesController extends ApplicationController {
       return;
     }
 
-    const stories = orderStoriesForRfc(await Story.where({ rfc_id: id }).toArray(), rfc.status);
+    const own = await Story.where({ rfc_id: id }).toArray();
+    const held = await Story.depHeldIds(own.map((story) => story.id));
+    const stories = orderStoriesForRfc(own, rfc.status, held);
     const doc = await readDocument(rfc.file_path);
     await this.renderPage(
       {
@@ -216,7 +223,7 @@ export class RfcPagesController extends ApplicationController {
           (story): RfcStoryRow => ({
             id: story.id,
             title: story.title ?? story.id,
-            status: effectiveStoryStatus(rfc.status, story.status) ?? "",
+            status: shownStoryStatus(rfc.status, story.status, held.has(story.id)) ?? "",
             estLoc: story.est_loc,
             cluster: story.cluster,
             priority: story.priority,

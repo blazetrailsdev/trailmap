@@ -6,7 +6,7 @@
     <h1 class="page-title"><%= story.title ?? story.id %></h1>
     <div class="page-subhead">
       <span class="id"><%= story.id %></span>
-      <%= render({ partial: "shared/status-state", locals: { status: shownStatus } }) %>
+      <%= render({ partial: "shared/status-state", locals: { status: shownStatus, label: heldLabel } }) %>
       <span class="muted">
         in <a href="/rfc/<%= story.rfc_id %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a><% if (story.pr !== null) { %>, PR <%= story.pr %><% } %>
       </span>

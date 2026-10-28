@@ -10,7 +10,7 @@
  * unfinished.
  */
 import type { Story } from "../story.ts";
-import { effectiveStoryStatus } from "./effective-status.ts";
+import { shownStoryStatus } from "./effective-status.ts";
 
 /**
  * Sort key: in-progress first, done last, anything else in between.
@@ -81,6 +81,7 @@ const PRIORITY_UNSET = 1_000_000;
 export function orderStoriesForRfc(
   stories: readonly Story[],
   rfcStatus: string | null,
+  depHeld: ReadonlySet<string> = new Set(),
 ): Story[] {
   // Ranked once per story rather than once per comparison: the largest RFC in
   // the database carries 1,434 stories, and a comparator that re-derives the
@@ -89,7 +90,7 @@ export function orderStoriesForRfc(
   const rank = new Map(
     stories.map((story) => [
       story,
-      storyStatusRank(effectiveStoryStatus(rfcStatus, story.status) ?? null),
+      storyStatusRank(shownStoryStatus(rfcStatus, story.status, depHeld.has(story.id)) ?? null),
     ]),
   );
   return [...stories].sort(
@@ -190,17 +191,22 @@ const STORY_BAR_ORDER: readonly string[] = [
  * (`app/views/shared/_status-badge`) applies to it — a `ready` story under a
  * draft RFC belongs in the draft segment, not the ready one, or the bar
  * advertises claimable work on an RFC whose stories nothing can claim. It is
- * the only place in `rfc-progress` where the override changes an answer:
+ * `depHeld` runs parallel to `statuses`: a dep-held `ready` story is drawn
+ * `blocked` (`shownStoryStatus`), as ringo's bar draws it, so the green is
+ * only what the queue can pick.
+ *
+ * It is the only place in `rfc-progress` where the override changes an answer:
  * `rfcStoryCounts` is invariant under it, because `ready` and `draft` are both
  * `open` there.
  */
 export function storyStatusCounts(
   statuses: readonly (string | null)[],
   rfcStatus: string | null,
+  depHeld: readonly boolean[] = [],
 ): StatusCount[] {
   const counts = new Map<string, number>();
-  for (const authored of statuses) {
-    const status = String(effectiveStoryStatus(rfcStatus, authored) ?? "unknown");
+  for (const [i, authored] of statuses.entries()) {
+    const status = String(shownStoryStatus(rfcStatus, authored, depHeld[i] ?? false) ?? "unknown");
     counts.set(status, (counts.get(status) ?? 0) + 1);
   }
   const known = STORY_BAR_ORDER.filter((status) => counts.has(status));

@@ -100,6 +100,35 @@ export function comparePriority(a: RankedStory, b: RankedStory, ctx: PriorityCon
   return ra === rb ? 0 : ra - rb;
 }
 
+/**
+ * Whether `story` waits on a dep: a story dep not resolved, or an RFC dep not
+ * closed. The ready queue's dep gate, and `shownStoryStatus`'s `depHeld`.
+ */
+export function isDepHeld(
+  storyId: string,
+  deps: ReadonlyMap<string, readonly string[]>,
+  rfcDeps: ReadonlyMap<string, readonly string[]>,
+  storyStatus: (id: string) => string | null | undefined,
+  rfcStatus: (id: string) => string | null | undefined,
+): boolean {
+  return (
+    (deps.get(storyId) ?? []).some((d) => !isDepResolved(storyStatus(d))) ||
+    (rfcDeps.get(storyId) ?? []).some((d) => rfcStatus(d) !== "closed")
+  );
+}
+
+/** `isDepHeld` over a whole snapshot: the ids of every story waiting on a dep. */
+export function depHeldIn(index: RankingIndex<RankedStory>): Set<string> {
+  const storyStatus = new Map(index.stories.map((s) => [s.id, s.status as string]));
+  const held = new Set<string>();
+  for (const s of index.stories) {
+    if (isDepHeld(s.id, index.deps, index.rfcDeps, (d) => storyStatus.get(d), (d) => index.rfcStatus.get(d))) {
+      held.add(s.id);
+    }
+  }
+  return held;
+}
+
 export function claimableIn<S extends RankedStory>(
   index: RankingIndex<S>,
   opts: { rfc?: string } = {},
@@ -117,13 +146,9 @@ export function claimableIn<S extends RankedStory>(
         // keeps the queue and the published index from disagreeing.
         if (effectiveStoryStatus(index.rfcStatus.get(s.rfc_id), s.status) !== "ready") return false;
         if (opts.rfc && s.rfc_id !== opts.rfc) return false;
-        if ((index.deps.get(s.id) ?? []).some((d) => !isDepResolved(storyStatus.get(d)))) {
-          return false;
-        }
-        if ((index.rfcDeps.get(s.id) ?? []).some((d) => index.rfcStatus.get(d) !== "closed")) {
-          return false;
-        }
-        return true;
+        return !isDepHeld(s.id, index.deps, index.rfcDeps, (d) => storyStatus.get(d), (d) =>
+          index.rfcStatus.get(d),
+        );
       })
       // Lower N first; unprioritized last. Array.sort is stable, so ties —
       // including the all-unprioritized common case — keep index order.

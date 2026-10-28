@@ -193,11 +193,13 @@ describe("StoriesController", () => {
     expect(Array.isArray(body)).toBe(true);
   });
 
-  it("declines a browser asking these actions for HTML", async () => {
+  // The route fixes the format (`defaults({ format: "json" })`), as a Rails
+  // API scope does, so `Accept` no longer selects one: a browser gets JSON.
+  it("answers JSON to a browser asking these actions for HTML", async () => {
     const { status, body } = await getJson("ready", { headers: { Accept: "text/html" } });
 
-    expect(status).toBe(406);
-    expect(body).toEqual({ error: "not_acceptable" });
+    expect(status).toBe(200);
+    expect(Array.isArray(body)).toBe(true);
   });
 
   it("is not reachable from the public hostname", async () => {

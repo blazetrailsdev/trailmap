@@ -99,6 +99,9 @@ export function storyStateLabel(status: string): string {
       return "Closed";
     case "blocked":
       return "Blocked";
+    // A `ready` story held on its deps, which both pills name (story.go:213).
+    case "blocked on deps":
+      return "Blocked on deps";
     default:
       return "Open";
   }
@@ -582,18 +585,13 @@ export function trailmapRfcBars(html: string): Map<string, Record<string, number
   );
 }
 
-/**
- * A bar as one comparable string: its non-zero counts, by status, with `ready`
- * and `blocked` folded into one — the known difference `compareBars`
- * (page-equivalence.ts) states.
- */
+/** A bar as one comparable string: its non-zero counts, by status. */
 export function barKey(bar: Record<string, number>): string {
-  const counts: Record<string, number> = {};
-  for (const [status, count] of Object.entries(bar)) {
-    const key = status === "ready" || status === "blocked" ? "ready+blocked" : status;
-    if (count > 0) counts[key] = (counts[key] ?? 0) + count;
-  }
-  return Object.keys(counts).sort().map((status) => `${counts[status]} ${status}`).join(" · ");
+  return Object.keys(bar)
+    .filter((status) => bar[status]! > 0)
+    .sort()
+    .map((status) => `${bar[status]} ${status}`)
+    .join(" · ");
 }
 
 /** ringo's `/backlog` rows, in page order. */
