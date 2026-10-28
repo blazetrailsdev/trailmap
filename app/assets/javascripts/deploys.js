@@ -9,14 +9,21 @@
  */
 const LIST = ".card.deploys";
 
-/** Fill an opened row's log, once per render. */
+/**
+ * Fill an opened row's log, once per render. Marked loaded only on a 200, so
+ * a failed read shows why and the next toggle asks again.
+ */
 async function loadLog(details) {
   const pre = details.querySelector("pre[data-src]");
   if (!pre || pre.dataset.loaded) return;
   pre.dataset.loaded = "1";
   try {
-    pre.textContent = await (await fetch(pre.dataset.src, { cache: "no-store" })).text();
+    const response = await fetch(pre.dataset.src, { cache: "no-store" });
+    const text = await response.text();
+    if (!response.ok) throw new Error(response.status + " " + text.trim());
+    pre.textContent = text;
   } catch (error) {
+    delete pre.dataset.loaded;
     pre.textContent = "(log unreadable: " + error.message + ")";
   }
 }
