@@ -1,7 +1,7 @@
 import { ApplicationController } from "./application-controller.ts";
 import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { Setting } from "../models/setting.ts";
-import { readDeployLog } from "../models/deploy-log.ts";
+import { readDeployLog, readsDeployLogLocally } from "../models/deploy-log.ts";
 
 /**
  * How long ringo has to answer for the deploy history or one run's log. A
@@ -79,10 +79,9 @@ export class DeploysController extends ApplicationController {
       return;
     }
     const file = String(this.params.get("file") ?? "");
-    const read = file === "" ? null : await readDeployLog(file);
-    if (read !== null) {
+    if (file !== "" && readsDeployLogLocally(file)) {
       // ringo answers a missing capture 200 with the reason as the text.
-      await this.render({ plain: "text" in read ? read.text : read.missing });
+      await this.render({ plain: await readDeployLog(file) });
       return;
     }
     const base = await Setting.ringoBase();

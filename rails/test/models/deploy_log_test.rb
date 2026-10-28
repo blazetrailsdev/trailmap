@@ -27,9 +27,10 @@ class DeployLogTest < ActiveSupport::TestCase
     assert_equal "(pane log unreadable: #{@dir}/gone.log: no such file or directory)", DeployLog.read("gone.log")
   end
 
-  test "is nil with no mount or a name that is not a file name" do
-    assert_nil DeployLog.read("..")
+  test "reads locally only with a mount and a bare file name" do
+    assert DeployLog.local?("pane-12.log")
+    assert_not DeployLog.local?("..")
     Rails.configuration.x.deploys.logs_dir = nil
-    assert_nil DeployLog.read("pane-12.log")
+    assert_not DeployLog.local?("pane-12.log")
   end
 end

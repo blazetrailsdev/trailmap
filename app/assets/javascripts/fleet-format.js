@@ -904,23 +904,22 @@ export function spawnRow(s, fixers = [], now = Date.now()) {
 }
 
 /**
- * How long until a PR's pending pane cleanup acts, in ms (negative once due),
- * or null when its row shows no cancel control: no pane, no cleanup — Go's
- * zero time, `0001-01-01T00:00:00Z` — or a deadline more than a minute gone,
- * by which time the quit has gone out. ringo's `renderInto` (`dashboard.go:1363`).
+ * Whether a PR's row shows the cancel-cleanup control. Not with no pane, no
+ * cleanup — Go's zero time, `0001-01-01T00:00:00Z` — or a deadline more than a
+ * minute gone, by which time the quit has gone out. ringo's `renderInto`
+ * (`dashboard.go:1363`).
  */
-export function cleanupCountdown(pr, now = Date.now()) {
-  if (!pr.pane || !pr.teardownAt || String(pr.teardownAt).startsWith("0001")) return null;
-  const ms = Date.parse(pr.teardownAt) - now;
-  return Number.isNaN(ms) || ms <= -60000 ? null : ms;
+export function cleanupPending(pr, now = Date.now()) {
+  if (!pr.pane || !pr.teardownAt || String(pr.teardownAt).startsWith("0001")) return false;
+  return Date.parse(pr.teardownAt) - now > -60000;
 }
 
 /** The "closing in Ns" pill and its "cancel cleanup" button, or nothing. */
 export function cleanupControl(pr, now = Date.now()) {
-  const ms = cleanupCountdown(pr, now);
-  if (ms === null) return "";
+  if (!cleanupPending(pr, now)) return "";
+  const seconds = Math.max(0, Math.round((Date.parse(pr.teardownAt) - now) / 1000));
   return (
-    '<span class="status" title="Pane cleanup pending">closing in ' + Math.max(0, Math.round(ms / 1000)) + "s</span>" +
+    '<span class="status" title="Pane cleanup pending">closing in ' + seconds + "s</span>" +
     control("cancel-cleanup", { pane: pr.pane }, { cls: "act", title: "Keep this pane open", label: "cancel cleanup" })
   );
 }

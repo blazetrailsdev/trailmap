@@ -4,7 +4,7 @@ import {
   DEFAULT_REPO,
   anyFailedSpawn,
   cleanupControl,
-  cleanupCountdown,
+  cleanupPending,
   control,
   BROADCAST_BUTTONS,
   broadcastButtons,
@@ -1576,20 +1576,20 @@ describe("a pending pane cleanup", () => {
   const now = Date.parse("2026-10-28T12:00:00Z");
   const pr = { owner: "o", repo: "r", pr: 7, pane: "%12", teardownAt: "2026-10-28T12:00:45Z" };
 
-  it("counts down to teardownAt", () => {
-    expect(cleanupCountdown(pr, now)).toBe(45000);
+  it("is pending until teardownAt", () => {
+    expect(cleanupPending(pr, now)).toBe(true);
   });
 
   it("shows nothing for Go's zero time, an absent time or a missing pane", () => {
-    expect(cleanupCountdown({ ...pr, teardownAt: "0001-01-01T00:00:00Z" }, now)).toBeNull();
-    expect(cleanupCountdown({ ...pr, teardownAt: undefined }, now)).toBeNull();
-    expect(cleanupCountdown({ ...pr, pane: "" }, now)).toBeNull();
-    expect(cleanupCountdown({ ...pr, teardownAt: "not a time" }, now)).toBeNull();
+    expect(cleanupPending({ ...pr, teardownAt: "0001-01-01T00:00:00Z" }, now)).toBe(false);
+    expect(cleanupPending({ ...pr, teardownAt: undefined }, now)).toBe(false);
+    expect(cleanupPending({ ...pr, pane: "" }, now)).toBe(false);
+    expect(cleanupPending({ ...pr, teardownAt: "not a time" }, now)).toBe(false);
   });
 
   it("keeps the control for a minute past the deadline, as ringo does", () => {
-    expect(cleanupCountdown({ ...pr, teardownAt: "2026-10-28T11:59:30Z" }, now)).toBe(-30000);
-    expect(cleanupCountdown({ ...pr, teardownAt: "2026-10-28T11:59:00Z" }, now)).toBeNull();
+    expect(cleanupPending({ ...pr, teardownAt: "2026-10-28T11:59:30Z" }, now)).toBe(true);
+    expect(cleanupPending({ ...pr, teardownAt: "2026-10-28T11:59:00Z" }, now)).toBe(false);
   });
 
   it("draws the pill and a cancel control on the PR row", () => {

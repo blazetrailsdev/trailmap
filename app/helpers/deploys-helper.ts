@@ -1,3 +1,4 @@
+import { deployLogName } from "../models/deploy-log.ts";
 import type { DeployRow } from "../controllers/deploys-controller.ts";
 
 export const DeploysHelper = {
@@ -6,7 +7,7 @@ export const DeploysHelper = {
    * recorded, which `DeploysController#log` reads off the mount.
    */
   deployLogPath(run: Pick<DeployRow, "id" | "logFile">): string {
-    const file = run.logFile ? run.logFile.slice(run.logFile.lastIndexOf("/") + 1) : "";
+    const file = run.logFile ? deployLogName(run.logFile) : "";
     return `/deploys/log?id=${encodeURIComponent(run.id)}` + (file ? `&file=${encodeURIComponent(file)}` : "");
   },
 

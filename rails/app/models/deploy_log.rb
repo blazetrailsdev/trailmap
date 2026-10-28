@@ -11,12 +11,15 @@ module DeployLog
     Rails.configuration.x.deploys.logs_dir.to_s.strip.sub(%r{/+\z}, "").presence
   end
 
-  # The text, ringo's "unreadable" line for a missing file, or nil when
-  # nothing is mounted or the name is not a bare file name.
+  # Whether `log_file` is read off the mount: one is mounted, and the name is
+  # a bare file name. Otherwise the controller relays ringo.
+  def self.local?(log_file)
+    dir.present? && NAME.match?(File.basename(log_file.to_s))
+  end
+
+  # The text, or ringo's "unreadable" line for a missing file. Ask `local?` first.
   def self.read(log_file)
-    name = File.basename(log_file.to_s)
-    return nil if dir.nil? || !NAME.match?(name)
-    path = File.join(dir, name)
+    path = File.join(dir, File.basename(log_file.to_s))
     return File.read(path) if File.exist?(path)
     return Zlib::GzipReader.open("#{path}.gz", &:read) if File.exist?("#{path}.gz")
     "(pane log unreadable: #{path}: no such file or directory)"

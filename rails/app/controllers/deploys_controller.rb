@@ -28,8 +28,7 @@ class DeploysController < ApplicationController
     no_store
     id = params[:id].to_s
     return render plain: "unknown deploy", status: :not_found if id.empty?
-    read = DeployLog.read(params[:file].to_s) if params[:file].present?
-    return render plain: read if read
+    return render plain: DeployLog.read(params[:file]) if DeployLog.local?(params[:file])
     base = Setting.ringo_base or return render plain: "no ringo origin is configured", status: :service_unavailable
     response = Fleet::Relay.get("#{base}/deploys/log?id=#{ERB::Util.url_encode(id)}", timeout: TIMEOUT)
     render plain: response.body, status: response.code.to_i
