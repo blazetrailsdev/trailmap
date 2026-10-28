@@ -26,13 +26,9 @@ under each one.</p>
 <h2>Status vocabulary</h2>
 <p class="muted">Story statuses, then the RFC statuses that gate them.</p>
 <p>
-  <%= render({ partial: "shared/status-badge", locals: { status: "draft" } }) %>
-  <%= render({ partial: "shared/status-badge", locals: { status: "ready" } }) %>
-  <%= render({ partial: "shared/status-badge", locals: { status: "claimed" } }) %>
-  <%= render({ partial: "shared/status-badge", locals: { status: "in-progress" } }) %>
-  <%= render({ partial: "shared/status-badge", locals: { status: "blocked" } }) %>
-  <%= render({ partial: "shared/status-badge", locals: { status: "done" } }) %>
-  <%= render({ partial: "shared/status-badge", locals: { status: "closed" } }) %>
+  <% for (const status of ["draft", "ready", "claimed", "in-progress", "blocked", "done", "closed"]) { %>
+  <%= render({ partial: "shared/status-badge", locals: { status } }) %>
+  <% } %>
 </p>
 <p>
   <%= render({ partial: "shared/status-badge", locals: { status: "active" } }) %>

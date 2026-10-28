@@ -153,3 +153,22 @@ and keeps it off the class.
   i18n 1.14.8, rails-dom-testing 2.2.0, pg 1.5.9, bcrypt 3.1.20, msgpack 1.8.0.
   pg 1.5.9 builds from source, so it needs libpq headers (`libpq-dev`).
   `json` is held below 3, which dropped a keyword Active Support 8.0.2 passes.
+
+### language: twin-diff body differences left on purpose (trailmap#84 report)
+
+Each of these is ranked by twin-diff and is the same behaviour spelled the way
+each language spells it; the rest of that report's list was converged.
+
+- `Story.record_spawn`: Ruby takes `branch:`/`pane:`/`rfc:` keywords, the
+  TypeScript one options object. Both write the same `detail` JSON and the
+  same columns.
+- `Story.find_all_or_raise` / `findAllOrThrow`: both collect EVERY missing id
+  into one `VerbExit` (`ids - found` against a `Set` filter); only the name
+  differs, `raise` being Ruby's verb and `throw` JavaScript's.
+- `ReadModelsController#index`: `RfcJson.serialize_all` / `StoryJson.serialize_all`
+  are a module per serializer; the TypeScript serializers are free functions
+  (`serializeRfcs`, `serializeStories`) in one module. Same JSON.
+- `views/home/index`: the empty-hub note names each app's own seed command,
+  `bin/rails db:seed` and `pnpm db:seed`.
+- `views/sessions/pane`: TypeScript only. See "the pane replay runs ringo's
+  renderer" above — Rails answers a pane log with 501.

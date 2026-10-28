@@ -88,6 +88,7 @@ export class Story extends ApplicationRecord {
   declare static done: () => Relation<Story>;
   declare static claimed: () => Relation<Story>;
   declare isDone: () => boolean;
+  declare isClosed: () => boolean;
   declare isReady: () => boolean;
 
   static {
@@ -154,7 +155,7 @@ export class Story extends ApplicationRecord {
    * running two counting queries per story row.
    */
   async closeRfcIfComplete(): Promise<void> {
-    if (this.isDone() || this.status === "closed") await closeRfcIfComplete(this.rfc_id);
+    if (this.isDone() || this.isClosed()) await closeRfcIfComplete(this.rfc_id);
   }
 
   /**
@@ -499,9 +500,7 @@ export class Story extends ApplicationRecord {
       await Event.create({
         at: nowIso(),
         verb: "spawn",
-        story_id: null,
         rfc_id: opts.rfc,
-        pr: null,
         actor: source,
         detail: JSON.stringify(detail),
       });
@@ -622,7 +621,6 @@ export class Story extends ApplicationRecord {
       at: nowIso(),
       verb,
       story_id: this.id,
-      rfc_id: null,
       pr: extra.pr ?? null,
       actor: extra.actor ?? null,
       detail: extra.detail == null ? null : JSON.stringify(extra.detail),

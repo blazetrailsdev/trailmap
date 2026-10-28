@@ -36,7 +36,7 @@ export async function readDeployLog(logFile: string): Promise<{ text: string } |
     if ((error as { code?: string }).code !== "ENOENT") throw error;
   }
   try {
-    const gz = (await getFs().readFile(`${path}.gz`)) as Uint8Array;
+    const gz = new Uint8Array(await getFs().readFile(`${path}.gz`));
     const stream = new Blob([gz]).stream().pipeThrough(new DecompressionStream("gzip"));
     return { text: await new Response(stream).text() };
   } catch (error) {
