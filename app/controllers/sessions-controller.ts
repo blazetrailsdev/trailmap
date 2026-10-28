@@ -92,7 +92,7 @@ export class SessionsController extends ApplicationController {
     const read = await this.readArchive("/sessions/file", ARCHIVE_FILE_MAX_BYTES, "head");
     if (read === null) return;
     if (read.truncated) return this.refuseTooLarge();
-    const p = String(this.params.get("p"));
+    const p = String(this.params.get("p") ?? "");
     const name = p.slice(p.lastIndexOf("/") + 1).replace(/\.gz$/, "");
     this.response.setHeader("Content-Disposition", `inline; filename="${name}"`);
     await this.render({ plain: new TextDecoder().decode(read.bytes) });
@@ -107,7 +107,10 @@ export class SessionsController extends ApplicationController {
     const read = await this.readArchive("/sessions/transcript", ARCHIVE_FILE_MAX_BYTES, "head");
     if (read === null) return;
     if (read.truncated) return this.refuseTooLarge();
-    // ringo's page is a whole document, so it is trusted as one and gets no layout.
+    // ringo's page is a whole document, so it gets no layout. It is served on
+    // trailmap's origin, and any field ringo leaves unescaped would run there,
+    // so it is sandboxed as the audit pages are: a unique origin, no scripts.
+    this.response.setHeader("Content-Security-Policy", "sandbox");
     await this.render({ html: htmlSafe(new TextDecoder().decode(read.bytes)) });
   }
 

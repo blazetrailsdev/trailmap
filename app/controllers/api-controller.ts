@@ -1,7 +1,7 @@
 import { ExceptionWrapper } from "@blazetrails/actionpack";
 import { include } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.ts";
-import { LoopbackOnly, type LoopbackOnlyMethods } from "./concerns/loopback-only.ts";
+import { LoopbackOnly } from "./concerns/loopback-only.ts";
 
 /**
  * The loopback JSON API's base: `/stories/*`, the mutation verbs, the two
@@ -21,7 +21,6 @@ import { LoopbackOnly, type LoopbackOnlyMethods } from "./concerns/loopback-only
  * 404 and `ParameterMissing`'s 400 into 500s. Whatever `rescueResponses`
  * gives another status is raised again, and reaches that mapping untouched.
  */
-export interface ApiController extends LoopbackOnlyMethods {}
 
 export class ApiController extends ApplicationController {
   static {

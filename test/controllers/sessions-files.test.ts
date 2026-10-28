@@ -125,6 +125,16 @@ describe("SessionsController#transcript", () => {
     expect(response.body).toBe("<h1>fix arel</h1>");
     expect(asked).toEqual(["/sessions/transcript?p=trails%2F9001%2Fa.jsonl"]);
   });
+
+  // ringo's HTML is served on trailmap's origin; whatever it fails to escape
+  // must not run there.
+  it("sandboxes the relayed page", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await get("transcript", { p: "trails/9001/a.jsonl" });
+
+    expect(response.getHeader("Content-Security-Policy")).toBe("sandbox");
+  });
 });
 
 describe("SessionsController#pane", () => {

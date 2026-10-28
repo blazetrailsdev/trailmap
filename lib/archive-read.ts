@@ -35,7 +35,11 @@ export function archivePathProblem(p: string): string | null {
 /** What a bounded read kept. */
 export interface BoundedRead {
   bytes: Uint8Array;
-  /** Bytes the stream carried in all, kept or not. */
+  /**
+   * Bytes the stream carried in all, kept or not — for `keep: "tail"`. A
+   * `"head"` read cancels the stream once past the bound, so there it is only
+   * what was read before the cancel: more than `max`, and no file size.
+   */
   total: number;
   /** True when `total` exceeded the bound and `bytes` is only part of it. */
   truncated: boolean;

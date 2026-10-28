@@ -68,19 +68,15 @@ async function requireLoopback(this: LoopbackHost): Promise<void> {
   await this.render({ json: { error: "not_found" }, status: 404 });
 }
 
-/** The instance half `include(this, LoopbackOnly)` adds, for a `declare`. */
-export interface LoopbackOnlyMethods {
-  requireLoopback(): Promise<void>;
-}
-
 /**
  * `include(this, LoopbackOnly)` guards every action of the class. The guard
  * is registered as a block rather than by name until `beforeAction` takes a
- * method name (`before-action-does-not-accept-a-method-name`, RFC 0141).
+ * method name (`before-action-does-not-accept-a-method-name`, RFC 0141), and
+ * it is NOT added to the class: trails' `actionMethods` counts every public
+ * prototype method as an action, where Rails' concern would keep it `private`.
  */
 export const LoopbackOnly = {
   [included](base: typeof ActionController.Base): void {
-    base.beforeAction((controller) => (controller as ActionController.Base & LoopbackOnlyMethods).requireLoopback());
+    base.beforeAction((controller) => requireLoopback.call(controller as ActionController.Base));
   },
-  requireLoopback,
 };
