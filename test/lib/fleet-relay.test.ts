@@ -4,7 +4,7 @@
  * browser's socket does.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getHttpAsync, type HttpServer } from "@blazetrails/ruby-compat";
+import { getHttpAsync, TCPSocket, type HttpServer } from "@blazetrails/ruby-compat";
 import {
   CLOSE_GRACE_MS,
   PING_INTERVAL_MS,
@@ -51,8 +51,9 @@ async function relayOn(fetchEvents: typeof fetch): Promise<string> {
     for (const [key, value] of Object.entries(req.headers)) {
       if (typeof value === "string") headers[key] = value;
     }
+    // What the framework's handler hijacks for the action: the socket as an IO.
     relayEvents(
-      socket,
+      new TCPSocket(socket),
       { method: req.method ?? "GET", url: req.url ?? "/", headers },
       "http://ringo.test/events",
       fetchEvents,
@@ -129,23 +130,29 @@ describe("relayEvents", () => {
  * cannot be made to do on demand: fall behind, or sit idle for a minute.
  */
 function recordedSocket() {
-  const listeners: Record<string, (() => void)[]> = {};
   const written: Uint8Array[] = [];
   const state = { accepting: true, ended: false };
+  let writable: (() => void) | null = null;
   const socket = {
-    write(chunk: string | Uint8Array) {
-      written.push(typeof chunk === "string" ? new TextEncoder().encode(chunk) : chunk);
-      return state.accepting;
+    readNonblock: () => "wait_readable" as const,
+    // Nothing from the browser: the read waits for good.
+    waitReadable: () => new Promise<never>(() => {}),
+    writeNonblock(chunk: Uint8Array) {
+      if (!state.accepting) return "wait_writable" as const;
+      written.push(chunk);
+      return chunk.length;
     },
-    end() {
+    waitWritable: () => new Promise<void>((resolve) => (writable = resolve)),
+    close() {
       state.ended = true;
     },
-    destroy() {},
-    on(event: string, listener: (arg: never) => void) {
-      (listeners[event] ??= []).push(listener as () => void);
-    },
   };
-  const emit = (event: string) => (listeners[event] ?? []).forEach((listener) => listener());
+  const emit = (event: string) => {
+    if (event !== "drain" || writable === null) return;
+    const resolve = writable;
+    writable = null;
+    resolve();
+  };
   /** Unmasked server frames after the 101: [opcode, text payload]. */
   const frames = (): [number, string][] =>
     written.slice(1).map((frame) => {
@@ -202,10 +209,11 @@ describe("relayEvents, when the browser is slow or the fleet is quiet", () => {
     upstreamFeed.feed("three");
     upstreamFeed.feed("four");
     await settle();
-    expect(frames().map(([, text]) => text)).toEqual(["one", "two"]);
+    expect(frames().map(([, text]) => text)).toEqual(["one"]);
 
     state.accepting = true;
     emit("drain");
+    await settle();
 
     expect(frames().map(([, text]) => text)).toEqual(["one", "two", "four"]);
   });
