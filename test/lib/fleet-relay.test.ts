@@ -4,7 +4,7 @@
  * browser's socket does.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getHttpAsync, type HttpServer } from "@blazetrails/ruby-compat";
+import { getHttpAsync, TCPSocket, type HttpServer } from "@blazetrails/ruby-compat";
 import {
   CLOSE_GRACE_MS,
   PING_INTERVAL_MS,
@@ -51,8 +51,9 @@ async function relayOn(fetchEvents: typeof fetch): Promise<string> {
     for (const [key, value] of Object.entries(req.headers)) {
       if (typeof value === "string") headers[key] = value;
     }
+    // What the framework's handler hijacks for the action: the socket as an IO.
     relayEvents(
-      socket,
+      new TCPSocket(socket),
       { method: req.method ?? "GET", url: req.url ?? "/", headers },
       "http://ringo.test/events",
       fetchEvents,
@@ -129,30 +130,54 @@ describe("relayEvents", () => {
  * cannot be made to do on demand: fall behind, or sit idle for a minute.
  */
 function recordedSocket() {
-  const listeners: Record<string, (() => void)[]> = {};
   const written: Uint8Array[] = [];
-  const state = { accepting: true, ended: false };
+  /** `room`: bytes the socket takes before it blocks; `broken`: the peer has gone. */
+  const state = { accepting: true, ended: false, room: Infinity, broken: false };
+  let writable: (() => void) | null = null;
   const socket = {
-    write(chunk: string | Uint8Array) {
-      written.push(typeof chunk === "string" ? new TextEncoder().encode(chunk) : chunk);
-      return state.accepting;
+    readNonblock: () => "wait_readable" as const,
+    // Nothing from the browser: the read waits for good.
+    waitReadable: () => new Promise<never>(() => {}),
+    writeNonblock(chunk: Uint8Array) {
+      if (state.broken) throw new Error("EPIPE");
+      if (!state.accepting || state.room === 0) return "wait_writable" as const;
+      const sent = Math.min(chunk.length, state.room);
+      state.room -= sent;
+      written.push(chunk.subarray(0, sent));
+      return sent;
     },
-    end() {
+    waitWritable: () => new Promise<void>((resolve) => (writable = resolve)),
+    close() {
       state.ended = true;
     },
-    destroy() {},
-    on(event: string, listener: (arg: never) => void) {
-      (listeners[event] ??= []).push(listener as () => void);
-    },
   };
-  const emit = (event: string) => (listeners[event] ?? []).forEach((listener) => listener());
+  const emit = (event: string) => {
+    if (event !== "drain" || writable === null) return;
+    const resolve = writable;
+    writable = null;
+    resolve();
+  };
   /** Unmasked server frames after the 101: [opcode, text payload]. */
-  const frames = (): [number, string][] =>
-    written.slice(1).map((frame) => {
-      const length = frame[1]! & 0x7f;
-      const start = length === 126 ? 4 : 2;
-      return [frame[0]! & 0x0f, new TextDecoder().decode(frame.subarray(start))];
-    });
+  const frames = (): [number, string][] => {
+    const bytes = new Uint8Array(written.reduce((n, chunk) => n + chunk.length, 0));
+    let at = 0;
+    for (const chunk of written) {
+      bytes.set(chunk, at);
+      at += chunk.length;
+    }
+    // Past the 101's blank line, then frame by frame (no frame here is 64 KiB).
+    const out: [number, string][] = [];
+    at = new TextDecoder().decode(bytes).indexOf("\r\n\r\n") + 4;
+    while (at + 2 <= bytes.length) {
+      const short = bytes[at + 1]! & 0x7f;
+      const start = at + (short === 126 ? 4 : 2);
+      const length = short === 126 ? (bytes[at + 2]! << 8) | bytes[at + 3]! : short;
+      if (start + length > bytes.length) break;
+      out.push([bytes[at]! & 0x0f, new TextDecoder().decode(bytes.subarray(start, start + length))]);
+      at = start + length;
+    }
+    return out;
+  };
   return { socket, state, emit, frames };
 }
 
@@ -202,12 +227,60 @@ describe("relayEvents, when the browser is slow or the fleet is quiet", () => {
     upstreamFeed.feed("three");
     upstreamFeed.feed("four");
     await settle();
-    expect(frames().map(([, text]) => text)).toEqual(["one", "two"]);
+    expect(frames().map(([, text]) => text)).toEqual(["one"]);
 
     state.accepting = true;
     emit("drain");
+    await settle();
 
     expect(frames().map(([, text]) => text)).toEqual(["one", "two", "four"]);
+  });
+
+  it("finishes a frame the socket took only part of, and holds the newest until it has", async () => {
+    const { socket, state, emit, frames } = recordedSocket();
+    const upstreamFeed = fedUpstream();
+    relayEvents(socket, handshake, "http://ringo.test/events", upstreamFeed.fetchEvents);
+    await settle();
+
+    upstreamFeed.feed("one");
+    await settle();
+    state.room = 3;
+    upstreamFeed.feed("a frame longer than three bytes");
+    await settle();
+    // Three bytes went; the rest of the frame waits for room.
+    upstreamFeed.feed("stale");
+    upstreamFeed.feed("newest");
+    await settle();
+    expect(frames().map(([, text]) => text)).toEqual(["one"]);
+
+    // A drain with room for ten bytes: still not the whole frame, so the
+    // newest stays held through a second wait.
+    state.room = 10;
+    emit("drain");
+    await settle();
+    expect(frames().map(([, text]) => text)).toEqual(["one"]);
+
+    state.room = Infinity;
+    emit("drain");
+    await settle();
+    expect(frames().map(([, text]) => text)).toEqual(["one", "a frame longer than three bytes", "newest"]);
+  });
+
+  it("closes, and stops reading upstream, when the peer goes mid-write", async () => {
+    const { socket, state, emit } = recordedSocket();
+    const upstreamFeed = fedUpstream();
+    relayEvents(socket, handshake, "http://ringo.test/events", upstreamFeed.fetchEvents);
+    await settle();
+
+    state.accepting = false;
+    upstreamFeed.feed("one");
+    await settle();
+    state.broken = true;
+    emit("drain");
+    await settle();
+
+    expect(state.ended).toBe(true);
+    expect(upstreamFeed.state.aborted).toBe(true);
   });
 
   it("pings an idle socket inside nginx's read timeout", async () => {

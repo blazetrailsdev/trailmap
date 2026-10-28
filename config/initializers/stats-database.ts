@@ -1,3 +1,4 @@
+import { Trails } from "@blazetrails/trailties";
 import { hasStatsDatabase, statsDatabaseConfig } from "../database.ts";
 import { Stats } from "../../app/models/stats.ts";
 import { loadStatsSchemas } from "../../app/models/index.ts";
@@ -25,9 +26,13 @@ import { loadStatsSchemas } from "../../app/models/index.ts";
  * is reflection, reflection is lazy, and the metric picker asks which columns
  * exist before it runs a query. See `loadStatsSchemas`.
  *
- * The work happens at import time because that is the whole contract for a
- * `config/initializers` file — `loadConfigInitializer` imports the module and
- * calls nothing. The named export exists for the test.
+ * Two halves, split the way a Rails app splits them. Importing this file only
+ * registers the connection, and `establishConnection` opens no socket, so
+ * anything that loads initializers without serving — `pnpm views` builds
+ * templates this way (trails#9284) — needs no database. The I/O runs in a
+ * `server` block (trails#9375), which `trails server` awaits before it binds,
+ * so a misconfigured process still never serves. The named export is that
+ * block, and the test calls it directly.
  */
 export async function connectToStatsDatabase(): Promise<void> {
   if (!hasStatsDatabase()) return;
@@ -35,4 +40,10 @@ export async function connectToStatsDatabase(): Promise<void> {
   await loadStatsSchemas();
 }
 
-await connectToStatsDatabase();
+// Registration, for every path that loads initializers without serving
+// (`trails db`, the console, the suite): Rails' own initializer
+// `establish_connection` is only this. The server block establishes again
+// from the environment as it stands when the server starts, which is what
+// lets it be called alone (boot-probe, and tests that repoint the variable).
+if (hasStatsDatabase()) await Stats.establishConnection(statsDatabaseConfig());
+Trails.application.server(connectToStatsDatabase);

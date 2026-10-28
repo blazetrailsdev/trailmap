@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { env } from "@blazetrails/ruby-compat";
 import { hasStatsDatabase, statsDatabaseConfig } from "../../config/database.ts";
+import { Trailmap } from "../../config/application.ts";
 import { connectToStatsDatabase } from "../../config/initializers/stats-database.ts";
 import { writeProtocol } from "../../config/write-protocol.ts";
 
@@ -29,6 +30,10 @@ describe("statsDatabaseConfig", () => {
 });
 
 describe("connectToStatsDatabase", () => {
+  it("is registered as a server block", () => {
+    expect(Trailmap.registeredBlocksFor("server")).toContain(connectToStatsDatabase);
+  });
+
   it("is a no-op without STATS_DB rather than a boot failure", async () => {
     if (hasStatsDatabase()) return;
 

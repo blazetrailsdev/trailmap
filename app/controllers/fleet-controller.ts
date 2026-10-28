@@ -105,7 +105,8 @@ export class FleetController extends ApplicationController {
       const response = await fetch(`${base}/${path}`, {
         method: "POST",
         signal: AbortSignal.timeout(CONTROL_TIMEOUT_MS),
-        ...(body === "" ? {} : { body }),
+        // rawPost is bytes for a binary body (trails#9191); fetch takes either.
+        ...(body === "" ? {} : { body: body as BodyInit }),
         ...(contentType ? { headers: { "content-type": String(contentType) } } : {}),
       });
       await this.render({ plain: await response.text(), status: response.status });
