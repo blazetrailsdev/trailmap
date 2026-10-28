@@ -316,7 +316,7 @@ deploys, so the deploy gate and the schedule cannot drift apart:
 
 ```sh
 ./scripts/smoke-prod.sh --tier 0   # /up on loopback
-./scripts/smoke-prod.sh --tier 1   # /up/ready, the migration head, the loopback API, the public vhost
+./scripts/smoke-prod.sh --tier 1   # /up/ready, both migration heads, the loopback API, the public vhost
 ./scripts/smoke-prod.sh --tier 2   # every read verb and page, by shape, and the tasks CLI
 ```
 
@@ -354,6 +354,18 @@ Each assertion prints `PASS` or `FAIL`, a stable name
 key and is never renamed. `tier1.migration-head` is `/up/ready`'s `migrations`
 check: it compares the `schema_migrations` head against the last version under
 `db/migrate` in the running image and names both when they differ.
+`tier1.hub-migration-head` is the same for the hub: `/up/ready`'s
+`hub_migrations` check, Postgres's `schema_migrations` against
+`db/hub-migrate`. Without `HUB_DATABASE_URL` the check answers `skipped` (green)
+rather than raising — only a test process can serve without one, since the hub
+initializer refuses to boot — and the smoke assertion fails a `skipped` answer,
+so production can never pass it that way.
+
+`/up/ready`'s `database` check also goes red when the file at `TASKS_DATABASE`
+is no longer the file the connection opened (a restore or `cutover-import.sh`
+put another one there): the boot records the path's `dev`/`ino`, and each probe
+compares. Where no identity could be recorded it falls back to existence and
+says so in `identity`.
 
 **A database that is AHEAD fails the deploy too, and that is intended.** The
 tasks CLI migrates the same `tasks.db`, so the head can move without a trailmap

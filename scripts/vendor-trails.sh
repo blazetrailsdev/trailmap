@@ -54,6 +54,20 @@ if [ -n "$(git -C "$TRAILS" status --porcelain)" ]; then
 fi
 echo "vendoring ${#PKGS[@]} packages from trails @ ${SHA:0:9}"
 
+# Pack from a CLEAN build. `tsc --build` never deletes an output whose source
+# is gone, so a checkout built at another commit first carries leftovers into
+# `dist` — #39 found both kinds: `validations/_accessor.*` with no source at the
+# pin, and `thor/*.test.*` from a build of a LATER commit. Each packed
+# package's `dist` and its build info go, and the whole workspace is rebuilt
+# (the root `build`, so the templates the packages ship are regenerated too).
+# Slower than an incremental build, and the only way re-running this
+# reproduces the committed tarballs whatever the checkout was built at last.
+for p in "${PKGS[@]}"; do
+  rm -rf "$TRAILS/packages/$p/dist" "$TRAILS/packages/$p"/*.tsbuildinfo
+done
+echo "  rebuilding trails from clean dist directories"
+pnpm -C "$TRAILS" build >/dev/null
+
 rm -f "$VENDOR"/*.tgz
 mkdir -p "$VENDOR"
 for p in "${PKGS[@]}"; do
@@ -96,6 +110,13 @@ for(const sec of ["dependencies","devDependencies"]){
 fs.writeFileSync(pkgPath,JSON.stringify(pkg,null,2)+"\n");
 // Replace the top-level `overrides:` block and nothing else: every other key
 // in the file (allowBuilds, today) is kept exactly as written.
+//
+// PATTERN-BASED, deliberately, not through a YAML parser. None is a
+// dependency, and adding one for a build script is a third-party dependency
+// for a file this script writes in one shape; and a parser round-trip drops
+// the comments the rest of the file carries. The cost is that a reformatted
+// block (flow style, a nested comment) is not understood — the guard below
+// refuses it by name rather than writing something wrong.
 const kept=[]; let inBlock=false;
 for(const line of fs.readFileSync(wsPath,"utf8").split("\n")){
   if(/^overrides:\s*$/.test(line)){ inBlock=true; continue; }
@@ -113,6 +134,37 @@ const block=["overrides:",...Object.entries(overrides).map(([n,v])=>"  "+JSON.st
 fs.writeFileSync(wsPath,(head?head+"\n\n":"")+block+"\n");
 console.log("  overrides -> "+Object.keys(overrides).length+" packages (pnpm-workspace.yaml)");
 ' "$VENDOR" "$HERE/package.json" "$HERE/pnpm-workspace.yaml"
+
+# Every @blazetrails/* package the application IMPORTS must be a declared
+# dependency. The overrides above make a tarball resolvable; they do not make
+# it a dependency, so a package the app starts importing (ruby-compat, at
+# #30's bump) works by hoisting until something stops hoisting it. Checked
+# here, by name, rather than discovered later as a typecheck failure.
+node -e '
+const fs=require("fs"),path=require("path");
+const [here]=process.argv.slice(1);
+const pkg=JSON.parse(fs.readFileSync(path.join(here,"package.json"),"utf8"));
+const declared=new Set([...Object.keys(pkg.dependencies||{}),...Object.keys(pkg.devDependencies||{})]);
+const used=new Map();
+const walk=(dir)=>{
+  for(const e of fs.readdirSync(dir,{withFileTypes:true})){
+    const f=path.join(dir,e.name);
+    if(e.isDirectory()){ if(e.name!=="node_modules") walk(f); continue; }
+    if(!/\.(ts|tsx|mts|js|mjs|tse)$/.test(e.name)) continue;
+    for(const m of fs.readFileSync(f,"utf8").matchAll(/(?:from\s+|import\s*\(\s*|import\s+)["\x27](@blazetrails\/[a-z0-9-]+)/g)){
+      if(!used.has(m[1])) used.set(m[1],path.relative(here,f));
+    }
+  }
+};
+for(const d of ["app","config","lib","scripts","test"]) if(fs.existsSync(path.join(here,d))) walk(path.join(here,d));
+const missing=[...used].filter(([n])=>!declared.has(n));
+if(missing.length){
+  for(const [n,f] of missing) console.error("  "+n+" is imported ("+f+") but not a dependency in package.json");
+  console.error("add each to package.json as \"file:vendor/blazetrails-<name>-<version>.tgz\" and re-run");
+  process.exit(1);
+}
+console.log("  imports -> "+used.size+" @blazetrails packages, all declared");
+' "$HERE"
 
 echo "pinned trails @ $SHA"
 echo "now run: pnpm install"

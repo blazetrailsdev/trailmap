@@ -51,4 +51,38 @@ class PagesTest < ActionDispatch::IntegrationTest
     get "/blazetrailsdev/nothing"
     assert_response :not_found
   end
+
+  test "turns a tab off from the form, and the tab then 404s with no restart" do
+    require_hub!
+    hub_repo!("tasks")
+    patch "/blazetrailsdev/tasks/settings", params: { repository_setting: { wiki_enabled: "0" } }
+    assert_redirected_to "/blazetrailsdev/tasks/settings"
+    assert_response :see_other
+    get "/blazetrailsdev/tasks/wiki"
+    assert_response :not_found
+    get "/blazetrailsdev/tasks"
+    assert_not_includes response.body, 'href="/blazetrailsdev/tasks/wiki"'
+  end
+
+  test "assigns only the six switches, never repository_id or id" do
+    require_hub!
+    tasks = hub_repo!("tasks")
+    trails = hub_repo!("trails")
+    row = tasks.settings
+    patch "/blazetrailsdev/tasks/settings",
+          params: { repository_setting: { pulls_enabled: "1", repository_id: trails.id, id: 999 } }
+    assert_equal tasks.id, row.reload.repository_id
+    assert_equal 1, RepositorySetting.where(repository_id: trails.id).count
+  end
+
+  test "writes a settings row on the first save of a repository without one" do
+    require_hub!
+    tasks = hub_repo!("tasks")
+    tasks.settings.destroy!
+    patch "/blazetrailsdev/tasks/settings", params: { repository_setting: { insights_enabled: "0" } }
+    assert_response :see_other
+    row = RepositorySetting.find_by!(repository_id: tasks.id)
+    assert_equal false, row.insights_enabled
+    assert_equal true, row.wiki_enabled
+  end
 end

@@ -12,18 +12,21 @@
 </div>
 
 <h2>Features</h2>
-<p class="muted">A tab turned off is not drawn above and answers 404. Read-only here —
-the form that writes these is its own story.</p>
-<div class="box">
-  <% unless @has_switches %>
-    <div class="box-row muted">This repository has no settings row, so every tab is on.</div>
-  <% end %>
-  <% @switches.each do |row| %>
-    <div class="box-row"><code><%= row.tab %></code> &middot;
-      <span class="badge s-<%= row.enabled ? "done" : "closed" %>"><%= row.enabled ? "on" : "off" %></span>
-    </div>
-  <% end %>
-</div>
+<p class="muted">A tab turned off is not drawn above and answers 404.</p>
+<%= form_with model: @form, url: "/#{@nwo}/settings", method: :patch, scope: :repository_setting do |f| %>
+  <div class="box">
+    <% unless @has_switches %>
+      <div class="box-row muted">This repository has no settings row, so every tab is on. Saving writes one.</div>
+    <% end %>
+    <% @switches.each do |row| %>
+      <div class="box-row">
+        <label><%= f.check_box "#{row.tab}_enabled" %> <code><%= row.tab %></code></label> &middot;
+        <span class="badge s-<%= row.enabled ? "done" : "closed" %>"><%= row.enabled ? "on" : "off" %></span>
+      </div>
+    <% end %>
+    <div class="box-row"><%= f.submit "Save features" %></div>
+  </div>
+<% end %>
 
 <h2>Collaborators</h2>
 <p class="muted">Who may push here. The row's identity is the pair

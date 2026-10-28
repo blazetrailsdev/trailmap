@@ -220,6 +220,18 @@ expect_status "a control POST with the token from another origin" 422 \
 expect_status "a control POST with the token from this origin" 503 \
   "$(control -H "X-CSRF-Token: $token" -H "Origin: http://127.0.0.1:$port")"
 
+# The same protection on the settings form's PATCH. The repository named here
+# does not exist, so a request that gets PAST the protection is the 404
+# `loadRepository` answers; one refused by it is a 422 before that runs.
+settings() {
+  curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PATCH \
+    -d 'repository_setting[wiki_enabled]=0' "$@" \
+    "http://127.0.0.1:$port/blazetrailsdev/no-such-repo/settings"
+}
+expect_status "a settings PATCH with no token" 422 "$(settings)"
+expect_status "a settings PATCH with the token from this origin" 404 \
+  "$(settings -H "X-CSRF-Token: $token" -H "Origin: http://127.0.0.1:$port")"
+
 # THE SOCKET'S ORIGIN CHECK, as the deployment sees it. `/fleet/socket` refuses
 # a handshake whose `Origin` is not this site's base URL. Behind nginx the
 # request arrives as plain HTTP for the public HTTPS hostname, so that

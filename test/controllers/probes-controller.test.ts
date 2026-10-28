@@ -6,6 +6,15 @@ import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
 import { ProbesController } from "../../app/controllers/probes-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
+import {
+  connectHubTestDatabase,
+  HUB_SETUP_TIMEOUT,
+  hasHubTestDatabase,
+  hubTestUrl,
+  releaseHubTestDatabase,
+} from "../support/hub-schema.ts";
+import { Hub } from "../../app/models/hub.ts";
+import { forgetTasksDatabaseIdentity, recordTasksDatabaseIdentity } from "../../config/database.ts";
 
 const LOOPBACK = { Host: "127.0.0.1" };
 
@@ -88,9 +97,11 @@ describe("GET /up/ready", () => {
       "database",
       "stories",
       "migrations",
+      "hub_migrations",
       "checkout",
       "git_identity",
     ]);
+    expect(body.checks.hub_migrations).toEqual({ ok: true, skipped: "HUB_DATABASE_URL is not set" });
     expect(body.checks.migrations).toEqual({ ok: true, expected: HEAD, actual: HEAD });
     expect(body.checks.stories).toEqual({ ok: true, count: 2 });
     expect(body.checks.checkout).toEqual({ ok: true, dir: tasksDir });
@@ -118,6 +129,41 @@ describe("GET /up/ready", () => {
     expect(status).toBe(503);
     expect(body.failing).toEqual(["database", "stories"]);
     expect(body.checks.database.error).toMatch(/moved-aside\.db is gone/);
+  });
+
+  // A restore puts a DIFFERENT file at the same path: it exists, and the
+  // connection still reads the old inode, so only the identity can show it.
+  it("goes red when the database file was replaced after the connection opened it", async () => {
+    const fs = getFs();
+    const file = `${tasksDir}/.git/replaced.db`;
+    fs.mkdirSync(`${tasksDir}/.git`, { recursive: true });
+    fs.writeFileSync(file, "opened");
+    setEnv("TASKS_DATABASE", file);
+    await recordTasksDatabaseIdentity(file);
+    try {
+      expect((await getJson("ready")).status).toBe(200);
+
+      fs.writeFileSync(`${file}.restored`, "restored");
+      fs.renameSync(`${file}.restored`, file);
+      const { status, body } = await getJson("ready");
+
+      expect(status).toBe(503);
+      expect(body.failing).toEqual(["database", "stories"]);
+      expect(body.checks.database.error).toMatch(/replaced\.db was replaced: the connection opened dev \d+ ino \d+, and the path is now dev \d+ ino \d+/);
+    } finally {
+      forgetTasksDatabaseIdentity();
+    }
+  });
+
+  it("says the identity went unchecked when none was recorded", async () => {
+    const file = `${tasksDir}/.git/unrecorded.db`;
+    getFs().mkdirSync(`${tasksDir}/.git`, { recursive: true });
+    getFs().writeFileSync(file, "");
+    setEnv("TASKS_DATABASE", file);
+    const { status, body } = await getJson("ready");
+
+    expect(status).toBe(200);
+    expect(body.checks.database.identity).toMatch(/^unchecked: /);
   });
 
   it("goes red on an empty stories table alone", async () => {
@@ -305,6 +351,64 @@ describe("GET /up/ready", () => {
 
     expect(status).toBe(404);
     expect(body).toEqual({ error: "not_found" });
+  });
+});
+
+describe.skipIf(!hasHubTestDatabase())("GET /up/ready against the hub", () => {
+  /** The last two versions under `db/hub-migrate`, read off the file names. */
+  const [HUB_PREVIOUS, HUB_HEAD] = getFs()
+    .readdirSync("db/hub-migrate")
+    .filter((file) => /^\d+_/.test(file))
+    .map((file) => Number(file.split("_")[0]))
+    .sort((a, b) => a - b)
+    .slice(-2) as [number, number];
+
+  beforeAll(async () => {
+    setX("tasks", "dir", tasksDir);
+    await connectHubTestDatabase();
+  }, HUB_SETUP_TIMEOUT);
+
+  afterAll(async () => {
+    await releaseHubTestDatabase();
+  });
+
+  it("reports the hub head beside the task domain's", async () => {
+    setEnv("HUB_DATABASE_URL", hubTestUrl()!);
+    try {
+      const { status, body } = await getJson("ready");
+
+      expect(status).toBe(200);
+      expect(body.checks.hub_migrations).toEqual({ ok: true, expected: HUB_HEAD, actual: HUB_HEAD });
+    } finally {
+      setEnv("HUB_DATABASE_URL", undefined);
+    }
+  });
+
+  // The head's ROW is removed, not the migration reverted as the task-domain
+  // case does: run in-process, the migrator leases `ActiveRecord::Base`'s
+  // connection (test/support/hub-schema.ts says why the hub tests never
+  // migrate here), so `rollback()` would revert the hub's migration against
+  // SQLite. The row is what the check reads, and it is put back after.
+  it("goes red on the hub head alone when its last migration did not run", async () => {
+    setEnv("HUB_DATABASE_URL", hubTestUrl()!);
+    const head = (sql: string) => Hub.connectionPool().withConnection((c) => c.execute(sql));
+    await head(`DELETE FROM schema_migrations WHERE version = '${HUB_HEAD}'`);
+    try {
+      const { status, body } = await getJson("ready");
+
+      expect(status).toBe(503);
+      expect(body.failing).toEqual(["hub_migrations"]);
+      expect(body.checks.migrations.ok).toBe(true);
+      expect(body.checks.hub_migrations).toEqual({
+        ok: false,
+        expected: HUB_HEAD,
+        actual: HUB_PREVIOUS,
+        error: `schema_migrations is at ${HUB_PREVIOUS}, and db/hub-migrate expects ${HUB_HEAD}: a migration did not run`,
+      });
+    } finally {
+      await head(`INSERT INTO schema_migrations (version) VALUES ('${HUB_HEAD}')`);
+      setEnv("HUB_DATABASE_URL", undefined);
+    }
   });
 });
 

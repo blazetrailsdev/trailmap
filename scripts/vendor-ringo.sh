@@ -212,6 +212,71 @@ mkdir -p "$out/parity"
 show go.mod > "$out/parity/go.mod"
 show go.sum > "$out/parity/go.sum"
 
+# The names parity.go takes from the rest of ringo's webhook package, which is
+# not vendored — GENERATED here rather than hand-written under scripts/, so the
+# gate runs ringo's code and not a copy someone has to keep in step.
+#
+# What parity.go needs is asked of the compiler, not read off a list: built
+# alone, every package-level name it uses and does not define is an
+# `undefined:` error. Each one must be in `borrowed` (extracted verbatim from
+# wherever ringo defines it) or `placeholder` (stubbed, with the reason in the
+# file); anything else fails this run by name, at the pin bump that introduced
+# it, instead of as a Go error in CI later.
+borrowed="envOr"
+placeholder="parityHTML"
+shimWork=$(mktemp -d)
+trap 'rm -rf "$shimWork"' EXIT
+mkdir -p "$shimWork/webhook"
+cp "$out/parity/go.mod" "$out/parity/go.sum" "$shimWork/"
+show webhook/parity.go > "$shimWork/webhook/parity.go"
+undefined=$(cd "$shimWork" && go build -mod=mod -gcflags=-e ./webhook 2>&1 |
+  grep -oE 'undefined: [A-Za-z_][A-Za-z0-9_]*' | sed 's/^undefined: //' | LC_ALL=C sort -u || true)
+for name in $undefined; do
+  case " $borrowed $placeholder " in
+    *" $name "*) ;;
+    *) echo "webhook/parity.go uses $name, which is defined elsewhere in ringo's webhook package and neither extracted nor stubbed — add it to vendor-ringo.sh's borrowed or placeholder list" >&2; exit 1 ;;
+  esac
+done
+shim="$out/parity/shim.go"
+# The bodies first, then the imports they use: each import of a defining file
+# whose package name the extracted bodies spell as `name.`. ringo's envOr
+# reached for strings.TrimSpace once already; a fixed import line would have
+# turned that into a compile error rather than following it.
+bodies="" imports=""
+for name in $borrowed; do
+  def=$(git -C "$src" grep -l "^func $name(" "$commit" -- 'webhook/*.go' ':!*_test.go' | sed -n "1s/^$commit://p")
+  [ -n "$def" ] || { echo "no func $name in ringo's webhook package at $commit" >&2; exit 1; }
+  file=$(show "$def")
+  # No early `exit` in these readers: under pipefail a writer cut off by
+  # one dies of SIGPIPE, and `set -e` ends the run with no message.
+  body=$(awk -v start="^func $name[(]" '$0 ~ start && !done { on = 1 } on { print } on && /^}$/ { on = 0; done = 1 }' <<<"$file")
+  bodies+=$'\n'"// $def"$'\n'"$body"$'\n'
+  imports+=$(awk '/^import \(/ { on = 1; next } on && /^\)/ { on = 0 } on' <<<"$file" | grep -oE '"[^"]+"')$'\n'
+done
+used=""
+for path in $(printf '%s\n' "$imports" | LC_ALL=C sort -u); do
+  pkg=${path//\"/}; pkg=${pkg##*/}
+  if grep -q "\b$pkg\." <<<"$bodies"; then used+="	$path"$'\n'; fi
+done
+{
+  header "the names webhook/parity.go takes from the rest of package webhook"
+  echo '//'
+  echo '// Each function below is ringo'"'"'s own, extracted verbatim. parityHTML is a'
+  echo '// PLACEHOLDER: it is the page HandleParityPage prints, which the parity gate'
+  echo '// never calls, and the real one is a Go string that cannot be carried whole.'
+  echo 'package webhook'
+  echo
+  if [ -n "$used" ]; then printf 'import (\n%s)\n' "$used"; fi
+  printf '%s' "$bodies"
+  echo
+  echo 'const parityHTML = ""'
+} > "$shim"
+cp "$shim" "$shimWork/webhook/"
+(cd "$shimWork" && go build -mod=mod ./webhook) ||
+  { echo "webhook/parity.go does not compile against the generated $shim" >&2; exit 1; }
+rm -rf "$shimWork"
+trap - EXIT
+
 printf '%s\n' "$commit" > "$out/PIN"
 (cd "$out" && { echo rfcs-draw.js; echo backlog-draw.js; echo parity.css; echo parity-draw.js; echo core.wasm; find go db parity -type f | LC_ALL=C sort; } | xargs sha256sum) > "$out/SHA256"
 echo "vendored ringo $commit -> $out"

@@ -1,5 +1,6 @@
 import { env } from "@blazetrails/ruby-compat";
 import { Hub } from "../../app/models/hub.ts";
+import { HUB_MIGRATIONS_PATH } from "../../config/database.ts";
 import { loadHubSchemas } from "../../app/models/index.ts";
 import { Setting } from "../../app/models/setting.ts";
 
@@ -98,7 +99,9 @@ export async function connectHubTestDatabase(): Promise<void> {
   // `pool: 1` is load-bearing, not tidiness: the advisory lock below is
   // SESSION-scoped, so taking it on one pooled connection and releasing it on
   // another would leak it and hang the next test file.
-  await Hub.establishConnection({ adapter: "postgresql", url, pool: 1 });
+  // `migrationsPaths` as `hubDatabaseConfig()` passes it, so the pool's
+  // `MigrationContext` lists `db/hub-migrate` here as it does when serving.
+  await Hub.establishConnection({ adapter: "postgresql", url, pool: 1, migrationsPaths: HUB_MIGRATIONS_PATH });
 
   const present = new Set(await Hub.connectionPool().withConnection((c) => c.tables()));
   const missing = HUB_TABLES.filter((table) => !present.has(table));

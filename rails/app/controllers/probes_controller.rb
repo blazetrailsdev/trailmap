@@ -19,6 +19,7 @@ class ProbesController < ApiController
       database: database,
       stories: check_stories(database),
       migrations: check { check_migrations },
+      hub_migrations: check { check_hub_migrations },
       checkout: check { check_checkout },
       git_identity: check { check_git_identity }
     }
@@ -61,12 +62,28 @@ class ProbesController < ApiController
   end
 
   # The path must still exist: an open connection reads an unlinked inode.
+  # Exists, is the file the connection opened (TasksDatabase.identity, recorded
+  # at boot), and answers a count. Without a recorded identity the second
+  # question degrades to the first, and `identity` says so.
   def check_database
     file = ENV["TASKS_DATABASE"].to_s.strip
-    if file.present? && !File.exist?(file)
-      return { ok: false, error: "#{file} is gone: the open connection is reading a file nothing else can see" }
+    identity = nil
+    if file.present?
+      unless File.exist?(file)
+        return { ok: false, error: "#{file} is gone: the open connection is reading a file nothing else can see" }
+      end
+      opened = TasksDatabase.identity
+      if opened.nil? || opened[:path] != file
+        identity = "unchecked: no dev/ino was recorded for this file, so only its existence was"
+      else
+        now = File.stat(file)
+        if now.dev != opened[:dev] || now.ino != opened[:ino]
+          return { ok: false, error: "#{file} was replaced: the connection opened dev #{opened[:dev]} ino #{opened[:ino]}, " \
+                                     "and the path is now dev #{now.dev} ino #{now.ino}" }
+        end
+      end
     end
-    { ok: true, stories: Story.count }
+    { ok: true, **(identity ? { identity: identity } : {}), stories: Story.count }
   end
 
   def check_stories(database)
@@ -78,17 +95,28 @@ class ProbesController < ApiController
   # The head db/migrate expects against schema_migrations, for EQUALITY: the
   # tasks CLI migrates this file too, so it can be ahead.
   def check_migrations
-    context = Story.connection_pool.migration_context
+    head_check(Story.connection_pool.migration_context, "db/migrate")
+  end
+
+  # The hub's head against db/hub_migrate. Skipped, green, when no hub URL is
+  # configured — only a test process can serve without one.
+  def check_hub_migrations
+    return { ok: true, skipped: "HUB_DATABASE_URL is not set" } if Hub.connection_db_config.database.blank?
+    head_check(Hub.connection_pool.migration_context, "db/hub-migrate")
+  end
+
+  # `dir` is the trails spelling, db/hub-migrate, so both apps answer the same
+  # body; DEVIATIONS.md has the directory names.
+  def head_check(context, dir)
     expected = context.migrations.last&.version
     actual = context.current_version.nonzero?
     versions = { expected: expected, actual: actual }
     return { ok: false, **versions, error: "no migrations found under #{context.migrations_paths.join(', ')}" } if expected.nil?
     return { ok: true, **versions } if actual == expected
     why = actual && actual > expected ? "the database is ahead of this release" : "a migration did not run"
-    { ok: false, **versions, error: "schema_migrations is at #{actual || 'no version'}, and db/migrate expects #{expected}: #{why}" }
+    { ok: false, **versions, error: "schema_migrations is at #{actual || 'no version'}, and #{dir} expects #{expected}: #{why}" }
   end
 
-  # How old an orphaned `.up-ready-*` directory must be before it is swept.
   PROBE_SWEEP_AGE = 5.minutes
 
   # Writable is proven by writing an empty directory, which git cannot track.

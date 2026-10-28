@@ -226,6 +226,7 @@ Trails.application!.routes().draw(function () {
       // `pulse`, not `insights`: GitHub's Insights tab lands on /pulse.
       this.get("pulse", { to: "repo_insights#show" });
       this.get("settings", { to: "repo_settings#show" });
+      this.patch("settings", { to: "repo_settings#update" });
     });
   });
 });

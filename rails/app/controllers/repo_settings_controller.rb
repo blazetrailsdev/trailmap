@@ -1,5 +1,6 @@
 # `/:owner/:repo/settings` — the record, its feature switches and the
-# application settings with where each value comes from. Read-only.
+# application settings with where each value comes from. `update` writes the
+# switches; the global settings are not writable from a repository's page.
 class RepoSettingsController < RepoController
   self.tab = "settings"
 
@@ -20,5 +21,19 @@ class RepoSettingsController < RepoController
     @collaborators = StableSort.sort(collaborators) { |a, b| LocaleCompare.compare(a.login, b.login) }
     @has_switches = !row.nil?
     @switches = RepositorySetting::OPTIONAL_TABS.map { |t| Switch.new(tab: t, enabled: row.nil? || row.enabled?(t)) }
+    @form = row || RepositorySetting.new(repository_id: @repo.id)
+  end
+
+  def update
+    row = @repo.settings || @repo.build_settings
+    row.update!(switch_params)
+    redirect_to "/#{@repo.name_with_owner}/settings", status: :see_other
+  end
+
+  private
+
+  # Exactly the six switches: repository_id and id are never assignable.
+  def switch_params
+    params.require(:repository_setting).permit(*RepositorySetting::OPTIONAL_TABS.map { |t| "#{t}_enabled" })
   end
 end

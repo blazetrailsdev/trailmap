@@ -1,7 +1,15 @@
 import { env, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
 import { ApiController } from "./api-controller.ts";
+import type { MigrationContext } from "@blazetrails/activerecord";
 import { Story } from "../models/index.ts";
-import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.ts";
+import { Hub } from "../models/hub.ts";
+import {
+  HUB_MIGRATIONS_PATH,
+  hasHubDatabase,
+  hasTasksDatabase,
+  tasksDatabaseConfig,
+  tasksDatabaseIdentity,
+} from "../../config/database.ts";
 import { tasksContentDir } from "../../config/tasks-content.ts";
 
 /** One check's verdict. `error` is present exactly when `ok` is false. */
@@ -48,6 +56,7 @@ export class ProbesController extends ApiController {
       database,
       stories: this.checkStories(database),
       migrations: await this.check(() => this.checkMigrations()),
+      hub_migrations: await this.check(() => this.checkHubMigrations()),
       checkout: await this.check(() => this.checkCheckout()),
       git_identity: await this.check(() => this.checkGitIdentity()),
     };
@@ -141,21 +150,46 @@ export class ProbesController extends ApiController {
   }
 
   /**
-   * Two questions, because the count alone cannot answer the first: the pool
-   * holds the file open, so a `tasks.db` that was moved aside or deleted after
-   * boot keeps answering queries from the unlinked inode — green, and reading a
-   * database the CLI and ringo no longer write. So the path `TASKS_DATABASE`
-   * names has to still be there, and then a count, the cheapest query that
-   * reads a real table, has to succeed.
+   * Three questions, because the count alone cannot answer the first two: the
+   * pool holds the file open, so a `tasks.db` moved aside or deleted after
+   * boot keeps answering queries from the unlinked inode — green, and reading
+   * a database the CLI and ringo no longer write.
+   *
+   * - The path `TASKS_DATABASE` names has to still be there.
+   * - It has to be the SAME file the connection opened. A restore, a
+   *   re-import or `cutover-import.sh` puts a different file at the path, so
+   *   existence alone stays green while the connection reads the old inode.
+   *   `connectToTasksDatabase` records the path's `dev`/`ino` once the
+   *   connection has opened it (`tasksDatabaseIdentity`), and this compares
+   *   the path's identity now against that record.
+   * - A count, the cheapest query that reads a real table, has to succeed.
+   *
+   * Where no identity was recorded — the filesystem adapter reports no `ino`,
+   * or the connection was not made by `connectToTasksDatabase` — the second
+   * question degrades to the first, and the body says so in `identity`.
    */
   private async checkDatabase(): Promise<Check> {
+    let identity: string | undefined;
     if (hasTasksDatabase()) {
       const file = String(tasksDatabaseConfig().database);
-      if (!(await getFs().exists(file))) {
+      const fs = getFs();
+      if (!(await fs.exists(file))) {
         return { ok: false, error: `${file} is gone: the open connection is reading a file nothing else can see` };
       }
+      const opened = tasksDatabaseIdentity();
+      const now = opened !== null && opened.path === file && fs.stat ? await fs.stat(file) : null;
+      if (opened === null || now === null || now.ino === undefined) {
+        identity = "unchecked: no dev/ino was recorded for this file, so only its existence was";
+      } else if (now.dev !== opened.dev || now.ino !== opened.ino) {
+        return {
+          ok: false,
+          error:
+            `${file} was replaced: the connection opened dev ${opened.dev} ino ${opened.ino}, ` +
+            `and the path is now dev ${now.dev} ino ${now.ino}`,
+        };
+      }
     }
-    return { ok: true, stories: await Story.count() };
+    return { ok: true, ...(identity ? { identity } : {}), stories: await Story.count() };
   }
 
   /**
@@ -199,26 +233,29 @@ export class ProbesController extends ApiController {
    * redeployed, and that is the same wrong-columns failure from the other side.
    *
    * It asks `Story`'s pool, so it is the database the queue is read from. The
-   * hub has its own history (`db/hub-migrate`) and its own guard at boot.
+   * hub has its own history (`db/hub-migrate`), and `hub_migrations` below.
    */
   private async checkMigrations(): Promise<Check> {
-    const context = Story.connectionPool().migrationContext;
-    const expected = context.migrations.at(-1)?.version ?? null;
-    const actual = (await context.currentVersion()) || null;
-    const versions = { expected, actual };
-    if (expected === null) {
-      return { ok: false, ...versions, error: `no migrations found under ${context.migrationsPaths}` };
-    }
-    if (actual === expected) return { ok: true, ...versions };
-    return {
-      ok: false,
-      ...versions,
-      error:
-        `schema_migrations is at ${actual ?? "no version"}, and db/migrate expects ${expected}: ` +
-        (actual !== null && actual > expected
-          ? "the database is ahead of this release"
-          : "a migration did not run"),
-    };
+    return headCheck(Story.connectionPool().migrationContext, "db/migrate");
+  }
+
+  /**
+   * The same comparison for the hub: Postgres's `schema_migrations` against
+   * the last file under `db/hub-migrate`. `Hub`'s pool carries that path
+   * (`hubDatabaseConfig()`), so its `MigrationContext` lists the hub's
+   * history and not the task domain's. The boot guard
+   * (config/initializers/hub-database.ts) only sees a hub with NO schema;
+   * this sees one a migration behind, or ahead.
+   *
+   * With `HUB_DATABASE_URL` unset it is SKIPPED, green with a `skipped`
+   * reason, not red: outside `test` that process never booted (the hub
+   * initializer refuses it), so the only process that can answer this way is
+   * one that legitimately has no hub. Production cannot reach the green
+   * branch, and `scripts/smoke-prod.sh` fails a `skipped` answer anyway.
+   */
+  private async checkHubMigrations(): Promise<Check> {
+    if (!hasHubDatabase()) return { ok: true, skipped: "HUB_DATABASE_URL is not set" };
+    return headCheck(Hub.connectionPool().migrationContext, HUB_MIGRATIONS_PATH);
   }
 
   /**
@@ -309,4 +346,28 @@ export class ProbesController extends ApiController {
     }
     return { ok: true };
   }
+}
+
+/**
+ * One database's migration head against the last file its history holds,
+ * compared for EQUALITY (see `checkMigrations`). `dir` names the directory in
+ * the error, so a red check says which of the two histories is out of step.
+ */
+async function headCheck(context: MigrationContext, dir: string): Promise<Check> {
+  const expected = context.migrations.at(-1)?.version ?? null;
+  const actual = (await context.currentVersion()) || null;
+  const versions = { expected, actual };
+  if (expected === null) {
+    return { ok: false, ...versions, error: `no migrations found under ${context.migrationsPaths}` };
+  }
+  if (actual === expected) return { ok: true, ...versions };
+  return {
+    ok: false,
+    ...versions,
+    error:
+      `schema_migrations is at ${actual ?? "no version"}, and ${dir} expects ${expected}: ` +
+      (actual !== null && actual > expected
+        ? "the database is ahead of this release"
+        : "a migration did not run"),
+  };
 }
