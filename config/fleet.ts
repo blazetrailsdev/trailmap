@@ -134,6 +134,7 @@ export const FLEET_CONTROLS: readonly string[] = [
   "drain",
   "drain-one",
   "poke-stalled",
+  "cancel-cleanup",
   "ask/answer",
   "reviewer/drain-codex",
   "reviewer/drain-claude",

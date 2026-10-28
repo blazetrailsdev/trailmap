@@ -23,7 +23,7 @@ module Fleet
   CONTROLS = %w[
     spawn merge-pr spawnloop/dismiss spawnloop/dismiss-failed spawnloop/config spawnloop/skip
     spawnloop/spawn-now ci-fixer/spawn reviewer/assign worker/spawn broadcast drain drain-one
-    poke-stalled ask/answer reviewer/drain-codex reviewer/drain-claude pause refresh-usage
+    poke-stalled cancel-cleanup ask/answer reviewer/drain-codex reviewer/drain-claude pause refresh-usage
   ].freeze
 
   SCREEN_HASH_MAX = 128
