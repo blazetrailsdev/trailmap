@@ -1,5 +1,4 @@
 import { ApplicationRecord } from "./application-record.ts";
-import { pinTimestampColumns } from "./timestamps.ts";
 import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 import { closedRfcErrors } from "./concerns/semantic-validation.ts";
 import type { Story } from "./story.ts";
@@ -50,12 +49,6 @@ export class Rfc extends ApplicationRecord {
   declare static closed: () => Relation<Rfc>;
 
   static {
-    // Same trap as Story's `updated_on` — see the comment there. `created_on`
-    // and `updated_on` are markdown's date-only `created:`/`updated:` fields;
-    // `created_at`/`updated_at` are the real row timestamps (and NOT NULL), so
-    // the touch has to keep those and let go of the other two.
-    pinTimestampColumns(this, { create: ["created_at", "updated_at"], update: ["updated_at"] });
-
     this.hasMany("stories");
     for (const column of ["packages", "clusters", "related_rfcs"]) {
       this.serialize(column, { coder: JsonArray });
@@ -80,5 +73,19 @@ export class Rfc extends ApplicationRecord {
       },
       { on: "ingest" },
     );
+  }
+
+  /**
+   * `created_on`/`updated_on` are markdown's date-only `created:`/`updated:`
+   * fields; `created_at`/`updated_at` are the row timestamps. Hold both
+   * touches to the latter — the create touch fills any nil timestamp column,
+   * and an Rfc created without `created:` would get an instant there.
+   */
+  static override timestampAttributesForCreate(): string[] {
+    return ["created_at"];
+  }
+
+  static override timestampAttributesForUpdate(): string[] {
+    return ["updated_at"];
   }
 }

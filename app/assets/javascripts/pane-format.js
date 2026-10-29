@@ -68,7 +68,14 @@ export function screenStep(state, outcome, now = Date.now()) {
   if (body.exists === false) {
     return { state: { ...state, exited: true, unreachable: "", failure: "", updatedAt: now }, html: null };
   }
-  const next = { ...state, unreachable: "", failure: "", updatedAt: now, status: body.status || "" };
+  const next = {
+    ...state,
+    unreachable: "",
+    failure: "",
+    updatedAt: now,
+    status: body.status || "",
+    input: body.pane_input || "",
+  };
   if (body.unchanged || typeof body.html !== "string") return { state: next, html: null };
   next.cwd = body.cwd || "";
   next.lines = body.lines || 0;
@@ -100,7 +107,7 @@ export function worktreeName(cwd) {
 /** The header's status: the dashboard's dot, and the word beside it. '' once the pane is gone. */
 export function statusHtml(state) {
   if (state.exited || !state.updatedAt) return "";
-  return paneDot(state.status).trim() + " " + esc(state.status || "idle");
+  return paneDot(state.status, state.input).trim() + " " + esc(state.status || "idle");
 }
 
 export function updatedText(state, now = Date.now()) {

@@ -96,16 +96,16 @@ class SessionsController < ApplicationController
     return render(plain: problem, status: :bad_request) && nil if problem
     base = Setting.ringo_base
     return render(plain: "no ringo origin is configured", status: :service_unavailable) && nil if base.nil?
-    answer = Fleet::Relay.get("#{base}#{path}?p=#{ERB::Util.url_encode(p)}", timeout: ARCHIVE_FILE_TIMEOUT)
+    answer, body = Fleet::Relay.get_bounded("#{base}#{path}?p=#{ERB::Util.url_encode(p)}",
+                                            timeout: ARCHIVE_FILE_TIMEOUT, limit: ARCHIVE_FILE_MAX_BYTES)
     unless answer.is_a?(Net::HTTPSuccess)
       # ringo's refusals are one line of text; anything longer is a proxy's page.
-      text = answer.body.to_s.strip
+      text = body.to_s.strip
       code = answer.code.to_i
       render plain: text.empty? || text.length >= 500 ? "ringo answered #{code}" : text, status: code >= 400 ? code : 502
       return nil
     end
-    body = answer.body.to_s
-    if body.bytesize > ARCHIVE_FILE_MAX_BYTES
+    if body.nil?
       render plain: "larger than trailmap relays (#{ARCHIVE_FILE_MAX_BYTES >> 20} MiB); ringo serves it whole", status: 413
       return nil
     end

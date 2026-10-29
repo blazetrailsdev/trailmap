@@ -138,6 +138,18 @@ describe("the header", () => {
     expect(statusHtml({ ...shown(), status: "<b>" })).toContain("&lt;b&gt;");
   });
 
+  it("fills the dot of a suggested or draft pane from ringo's input text", () => {
+    const suggested = screenStep(initialState(), {
+      body: { ...SCREEN, status: "suggested", pane_input: "run <the> tests" },
+    }).state;
+    expect(statusHtml(suggested)).toContain("●");
+    expect(statusHtml(suggested)).toContain('title="suggested: run &lt;the&gt; tests"');
+    const draft = screenStep(initialState(), { body: { ...SCREEN, status: "draft", pane_input: "half a \"thought\"" } }).state;
+    expect(statusHtml(draft)).toContain("var(--accent)");
+    expect(statusHtml(draft)).toContain("●");
+    expect(statusHtml(draft)).toContain("draft: half a &quot;thought&quot;");
+  });
+
   it("shows no status before the first answer or after the pane has gone", () => {
     expect(statusHtml(initialState())).toBe("");
     expect(statusHtml({ ...shown(), exited: true })).toBe("");

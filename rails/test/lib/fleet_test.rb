@@ -25,6 +25,48 @@ class FleetLibTest < ActiveSupport::TestCase
     assert_match(/\Aringo is unreachable: /, error.plain)
   end
 
+  test "Relay.get_bounded stops reading once the body passes the limit" do
+    server = TCPServer.new("127.0.0.1", 0)
+    port = server.addr[1]
+    sent = 0
+    thread = Thread.new do
+      client = server.accept
+      client.gets("\r\n\r\n")
+      client.write("HTTP/1.1 200 OK\r\nContent-Length: #{64 << 20}\r\nConnection: close\r\n\r\n")
+      chunk = "x" * 16_384
+      begin
+        while sent < 64 << 20
+          client.write(chunk)
+          sent += chunk.bytesize
+        end
+      rescue SystemCallError, IOError
+        # The relay hung up early, which is the point.
+      end
+      client.close
+    end
+    response, body = Fleet::Relay.get_bounded("http://127.0.0.1:#{port}/x", timeout: 5, limit: 100_000)
+    thread.join
+    server.close
+    assert_equal "200", response.code
+    assert_nil body
+    assert_operator sent, :<, 64 << 20
+  end
+
+  test "Relay.get_bounded answers the whole body within the limit" do
+    server = TCPServer.new("127.0.0.1", 0)
+    port = server.addr[1]
+    thread = Thread.new do
+      client = server.accept
+      client.gets("\r\n\r\n")
+      client.write("HTTP/1.1 404 Not Found\r\nContent-Length: 2\r\nConnection: close\r\n\r\nno")
+      client.close
+    end
+    response, body = Fleet::Relay.get_bounded("http://127.0.0.1:#{port}/x", timeout: 5, limit: 2)
+    thread.join
+    server.close
+    assert_equal [ "404", "no" ], [ response.code, body ]
+  end
+
   test "SocketRelay.websocket? reads the upgrade headers" do
     assert Fleet::SocketRelay.websocket?(upgrade_env)
     assert_not Fleet::SocketRelay.websocket?({ "REQUEST_METHOD" => "GET", "HTTP_HOST" => "x" })

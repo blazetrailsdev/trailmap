@@ -286,8 +286,13 @@ describe("relayEvents, when the browser is slow or the fleet is quiet", () => {
     relayEvents(broken.socket, handshake, url, upstreamFeed.fetchEvents);
     relayEvents(healthy.socket, handshake, url, upstreamFeed.fetchEvents);
     await settle();
+    // `flush` catches the failed write, but its `finish` closes the socket,
+    // and that close can throw too: only the fan-out guard contains it.
     broken.socket.writeNonblock = () => {
       throw new Error("socket closed");
+    };
+    broken.socket.close = () => {
+      throw new Error("already closed");
     };
 
     upstreamFeed.feed("one");

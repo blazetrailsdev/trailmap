@@ -1,7 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "./schema.ts";
-import { pinTimestampColumns } from "../../app/models/timestamps.ts";
 import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
 
 beforeAll(async () => {
@@ -9,35 +8,12 @@ beforeAll(async () => {
   await loadModelSchemas();
 });
 
-interface PinnedModel {
-  _timestampAttributesForCreateInModel: string[];
-  _timestampAttributesForUpdateInModel: string[];
-  _allTimestampAttributesInModel: string[];
-  reloadSchemaFromCache?: () => void;
+interface TimestampedModel {
+  timestampAttributesForUpdateInModel(): string[];
+  allTimestampAttributesInModel(): string[];
 }
 
-describe("pinTimestampColumns", () => {
-  it("reports the pinned columns", () => {
-    const model = {} as PinnedModel;
-    pinTimestampColumns(model, { create: ["created_at", "updated_at"], update: ["updated_at"] });
-
-    expect(model._timestampAttributesForCreateInModel).toEqual(["created_at", "updated_at"]);
-    expect(model._timestampAttributesForUpdateInModel).toEqual(["updated_at"]);
-    expect(model._allTimestampAttributesInModel).toEqual(["created_at", "updated_at"]);
-  });
-
-  it("accepts and ignores the library's cache reset", () => {
-    // The whole point of the accessor: `reloadSchemaFromCache` nils these
-    // whenever column information is loaded, and a plain assignment therefore
-    // survives only until the first schema load.
-    const model = {} as PinnedModel;
-    pinTimestampColumns(model, { create: ["created_at"], update: ["updated_at"] });
-
-    (model as unknown as Record<string, unknown>)._timestampAttributesForUpdateInModel = null;
-
-    expect(model._timestampAttributesForUpdateInModel).toEqual(["updated_at"]);
-  });
-
+describe("timestamp touch", () => {
   it("keeps a save off the date-only updated_on column", async () => {
     // `updated_on` is markdown's date-only `updated:` field. A full instant
     // written there makes the read-model build an Invalid Date, which takes
@@ -65,11 +41,13 @@ describe("pinTimestampColumns", () => {
     Story.reloadSchemaFromCache();
     await Story.loadSchema();
 
-    // The cache is library-internal, so it is not on the public class type.
-    expect((Story as unknown as PinnedModel)._timestampAttributesForUpdateInModel).toEqual([
+    // The resolved list is a cache the reload resets; it must be rebuilt
+    // from the overridden statics, not the library's defaults.
+    expect((Story as unknown as TimestampedModel).timestampAttributesForUpdateInModel()).toEqual([
       "updated_at",
     ]);
-    expect((Rfc as unknown as PinnedModel)._timestampAttributesForUpdateInModel).toEqual([
+    expect((Rfc as unknown as TimestampedModel).allTimestampAttributesInModel()).toEqual([
+      "created_at",
       "updated_at",
     ]);
   });

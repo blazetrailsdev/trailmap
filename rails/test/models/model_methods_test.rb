@@ -238,6 +238,7 @@ class ModelMethodsTest < ActiveSupport::TestCase
     story = story!("held", rfc_id: "0008-t", updated_on: "2026-01-01")
     assert_equal [ "updated_at" ], Story.send(:timestamp_attributes_for_update)
     assert_equal [ "updated_at" ], Rfc.send(:timestamp_attributes_for_update)
+    assert_equal [ "created_at" ], Rfc.send(:timestamp_attributes_for_create)
     story.update!(title: "changed")
     rfc.update!(title: "changed")
     assert_equal "2026-01-01", story.reload.updated_on.to_s

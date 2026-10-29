@@ -18,7 +18,13 @@ class Rfc < ApplicationRecord
 
   # `created_on`/`updated_on` are markdown's date-only `created:`/`updated:`
   # fields. Rails' update timestamps are `updated_at` AND `updated_on`, so the
-  # touch must be held to the real row timestamp.
+  # touch must be held to the real row timestamp. The create touch fills any
+  # nil timestamp column, so an RFC without `created:` would get an instant.
+  def self.timestamp_attributes_for_create
+    [ "created_at" ]
+  end
+  private_class_method :timestamp_attributes_for_create
+
   def self.timestamp_attributes_for_update
     [ "updated_at" ]
   end
