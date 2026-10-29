@@ -278,6 +278,29 @@ describe("relayEvents, shared between viewers", () => {
 });
 
 describe("relayEvents, when the browser is slow or the fleet is quiet", () => {
+  it("still sends a frame to every other viewer when one viewer's socket throws", async () => {
+    const broken = recordedSocket();
+    const healthy = recordedSocket();
+    const upstreamFeed = fedUpstream();
+    const url = "http://ringo.test/events?throwing-viewer";
+    relayEvents(broken.socket, handshake, url, upstreamFeed.fetchEvents);
+    relayEvents(healthy.socket, handshake, url, upstreamFeed.fetchEvents);
+    await settle();
+    // `flush` catches the failed write, but its `finish` closes the socket,
+    // and that close can throw too: only the fan-out guard contains it.
+    broken.socket.writeNonblock = () => {
+      throw new Error("socket closed");
+    };
+    broken.socket.close = () => {
+      throw new Error("already closed");
+    };
+
+    upstreamFeed.feed("one");
+    await settle();
+
+    expect(healthy.frames().map(([, text]) => text)).toEqual(["one"]);
+  });
+
   it("keeps only the newest frame while the socket is backed up, and sends it on drain", async () => {
     const { socket, state, emit, frames } = recordedSocket();
     const upstreamFeed = fedUpstream();

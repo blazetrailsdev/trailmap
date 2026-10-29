@@ -48,20 +48,6 @@ export class Rfc extends ApplicationRecord {
   declare static active: () => Relation<Rfc>;
   declare static closed: () => Relation<Rfc>;
 
-  /**
-   * `created_on`/`updated_on` are markdown's date-only `created:`/`updated:`
-   * fields; `created_at`/`updated_at` are the row timestamps. Hold both
-   * touches to the latter — the create touch fills any nil timestamp column,
-   * and an Rfc created without `created:` would get an instant there.
-   */
-  static override timestampAttributesForCreate(): string[] {
-    return ["created_at"];
-  }
-
-  static override timestampAttributesForUpdate(): string[] {
-    return ["updated_at"];
-  }
-
   static {
     this.hasMany("stories");
     for (const column of ["packages", "clusters", "related_rfcs"]) {
@@ -87,5 +73,19 @@ export class Rfc extends ApplicationRecord {
       },
       { on: "ingest" },
     );
+  }
+
+  /**
+   * `created_on`/`updated_on` are markdown's date-only `created:`/`updated:`
+   * fields; `created_at`/`updated_at` are the row timestamps. Hold both
+   * touches to the latter — the create touch fills any nil timestamp column,
+   * and an Rfc created without `created:` would get an instant there.
+   */
+  static override timestampAttributesForCreate(): string[] {
+    return ["created_at"];
+  }
+
+  static override timestampAttributesForUpdate(): string[] {
+    return ["updated_at"];
   }
 }

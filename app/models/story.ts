@@ -90,16 +90,6 @@ export class Story extends ApplicationRecord {
   declare isClosed: () => boolean;
   declare isReady: () => boolean;
 
-  /**
-   * `updated_on` is markdown's date-only `updated:` field, but Rails' update
-   * timestamps are `updated_at` AND `updated_on`, so a save would stamp it with
-   * a full instant that readmodel's isoMidnight turns into an Invalid Date.
-   * Hold the touch to the real row timestamp, as Rails' own override does.
-   */
-  static override timestampAttributesForUpdate(): string[] {
-    return ["updated_at"];
-  }
-
   static {
     this.belongsTo("rfc");
     this.hasMany("storyDeps", { inverseOf: "story" });
@@ -143,6 +133,16 @@ export class Story extends ApplicationRecord {
     // Rails' `after_save :close_rfc_if_complete`. trails refuses a method NAME
     // here (a string is not a symbol), so the declaration delegates to it.
     this.afterSave((story: Story) => story.closeRfcIfComplete());
+  }
+
+  /**
+   * `updated_on` is markdown's date-only `updated:` field, but Rails' update
+   * timestamps are `updated_at` AND `updated_on`, so a save would stamp it with
+   * a full instant that readmodel's isoMidnight turns into an Invalid Date.
+   * Hold the touch to the real row timestamp, as Rails' own override does.
+   */
+  static override timestampAttributesForUpdate(): string[] {
+    return ["updated_at"];
   }
 
   /**

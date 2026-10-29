@@ -192,9 +192,14 @@ function subscribe(eventsUrl: string, fetchEvents: typeof fetch, viewer: Viewer)
     byUrl.set(eventsUrl, started);
     const fanOut = (frame: string): void => {
       started.latest = frame;
-      // A viewer's frame never throws: its flush catches a failed write and
-      // finishes that viewer alone.
-      for (const v of started.viewers) v.frame(frame);
+      // One viewer's closed socket must not cost the others this frame.
+      for (const v of started.viewers) {
+        try {
+          v.frame(frame);
+        } catch {
+          // That viewer's own close path removes it.
+        }
+      }
     };
     void pump(fanOut, eventsUrl, started.upstream, fetchEvents).finally(() => {
       // Gone before anyone else can join it: the next viewer starts afresh.
