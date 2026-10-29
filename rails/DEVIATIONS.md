@@ -58,15 +58,6 @@ whose RFC does not exist yet, which passes there and fails under Rails, whose
 suite boots the app (`test/models/ranking_test.rb` has the note). The CSRF
 defect above hides behind the same gap.
 
-### trails: `htmlEscape` drops U+FEFF
-
-trails' `htmlEscape` runs `Unicode.tidyBytes`, whose `scrub`
-(`packages/ruby-compat/src/string/scrub.ts:26`) decodes each UTF-8 sequence
-with a default `TextDecoder`, and a default decoder strips a byte-order mark.
-So a U+FEFF anywhere in escaped text vanishes; `ERB::Util.html_escape` keeps
-it, and so does ringo. `script/tandem` shows it on any transcript whose tool
-output carries one (a CI log does). `{ ignoreBOM: true }` there fixes it.
-
 ### trails: a concern's `before_action` method cannot be private
 
 `LoopbackOnly` here is a concern whose `require_loopback` is `private`, and
