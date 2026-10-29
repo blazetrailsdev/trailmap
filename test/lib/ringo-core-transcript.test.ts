@@ -17,4 +17,13 @@ describe("parseTranscript", () => {
     expect(tr.Turns![0]!.Steps![0]!.Tool).toMatchObject({ Name: "Read", Summary: "x.ts", Output: "ok" });
     expect(tr.ToolCounts).toEqual({ Read: 1 });
   });
+
+  it("skips a line past 4 MiB, counts it, and reads on", async () => {
+    const huge = `{"type":"user","message":{"content":"${"x".repeat(4 << 20)}"}}`;
+    const tr = await parseTranscript(
+      new TextEncoder().encode([`{"type":"user","message":{"content":"first"}}`, huge, `{"type":"user","message":{"content":"second"}}`].join("\n")),
+    );
+    expect(tr.Oversized).toBe(1);
+    expect(tr.Turns!.map((t) => t.Prompt)).toEqual(["first", "second"]);
+  });
 });

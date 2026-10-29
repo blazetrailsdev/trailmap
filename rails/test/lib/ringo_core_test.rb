@@ -14,6 +14,13 @@ class RingoCoreTest < ActiveSupport::TestCase
     assert_equal [ "hi" ], tr["Turns"].map { |t| t["Prompt"] }
   end
 
+  test "parse_transcript skips a line past 4 MiB, counts it, and reads on" do
+    huge = %({"type":"user","message":{"content":"#{"x" * (4 << 20)}"}})
+    tr = RingoCore.parse_transcript([ %({"type":"user","message":{"content":"first"}}), huge, %({"type":"user","message":{"content":"second"}}) ].join("\n"))
+    assert_equal 1, tr["Oversized"]
+    assert_equal [ "first", "second" ], tr["Turns"].map { |t| t["Prompt"] }
+  end
+
   test "run raises core's own message on a bad mode" do
     error = assert_raises(RingoCore::Error) { RingoCore.run([ "nope" ], "") }
     assert_includes error.message, "unknown mode: nope"

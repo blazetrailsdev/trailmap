@@ -301,6 +301,8 @@ export interface Transcript {
   Errors: number;
   Cost: number;
   Skipped: number;
+  /** Lines past ringo's 4 MiB line bound, skipped whole. */
+  Oversized: number;
   Truncated: boolean;
 }
 
