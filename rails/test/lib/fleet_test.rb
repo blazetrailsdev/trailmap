@@ -67,6 +67,22 @@ class FleetLibTest < ActiveSupport::TestCase
     assert_equal [ "404", "no" ], [ response.code, body ]
   end
 
+  test "Relay.get_tail keeps the last bytes and counts them all" do
+    server = TCPServer.new("127.0.0.1", 0)
+    port = server.addr[1]
+    thread = Thread.new do
+      client = server.accept
+      client.gets("\r\n\r\n")
+      body = "#{"x" * 300_000}THE END"
+      client.write("HTTP/1.1 200 OK\r\nContent-Length: #{body.bytesize}\r\nConnection: close\r\n\r\n#{body}")
+      client.close
+    end
+    response, tail, total = Fleet::Relay.get_tail("http://127.0.0.1:#{port}/x", timeout: 5, limit: 10)
+    thread.join
+    server.close
+    assert_equal [ "200", "xxxTHE END", 300_007 ], [ response.code, tail, total ]
+  end
+
   test "SocketRelay.websocket? reads the upgrade headers" do
     assert Fleet::SocketRelay.websocket?(upgrade_env)
     assert_not Fleet::SocketRelay.websocket?({ "REQUEST_METHOD" => "GET", "HTTP_HOST" => "x" })
