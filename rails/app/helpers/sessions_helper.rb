@@ -60,7 +60,7 @@ module SessionsHelper
   def tool_dur(ms)
     return "" if ms <= 0
     return "#{ms.to_i}ms" if ms < 1000
-    return format("%.1fs", (ms.to_r / 1000).round(1)) if ms < 60_000
+    return format("%.1fs", (ms / 1000.0).to_r.round(1)) if ms < 60_000
     format("%dm%02ds", ms.to_i / 60_000, (ms.to_i / 1000) % 60)
   end
 

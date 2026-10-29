@@ -18,6 +18,7 @@ import { computeAssetPath, javascriptPath, stylesheetPath } from "@blazetrails/a
 /** A view as development has it: no manifest, so `/assets` + the default path. */
 const development = {
   computeAssetPath: (source: string, options: object) => `/assets${computeAssetPath(source, options)}`,
+  publicComputeAssetPath: computeAssetPath,
 };
 
 async function linkedAssets(): Promise<string[]> {

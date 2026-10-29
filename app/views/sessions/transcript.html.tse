@@ -85,9 +85,9 @@
               </div>
               <% if (c.Input) { %><pre class="tx-io"><%= clip(c.Input, 8000) %></pre><% } %>
               <% if (c.Unpaired) { %>
-                <div class="tx-io out empty">no result — the session ended before this call returned</div>
+                <div class="tx-io out tx-none">no result — the session ended before this call returned</div>
               <% } else if (c.Output.trim() === "") { %>
-                <div class="tx-io out empty">(no output)</div>
+                <div class="tx-io out tx-none">(no output)</div>
               <% } else { %>
                 <% const out = clip(c.Output, 200 << 10); %>
                 <% if (byteLength(out) <= 1200) { %>
