@@ -34,4 +34,49 @@ class SessionsHelperTest < ActionView::TestCase
     assert_equal "—", or_dash(nil)
     assert_equal "main", or_dash("main")
   end
+
+  test "clock" do
+    assert_equal "14:00:01", clock("2026-08-26T14:00:01.123Z")
+    assert_equal "", clock("0001-01-01T00:00:00Z")
+  end
+
+  test "call_ms" do
+    call = { "StartedAt" => "2026-08-26T14:00:00Z", "EndedAt" => "2026-08-26T14:00:12.5Z" }
+    assert_equal 12_500, call_ms(call)
+    assert_equal 0, call_ms(call.merge("EndedAt" => "0001-01-01T00:00:00Z"))
+    assert_equal 0, call_ms(call.merge("EndedAt" => "2026-08-26T13:59:00Z"))
+  end
+
+  test "wall_ms" do
+    assert_equal 3_600_000, wall_ms({ "FirstAt" => "2026-08-26T14:00:00Z", "LastAt" => "2026-08-26T15:00:00Z" })
+  end
+
+  test "tool_dur" do
+    assert_equal "", tool_dur(0)
+    assert_equal "30ms", tool_dur(30)
+    assert_equal "1.5s", tool_dur(1500)
+    assert_equal "1.6s", tool_dur(1650)
+    assert_equal "10m00s", tool_dur(600_000)
+  end
+
+  test "clip" do
+    assert_equal "short", clip("short", 10)
+    assert_equal "abcd\n… clipped, 2 B more", clip("abcdef", 4)
+  end
+
+  test "first_line" do
+    assert_equal "one", first_line("  one  ")
+    assert_equal "one …", first_line("one\ntwo")
+    assert_equal "#{"x" * 96} …", first_line("x" * 100)
+  end
+
+  test "plural" do
+    assert_equal "prompt", plural(1, "prompt", "prompts")
+    assert_equal "prompts", plural(2, "prompt", "prompts")
+  end
+
+  test "reviewed_from" do
+    assert reviewed_from("/w/trails-reviews/pr-9430")
+    assert_not reviewed_from("/w/trails")
+  end
 end

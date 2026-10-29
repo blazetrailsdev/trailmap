@@ -44,6 +44,22 @@ module Fleet
       [ response, over ? nil : body ]
     end
 
+    # The LAST `limit` bytes of the body, read to the end, as ringo's pane view
+    # keeps them: [response, tail, total bytes the body carried].
+    def get_tail(url, timeout:, limit:)
+      tail = +""
+      total = 0
+      response = request(Net::HTTP::Get.new(URI(url)), timeout: timeout) do |res|
+        res.read_body do |chunk|
+          total += chunk.bytesize
+          tail << chunk
+          tail = tail.byteslice(-limit, limit) if tail.bytesize > 2 * limit
+        end
+      end
+      tail = tail.byteslice(-limit, limit) if tail.bytesize > limit
+      [ response, tail, total ]
+    end
+
     def post(url, body:, content_type:, timeout:)
       req = Net::HTTP::Post.new(URI(url))
       req.body = body unless body.to_s.empty?

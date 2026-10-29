@@ -10,6 +10,15 @@ import { PANE_VIEW_MAX_BYTES, SessionsController } from "../../app/controllers/s
 import { archivePathProblem } from "../../lib/archive-read.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
+/** A prompt, one Bash call answered 12 s later with markup in its output, and a reply. */
+const TRANSCRIPT = [
+  `{"type":"user","timestamp":"2026-08-26T14:00:00Z","sessionId":"0123456789abcdef","cwd":"/w/trails","message":{"role":"user","content":"port <the> thing"}}`,
+  `{"type":"assistant","timestamp":"2026-08-26T14:00:01Z","message":{"role":"assistant","model":"claude-opus-5","content":[{"type":"tool_use","id":"tu_1","name":"Bash","input":{"command":"ls","description":"List files"}}]}}`,
+  `{"type":"user","timestamp":"2026-08-26T14:00:13Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu_1","content":"<script>x</script>"}]}}`,
+  `{"type":"assistant","timestamp":"2026-08-26T14:01:30Z","message":{"role":"assistant","content":[{"type":"text","text":"done"}]}}`,
+  `{"type":"attachment","timestamp":"2026-08-26T14:01:31Z"}`,
+].join("\n");
+
 const PANE_LOG = "plain \x1b[31mred <b>\x1b[0m\r\nsecond row\r\n";
 /** Bigger than the replay bound, ending in a line the tail must keep. */
 const BIG_LOG = `${"x".repeat(80)}\r\n`.repeat((PANE_VIEW_MAX_BYTES / 82) * 1.25) + "THE END\r\n";
@@ -31,9 +40,9 @@ beforeAll(async () => {
     } else if (url.pathname === "/sessions/file" && p === "trails/9001/big.log") {
       res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       res.end(BIG_LOG);
-    } else if (url.pathname === "/sessions/transcript" && p === "trails/9001/a.jsonl") {
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      res.end("<h1>fix arel</h1>");
+    } else if (url.pathname === "/sessions/file" && p === "trails/9001/a.jsonl") {
+      res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+      res.end(TRANSCRIPT);
     } else {
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       res.end("not found\n");
@@ -116,24 +125,37 @@ describe("SessionsController#file", () => {
 });
 
 describe("SessionsController#transcript", () => {
-  it("relays ringo's transcript page", async () => {
+  it("draws the session ringo's reader reads back", async () => {
     setEnv("RINGO_BASE", ringoBaseUrl);
 
     const response = await get("transcript", { p: "trails/9001/a.jsonl" });
+    const body = String(response.body);
 
     expect(response.status).toBe(200);
-    expect(response.body).toBe("<h1>fix arel</h1>");
-    expect(asked).toEqual(["/sessions/transcript?p=trails%2F9001%2Fa.jsonl"]);
+    expect(asked).toEqual(["/sessions/file?p=trails%2F9001%2Fa.jsonl"]);
+    expect(body).toContain("session 0123456789ab…");
+    expect(body).toContain('<div class="n">1m</div><div class="l">wall clock</div>');
+    expect(body).toContain("Tool mix");
+    expect(body).toContain("Where the time went");
+    expect(body).toContain("prompt 1 · 14:00:00");
+    expect(body).toContain("port &lt;the&gt; thing");
+    expect(body).toContain('<span class="tx-tool-sum">List files</span>');
+    expect(body).toContain("12.0s slow");
+    expect(body).toContain("&lt;script&gt;x&lt;/script&gt;");
+    expect(body).toContain("1 bookkeeping events");
   });
 
-  // ringo's HTML is served on trailmap's origin; whatever it fails to escape
-  // must not run there.
-  it("sandboxes the relayed page", async () => {
+  it("links only to pages trailmap serves", async () => {
     setEnv("RINGO_BASE", ringoBaseUrl);
 
-    const response = await get("transcript", { p: "trails/9001/a.jsonl" });
+    const body = String((await get("transcript", { p: "trails/9001/a.jsonl" })).body);
 
-    expect(response.getHeader("Content-Security-Policy")).toBe("sandbox");
+    // ringo's own page carried ringo's nav: /tasks, /velocity, /cost, /crons,
+    // /logs, none of them a trailmap route. The layout's nav is trailmap's.
+    const page = body.slice(body.indexOf('<main class="site-main">'));
+    const hrefs = [...page.matchAll(/href="([^"]+)"/g)].map(([, href]) => href);
+    expect(hrefs).toEqual(["/sessions/file?p=trails%2F9001%2Fa.jsonl"]);
+    expect(body).toContain('<nav class="nav">');
   });
 });
 

@@ -780,3 +780,42 @@ ul { margin: 0 0 10px 20px; }
 .deploy-log { flex-basis: 100%; }
 .deploy-log summary { cursor: pointer; color: var(--accent, inherit); }
 .deploy-log pre { max-height: 32em; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
+
+/* /sessions/transcript: ringo's transcript page (webhook/transcript_page.go),
+   its rules on this palette. Every step hangs off one rail under its prompt,
+   and a tool card holds the call AND its answer. */
+.tx-meta { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
+.tx-stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px; }
+.tx-stat { flex: 1 1 120px; border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px; background: var(--surface); }
+.tx-stat .n { font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+.tx-stat .n.err { color: var(--red); }
+.tx-stat .l { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.tx-mix { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.tx-bar { height: 8px; border-radius: 4px; background: var(--accent); min-width: 2px; }
+.tx-bar.slow { background: var(--yellow); }
+.tx-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 52ch; }
+.tx-turn { margin: 0 0 30px; }
+.tx-prompt { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; background: var(--surface); padding: 12px 14px; }
+.tx-who { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+.tx-body { white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.55; }
+.tx-prompt .tx-body { max-height: 20em; overflow-y: auto; }
+.tx-steps { margin: 0 0 0 18px; padding: 4px 0 0 20px; border-left: 1px solid var(--border); }
+.tx-step { position: relative; margin: 0 0 12px; min-width: 0; }
+.tx-step::before { content: ""; position: absolute; left: -25px; top: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--border); box-shadow: 0 0 0 3px var(--bg); }
+.tx-step.tool::before { background: var(--accent); }
+.tx-step.err::before { background: var(--red); }
+.tx-step.say::before { background: var(--green); }
+.tx-tool { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.tx-tool-head { display: flex; align-items: baseline; gap: 8px; padding: 7px 11px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.tx-tool-name { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 4px; background: var(--bg); border: 1px solid var(--border); color: var(--accent); white-space: nowrap; }
+.tx-tool-sum { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.tx-tool-meta { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tx-slow { color: var(--yellow); font-weight: 600; }
+.tx-io { margin: 0; padding: 9px 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.tx-io.out { color: var(--muted); border-top: 1px dashed var(--border); }
+.tx-io.out.err { color: var(--red); }
+.tx-io.tx-none { font-style: italic; }
+.tx-fold > summary, .tx-think > summary { cursor: pointer; padding: 6px 11px; font-size: 11.5px; color: var(--muted); }
+.tx-fold > summary { border-top: 1px dashed var(--border); }
+.tx-think { border: 1px dashed var(--border); border-radius: 6px; }
+.tx-think .tx-body { padding: 0 11px 10px; font-size: 12.5px; color: var(--muted); }

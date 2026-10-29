@@ -58,3 +58,5 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
 end
 gem "websocket-driver"
+
+gem "wasmtime", "~> 50.0"

@@ -1,0 +1,13 @@
+<div class="page-header">
+  <h1 class="page-title"><%= @name %></h1>
+  <div class="page-subhead">
+    <span class="muted"><%= human_bytes(@bytes.bytesize) %> of capture replayed to <%= @lines %> lines of scrollback. This is the pane's final screen state, not every frame: the agent redraws its UI in place, so intermediate repaints overwrite rather than stack — the same thing you would see scrolling back through the live pane.</span>
+    <a href="/sessions/file?p=<%= ERB::Util.url_encode(@p) %>">Download the raw capture</a>
+  </div>
+</div>
+
+<% if @total > @max_bytes %>
+  <div class="card ci-fixer paused">Capture is <%= human_bytes(@total) %> — showing the last <%= human_bytes(@max_bytes) %>. The download link above has the whole thing.</div>
+<% end %>
+
+<pre class="terminal"><%= @html.html_safe %></pre>
