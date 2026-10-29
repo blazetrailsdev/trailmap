@@ -25,6 +25,7 @@ export default defineConfig({
         application: entry("app/assets/stylesheets/application.css"),
         dashboard: entry("app/assets/javascripts/dashboard.js"),
         pane: entry("app/assets/javascripts/pane.js"),
+        deploys: entry("app/assets/javascripts/deploys.js"),
         // ringo's parity chart, from the pinned snapshot (scripts/vendor-ringo.sh).
         "ringo-parity-css": entry("vendor/ringo/parity.css"),
         "ringo-parity": entry("vendor/ringo/parity-draw.js"),
