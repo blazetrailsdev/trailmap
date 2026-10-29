@@ -3,7 +3,7 @@ import { ApplicationController } from "./application-controller.ts";
 import { Event, Rfc, Story } from "../models/index.ts";
 import { collectRfcMarks, markTitle, type MarkEvent } from "../models/concerns/rfc-marks.ts";
 import { readDocument } from "../models/concerns/document.ts";
-import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet } from "../models/rfc-status.ts";
+import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet, type RfcStatusMove } from "../models/rfc-status.ts";
 import { VerbExit } from "../models/verb-exit.ts";
 import { shownStoryStatus } from "../models/concerns/effective-status.ts";
 import {
@@ -290,7 +290,7 @@ export class RfcPagesController extends ApplicationController {
   private async renderPage(locals: Record<string, unknown>, status: number): Promise<void> {
     await this.render({
       action: "show",
-      locals: { body: null as SafeBuffer | null, error: "", moves: [], hasDrafts: false, ...locals },
+      locals: { body: null as SafeBuffer | null, error: "", moves: [] as RfcStatusMove[], hasDrafts: false, ...locals },
       status,
     });
   }
