@@ -3,6 +3,8 @@ import { ApplicationController } from "./application-controller.ts";
 import { Event, Rfc, Story } from "../models/index.ts";
 import { collectRfcMarks, markTitle, type MarkEvent } from "../models/concerns/rfc-marks.ts";
 import { readDocument } from "../models/concerns/document.ts";
+import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet } from "../models/rfc-status.ts";
+import { VerbExit } from "../models/verb-exit.ts";
 import { shownStoryStatus } from "../models/concerns/effective-status.ts";
 import {
   orderRfcsForIndex,
@@ -77,9 +79,10 @@ export interface RfcRow {
  * its own copy until this one is verified against it, so nothing here
  * replaces anything yet.
  *
- * What is deliberately NOT ported: the action buttons (refine, sunset, spawn
- * a batch), the refinements tab and the charts tab. Every one of them is
- * ringo's own local state or a write, and this story is the read.
+ * The lifecycle buttons — draft / ready / postpone / close, and "Mark drafts
+ * ready" — are ported (`status`, `readyDrafts`, app/models/rfc-status.ts).
+ * What is still NOT: refine, sunset, spawn a batch, the refinements tab and
+ * the charts tab, every one of them ringo's own local state or dispatch.
  *
  * A missing RFC renders the page with a 404 rather than an error page — same
  * as ringo, and it is what makes a stale link say which id it was looking for.
@@ -204,10 +207,50 @@ export class RfcPagesController extends ApplicationController {
   }
 
   async show(): Promise<void> {
+    await this.renderShow(String(this.params.get("id") ?? ""), null, 200);
+  }
+
+  /**
+   * `POST /rfc/<id>/status` — the lifecycle buttons, ringo's `HandleRFCStatus`.
+   * Only a move `rfcStatusMoves` offers is made, with ringo's 409 refusal;
+   * the rest of the rules and messages are the CLI's (`rfcStatusSet`).
+   *
+   * A move that lands redirects back to the page (303), so a reload does not
+   * repeat it. A refusal renders the page with the message, as ringo's
+   * button showed its error body.
+   */
+  async move(): Promise<void> {
     const id = String(this.params.get("id") ?? "");
+    const to = String(this.params.get("status") ?? "");
+    const rfc = await Rfc.findBy({ id });
+    if (rfc === null) return this.renderShow(id, null, 404);
+    if (!rfcStatusMoves(rfc.status).some((move) => move.to === to)) {
+      return this.renderShow(id, `rfc ${id} is "${rfc.status}"; cannot move it to "${to}"`, 409);
+    }
+    const reason = this.params.get("reason");
+    await this.mutate(id, () => rfcStatusSet(id, to, { reason: reason == null ? null : String(reason) }));
+  }
+
+  /** `POST /rfc/<id>/ready-drafts` — "Mark drafts ready", ringo's `HandleRFCReadyDrafts`. */
+  async readyDrafts(): Promise<void> {
+    const id = String(this.params.get("id") ?? "");
+    await this.mutate(id, () => rfcReadyDrafts(id));
+  }
+
+  private async mutate(id: string, body: () => Promise<unknown>): Promise<void> {
+    try {
+      await body();
+    } catch (error) {
+      if (!(error instanceof VerbExit)) throw error;
+      return this.renderShow(id, error.message, error.code === 1 ? 422 : 409);
+    }
+    this.redirectTo(`/rfc/${id}`, { status: 303 });
+  }
+
+  private async renderShow(id: string, refusal: string | null, code: number): Promise<void> {
     const rfc = id === "" ? null : await Rfc.findBy({ id });
     if (rfc === null) {
-      await this.renderPage({ id, rfc: null, stories: [], counts: null }, 404);
+      await this.renderPage({ id, rfc: null, stories: [], counts: null, refusal }, 404);
       return;
     }
 
@@ -235,15 +278,19 @@ export class RfcPagesController extends ApplicationController {
         counts: rfcStoryCounts(stories.map((story) => story.status)),
         body: doc.markdown === "" ? null : renderMarkdown(doc.markdown),
         error: doc.error,
+        moves: rfcStatusMoves(rfc.status),
+        hasDrafts: own.some((story) => story.status === "draft"),
+        refusal,
       },
-      200,
+      code,
     );
   }
 
   /** `/rfc/<id>`, or the same page carrying a not-found or error message. */
   private async renderPage(locals: Record<string, unknown>, status: number): Promise<void> {
     await this.render({
-      locals: { body: null as SafeBuffer | null, error: "", ...locals },
+      action: "show",
+      locals: { body: null as SafeBuffer | null, error: "", moves: [], hasDrafts: false, ...locals },
       status,
     });
   }

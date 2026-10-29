@@ -56,11 +56,46 @@ class RfcPagesController < ApplicationController
 
   # A missing RFC renders the page with a 404, naming the id.
   def show
-    @id = params[:id].to_s
+    render_show(params[:id].to_s, nil, :ok)
+  end
+
+  # `POST /rfc/<id>/status` — ringo's `HandleRFCStatus`: only a move
+  # `RfcStatus.moves` offers, then the CLI's rules (`RfcStatus.set`).
+  def move
+    id = params[:id].to_s
+    rfc = Rfc.find_by(id: id)
+    return render_show(id, nil, :not_found) if rfc.nil?
+    to = params[:status].to_s
+    unless RfcStatus.moves(rfc.status).any? { |m| m.to == to }
+      return render_show(id, %(rfc #{id} is "#{rfc.status}"; cannot move it to "#{to}"), :conflict)
+    end
+    mutate(id) { RfcStatus.set(id, to, reason: params[:reason]) }
+  end
+
+  # `POST /rfc/<id>/ready-drafts` — ringo's `HandleRFCReadyDrafts`.
+  def ready_drafts
+    id = params[:id].to_s
+    mutate(id) { RfcStatus.ready_drafts(id) }
+  end
+
+  private
+
+  def mutate(id)
+    yield
+    redirect_to "/rfc/#{id}", status: :see_other
+  rescue VerbExit => e
+    render_show(id, e.message, e.code == 1 ? :unprocessable_entity : :conflict)
+  end
+
+  def render_show(id, refusal, status)
+    @id = id
+    @refusal = refusal
+    @moves = []
+    @has_drafts = false
     @rfc = @id.empty? ? nil : Rfc.find_by(id: @id)
     @body = nil
     @error = ""
-    return render status: :not_found if @rfc.nil?
+    return render :show, status: :not_found if @rfc.nil?
 
     own = Story.where(rfc_id: @id).to_a
     held = Story.dep_held_ids(own.map(&:id))
@@ -73,5 +108,8 @@ class RfcPagesController < ApplicationController
     doc = Document.read(@rfc.file_path)
     @body = doc.markdown.empty? ? nil : helpers.render_markdown(doc.markdown)
     @error = doc.error
+    @moves = RfcStatus.moves(@rfc.status)
+    @has_drafts = own.any? { |s| s.status == "draft" }
+    render :show, status: status
   end
 end

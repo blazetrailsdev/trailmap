@@ -11,6 +11,10 @@
     </div>
   </div>
 
+  <% if @refusal %>
+    <p class="flash flash-error"><%= @refusal %></p>
+  <% end %>
+
   <div class="layout">
     <div>
       <% if @counts.total.positive? %>
@@ -47,6 +51,17 @@
     </div>
 
     <div class="side">
+      <% if @moves.any? || @has_drafts %>
+        <div class="side-section rfc-actions">
+          <div class="side-head">Lifecycle</div>
+          <% @moves.each do |move| %>
+            <%= button_to move.label, "/rfc/#{@rfc.id}/status", params: { status: move.to }, form: { "data-confirm": move.confirm }, class: "btn" %>
+          <% end %>
+          <% if @has_drafts %>
+            <%= button_to "Mark drafts ready", "/rfc/#{@rfc.id}/ready-drafts", form: { "data-confirm": "Mark every draft story under this RFC ready? All or nothing." }, class: "btn" %>
+          <% end %>
+        </div>
+      <% end %>
       <div class="side-section">
         <div class="side-head">Owner</div>
         <div class="side-value"><%= @rfc.owner.presence || "Nobody" %></div>
@@ -64,3 +79,4 @@
     </div>
   </div>
 <% end %>
+<script src="<%= javascript_path("rfc-actions") %>" type="module"></script>

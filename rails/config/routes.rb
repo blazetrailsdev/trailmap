@@ -38,6 +38,8 @@ Rails.application.routes.draw do
   get "search", to: "searches#show"
 
   get "rfc/:id", to: "rfc_pages#show", format: false
+  post "rfc/:id/status", to: "rfc_pages#move", format: false
+  post "rfc/:id/ready-drafts", to: "rfc_pages#ready_drafts", format: false
   get "story/:id", to: "story_pages#show", format: false
 
   # The loopback JSON API: its clients parse every answer as JSON.

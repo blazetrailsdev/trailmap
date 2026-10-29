@@ -11,6 +11,10 @@
     </div>
   </div>
 
+  <% if (refusal) { %>
+    <p class="flash flash-error"><%= refusal %></p>
+  <% } %>
+
   <div class="layout">
     <div>
       <% if (counts.total > 0) { %>
@@ -47,6 +51,17 @@
     </div>
 
     <div class="side">
+      <% if (moves.length > 0 || hasDrafts) { %>
+        <div class="side-section rfc-actions">
+          <div class="side-head">Lifecycle</div>
+          <% for (const move of moves) { %>
+            <%= buttonTo(move.label, `/rfc/${rfc.id}/status`, { params: { status: move.to }, form: { "data-confirm": move.confirm }, class: "btn" }) %>
+          <% } %>
+          <% if (hasDrafts) { %>
+            <%= buttonTo("Mark drafts ready", `/rfc/${rfc.id}/ready-drafts`, { form: { "data-confirm": "Mark every draft story under this RFC ready? All or nothing." }, class: "btn" }) %>
+          <% } %>
+        </div>
+      <% } %>
       <div class="side-section">
         <div class="side-head">Owner</div>
         <div class="side-value"><%= rfc.owner ? rfc.owner : "Nobody" %></div>
@@ -64,3 +79,4 @@
     </div>
   </div>
 <% } %>
+<script src="<%= javascriptPath("rfc-actions") %>" type="module"></script>

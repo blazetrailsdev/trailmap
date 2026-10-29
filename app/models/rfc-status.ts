@@ -1,0 +1,209 @@
+/**
+ * Move an RFC through its lifecycle — draft ⇄ active, or out to closed /
+ * postponed — and promote its draft stories in one batch.
+ *
+ * A port of the CLI's `tasks rfc-status` (tasks/src/rfc-status.ts), which
+ * ringo's RFC page shelled out to (`HandleRFCStatus`, btwebooks
+ * webhook/rfcs.go:1180). It is a MARKDOWN act: an RFC's `status:` is
+ * markdown-owned, so the frontmatter is rewritten, committed and pushed. The
+ * refusals and their messages are the CLI's, raised as `VerbExit`.
+ *
+ * INGEST is the row write and the `rfc-status` event. The CLI runs a full
+ * `ingest` after the commit, and what that projects from this commit is one
+ * RFC's `status` and `updated` — the two keys just written. trailmap has no
+ * port of ingest, so it writes exactly those two columns; the next ingest
+ * reads the same file and writes the same values, so nothing is reverted.
+ */
+import { Open3, getFs, getPath } from "@blazetrails/ruby-compat";
+import { tasksContentDir } from "../../config/tasks-content.ts";
+import { ApplicationRecord } from "./application-record.ts";
+import { Event } from "./event.ts";
+import { RFC_STATUSES, Rfc, type RfcStatus } from "./rfc.ts";
+import { Story } from "./story.ts";
+import { VerbExit } from "./verb-exit.ts";
+
+/**
+ * The transitions the CLI makes (`ALLOWED`, rfc-status.ts). `superseded` is
+ * absent: it needs a `superseded-by` target, an authoring decision. Reopening
+ * a closed RFC is a PR, not a button.
+ */
+const ALLOWED: Record<RfcStatus, readonly RfcStatus[]> = {
+  draft: ["active", "closed", "postponed"],
+  active: ["draft", "closed", "postponed"],
+  postponed: ["draft", "active", "closed"],
+  closed: [],
+  superseded: [],
+};
+
+const TERMINAL_STORY = new Set(["done", "closed"]);
+
+export interface RfcStatusMove {
+  to: RfcStatus;
+  label: string;
+  confirm: string;
+}
+
+const READY: RfcStatusMove = {
+  to: "active",
+  label: "Mark ready",
+  confirm: "Mark this RFC ready (active)? Its ready stories become pickable by the spawn loop.",
+};
+const DRAFT: RfcStatusMove = {
+  to: "draft",
+  label: "Back to draft",
+  confirm: "Move this RFC back to draft? Its stories stop being picked up.",
+};
+const POSTPONE: RfcStatusMove = {
+  to: "postponed",
+  label: "Postpone",
+  confirm: "Postpone this RFC? Its stories stop being picked up until it is made ready again.",
+};
+const CLOSE: RfcStatusMove = {
+  to: "closed",
+  label: "Close RFC",
+  confirm: "Close this RFC? Refused while any of its stories are unfinished — use Sunset for that.",
+};
+
+/** ringo's `rfcStatusMoves` (rfcs.go:1158): the buttons, in its order. */
+export function rfcStatusMoves(status: string): RfcStatusMove[] {
+  switch (status) {
+    case "draft":
+      return [READY, POSTPONE, CLOSE];
+    case "active":
+      return [DRAFT, POSTPONE, CLOSE];
+    case "postponed":
+      return [READY, DRAFT, CLOSE];
+  }
+  return [];
+}
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** `git <args>` in `dir`. Arguments reach the shell as variables, never spliced. */
+async function git(dir: string, ...args: string[]): Promise<string> {
+  const vars: Record<string, string> = { RFC_STATUS_DIR: dir };
+  args.forEach((arg, i) => (vars[`RFC_STATUS_ARG${i}`] = arg));
+  const argv = args.map((_, i) => `"$RFC_STATUS_ARG${i}"`).join(" ");
+  const [output, status] = await Open3.capture2e(vars, `git -C "$RFC_STATUS_DIR" ${argv}`);
+  if (!status.isSuccess()) throw new Error(`git ${args[0]}: ${output.trim()}`);
+  return output.trim();
+}
+
+/**
+ * The CLI's `editFrontmatter` for single-line scalar keys, refusing a key
+ * whose value is an indented list as it does.
+ */
+function editFrontmatter(text: string, rel: string, edits: Record<string, string>): string {
+  const m = /^(---\n)([\s\S]*?)(\n---\n)([\s\S]*)$/.exec(text);
+  if (!m) throw new VerbExit(1, `${rel} has no frontmatter block`);
+  const lines = m[2]!.split("\n");
+  for (const [key, value] of Object.entries(edits)) {
+    const i = lines.findIndex((line) => new RegExp(`^${key}:(\\s|$)`).test(line));
+    if (i === -1) {
+      lines.push(`${key}: ${value}`);
+      continue;
+    }
+    if (lines[i + 1] && /^[ \t]/.test(lines[i + 1]!)) {
+      throw new VerbExit(1, `refusing to edit list-valued frontmatter key "${key}" in ${rel}`);
+    }
+    lines[i] = `${key}: ${value}`;
+  }
+  return m[1] + lines.join("\n") + m[3] + m[4];
+}
+
+/**
+ * `tasks rfc-status <id> <status> [--reason R]`. Returns the CLI's line.
+ *
+ * The push is the CLI's `pushMain`: push, else rebase onto origin and push
+ * again, else keep the local commit and say so — a commit the next run will
+ * push is not a failed move.
+ */
+export async function rfcStatusSet(id: string, to: string, opts: { reason?: string | null } = {}): Promise<string> {
+  if (!(RFC_STATUSES as readonly string[]).includes(to)) {
+    throw new VerbExit(1, `unknown RFC status "${to}" (one of: ${RFC_STATUSES.join(", ")})`);
+  }
+  const target = to as RfcStatus;
+
+  const dir = tasksContentDir();
+  if (dir === null) throw new VerbExit(1, "TASKS_DIR names no tasks checkout");
+  const branch = await git(dir, "rev-parse", "--abbrev-ref", "HEAD").catch(() => null);
+  if (branch !== "main") {
+    throw new VerbExit(
+      1,
+      `${dir} is on ${branch && branch !== "HEAD" ? branch : "a detached HEAD"}, not main — refusing to set rfc status.`,
+    );
+  }
+
+  const rfc = await Rfc.findBy({ id });
+  if (!rfc) throw new VerbExit(1, `no such RFC "${id}"`);
+  const from = rfc.status;
+  if (from === target) return `rfc ${id} already ${target}`;
+  if (!ALLOWED[from]?.includes(target)) {
+    throw new VerbExit(1, `RFC ${id} is ${from} — cannot move it to ${target}.`);
+  }
+
+  if (target === "closed") {
+    const open = (await Story.where({ rfc_id: id }).toArray()).filter((s) => !TERMINAL_STORY.has(s.status));
+    if (open.length > 0) {
+      const shown = open.slice(0, 5).map((s) => s.id).join(", ");
+      throw new VerbExit(
+        1,
+        `RFC ${id} still has ${open.length} unfinished stor${open.length === 1 ? "y" : "ies"} ` +
+          `(${shown}${open.length > 5 ? ", …" : ""}) — close or rehome them first, or sunset the RFC.`,
+      );
+    }
+  }
+
+  const fs = getFs();
+  const rel = rfc.file_path ?? getPath().join("rfcs", id, "README.md");
+  const abs = getPath().join(dir, rel);
+  if (!fs.writeFile || !fs.readFile || !(await fs.exists(abs))) throw new VerbExit(1, `${rel} does not exist`);
+  const updated = today();
+  await fs.writeFile(abs, editFrontmatter(await fs.readFile(abs, "utf8"), rel, { status: target, updated }));
+
+  const reason = opts.reason?.trim();
+  await git(dir, "add", "--", rel);
+  await git(dir, "commit", "-q", "-m", `rfc(${id}): ${from} -> ${target}${reason ? `\n\n${reason}` : ""}`);
+  let line = `rfc ${id}: ${from} -> ${target}`;
+  try {
+    await git(dir, "push", "--quiet", "origin", "HEAD:main");
+  } catch {
+    try {
+      await git(dir, "pull", "--rebase", "--autostash", "--quiet", "origin", "main");
+      await git(dir, "push", "--quiet", "origin", "HEAD:main");
+    } catch (error) {
+      line +=
+        `\nwarning: rfc-status committed locally but could not push: ${(error as Error).message}\n` +
+        `  the work is on local main; push it or the next run will.`;
+    }
+  }
+
+  await ApplicationRecord.transaction(async () => {
+    await rfc.update({ status: target, updated_on: updated });
+    await Event.create({
+      at: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
+      verb: "rfc-status",
+      story_id: null,
+      rfc_id: id,
+      pr: null,
+      actor: null,
+      detail: JSON.stringify({ from, to: target, note: reason ?? null }),
+    });
+  });
+  return line;
+}
+
+/**
+ * ringo's `HandleRFCReadyDrafts` (rfcs.go:1272): every draft story under the
+ * RFC to `ready`, through `Story.statusSetAll(..., { from: "draft" })` — the
+ * CLI's `status-set <id...> ready --from draft`, all or nothing.
+ */
+export async function rfcReadyDrafts(id: string): Promise<string[]> {
+  const rfc = await Rfc.findBy({ id });
+  if (!rfc) throw new VerbExit(1, `no such RFC "${id}"`);
+  const drafts = (await Story.where({ rfc_id: id, status: "draft" }).toArray()).map((s) => s.id);
+  if (drafts.length === 0) throw new VerbExit(2, `rfc ${id} has no draft stories`);
+  return Story.statusSetAll(drafts, "ready", { from: "draft" });
+}
