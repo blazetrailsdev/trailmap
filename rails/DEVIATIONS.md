@@ -58,15 +58,6 @@ whose RFC does not exist yet, which passes there and fails under Rails, whose
 suite boots the app (`test/models/ranking_test.rb` has the note). The CSRF
 defect above hides behind the same gap.
 
-### language: the pane replay runs ringo's renderer, which Ruby cannot load
-
-`/sessions/pane` in the trails app replays a pane log through ringo's own
-terminal emulator, compiled to WASI (`lib/ringo-core.ts`). Ruby has no
-WebAssembly runtime without a new gem, so the Rails app validates the path and
-sends a transcript to its page, as the trails app does, but answers a pane log
-with 501 rather than a replay. `/sessions/file` and `/sessions/transcript`
-match. Porting the emulator, or adding a WASI runtime, closes this.
-
 ### trails: a concern's `before_action` method cannot be private
 
 `LoopbackOnly` here is a concern whose `require_loopback` is `private`, and
@@ -158,5 +149,6 @@ each language spells it; the rest of that report's list was converged.
   (`serializeRfcs`, `serializeStories`) in one module. Same JSON.
 - `views/home/index`: the empty-hub note names each app's own seed command,
   `bin/rails db:seed` and `pnpm db:seed`.
-- `views/sessions/pane`: TypeScript only. See "the pane replay runs ringo's
-  renderer" above — Rails answers a pane log with 501.
+- `lib/ringo_core.rb`: ringo's `core.wasm` runs under the `wasmtime` gem, where
+  `lib/ringo-core.ts` answers WASI's sixteen imports itself. Same module, same
+  bytes in and out; only the host differs.

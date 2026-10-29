@@ -38,8 +38,69 @@ module SessionsHelper
     id.length > 12 ? "#{id[0, 12]}…" : id
   end
 
+  # Go's `15:04:05` of an RFC 3339 time, in the offset it was written in.
+  # Empty for Go's zero time.
+  def clock(at)
+    at.start_with?("0001-") ? "" : at[11, 8]
+  end
+
+  # `ToolCall.Duration`, in ms: zero when the call never answered.
+  def call_ms(call)
+    return 0 if call["StartedAt"].start_with?("0001-") || call["EndedAt"].start_with?("0001-")
+    [ epoch_ms(call["EndedAt"]) - epoch_ms(call["StartedAt"]), 0 ].max
+  end
+
+  # `Transcript.Duration`, in ms.
+  def wall_ms(tr)
+    epoch_ms(tr["LastAt"]) - epoch_ms(tr["FirstAt"])
+  end
+
+  # `toolDur`: `30ms`, `1.5s`, `10m00s`; empty for nothing. Rounded as
+  # `toFixed` rounds, for the reason `money` gives.
+  def tool_dur(ms)
+    return "" if ms <= 0
+    return "#{ms.to_i}ms" if ms < 1000
+    return format("%.1fs", (ms.to_r / 1000).round(1)) if ms < 60_000
+    format("%dm%02ds", ms.to_i / 60_000, (ms.to_i / 1000) % 60)
+  end
+
+  # `clip`: the first `max` bytes, as Go slices, and how much was left out.
+  def clip(s, max)
+    return s if s.bytesize <= max
+    "#{s.byteslice(0, max).scrub("\uFFFD")}\n… clipped, #{human_bytes(s.bytesize - max)} more"
+  end
+
+  # `core.FirstLine`: the first line, at most 96 bytes, with " …" when cut.
+  def first_line(s)
+    line, nl, = s.partition("\n")
+    line = line.strip
+    cut = !nl.empty?
+    if line.bytesize > 96
+      line = line.byteslice(0, 96).scrub("\uFFFD").strip
+      cut = true
+    end
+    cut ? "#{line} …" : line
+  end
+
+  # `plural`.
+  def plural(n, one, many)
+    n == 1 ? one : many
+  end
+
+  # `prFromCWD(cwd) > 0`: a session run from a review checkout reviewed the PR.
+  def reviewed_from(cwd)
+    m = %r{review[^/]*/(?:[^/]+/)*pr-(\d+)(?:/|\z)}i.match(cwd)
+    !m.nil? && m[1].to_i.positive?
+  end
+
   # `orDash`.
   def or_dash(s)
     s.presence || "—"
+  end
+
+  private
+
+  def epoch_ms(at)
+    (Time.iso8601(at).to_r * 1000).floor
   end
 end

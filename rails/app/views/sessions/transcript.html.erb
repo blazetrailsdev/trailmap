@@ -1,0 +1,103 @@
+<%# ringo's transcript page (webhook/transcript_page.go) over `core.ParseTranscript`'s answer; see the trails view. %>
+<% title = @tr["Title"].presence || "session #{short_id(@tr["SessionID"])}" %>
+<% wall = wall_ms(@tr) %>
+<% tool_ms = @tr["ToolTime"] / 1e6 %>
+<% turns = @tr["Turns"] || [] %>
+<% counts = @tr["ToolCounts"].sort_by { |name, n| [ -n, name.b ] } %>
+<% slowest = @tr["Slowest"] || [] %>
+<% role = reviewed_from(@tr["CWD"]) ? "reviewer" : "agent" %>
+<div class="page-header">
+  <h1 class="page-title"><%= title %> <span class="session-role <%= role %>"><%= role %></span></h1>
+  <div class="tx-meta">
+    <% [ [ "session", short_id(@tr["SessionID"]) ], [ "model", @tr["Model"] ], [ "branch", @tr["Branch"] ], [ "cwd", @tr["CWD"] ], [ "claude", @tr["Version"] ] ].each do |k, v| %>
+      <% if v.present? %><span><%= k %> <span class="mono"><%= v %></span></span><% end %>
+    <% end %>
+  </div>
+</div>
+
+<div class="tx-stats">
+  <div class="tx-stat"><div class="n"><%= short_dur(wall) %></div><div class="l">wall clock</div></div>
+  <div class="tx-stat"><div class="n"><%= turns.length %></div><div class="l"><%= plural(turns.length, "prompt", "prompts") %></div></div>
+  <div class="tx-stat"><div class="n"><%= @tr["ToolCalls"] %></div><div class="l">tool calls</div></div>
+  <% if tool_ms > 0 %>
+    <div class="tx-stat"><div class="n"><%= tool_dur(tool_ms) %></div><div class="l"><%= wall > 0 ? "in tools (#{(100 * tool_ms / wall).to_i}% of wall)" : "in tools" %></div></div>
+  <% end %>
+  <div class="tx-stat"><div class="n<%= " err" if @tr["Errors"] > 0 %>"><%= @tr["Errors"] %></div><div class="l"><%= plural(@tr["Errors"], "error", "errors") %></div></div>
+  <% if @tr["Cost"] > 0 %>
+    <div class="tx-stat"><div class="n"><%= money(@tr["Cost"]) %></div><div class="l">list-price equiv.</div></div>
+  <% end %>
+</div>
+
+<% if counts.any? %>
+  <div class="card">
+    <div class="card-head"><div class="card-title">Tool mix</div></div>
+    <div class="tx-mix">
+      <% counts.each do |name, n| %>
+        <div class="mono"><%= name %></div><div><div class="tx-bar" style="width:<%= 100 * n / counts[0][1] %>%"></div></div><div class="muted"><%= n %></div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<% if slowest.any? %>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Where the time went</div>
+      <div class="field-note"><%= tool_dur(tool_ms) %> of tool wall clock across <%= @tr["ToolCalls"] %> calls — the slowest are listed</div>
+    </div>
+    <div class="tx-mix tx-spent">
+      <% slowest.each do |c| %>
+        <div><%= tool_dur(call_ms(c)) %></div><div><div class="tx-bar slow" style="width:<%= 100 * call_ms(c) / call_ms(slowest[0]) %>%"></div></div><div class="tx-what mono"><%= c["Name"] %> <span class="muted"><%= c["Summary"].presence || first_line(c["Input"]) %></span></div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<% if @tr["Truncated"] %>
+  <div class="field-note">Session is longer than this page renders — showing the first 20,000 steps.</div>
+<% end %>
+
+<% turns.each_with_index do |turn, i| %>
+  <div class="tx-turn">
+    <% if turn["Prompt"].present? %>
+      <div class="tx-prompt"><div class="tx-who">prompt <%= i + 1 %><%= " · #{clock(turn["At"])}" if clock(turn["At"]).present? %></div><div class="tx-body"><%= turn["Prompt"] %></div></div>
+    <% end %>
+    <% if (turn["Steps"] || []).any? %>
+      <div class="tx-steps">
+        <% turn["Steps"].each do |s| %>
+          <% if s["Kind"] == "text" %>
+            <div class="tx-step say"><% if clock(s["At"]).present? %><div class="muted mono"><%= clock(s["At"]) %></div><% end %><div class="tx-body"><%= s["Text"] %></div></div>
+          <% elsif s["Kind"] == "thinking" %>
+            <div class="tx-step"><details class="tx-think"><summary>thinking</summary><div class="tx-body"><%= s["Text"] %></div></details></div>
+          <% elsif s["Kind"] == "note" %>
+            <div class="tx-step"><div class="field-note"><%= s["Text"] %></div></div>
+          <% elsif (c = s["Tool"]) %>
+            <% ms = call_ms(c) %>
+            <div class="tx-step tool<%= " err" if c["IsError"] %>"><div class="tx-tool">
+              <div class="tx-tool-head">
+                <span class="tx-tool-name"><%= c["Name"] %></span>
+                <% if c["Summary"].present? %><span class="tx-tool-sum"><%= c["Summary"] %></span><% end %>
+                <span class="tx-tool-meta"><% if clock(c["StartedAt"]).present? %><span class="muted"><%= clock(c["StartedAt"]) %></span> · <% end %><% if ms > 0 %><span class="<%= ms >= 10_000 ? "tx-slow" : "" %>"><%= tool_dur(ms) %><%= " slow" if ms >= 10_000 %></span><% end %><% if c["Unpaired"] %>no result<% elsif c["IsError"] %> · error · <%= human_bytes(c["OutBytes"]) %><% elsif c["OutBytes"] > 0 %> · <%= human_bytes(c["OutBytes"]) %><% end %></span>
+              </div>
+              <% if c["Input"].present? %><pre class="tx-io"><%= clip(c["Input"], 8000) %></pre><% end %>
+              <% if c["Unpaired"] %>
+                <div class="tx-io out empty">no result — the session ended before this call returned</div>
+              <% elsif c["Output"].strip.empty? %>
+                <div class="tx-io out empty">(no output)</div>
+              <% else %>
+                <% out = clip(c["Output"], 200 << 10) %>
+                <% if out.bytesize <= 1200 %>
+                  <pre class="tx-io out<%= " err" if c["IsError"] %>"><%= out %></pre>
+                <% else %>
+                  <details class="tx-fold"><summary><%= human_bytes(c["Output"].bytesize) %> of output</summary><pre class="tx-io out<%= " err" if c["IsError"] %>"><%= out %></pre></details>
+                <% end %>
+              <% end %>
+            </div></div>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<p class="muted">Rendered from the archived JSONL: <%= @tr["Skipped"] %> bookkeeping events (attachments, mode latches, snapshots) are not shown. <a href="/sessions/file?p=<%= ERB::Util.url_encode(@p) %>">Download the raw transcript</a>.</p>

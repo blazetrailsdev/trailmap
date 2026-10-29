@@ -205,6 +205,9 @@ GEM
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.4.2)
+    rake-compiler-dock (1.12.0)
+    rb_sys (0.9.130)
+      rake-compiler-dock (= 1.12.0)
     rbs (4.2.0)
       logger
       prism (>= 1.6.0)
@@ -265,6 +268,14 @@ GEM
     unicode-emoji (4.3.0)
     uri (1.1.2)
     useragent (0.16.11)
+    wasmtime (50.0.0)
+      rb_sys (~> 0.9.130)
+    wasmtime (50.0.0-aarch64-linux)
+    wasmtime (50.0.0-aarch64-linux-musl)
+    wasmtime (50.0.0-arm64-darwin)
+    wasmtime (50.0.0-x86_64-darwin)
+    wasmtime (50.0.0-x86_64-linux)
+    wasmtime (50.0.0-x86_64-linux-musl)
     web-console (4.3.0)
       actionview (>= 8.0.0)
       bindex (>= 0.4.0)
@@ -307,6 +318,7 @@ DEPENDENCIES
   rubocop-rails-omakase
   sqlite3 (>= 2.1)
   tzinfo-data
+  wasmtime (~> 50.0)
   web-console
   websocket-driver
 
