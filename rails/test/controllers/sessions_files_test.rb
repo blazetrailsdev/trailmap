@@ -56,6 +56,18 @@ class SessionsFilesTest < ActionDispatch::IntegrationTest
     assert_empty asked
   end
 
+  test "answers 413 for a file past the cap, without holding it whole" do
+    limit = SessionsController::ARCHIVE_FILE_MAX_BYTES
+    SessionsController.send(:remove_const, :ARCHIVE_FILE_MAX_BYTES)
+    SessionsController.const_set(:ARCHIVE_FILE_MAX_BYTES, 4)
+    with_ringo(RINGO) { get "/sessions/file", params: { p: "trails/9001/pane-42.log.gz" } }
+    assert_response 413
+    assert_includes response.body, "ringo serves it whole"
+  ensure
+    SessionsController.send(:remove_const, :ARCHIVE_FILE_MAX_BYTES)
+    SessionsController.const_set(:ARCHIVE_FILE_MAX_BYTES, limit)
+  end
+
   test "passes ringo's 404 through" do
     with_ringo(RINGO) { get "/sessions/file", params: { p: "trails/9001/gone.log" } }
     assert_response 404

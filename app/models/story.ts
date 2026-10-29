@@ -1,5 +1,4 @@
 import { ApplicationRecord } from "./application-record.ts";
-import { pinTimestampColumns } from "./timestamps.ts";
 import { Event } from "./event.ts";
 import { Rfc } from "./rfc.ts";
 import { closeRfcIfComplete } from "./rfc-close.ts";
@@ -91,20 +90,17 @@ export class Story extends ApplicationRecord {
   declare isClosed: () => boolean;
   declare isReady: () => boolean;
 
-  static {
-    // `updated_on` is a DATE-ONLY string ("2026-08-28"), markdown's `updated:`
-    // field — but Rails' update-timestamp columns are BOTH `updated_at` and
-    // `updated_on`, so a save stamps it with a full instant. It only skips a
-    // column the save is already changing, and a verb writing today's date
-    // onto a story already stamped today changes nothing — so the guard does
-    // not fire and the column comes back as "2026-08-28T13:54:05.114Z".
-    // readmodel's isoMidnight then builds "<that>T00:00:00.000Z", which is an
-    // Invalid Date, and `next-bundle` dies for every caller. Restrict the
-    // touch to the real timestamp column. (Assigning the resolved-columns
-    // cache is the lever the library reads; the public static of the same name
-    // is not consulted by its own internals.)
-    pinTimestampColumns(this, { create: ["created_at", "updated_at"], update: ["updated_at"] });
+  /**
+   * `updated_on` is markdown's date-only `updated:` field, but Rails' update
+   * timestamps are `updated_at` AND `updated_on`, so a save would stamp it with
+   * a full instant that readmodel's isoMidnight turns into an Invalid Date.
+   * Hold the touch to the real row timestamp, as Rails' own override does.
+   */
+  static override timestampAttributesForUpdate(): string[] {
+    return ["updated_at"];
+  }
 
+  static {
     this.belongsTo("rfc");
     this.hasMany("storyDeps", { inverseOf: "story" });
     this.hasMany("deps", { through: "storyDeps", source: "dependsOn" });

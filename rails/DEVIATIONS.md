@@ -67,14 +67,6 @@ sends a transcript to its page, as the trails app does, but answers a pane log
 with 501 rather than a replay. `/sessions/file` and `/sessions/transcript`
 match. Porting the emulator, or adding a WASI runtime, closes this.
 
-### language: `/sessions/file` holds the whole answer before the size check
-
-The trails app reads ringo's answer as a stream and stops at 128 MiB
-(`readBounded`). `Fleet::Relay` here reads the body whole, as `Net::HTTP`
-does by default, so a file past the cap is in memory before the 413. The
-answer matches; the memory bound does not. Streaming `read_body` in
-`Fleet::Relay` closes it.
-
 ### trails: a concern's `before_action` method cannot be private
 
 `LoopbackOnly` here is a concern whose `require_loopback` is `private`, and
@@ -93,10 +85,6 @@ and keeps it off the class.
   uses `connects_to`. `database_tasks: false` keeps `db:migrate` off the live
   tasks database and the stats database. The TypeScript app gets the same
   effect by leaving those two out of its environment config.
-- **The timestamp touch.** Rails holds `updated_on` out of the touch by
-  overriding `timestamp_attributes_for_update`. trails does not consult that
-  hook. It reads a cache that schema reloads reset, so `timestamps.ts` pins the
-  cache with accessors.
 - **View directories and partial names.** trails spells a controller's view
   directory in kebab-case (`rfc-pages/`, trails#8670) and allows hyphens in
   partial names (`shared/_status-badge`). Rails requires a partial name to be a
