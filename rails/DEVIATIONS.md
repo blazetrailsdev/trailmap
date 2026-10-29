@@ -152,3 +152,16 @@ each language spells it; the rest of that report's list was converged.
 - `lib/ringo_core.rb`: ringo's `core.wasm` runs under the `wasmtime` gem, where
   `lib/ringo-core.ts` answers WASI's sixteen imports itself. Same module, same
   bytes in and out; only the host differs.
+- `RfcStatus.git` / `rfc-status.ts`'s `git`: Ruby's `Open3.capture2e` takes
+  an argv, so git's arguments go straight to it; ruby-compat's takes only a
+  command line, so the TypeScript one passes each argument as a shell
+  variable and quotes the reference. Same git commands.
+- `RfcPagesController#move`: `status` is the action's name in ringo's route
+  and here it is `move` on both sides; in trails an action called `status`
+  shadows the controller's own response-status reader.
+- `RfcPagesController#move` / `#ready_drafts`: a CLI refusal (`VerbExit` exit 1)
+  answers 422 on both sides, where ringo answers 500 with the CLI's stderr
+  (btwebooks `webhook/rfcs.go:1217`, `:1311`). It follows
+  `MutationsController`'s mapping (exit 1 → 422, otherwise 409): a refusal is
+  an answer, not a server error. The 409s for an unoffered move and for no
+  drafts are ringo's (`rfcs.go:1208`, `:1305`).

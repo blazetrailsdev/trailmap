@@ -135,4 +135,12 @@ class MutationsTest < ActiveSupport::TestCase
     find("fix").mark_tracking("done", nil)
     assert_equal "active", Rfc.find("0061-ci-failures").status
   end
+
+  test "status-set --from refuses the whole batch unless every story is in it" do
+    find("s2").status_set("draft")
+    error = assert_raises(VerbExit) { Story.status_set_all(%w[s1 s2], "ready", from: "draft") }
+    assert_equal "not draft, nothing changed: s1 (ready)", error.message
+    assert_equal "draft", find("s2").status
+    assert_equal [ "status ready: s2" ], Story.status_set_all([ "s2" ], "ready", from: "draft")
+  end
 end

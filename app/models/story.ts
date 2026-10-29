@@ -582,6 +582,25 @@ export class Story extends ApplicationRecord {
     return `closed ${this.id}`;
   }
 
+  /**
+   * `tasks status-set <id...> <status> [--from STATUS]`: the batch form, one
+   * transaction. `from` refuses the whole batch, with the CLI's message,
+   * unless every story is in it (verbs.ts `statusSet`).
+   */
+  static async statusSetAll(ids: string[], status: StoryStatus, opts: { from?: StoryStatus | null } = {}): Promise<string[]> {
+    const lines: string[] = [];
+    await Story.transaction(async () => {
+      const found = await Story.findAllOrThrow(ids);
+      const off = opts.from ? found.filter((s) => s.status !== opts.from) : [];
+      if (off.length) {
+        throw new VerbExit(1, `not ${opts.from}, nothing changed: ${off.map((s) => `${s.id} (${s.status})`).join(", ")}`);
+      }
+      const byId = new Map(found.map((s) => [s.id, s]));
+      for (const id of ids) lines.push(await byId.get(id)!.statusSet(status));
+    });
+    return lines;
+  }
+
   /** Set status directly, clearing whatever the old status owned. */
   async statusSet(status: StoryStatus): Promise<string> {
     await this.update({ status, ...clearedBy(status), updated_on: today() });

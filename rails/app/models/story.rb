@@ -226,6 +226,17 @@ class Story < ApplicationRecord
     "recorded spawn (#{source}) for #{ids.size} stor#{ids.size == 1 ? 'y' : 'ies'}"
   end
 
+  # `tasks status-set <id...> <status> [--from STATUS]`, all or nothing.
+  def self.status_set_all(ids, new_status, from: nil)
+    transaction do
+      found = find_all_or_raise(ids)
+      off = from ? found.reject { |s| s.status == from } : []
+      raise VerbExit.new(1, "not #{from}, nothing changed: #{off.map { |s| "#{s.id} (#{s.status})" }.join(', ')}") if off.any?
+      by_id = found.index_by(&:id)
+      ids.map { |id| by_id.fetch(id).status_set(new_status) }
+    end
+  end
+
   def self.find_all_or_raise(ids)
     found = Story.where(id: ids).to_a
     missing = ids - found.map(&:id)

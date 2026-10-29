@@ -168,3 +168,14 @@ describe("recordSpawn", () => {
     expect(event!.story_id).toBeNull();
   });
 });
+
+describe("statusSetAll", () => {
+  it("status-set --from refuses the whole batch unless every story is in it", async () => {
+    await (await find("s2")).statusSet("draft");
+    await expect(Story.statusSetAll(["s1", "s2"], "ready", { from: "draft" })).rejects.toThrow(
+      new VerbExit(1, "not draft, nothing changed: s1 (ready)"),
+    );
+    expect((await find("s2")).status).toBe("draft");
+    expect(await Story.statusSetAll(["s2"], "ready", { from: "draft" })).toEqual(["status ready: s2"]);
+  });
+});

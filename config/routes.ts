@@ -101,6 +101,10 @@ Trails.application!.routes().draw(function () {
   // are distinct from the plural `stories/:id` JSON route below, which is the
   // loopback-only read verb and not a page.
   this.get("rfc/:id", { to: "rfc_pages#show" });
+  // The lifecycle buttons on that page. Page POSTs, not loopback API verbs:
+  // the page is their caller, and a refusal renders on it.
+  this.post("rfc/:id/status", { to: "rfc_pages#move" });
+  this.post("rfc/:id/ready-drafts", { to: "rfc_pages#readyDrafts" });
   this.get("story/:id", { to: "story_pages#show" });
 
   // The parity graphs, ported from ringo's `/graphs/parity`. Two routes, not
