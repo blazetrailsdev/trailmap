@@ -254,3 +254,62 @@ export async function renderPaneLog(raw: Uint8Array, maxLines = 0): Promise<Pane
   const args = maxLines > 0 ? ["pane", String(Math.trunc(maxLines))] : ["pane"];
   return JSON.parse(new TextDecoder().decode(await runRingoCore(args, raw))) as PaneRender;
 }
+
+/** `core.ToolCall`, as `core transcript` marshals it. Times are RFC 3339; a zero time is year 1. */
+export interface TranscriptToolCall {
+  Name: string;
+  Summary: string;
+  Input: string;
+  Output: string;
+  IsError: boolean;
+  Unpaired: boolean;
+  OutBytes: number;
+  StartedAt: string;
+  EndedAt: string;
+}
+
+/** `core.Step`. */
+export interface TranscriptStep {
+  Kind: "text" | "thinking" | "tool" | "note";
+  At: string;
+  Text: string;
+  Tool: TranscriptToolCall | null;
+}
+
+/** `core.Turn`. */
+export interface TranscriptTurn {
+  Prompt: string;
+  At: string;
+  Steps: TranscriptStep[] | null;
+}
+
+/** `core.Transcript`. `ToolTime` is nanoseconds, Go's `time.Duration`. */
+export interface Transcript {
+  SessionID: string;
+  Title: string;
+  Model: string;
+  Branch: string;
+  CWD: string;
+  Version: string;
+  FirstAt: string;
+  LastAt: string;
+  Turns: TranscriptTurn[] | null;
+  ToolCounts: Record<string, number>;
+  ToolCalls: number;
+  ToolTime: number;
+  Slowest: TranscriptToolCall[] | null;
+  Errors: number;
+  Cost: number;
+  Skipped: number;
+  Truncated: boolean;
+}
+
+/**
+ * Read a JSONL session transcript back into turns — ringo's
+ * `core.ParseTranscript`, the reader behind its transcript page. Synchronous
+ * like the pane replay, so a caller bounds what it passes in.
+ */
+export async function parseTranscript(raw: Uint8Array, maxSteps = 0): Promise<Transcript> {
+  const args = maxSteps > 0 ? ["transcript", String(Math.trunc(maxSteps))] : ["transcript"];
+  return JSON.parse(new TextDecoder().decode(await runRingoCore(args, raw))) as Transcript;
+}

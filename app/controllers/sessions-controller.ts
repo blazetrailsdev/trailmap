@@ -4,7 +4,7 @@ import { SessionArchive, SessionArchiveUnavailable } from "../models/session-arc
 import { Setting } from "../models/setting.ts";
 import { archivePathProblem, readBounded, type BoundedRead } from "../../lib/archive-read.ts";
 import { ringoFailure } from "../../lib/ringo-failure.ts";
-import { renderPaneLog } from "../../lib/ringo-core.ts";
+import { parseTranscript, renderPaneLog } from "../../lib/ringo-core.ts";
 
 /**
  * How long ringo has to hand over one archive file. Longer than the index's:
@@ -13,7 +13,7 @@ import { renderPaneLog } from "../../lib/ringo-core.ts";
 export const ARCHIVE_FILE_TIMEOUT_MS = 30_000;
 
 /**
- * The most of one file `/sessions/file` and `/sessions/transcript` relay. A
+ * The most of one file `/sessions/file` relays and `/sessions/transcript` reads. A
  * file past it is refused rather than held whole: ringo, which reads its own
  * disk, still serves it.
  */
@@ -28,6 +28,9 @@ export const ARCHIVE_FILE_MAX_BYTES = 128 << 20;
  */
 export const PANE_VIEW_MAX_BYTES = 2 << 20;
 
+/** The steps one transcript page draws, ringo's `ParseTranscript(src, 20000)`. */
+export const TRANSCRIPT_MAX_STEPS = 20_000;
+
 /** The scrollback rows kept, ringo's `RenderPaneLog(raw, 20000)`. */
 export const PANE_VIEW_MAX_LINES = 20_000;
 
@@ -36,8 +39,8 @@ export const PANE_VIEW_MAX_LINES = 20_000;
  * beside ringo's own (`webhook/sessionarchive_page.go`).
  *
  * Enroll and backfill are not here: they are writes, and phase C of RFC 0136
- * is read-only. The three file reads the rows link to are: `file` and
- * `transcript` relayed from ringo, `pane` replayed here by ringo's own
+ * is read-only. The three file reads the rows link to are: `file` relayed
+ * from ringo, `transcript` and `pane` drawn here by ringo's own reader and
  * renderer (lib/ringo-core.ts).
  */
 export class SessionsController extends ApplicationController {
@@ -99,25 +102,16 @@ export class SessionsController extends ApplicationController {
   }
 
   /**
-   * ringo's `HandleTranscript`, relayed: its page is the transcript parser's
-   * output, which ringo bounds itself (20,000 steps, 200 KiB per output).
+   * ringo's `HandleTranscript`: the session read back into turns by ringo's
+   * own `core.ParseTranscript` (lib/ringo-core.ts), drawn in this layout.
    */
   async transcript(): Promise<void> {
     this.noStore();
-    const read = await this.readArchive("/sessions/transcript", ARCHIVE_FILE_MAX_BYTES, "head");
+    const read = await this.readArchive("/sessions/file", ARCHIVE_FILE_MAX_BYTES, "head");
     if (read === null) return;
     if (read.truncated) return this.refuseTooLarge();
-    // ringo's page is a whole document, so it gets no layout. It is served on
-    // trailmap's origin, and any field ringo leaves unescaped would run there,
-    // so it is sandboxed as the audit pages are: a unique origin, no scripts.
-    //
-    // Checked against ringo 5f7fa9f (webhook/transcript_page.go): every field
-    // from the session — prompts, text, thinking, tool input and output — goes
-    // through `html.EscapeString`, and the page has no script to stop. Its
-    // folding is `<details>` and its links are plain anchors, both of which
-    // work in a sandboxed document, so `allow-scripts` would buy nothing.
-    this.response.setHeader("Content-Security-Policy", "sandbox");
-    await this.render({ html: htmlSafe(new TextDecoder().decode(read.bytes)) });
+    const tr = await parseTranscript(read.bytes, TRANSCRIPT_MAX_STEPS);
+    await this.render({ locals: { p: String(this.params.get("p") ?? ""), tr } });
   }
 
   /**

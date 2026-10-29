@@ -1,3 +1,5 @@
+import type { Transcript, TranscriptToolCall } from "../../lib/ringo-core.ts";
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** The archive pages' formatting, each one ringo's helper of the same name (`webhook/sessionarchive_page.go`). */
@@ -36,6 +38,64 @@ export const SessionsHelper = {
   /** `shortID`. */
   shortId(id: string): string {
     return id.length > 12 ? `${id.slice(0, 12)}…` : id;
+  },
+
+  /** Go's `15:04:05` of an RFC 3339 time, in the offset it was written in. Empty for Go's zero time. */
+  clock(at: string): string {
+    return at.startsWith("0001-") ? "" : at.slice(11, 19);
+  },
+
+  /** `ToolCall.Duration`, in ms: zero when the call never answered. */
+  callMs(call: TranscriptToolCall): number {
+    if (call.StartedAt.startsWith("0001-") || call.EndedAt.startsWith("0001-")) return 0;
+    return Math.max(0, Date.parse(call.EndedAt) - Date.parse(call.StartedAt));
+  },
+
+  /** `Transcript.Duration`, in ms. */
+  wallMs(tr: Transcript): number {
+    return Date.parse(tr.LastAt) - Date.parse(tr.FirstAt);
+  },
+
+  /** `toolDur`: `30ms`, `1.5s`, `10m00s`; empty for nothing. */
+  toolDur(ms: number): string {
+    if (ms <= 0) return "";
+    if (ms < 1000) return `${Math.trunc(ms)}ms`;
+    if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${Math.trunc(ms / 60_000)}m${String(Math.trunc(ms / 1000) % 60).padStart(2, "0")}s`;
+  },
+
+  /** `clip`: the first `max` BYTES, as Go slices, and how much was left out. */
+  clip(s: string, max: number): string {
+    const bytes = new TextEncoder().encode(s);
+    if (bytes.length <= max) return s;
+    return `${new TextDecoder().decode(bytes.subarray(0, max))}\n… clipped, ${SessionsHelper.humanBytes(bytes.length - max)} more`;
+  },
+
+  /** `core.FirstLine`: the first line, at most 96 bytes, with " …" when cut. */
+  firstLine(s: string): string {
+    let cut = false;
+    const nl = s.indexOf("\n");
+    if (nl >= 0) [s, cut] = [s.slice(0, nl), true];
+    s = s.trim();
+    const bytes = new TextEncoder().encode(s);
+    if (bytes.length > 96) [s, cut] = [new TextDecoder().decode(bytes.subarray(0, 96)).trim(), true];
+    return cut ? `${s} …` : s;
+  },
+
+  /** `len(s)` in Go: bytes, not UTF-16 units. */
+  byteLength(s: string): number {
+    return new TextEncoder().encode(s).length;
+  },
+
+  /** `plural`. */
+  plural(n: number, one: string, many: string): string {
+    return n === 1 ? one : many;
+  },
+
+  /** `prFromCWD(cwd) > 0`: a session run from a review checkout reviewed the PR. */
+  reviewedFrom(cwd: string): boolean {
+    const m = /review[^/]*\/(?:[^/]+\/)*pr-(\d+)(?:\/|$)/i.exec(cwd);
+    return m !== null && Number(m[1]) > 0;
   },
 
   /** `orDash`. */
