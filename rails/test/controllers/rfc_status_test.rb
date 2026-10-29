@@ -11,7 +11,9 @@ class RfcStatusTest < ActionDispatch::IntegrationTest
     sh("git", "init", "-q", "-b", "main", @checkout)
     { "0001-draft" => "draft", "0002-active" => "active", "0003-postponed" => "postponed", "0004-open" => "active",
       "0005-finished" => "active", "0006-closed" => "closed", "0007-drafts" => "active",
-      "0008-finished-parked" => "postponed", "0009-blank-reason" => "draft", "0010-hooked" => "draft" }.each { |id, status| rfc_file!(id, status) }
+      "0008-finished-parked" => "postponed", "0009-blank-reason" => "draft", "0010-hooked" => "draft",
+      "0012-conflict" => "draft", "0015-csrf" => "draft" }.each { |id, status| rfc_file!(id, status) }
+    rfc_file!("0011-listy", "draft", "updated:\n  - 2026-01-01")
     story!("open-1", rfc_id: "0004-open")
     story!("open-2", rfc_id: "0004-open", status: "done")
     # Finished without a save, or the auto-close gets there first.
@@ -46,10 +48,10 @@ class RfcStatusTest < ActionDispatch::IntegrationTest
 
   def git(*args) = sh("git", "-C", @checkout, "-c", "user.name=t", "-c", "user.email=t@t", *args)
 
-  def rfc_file!(id, status)
+  def rfc_file!(id, status, updated = "updated: 2026-01-01")
     file = "rfcs/#{id}/README.md"
     FileUtils.mkdir_p(File.join(@checkout, "rfcs", id))
-    File.write(File.join(@checkout, file), "---\ntitle: #{id}\nstatus: #{status}\nupdated: 2026-01-01\n---\n\n# #{id}\n")
+    File.write(File.join(@checkout, file), "---\ntitle: #{id}\nstatus: #{status}\n#{updated}\n---\n\n# #{id}\n")
     rfc!(id, status: status, file_path: file)
   end
 
@@ -141,5 +143,42 @@ class RfcStatusTest < ActionDispatch::IntegrationTest
     with_env(IDENT) { post "/rfc/0008-finished-parked/status", params: { status: "active" } }
     assert_response :see_other
     assert_equal "closed", Rfc.find("0008-finished-parked").status
+  end
+
+  test "refuses to edit a list-valued frontmatter key, and leaves the file alone" do
+    post "/rfc/0011-listy/status", params: { status: "active" }
+    assert_response :unprocessable_entity
+    assert_includes response.body, "refusing to edit list-valued frontmatter key &quot;updated&quot; in rfcs/0011-listy/README.md"
+    assert_equal "", sh("git", "-C", @checkout, "status", "--porcelain")
+    assert_equal "draft", Rfc.find("0011-listy").status
+  end
+
+  test "refuses a POST without the authenticity token button_to writes, and takes one with it" do
+    was = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    get "/rfc/0015-csrf"
+    token = response.body[/name="authenticity_token" value="([^"]+)"/, 1]
+    assert token
+    post "/rfc/0015-csrf/status", params: { status: "active" }
+    assert_response :unprocessable_entity
+    assert_equal "draft", Rfc.find("0015-csrf").status
+    with_env(IDENT) { post "/rfc/0015-csrf/status", params: { status: "active", authenticity_token: token } }
+    assert_response :see_other
+    assert_equal "active", Rfc.find("0015-csrf").status
+  ensure
+    ActionController::Base.allow_forgery_protection = was
+  end
+
+  test "aborts a rebase that conflicts, so the next click is not refused" do
+    other = File.join(@root, "other")
+    sh("git", "clone", "-q", @origin, other)
+    path = File.join(other, "rfcs/0012-conflict/README.md")
+    File.write(path, File.read(path).sub("status: draft", "status: postponed"))
+    sh("git", "-C", other, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "theirs")
+    sh("git", "-C", other, "push", "-q", "origin", "main")
+    with_env(IDENT) { post "/rfc/0012-conflict/status", params: { status: "active" } }
+    assert_response :see_other
+    assert_equal "main", sh("git", "-C", @checkout, "rev-parse", "--abbrev-ref", "HEAD")
+    assert_equal "", sh("git", "-C", @checkout, "status", "--porcelain")
   end
 end

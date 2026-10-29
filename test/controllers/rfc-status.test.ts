@@ -22,10 +22,10 @@ async function post(action: string, params: Record<string, string>): Promise<{ s
   return { status: tc.response.status, body: tc.response.body, location: tc.response.headers.get("location") ?? null };
 }
 
-async function rfc(id: string, status: string): Promise<void> {
+async function rfc(id: string, status: string, updated = "updated: 2026-01-01"): Promise<void> {
   const file = `rfcs/${id}/README.md`;
   await sh(`mkdir -p "$CHECKOUT/rfcs/${id}"`);
-  await getFs().writeFile!(`${checkout}/${file}`, `---\ntitle: ${id}\nstatus: ${status}\nupdated: 2026-01-01\n---\n\n# ${id}\n`);
+  await getFs().writeFile!(`${checkout}/${file}`, `---\ntitle: ${id}\nstatus: ${status}\n${updated}\n---\n\n# ${id}\n`);
   await Rfc.create({ id, status, title: id, file_path: file });
 }
 
@@ -55,6 +55,11 @@ beforeAll(async () => {
   await rfc("0008-finished-parked", "postponed");
   await rfc("0009-blank-reason", "draft");
   await rfc("0010-hooked", "draft");
+  await rfc("0011-listy", "draft", "updated:\n  - 2026-01-01");
+  await rfc("0012-conflict", "draft");
+  await rfc("0013-together-a", "draft");
+  await rfc("0014-together-b", "draft");
+  await rfc("0015-csrf", "draft");
   await Story.create({ id: "parked-done", rfc_id: "0008-finished-parked", status: "ready" });
   await Story.where({ id: "parked-done" }).updateAll({ status: "done" });
   await Story.create({ id: "d-1", rfc_id: "0007-drafts", status: "draft" });
@@ -165,5 +170,58 @@ describe("RfcPagesController lifecycle", () => {
     const { status } = await post("move", { id: "0008-finished-parked", status: "active" });
     expect(status).toBe(303);
     expect((await Rfc.find("0008-finished-parked")).status).toBe("closed");
+  });
+
+  it("refuses to edit a list-valued frontmatter key, and leaves the file alone", async () => {
+    const { status, body } = await post("move", { id: "0011-listy", status: "active" });
+    expect(status).toBe(422);
+    expect(body).toContain("refusing to edit list-valued frontmatter key &quot;updated&quot; in rfcs/0011-listy/README.md");
+    expect(await sh(`git -C "$CHECKOUT" status --porcelain`)).toBe("");
+    expect((await Rfc.find("0011-listy")).status).toBe("draft");
+  });
+
+  it("makes two simultaneous moves one after the other", async () => {
+    const [a, b] = await Promise.all([
+      post("move", { id: "0013-together-a", status: "active" }),
+      post("move", { id: "0014-together-b", status: "active" }),
+    ]);
+    expect([a.status, b.status]).toEqual([303, 303]);
+    expect(await sh(`git -C "$ORIGIN" show main:rfcs/0013-together-a/README.md`)).toContain("status: active");
+    expect(await sh(`git -C "$ORIGIN" show main:rfcs/0014-together-b/README.md`)).toContain("status: active");
+    expect(await sh(`git -C "$CHECKOUT" status --porcelain`)).toBe("");
+  });
+
+  it("writes an authenticity token into each buttonTo form, and a POST carrying it lands", async () => {
+    const tc = await controllerTestCase(RfcPagesController);
+    const was = ApplicationController.allowForgeryProtection;
+    ApplicationController.allowForgeryProtection = true;
+    try {
+      await tc.get("show", { params: { id: "0015-csrf" } });
+      const token = /name="authenticity_token" value="([^"]+)"/.exec(String(tc.response.body))?.[1];
+      expect(token).toBeTruthy();
+      // The refusal of a tokenless POST is not asserted here: the suite does
+      // not boot, so `defaultProtectFromForgery` never installs
+      // `protectFromForgery` (trails story
+      // `controller-tests-cannot-reach-app-helpers-without-booting`). The Rails
+      // twin, which boots, asserts it.
+      await tc.post("move", { params: { id: "0015-csrf", status: "active", authenticity_token: token! } });
+      expect(tc.response.status).toBe(303);
+    } finally {
+      ApplicationController.allowForgeryProtection = was;
+    }
+    expect((await Rfc.find("0015-csrf")).status).toBe("active");
+  });
+
+  // Last: it leaves local main a commit ahead of a diverged origin.
+  it("aborts a rebase that conflicts, so the next click is not refused", async () => {
+    const other = `${checkout}-other`;
+    await sh(
+      `git clone -q "$ORIGIN" "${other}" && cd "${other}" && sed -i 's/^status: draft/status: postponed/' rfcs/0012-conflict/README.md && ` +
+        `git -c user.name=t -c user.email=t@t commit -qam theirs && git push -q origin main`,
+    );
+    const { status } = await post("move", { id: "0012-conflict", status: "active" });
+    expect(status).toBe(303);
+    expect(await sh(`git -C "$CHECKOUT" rev-parse --abbrev-ref HEAD`)).toBe("main");
+    expect(await sh(`git -C "$CHECKOUT" status --porcelain`)).toBe("");
   });
 });

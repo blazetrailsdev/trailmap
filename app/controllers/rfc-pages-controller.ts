@@ -80,7 +80,7 @@ export interface RfcRow {
  * replaces anything yet.
  *
  * The lifecycle buttons — draft / ready / postpone / close, and "Mark drafts
- * ready" — are ported (`status`, `readyDrafts`, app/models/rfc-status.ts).
+ * ready" — are ported (`move`, `readyDrafts`, app/models/rfc-status.ts).
  * What is still NOT: refine, sunset, spawn a batch, the refinements tab and
  * the charts tab, every one of them ringo's own local state or dispatch.
  *

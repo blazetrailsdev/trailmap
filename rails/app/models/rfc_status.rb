@@ -5,7 +5,16 @@ require "open3"
 # ../../app/models/rfc-status.ts is: the frontmatter is rewritten, committed
 # and pushed, then the row and the `rfc-status` event are written — what
 # ingest would project from that commit.
+#
+# git and the database share no transaction: if the row write fails after the
+# push, the markdown is ahead of the row until the next ingest projects it —
+# the CLI's order and recovery too. Moves are serialized per process by LOCK,
+# so two clicks never race on the file and the index. A rebase that stops on a
+# conflict is aborted, which the CLI's `pushMain` does not do: a page has no
+# terminal to resolve it from.
 module RfcStatus
+  LOCK = Mutex.new
+
   ALLOWED = {
     "draft" => %w[active closed postponed],
     "active" => %w[draft closed postponed],
@@ -46,6 +55,10 @@ module RfcStatus
   end
 
   def set(id, to, reason: nil)
+    LOCK.synchronize { move(id, to, reason) }
+  end
+
+  def move(id, to, reason)
     raise VerbExit.new(1, %(unknown RFC status "#{to}" (one of: #{Rfc.statuses.keys.join(", ")}))) unless Rfc.statuses.key?(to)
     dir = Document.tasks_content_dir or raise VerbExit.new(1, "TASKS_DIR names no tasks checkout")
     branch = (git(dir, "rev-parse", "--abbrev-ref", "HEAD") rescue nil)
@@ -90,6 +103,7 @@ module RfcStatus
         git(dir, "pull", "--rebase", "--autostash", "--quiet", "origin", "main")
         git(dir, "push", "--quiet", "origin", "HEAD:main")
       rescue RuntimeError => e
+        (git(dir, "rebase", "--abort") rescue nil)
         line += "\nwarning: rfc-status committed locally but could not push: #{e.message}\n  the work is on local main; push it or the next run will."
       end
     end

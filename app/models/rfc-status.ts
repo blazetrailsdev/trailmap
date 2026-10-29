@@ -15,6 +15,17 @@
  * `closeRfcIfComplete`. trailmap has no port of ingest, so it writes those
  * two columns and runs that rule; the next ingest reads the same file and
  * writes the same values, so nothing is reverted.
+ *
+ * The commit and push come BEFORE that row write, and nothing rolls one back
+ * when the other fails: git and SQLite share no transaction. If the row write
+ * throws after the push, the markdown is ahead of the row until the next
+ * ingest, which projects the committed file and closes the gap. That is the
+ * CLI's order and its recovery too (it commits, then ingests).
+ *
+ * Moves are serialized per checkout (`withCheckoutLock`): two clicks at once
+ * would otherwise race on the file and the index, and the commit-failure
+ * cleanup (`checkout -- rel`) could discard the other request's edit. The lock
+ * is per process — trailmap serves the page from one.
  */
 import { Open3, getFs, getPath } from "@blazetrails/ruby-compat";
 import { tasksContentDir } from "../../config/tasks-content.ts";
@@ -80,6 +91,20 @@ export function rfcStatusMoves(status: string): RfcStatusMove[] {
   return [];
 }
 
+const checkoutLocks = new Map<string, Promise<unknown>>();
+
+/** Run `work` after every earlier move on the same checkout has finished. */
+async function withCheckoutLock<T>(dir: string, work: () => Promise<T>): Promise<T> {
+  const previous = checkoutLocks.get(dir) ?? Promise.resolve();
+  const run = previous.catch(() => null).then(work);
+  checkoutLocks.set(dir, run);
+  try {
+    return await run;
+  } finally {
+    if (checkoutLocks.get(dir) === run) checkoutLocks.delete(dir);
+  }
+}
+
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -121,16 +146,23 @@ function editFrontmatter(text: string, rel: string, edits: Record<string, string
  *
  * The push is the CLI's `pushMain`: push, else rebase onto origin and push
  * again, else keep the local commit and say so — a commit the next run will
- * push is not a failed move.
+ * push is not a failed move. Unlike `pushMain`, a rebase that stops on a
+ * conflict is aborted: the CLI leaves the checkout mid-rebase for a person at
+ * a terminal to resolve, and a page has no terminal, so every later click
+ * would be refused as "a detached HEAD" with no way out from the page.
  */
 export async function rfcStatusSet(id: string, to: string, opts: { reason?: string | null } = {}): Promise<string> {
+  const dir = tasksContentDir();
+  if (dir === null) throw new VerbExit(1, "TASKS_DIR names no tasks checkout");
+  return withCheckoutLock(dir, () => moveRfc(dir, id, to, opts.reason ?? null));
+}
+
+async function moveRfc(dir: string, id: string, to: string, rawReason: string | null): Promise<string> {
   if (!(RFC_STATUSES as readonly string[]).includes(to)) {
     throw new VerbExit(1, `unknown RFC status "${to}" (one of: ${RFC_STATUSES.join(", ")})`);
   }
   const target = to as RfcStatus;
 
-  const dir = tasksContentDir();
-  if (dir === null) throw new VerbExit(1, "TASKS_DIR names no tasks checkout");
   const branch = await git(dir, "rev-parse", "--abbrev-ref", "HEAD").catch(() => null);
   if (branch !== "main") {
     throw new VerbExit(
@@ -167,7 +199,7 @@ export async function rfcStatusSet(id: string, to: string, opts: { reason?: stri
   await fs.writeFile(abs, editFrontmatter(await fs.readFile(abs, "utf8"), rel, { status: target, updated }));
 
   // Blank is absent, in the commit message and in the event alike.
-  const reason = opts.reason?.trim() || null;
+  const reason = rawReason?.trim() || null;
   try {
     await git(dir, "add", "--", rel);
     await git(dir, "commit", "-q", "-m", `rfc(${id}): ${from} -> ${target}${reason ? `\n\n${reason}` : ""}`);
@@ -186,6 +218,7 @@ export async function rfcStatusSet(id: string, to: string, opts: { reason?: stri
       await git(dir, "pull", "--rebase", "--autostash", "--quiet", "origin", "main");
       await git(dir, "push", "--quiet", "origin", "HEAD:main");
     } catch (error) {
+      await git(dir, "rebase", "--abort").catch(() => null);
       line +=
         `\nwarning: rfc-status committed locally but could not push: ${(error as Error).message}\n` +
         `  the work is on local main; push it or the next run will.`;
