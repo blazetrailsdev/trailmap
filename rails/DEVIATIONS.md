@@ -168,3 +168,9 @@ each language spells it; the rest of that report's list was converged.
 - `RfcPagesController#move`: `status` is the action's name in ringo's route
   and here it is `move` on both sides; in trails an action called `status`
   shadows the controller's own response-status reader.
+- `RfcPagesController#move` / `#ready_drafts`: a CLI refusal (`VerbExit` exit 1)
+  answers 422 on both sides, where ringo answers 500 with the CLI's stderr
+  (btwebooks `webhook/rfcs.go:1217`, `:1311`). It follows
+  `MutationsController`'s mapping (exit 1 → 422, otherwise 409): a refusal is
+  an answer, not a server error. The 409s for an unoffered move and for no
+  drafts are ringo's (`rfcs.go:1208`, `:1305`).
