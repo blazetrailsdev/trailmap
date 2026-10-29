@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RouteSet, controllerConstants } from "@blazetrails/actionpack";
+import { RouteSet, registerController } from "@blazetrails/actionpack";
 import { Trails } from "@blazetrails/trailties";
 import "../config/application.ts";
 import "../config/routes.ts";
@@ -32,7 +32,7 @@ import { RESERVED_OWNER_NAMES } from "../config/routes.ts";
 // `setup_main_autoloader` initializer). This suite draws routes without
 // booting, so it does that registration itself — which also makes each case a
 // check that the route names a controller that is really there.
-for (const controller of [
+registerController([
   AuditsController,
   DashboardController,
   FleetController,
@@ -53,9 +53,7 @@ for (const controller of [
   RepoWikiController,
   RepoInsightsController,
   RepoSettingsController,
-]) {
-  controllerConstants.set(controller.controllerPath(), controller);
-}
+]);
 
 /** The application's route set, drawn by `config/routes.ts` when it loaded. */
 function routeSet(): RouteSet {
