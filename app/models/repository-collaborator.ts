@@ -53,8 +53,8 @@ export class RepositoryCollaborator extends Hub {
     // the setter, which is correct on both sides of that fix.
     this.primaryKey = ["repository_id", "owner_id"];
 
-    this.belongsTo("repository", { className: "Repository", foreignKey: "repository_id" });
-    this.belongsTo("owner", { className: "Owner", foreignKey: "owner_id" });
+    this.belongsTo("repository");
+    this.belongsTo("owner");
 
     // Prefixed for the same reason `Repository.visibility` is: an unprefixed
     // `read` would generate a class method named after a word the library may

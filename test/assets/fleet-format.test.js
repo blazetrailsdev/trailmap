@@ -3,6 +3,8 @@ import {
   CLEAR_FAILED_ID,
   DEFAULT_REPO,
   anyFailedSpawn,
+  cleanupControl,
+  cleanupPending,
   control,
   BROADCAST_BUTTONS,
   broadcastButtons,
@@ -1567,5 +1569,45 @@ describe("the usage-scraper pill", () => {
     expect(controlOutcome(request, { ok: true, text: "{}" }, "")).toEqual({ disabled: false, refresh: "usage" });
     expect(controlOutcome(request, { ok: false, text: "not configured" }, "").alert).toBe("Usage refresh failed: not configured");
     expect(controlOutcome(request, { error: "offline" }, "").alert).toBe("Usage refresh failed: offline");
+  });
+});
+
+describe("a pending pane cleanup", () => {
+  const now = Date.parse("2026-10-28T12:00:00Z");
+  const pr = { owner: "o", repo: "r", pr: 7, pane: "%12", teardownAt: "2026-10-28T12:00:45Z" };
+
+  it("is pending until teardownAt", () => {
+    expect(cleanupPending(pr, now)).toBe(true);
+  });
+
+  it("shows nothing for Go's zero time, an absent time or a missing pane", () => {
+    expect(cleanupPending({ ...pr, teardownAt: "0001-01-01T00:00:00Z" }, now)).toBe(false);
+    expect(cleanupPending({ ...pr, teardownAt: undefined }, now)).toBe(false);
+    expect(cleanupPending({ ...pr, pane: "" }, now)).toBe(false);
+    expect(cleanupPending({ ...pr, teardownAt: "not a time" }, now)).toBe(false);
+  });
+
+  it("keeps the control for a minute past the deadline, as ringo does", () => {
+    expect(cleanupPending({ ...pr, teardownAt: "2026-10-28T11:59:30Z" }, now)).toBe(true);
+    expect(cleanupPending({ ...pr, teardownAt: "2026-10-28T11:59:00Z" }, now)).toBe(false);
+  });
+
+  it("draws the pill and a cancel control on the PR row", () => {
+    const html = prRow(pr, [], now);
+    expect(html).toContain("closing in 45s");
+    expect(html).toContain('data-action="cancel-cleanup" data-pane="%12"');
+    expect(cleanupControl({ ...pr, teardownAt: "2026-10-28T11:59:30Z" }, now)).toContain("closing in 0s");
+    expect(prRow({ ...pr, teardownAt: "0001-01-01T00:00:00Z" }, [], now)).not.toContain("cancel-cleanup");
+  });
+
+  it("posts the pane to /cancel-cleanup and reports kept or too late", () => {
+    const request = controlRequest("cancel-cleanup", { pane: "%12" });
+    expect(request.path).toBe("/cancel-cleanup");
+    expect(request.body).toEqual({ pane: "%12" });
+    expect(controlOutcome(request, { ok: true, text: "" }, "cancel cleanup").text).toBe("kept");
+    const late = controlOutcome(request, { ok: false, text: "no cleanup pending" }, "cancel cleanup");
+    expect(late.text).toBe("too late");
+    expect(late.title).toBe("no cleanup pending");
+    expect(controlOutcome(request, { error: "offline" }, "cancel cleanup").text).toBe("err");
   });
 });

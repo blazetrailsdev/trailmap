@@ -38,7 +38,7 @@ export class RepositorySetting extends Hub {
   declare repository: Repository | null;
 
   static {
-    this.belongsTo("repository", { className: "Repository", foreignKey: "repository_id" });
+    this.belongsTo("repository");
     this.validates("repository_id", { presence: true, uniqueness: true });
   }
 

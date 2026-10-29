@@ -510,6 +510,11 @@ export function controlRequest(action, data, page = {}) {
     }
     case "drain":
       return { path: "/drain", body: null, quiet: true, refresh: "usage" };
+    // `cancelCleanup` (`dashboard.go:2056`): 204 kept the pane, 409 means the
+    // quit already went out or nothing was pending. The row repaints on the
+    // next frame, which carries the cleared `teardownAt`.
+    case "cancel-cleanup":
+      return { path: "/cancel-cleanup", body: { pane: data.pane }, busy: "...", done: "kept", failed: "too late", errored: "err", titled: true };
     case "poke": {
       const panes = String(data.panes || "").split(",").filter(Boolean);
       if (!panes.length) return null;
@@ -898,6 +903,27 @@ export function spawnRow(s, fixers = [], now = Date.now()) {
   });
 }
 
+/**
+ * Whether a PR's row shows the cancel-cleanup control. Not with no pane, no
+ * cleanup — Go's zero time, `0001-01-01T00:00:00Z` — or a deadline more than a
+ * minute gone, by which time the quit has gone out. ringo's `renderInto`
+ * (`dashboard.go:1363`).
+ */
+export function cleanupPending(pr, now = Date.now()) {
+  if (!pr.pane || !pr.teardownAt || String(pr.teardownAt).startsWith("0001")) return false;
+  return Date.parse(pr.teardownAt) - now > -60000;
+}
+
+/** The "closing in Ns" pill and its "cancel cleanup" button, or nothing. */
+export function cleanupControl(pr, now = Date.now()) {
+  if (!cleanupPending(pr, now)) return "";
+  const seconds = Math.max(0, Math.round((Date.parse(pr.teardownAt) - now) / 1000));
+  return (
+    '<span class="status" title="Pane cleanup pending">closing in ' + seconds + "s</span>" +
+    control("cancel-cleanup", { pane: pr.pane }, { cls: "act", title: "Keep this pane open", label: "cancel cleanup" })
+  );
+}
+
 /** One PR row. */
 export function prRow(pr, fixers = [], now = Date.now(), reviewers = null, queue = []) {
   const url = "https://github.com/" + pr.owner + "/" + pr.repo + "/pull/" + pr.pr;
@@ -936,6 +962,7 @@ export function prRow(pr, fixers = [], now = Date.now(), reviewers = null, queue
     // says so and the now-pointless button goes.
     aside:
       statusPill +
+      cleanupControl(pr, now) +
       (merged
         ? ""
         : control("merge", { owner: pr.owner, repo: pr.repo, pr: pr.pr }, {

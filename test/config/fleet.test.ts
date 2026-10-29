@@ -71,6 +71,7 @@ describe("FLEET_CONTROLS", () => {
     expect([...FLEET_CONTROLS].sort()).toEqual([
       "ask/answer",
       "broadcast",
+      "cancel-cleanup",
       "ci-fixer/spawn",
       "drain",
       "drain-one",

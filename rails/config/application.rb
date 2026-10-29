@@ -21,6 +21,7 @@ module Trailmap
     config.x.fleet.repo_paths = ENV["FLEET_REPO_PATHS"]
     config.x.tasks.dir = ENV["TASKS_DIR"]
     config.x.audits.dir = ENV["AUDITS_DIR"]
+    config.x.deploys.logs_dir = ENV["DEPLOY_LOGS_DIR"]
 
     # ringo's chart engine, vendored by ../scripts/vendor-ringo.sh.
     config.assets.paths << Rails.root.join("vendor/ringo")

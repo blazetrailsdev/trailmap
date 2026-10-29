@@ -777,3 +777,6 @@ ul { margin: 0 0 10px 20px; }
 .session-role { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600; border: 1px solid var(--border); }
 .session-role.agent { color: var(--accent); }
 .session-role.reviewer { color: var(--purple); }
+.deploy-log { flex-basis: 100%; }
+.deploy-log summary { cursor: pointer; color: var(--accent, inherit); }
+.deploy-log pre { max-height: 32em; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }

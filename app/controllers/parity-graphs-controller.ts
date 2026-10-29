@@ -49,7 +49,7 @@ function sinceFor(days: string | undefined): string | undefined {
  */
 async function storedGapsFor(metric: ParityMetric): Promise<string[] | null> {
   if (metric.gaps === undefined || metric.gaps.length === 0) return null;
-  const row = await ParityDay.where({ metric: metric.key }).where("gaps IS NOT NULL").first();
+  const row = await ParityDay.where({ metric: metric.key }).where().not({ gaps: null }).first();
   const stored = (row?.gaps ?? null) as Record<string, number> | null;
   if (stored === null) return null;
   const present = metric.gaps.filter((gap) => gap in stored);

@@ -52,17 +52,15 @@ export class Repository extends Hub {
   declare isVisibilityPrivate: () => boolean;
 
   static {
-    this.belongsTo("owner", { className: "Owner", foreignKey: "owner_id" });
+    this.belongsTo("owner");
     // `dependent` for the same reason as Owner's: real FKs mean a destroy
     // without it raises instead of cascading.
     this.hasOne("settings", {
       className: "RepositorySetting",
-      foreignKey: "repository_id",
       dependent: "destroy",
     });
     this.hasMany("collaborators", {
       className: "RepositoryCollaborator",
-      foreignKey: "repository_id",
       inverseOf: "repository",
       dependent: "deleteAll",
     });
@@ -110,14 +108,10 @@ export class Repository extends Hub {
    * role is not consulted, so a public repository costs no query.
    */
   async isReadableBy(viewer: Owner | null): Promise<boolean> {
-    if (this.visibility === "public") return true;
+    if (this.isVisibilityPublic()) return true;
     if (viewer === null) return false;
     if (viewer.id === this.owner_id) return true;
-    const row = await RepositoryCollaborator.findBy({
-      repository_id: this.id,
-      owner_id: viewer.id,
-    });
-    return row != null;
+    return RepositoryCollaborator.isExists({ repository_id: this.id, owner_id: viewer.id });
   }
 
   /**
