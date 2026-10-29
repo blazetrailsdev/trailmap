@@ -9,15 +9,18 @@
  * refusals and their messages are the CLI's, raised as `VerbExit`.
  *
  * INGEST is the row write and the `rfc-status` event. The CLI runs a full
- * `ingest` after the commit, and what that projects from this commit is one
- * RFC's `status` and `updated` — the two keys just written. trailmap has no
- * port of ingest, so it writes exactly those two columns; the next ingest
- * reads the same file and writes the same values, so nothing is reverted.
+ * `ingest` after the commit. For an existing RFC, ingest's `upsertRfc`
+ * (tasks/src/ingest.ts:471-499) rewrites every frontmatter column, and of
+ * those only `status` and `updated` changed in this commit, then re-applies
+ * `closeRfcIfComplete`. trailmap has no port of ingest, so it writes those
+ * two columns and runs that rule; the next ingest reads the same file and
+ * writes the same values, so nothing is reverted.
  */
 import { Open3, getFs, getPath } from "@blazetrails/ruby-compat";
 import { tasksContentDir } from "../../config/tasks-content.ts";
 import { ApplicationRecord } from "./application-record.ts";
 import { Event } from "./event.ts";
+import { closeRfcIfComplete } from "./rfc-close.ts";
 import { RFC_STATUSES, Rfc, type RfcStatus } from "./rfc.ts";
 import { Story } from "./story.ts";
 import { VerbExit } from "./verb-exit.ts";
@@ -163,9 +166,18 @@ export async function rfcStatusSet(id: string, to: string, opts: { reason?: stri
   const updated = today();
   await fs.writeFile(abs, editFrontmatter(await fs.readFile(abs, "utf8"), rel, { status: target, updated }));
 
-  const reason = opts.reason?.trim();
-  await git(dir, "add", "--", rel);
-  await git(dir, "commit", "-q", "-m", `rfc(${id}): ${from} -> ${target}${reason ? `\n\n${reason}` : ""}`);
+  // Blank is absent, in the commit message and in the event alike.
+  const reason = opts.reason?.trim() || null;
+  try {
+    await git(dir, "add", "--", rel);
+    await git(dir, "commit", "-q", "-m", `rfc(${id}): ${from} -> ${target}${reason ? `\n\n${reason}` : ""}`);
+  } catch (error) {
+    // Put the file back, index and worktree, so a failed commit leaves no
+    // edit for the next click to autostash or commit.
+    await git(dir, "reset", "-q", "--", rel).catch(() => null);
+    await git(dir, "checkout", "--", rel).catch(() => null);
+    throw new VerbExit(1, `rfc-status could not commit ${rel}: ${(error as Error).message}`);
+  }
   let line = `rfc ${id}: ${from} -> ${target}`;
   try {
     await git(dir, "push", "--quiet", "origin", "HEAD:main");
@@ -189,8 +201,12 @@ export async function rfcStatusSet(id: string, to: string, opts: { reason?: stri
       rfc_id: id,
       pr: null,
       actor: null,
-      detail: JSON.stringify({ from, to: target, note: reason ?? null }),
+      detail: JSON.stringify({ from, to: target, note: reason }),
     });
+    // What ingest does next for an RFC whose status it projects
+    // (tasks/src/ingest.ts:492-499): a now-active RFC with nothing left open
+    // closes again.
+    await closeRfcIfComplete(id);
   });
   return line;
 }

@@ -69,12 +69,19 @@ module RfcStatus
     rel = rfc.file_path || File.join("rfcs", id, "README.md")
     abs = File.join(dir, rel)
     raise VerbExit.new(1, "#{rel} does not exist") unless File.exist?(abs)
-    updated = Date.current.iso8601
+    updated = Time.now.utc.to_date.iso8601
     File.write(abs, edit_frontmatter(File.read(abs, encoding: "UTF-8"), rel, "status" => to, "updated" => updated))
 
     note = reason.to_s.strip.presence
-    git(dir, "add", "--", rel)
-    git(dir, "commit", "-q", "-m", "rfc(#{id}): #{from} -> #{to}#{note ? "\n\n#{note}" : ""}")
+    begin
+      git(dir, "add", "--", rel)
+      git(dir, "commit", "-q", "-m", "rfc(#{id}): #{from} -> #{to}#{note ? "\n\n#{note}" : ""}")
+    rescue RuntimeError => e
+      # Put the file back so a failed commit leaves no edit behind.
+      (git(dir, "reset", "-q", "--", rel) rescue nil)
+      (git(dir, "checkout", "--", rel) rescue nil)
+      raise VerbExit.new(1, "rfc-status could not commit #{rel}: #{e.message}")
+    end
     line = "rfc #{id}: #{from} -> #{to}"
     begin
       git(dir, "push", "--quiet", "origin", "HEAD:main")
@@ -91,6 +98,8 @@ module RfcStatus
       rfc.update!(status: to, updated_on: updated)
       Event.create!(at: Time.now.utc.iso8601, verb: "rfc-status", story_id: nil, rfc_id: id, pr: nil, actor: nil,
                     detail: { from: from, to: to, note: note }.to_json)
+      # What ingest does next for an RFC whose status it projects.
+      RfcClose.close_if_complete(id)
     end
     line
   end

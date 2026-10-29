@@ -52,6 +52,11 @@ beforeAll(async () => {
   // Finished without a save, or the auto-close (rfc-close.ts) gets there first.
   await Story.create({ id: "gone", rfc_id: "0005-finished", status: "ready" });
   await Story.where({ id: "gone" }).updateAll({ status: "closed" });
+  await rfc("0008-finished-parked", "postponed");
+  await rfc("0009-blank-reason", "draft");
+  await rfc("0010-hooked", "draft");
+  await Story.create({ id: "parked-done", rfc_id: "0008-finished-parked", status: "ready" });
+  await Story.where({ id: "parked-done" }).updateAll({ status: "done" });
   await Story.create({ id: "d-1", rfc_id: "0007-drafts", status: "draft" });
   await Story.create({ id: "d-2", rfc_id: "0007-drafts", status: "draft" });
   await Story.create({ id: "d-3", rfc_id: "0007-drafts", status: "ready" });
@@ -133,5 +138,32 @@ describe("RfcPagesController lifecycle", () => {
     const closed = await controllerTestCase(RfcPagesController);
     await closed.get("show", { params: { id: "0006-closed" } });
     expect(closed.response.body).not.toContain('class="side-section rfc-actions"');
+  });
+
+  it("writes a blank reason as no note", async () => {
+    await post("move", { id: "0009-blank-reason", status: "active", reason: "   " });
+    const event = await Event.where({ verb: "rfc-status", rfc_id: "0009-blank-reason" }).last();
+    expect(JSON.parse(event!.detail!).note).toBeNull();
+  });
+
+  it("puts the file back when the commit fails", async () => {
+    const hook = `${checkout}/.git/hooks/pre-commit`;
+    await getFs().writeFile!(hook, "#!/bin/sh\nexit 1\n");
+    await sh(`chmod +x "$CHECKOUT/.git/hooks/pre-commit"`);
+    try {
+      const { status, body } = await post("move", { id: "0010-hooked", status: "active" });
+      expect(status).toBe(422);
+      expect(body).toContain("rfc-status could not commit rfcs/0010-hooked/README.md");
+    } finally {
+      await sh(`rm "$CHECKOUT/.git/hooks/pre-commit"`);
+    }
+    expect(await sh(`git -C "$CHECKOUT" status --porcelain`)).toBe("");
+    expect((await Rfc.find("0010-hooked")).status).toBe("draft");
+  });
+
+  it("closes a readied RFC whose stories are all finished, as ingest does", async () => {
+    const { status } = await post("move", { id: "0008-finished-parked", status: "active" });
+    expect(status).toBe(303);
+    expect((await Rfc.find("0008-finished-parked")).status).toBe("closed");
   });
 });

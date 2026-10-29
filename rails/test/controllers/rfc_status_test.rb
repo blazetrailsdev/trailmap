@@ -10,12 +10,15 @@ class RfcStatusTest < ActionDispatch::IntegrationTest
     sh("git", "init", "-q", "--bare", "-b", "main", @origin)
     sh("git", "init", "-q", "-b", "main", @checkout)
     { "0001-draft" => "draft", "0002-active" => "active", "0003-postponed" => "postponed", "0004-open" => "active",
-      "0005-finished" => "active", "0006-closed" => "closed", "0007-drafts" => "active" }.each { |id, status| rfc_file!(id, status) }
+      "0005-finished" => "active", "0006-closed" => "closed", "0007-drafts" => "active",
+      "0008-finished-parked" => "postponed", "0009-blank-reason" => "draft", "0010-hooked" => "draft" }.each { |id, status| rfc_file!(id, status) }
     story!("open-1", rfc_id: "0004-open")
     story!("open-2", rfc_id: "0004-open", status: "done")
     # Finished without a save, or the auto-close gets there first.
     story!("gone", rfc_id: "0005-finished")
     Story.where(id: "gone").update_all(status: "closed")
+    story!("parked-done", rfc_id: "0008-finished-parked")
+    Story.where(id: "parked-done").update_all(status: "done")
     story!("d-1", rfc_id: "0007-drafts", status: "draft")
     story!("d-2", rfc_id: "0007-drafts", status: "draft")
     story!("d-3", rfc_id: "0007-drafts")
@@ -115,5 +118,28 @@ class RfcStatusTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Close this RFC? Refused while any of its stories are unfinished — use Sunset for that."
     get "/rfc/0006-closed"
     assert_not_includes response.body, 'class="side-section rfc-actions"'
+  end
+
+  test "writes a blank reason as no note" do
+    with_env(IDENT) { post "/rfc/0009-blank-reason/status", params: { status: "active", reason: "   " } }
+    assert_nil JSON.parse(Event.where(verb: "rfc-status", rfc_id: "0009-blank-reason").last.detail)["note"]
+  end
+
+  test "puts the file back when the commit fails" do
+    hook = File.join(@checkout, ".git/hooks/pre-commit")
+    File.write(hook, "#!/bin/sh\nexit 1\n")
+    File.chmod(0o755, hook)
+    with_env(IDENT) { post "/rfc/0010-hooked/status", params: { status: "active" } }
+    assert_response :unprocessable_entity
+    assert_includes response.body, "rfc-status could not commit rfcs/0010-hooked/README.md"
+    File.delete(hook)
+    assert_equal "", sh("git", "-C", @checkout, "status", "--porcelain")
+    assert_equal "draft", Rfc.find("0010-hooked").status
+  end
+
+  test "closes a readied RFC whose stories are all finished, as ingest does" do
+    with_env(IDENT) { post "/rfc/0008-finished-parked/status", params: { status: "active" } }
+    assert_response :see_other
+    assert_equal "closed", Rfc.find("0008-finished-parked").status
   end
 end
