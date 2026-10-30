@@ -29,7 +29,7 @@ function relayed(path, data) {
     const ids = (data && data.stories) || [];
     return `Spawned ${ids.length} stor${ids.length === 1 ? "y" : "ies"} in pane ${data.pane || "?"}: ${ids.join(", ")}`;
   }
-  if (path === "spawnloop/story-spawn") return `Spawned ${data.story} in pane ${data.pane || "?"}`;
+  if (path === "spawnloop/story-spawn") return `Spawned ${(data && data.story) || "story"} in pane ${(data && data.pane) || "?"}`;
   return "Agent spawned — its summary will appear on ringo's Refinements tab when it finishes.";
 }
 
