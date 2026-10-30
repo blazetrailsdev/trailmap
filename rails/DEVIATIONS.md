@@ -38,18 +38,6 @@ answering, `/up` included. Seen once, locally, and not investigated. The
 deployed image builds its assets first (`scripts/build-assets.sh`), which this
 run skipped, so that is the first thing to rule out.
 
-### app: every mutation verb refuses a request outside `test`
-
-`ApiController` does not opt out of forgery protection, and the 8.0 defaults
-turn it on. So `POST /stories/claim` from the CLI (JSON, no session, no token)
-answers "Can't verify CSRF token authenticity" in development and production.
-Both frameworks agree on this. The TypeScript suite does not hit it by
-default, because `config/environments/test.ts` disables forgery protection,
-as Rails' test environment does. It has not
-mattered yet only because the CLI still writes `tasks.db` directly. The Rails
-app declares `skip_forgery_protection` in `ApiController`, which is what a
-Rails JSON API inside a full app does.
-
 ### trails: a concern's `before_action` method cannot be private
 
 `LoopbackOnly` here is a concern whose `require_loopback` is `private`, and

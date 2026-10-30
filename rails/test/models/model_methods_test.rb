@@ -177,7 +177,6 @@ class ModelMethodsTest < ActiveSupport::TestCase
     Dir.mktmpdir do |dir|
       File.write(File.join(dir, "s.md"), "---\nid: s\n---\nThe serializer serializes. serialize twice.")
       with_config(%i[tasks dir], dir) do
-        Search.reset_body_index
         rfc!("0007-serialize", title: "Serialize everything")
         story!("plain", rfc_id: "0007-serialize", title: "Plain", file_path: "s.md")
         story!("title_hit", rfc_id: "0007-serialize", title: "a serialize title")
@@ -185,22 +184,14 @@ class ModelMethodsTest < ActiveSupport::TestCase
         assert_equal Set["rfc:0007-serialize", "story:title_hit"], Search.title_matches("SERIALIZE")
         assert_equal Set[], Search.title_matches("%")
         assert_equal %w[rfc:0007-serialize story:plain story:title_hit], Search.all_rows.map { |r| "#{r.kind}:#{r.id}" }.sort
-        assert_equal({ "story:plain" => "the serializer serializes. serialize twice." }, Search.read_bodies)
-        assert_equal Search.read_bodies, Search.body_index
-        assert_equal 3, Search.count_mentions("the serializer serializes. serialize twice.", "serializ")
+        Story.where(id: "plain").update_all(body: "The serializer serializes. serialize twice.")
+        assert_equal({ "story:plain" => 3 }, Search.body_mentions("SERIALIZ"))
 
         hits = Search.search("serialize")
         assert_equal [ [ "0007-serialize", 1 ], [ "title_hit", 2 ], [ "plain", 3 ] ], hits.map { |h| [ h.id, h.tier ] }
         snipped = Search.with_snippets(hits, "serialize")
         assert_equal "", snipped.first.snippet
         assert_equal "The serializer serializes. serialize twice.", snipped.last.snippet
-
-        File.write(File.join(dir, "s.md"), "changed")
-        assert_equal "the serializer serializes. serialize twice.", Search.body_index["story:plain"]
-        Search.reset_body_index
-        assert_equal "changed", Search.body_index["story:plain"]
-      ensure
-        Search.reset_body_index
       end
     end
   end

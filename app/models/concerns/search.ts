@@ -3,10 +3,9 @@
  *
  * Ids and titles are columns, so they are matched where they live: an Arel
  * `matches` (a `LIKE` with its wildcards escaped) built through the model,
- * never a string of SQL. Bodies are NOT columns — `ingest` stores the
- * metadata and leaves the markdown on disk (`concerns/document.ts`) — so they
- * are matched against a copy read once per ingest: `bodyIndex()` keys it on
- * `meta.last_ingested_sha`, which is exactly when the files can have changed.
+ * never a string of SQL. Bodies are too: `ingest` writes each document's
+ * markdown to `body`, frontmatter stripped. Like the title match, that folds
+ * ASCII only, so `É` in a body matches only `É`.
  *
  * Ranked by where the phrase was found:
  *
@@ -18,7 +17,6 @@
  * Within a tier, more body mentions first, then RFC before story, then by id,
  * so a page's order is stable and the pager's pages are the whole list.
  */
-import { Meta } from "../meta.ts";
 import { Rfc } from "../rfc.ts";
 import { Story } from "../story.ts";
 import { readDocument } from "./document.ts";
@@ -70,17 +68,16 @@ interface Row {
 /** Every hit for `phrase`, ranked. The caller pages it. */
 export async function search(phrase: string): Promise<SearchHit[]> {
   const needle = phrase.toLowerCase();
-  const [rows, titled, bodies] = await Promise.all([
+  const [rows, titled, mentioned] = await Promise.all([
     allRows(),
     titleMatches(phrase),
-    bodyIndex(),
+    bodyMentions(phrase),
   ]);
 
   const hits: SearchHit[] = [];
   for (const row of rows) {
     const key = `${row.kind}:${row.id}`;
-    const body = bodies.get(key);
-    const mentions = body ? countMentions(body, needle) : 0;
+    const mentions = mentioned.get(key) ?? 0;
     let tier: number;
     if (row.id.toLowerCase() === needle) tier = 0;
     else if (
@@ -108,8 +105,7 @@ export async function search(phrase: string): Promise<SearchHit[]> {
 
 /**
  * `hits` with their snippets, read from the files. Only the page being shown
- * is passed, so this is fifty reads, not fourteen thousand — the index keeps
- * bodies lowercased only, and a snippet should read as written.
+ * is passed, so this is fifty reads, not fourteen thousand.
  */
 export async function withSnippets(
   hits: SearchHit[],
@@ -193,51 +189,23 @@ async function allRows(): Promise<Row[]> {
   ];
 }
 
-/** How many reads are in flight while the index is built: enough to keep the disk busy, not the descriptor table full. */
-const READ_CONCURRENCY = 64;
-
-let cached: {
-  sha: string | null;
-  bodies: Promise<Map<string, string>>;
-} | null = null;
-
 /**
- * Every body, lowercased, keyed `kind:id` — read once per ingest. The first
- * search after an ingest pays for the read (under a second for ~14,000 files
- * on the box); every other one reads memory. Concurrent first searches share
- * one read.
+ * Mentions of the phrase per `kind:id`. SQL picks the bodies that have any;
+ * they are counted here, for this one search, and nothing is kept.
  */
-export async function bodyIndex(): Promise<Map<string, string>> {
-  const sha = await Meta.get("last_ingested_sha");
-  if (cached === null || cached.sha !== sha) {
-    const bodies = readBodies();
-    cached = { sha, bodies };
-    // A failed read is not cached: the next search tries again.
-    bodies.catch(() => {
-      if (cached?.bodies === bodies) cached = null;
-    });
+async function bodyMentions(phrase: string): Promise<Map<string, number>> {
+  const needle = phrase.toLowerCase();
+  const pattern = `%${Story.sanitizeSqlLike(needle)}%`;
+  const mentions = new Map<string, number>();
+  for (const model of [Story, Rfc] as const) {
+    const condition = model.arelTable.get("body").matches(pattern, "\\");
+    const rows = (await model.where(condition).pluck("id", "body")) as [string, string][];
+    const kind: SearchKind = model === Story ? "story" : "rfc";
+    for (const [id, body] of rows) {
+      mentions.set(`${kind}:${id}`, countMentions(body.toLowerCase(), needle));
+    }
   }
-  return cached.bodies;
-}
-
-/** Drop the cached bodies. For tests, which change the files under one sha. */
-export function resetBodyIndex(): void {
-  cached = null;
-}
-
-async function readBodies(): Promise<Map<string, string>> {
-  const rows = (await allRows()).filter((row) => row.filePath);
-  const bodies = new Map<string, string>();
-  for (let at = 0; at < rows.length; at += READ_CONCURRENCY) {
-    const batch = rows.slice(at, at + READ_CONCURRENCY);
-    const read = await Promise.all(
-      batch.map((row) => readDocument(row.filePath)),
-    );
-    batch.forEach((row, i) =>
-      bodies.set(`${row.kind}:${row.id}`, read[i]!.markdown.toLowerCase()),
-    );
-  }
-  return bodies;
+  return mentions;
 }
 
 function countMentions(body: string, needle: string): number {

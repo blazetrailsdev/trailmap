@@ -11,6 +11,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { migrateScratchDatabase } from "../models/schema.ts";
 import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { MutationsController } from "../../app/controllers/mutations-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -46,6 +47,17 @@ beforeEach(async () => {
 });
 
 describe("MutationsController", () => {
+  it("answers a verb with no token when forgery protection is on", async () => {
+    const was = ApplicationController.allowForgeryProtection;
+    ApplicationController.allowForgeryProtection = true;
+    const { status, body } = await post("claim", { ids: ["s1"], assignee: "agent-a" }).finally(() => {
+      ApplicationController.allowForgeryProtection = was;
+    });
+
+    expect(status).toBe(200);
+    expect(body).toEqual({ ok: true, lines: ["claimed s1 as agent-a"] });
+  });
+
   it("claims a batch and reports the CLI's lines", async () => {
     const { status, body } = await post("claim", { ids: ["s1", "s2"], assignee: "agent-a" });
 

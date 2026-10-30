@@ -1,17 +1,15 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getFs } from "@blazetrails/ruby-compat";
 import { setX } from "../support/config-x.ts";
 import { migrateScratchDatabase } from "../models/schema.ts";
-import { Meta, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import {
   SEARCH_PAGE_SIZE,
   SearchesController,
 } from "../../app/controllers/searches-controller.ts";
 import {
-  bodyIndex,
   compareHits,
-  resetBodyIndex,
   search,
   searchPhrase,
   withSnippets,
@@ -50,6 +48,7 @@ beforeAll(async () => {
     title: "Serialize everything",
     file_path: "rfcs/0042/README.md",
   });
+  await Rfc.where({ id: "0042-serialize" }).updateAll({ body: "The RFC body." });
   await write("rfcs/0042/README.md", "---\nid: 0042\n---\nThe RFC body.");
 
   await Story.create({
@@ -96,14 +95,16 @@ beforeAll(async () => {
     status: "ready",
     title: "estxloc is 100",
   });
+  await Story.where({ id: "once" }).updateAll({ body: "Calls Serialize once." });
+  await Story.where({ id: "thrice" }).updateAll({
+    body: "serialize, serialize and SERIALIZE.",
+  });
   await write("s/once.md", "---\nid: once\n---\nCalls Serialize once.");
   await write(
     "s/thrice.md",
     "---\nid: thrice\nnote: serialize\n---\nserialize, serialize and SERIALIZE.",
   );
 });
-
-beforeEach(() => resetBodyIndex());
 
 afterAll(async () => {
   await getFs().rm!(dir, { recursive: true, force: true });
@@ -136,17 +137,6 @@ describe("search", () => {
     expect((await search("100%")).map((hit) => hit.id)).toEqual(["pct"]);
   });
 
-  it("rereads the bodies when an ingest moves the sha", async () => {
-    expect(await search("freshly written")).toEqual([]);
-    await write("s/once.md", "freshly written");
-    expect(await search("freshly written")).toEqual([]);
-    await Meta.set("last_ingested_sha", "a-new-ingest");
-    expect((await search("freshly written")).map((hit) => hit.id)).toEqual([
-      "once",
-    ]);
-    await write("s/once.md", "---\nid: once\n---\nCalls Serialize once.");
-  });
-
   it("orders by tier, then mentions, then RFC before story, then id", () => {
     const hit = (over: Partial<SearchHit>): SearchHit => ({
       kind: "story",
@@ -173,16 +163,16 @@ describe("search", () => {
     expect(compareHits(hit({}), hit({}))).toBe(0);
   });
 
-  it("indexes each body once per ingest, keyed kind:id, frontmatter stripped", async () => {
-    const first = await bodyIndex();
-    expect(first.get("story:thrice")).toBe(
-      "serialize, serialize and serialize.",
-    );
-    expect(first.get("rfc:0042-serialize")).toBe("the rfc body.");
-    expect(first.has("story:serialize")).toBe(false);
-    expect(await bodyIndex()).toBe(first);
-    resetBodyIndex();
-    expect(await bodyIndex()).not.toBe(first);
+  it("reads no document to match a body", async () => {
+    await Story.where({ id: "once" }).updateAll({ file_path: "s/gone.md" });
+    const hits = await search("calls serialize");
+    await Story.where({ id: "once" }).updateAll({ file_path: "s/once.md" });
+    expect(hits.map((hit) => hit.id)).toEqual(["once"]);
+  });
+
+  it("keeps the body out of a loaded record", async () => {
+    const story = await Story.findBy({ id: "once" });
+    expect(story?.attributeNames()).not.toContain("body");
   });
 
   it("bounds the phrase", () => {
