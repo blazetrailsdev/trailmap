@@ -1,6 +1,7 @@
+<% const { rfc, stories, moves } = this; const counts = this.counts!; %>
 <% if (rfc === null) { %>
   <div class="page-header"><h1 class="page-title">RFC not found</h1></div>
-  <p class="muted">No RFC in the index has the id <code><%= id %></code>.</p>
+  <p class="muted">No RFC in the index has the id <code><%= this.rfcId %></code>.</p>
 <% } else { %>
   <div class="page-header">
     <h1 class="page-title"><%= rfc.title ?? rfc.id %></h1>
@@ -11,8 +12,8 @@
     </div>
   </div>
 
-  <% if (refusal) { %>
-    <p class="flash flash-error"><%= refusal %></p>
+  <% if (this.refusal) { %>
+    <p class="flash flash-error"><%= this.refusal %></p>
   <% } %>
 
   <div class="layout">
@@ -37,7 +38,7 @@
           <div class="item-row">
             <%= render({ partial: "shared/status-badge", locals: { status: story.status } }) %>
             <span class="row-main">
-              <a class="row-title" href="/story/<%= story.id %>"><%= story.title %></a>
+              <a class="row-title" href="<%= storyPath(story.id) %>"><%= story.title %></a>
               <div class="row-meta">
                 <%= story.id %><% if (story.estLoc) { %> &middot; <%= story.estLoc %> loc<% } %><% if (story.cluster) { %> &middot; <%= story.cluster %><% } %><% if (story.priority !== null) { %> &middot; p<%= story.priority %><% } %>
               </div>
@@ -47,33 +48,33 @@
       </div>
 
       <h2 class="section-title">Document</h2>
-      <%= render({ partial: "shared/document", locals: { body: body, error: error } }) %>
+      <%= render({ partial: "shared/document", locals: { body: this.html, error: this.documentError } }) %>
     </div>
 
     <div class="side">
-      <% if (moves.length > 0 || hasDrafts) { %>
+      <% if (moves.length > 0 || this.hasDrafts) { %>
         <div class="side-section rfc-actions">
           <div class="side-head">Lifecycle</div>
           <% for (const move of moves) { %>
-            <%= buttonTo(move.label, `/rfc/${rfc.id}/status`, { params: { status: move.to }, form: { "data-confirm": move.confirm }, class: "btn" }) %>
+            <%= buttonTo(move.label, rfcStatusPath(rfc.id), { params: { status: move.to }, form: { "data-confirm": move.confirm }, class: "btn" }) %>
           <% } %>
-          <% if (hasDrafts) { %>
-            <%= buttonTo("Mark drafts ready", `/rfc/${rfc.id}/ready-drafts`, { form: { "data-confirm": "Mark every draft story under this RFC ready? All or nothing." }, class: "btn" }) %>
+          <% if (this.hasDrafts) { %>
+            <%= buttonTo("Mark drafts ready", rfcReadyDraftsPath(rfc.id), { form: { "data-confirm": "Mark every draft story under this RFC ready? All or nothing." }, class: "btn" }) %>
           <% } %>
         </div>
       <% } %>
-      <% if (canBatch || canSunset) { %>
-        <div class="side-section rfc-actions">
-          <div class="side-head">Dispatch</div>
-          <% if (canBatch) { %>
-            <button type="button" class="btn" data-relay="spawnloop/rfc-batch-spawn" data-payload="<%= JSON.stringify({ slug: rfc.id }) %>" data-confirm="Spawn one worker for the next batch of stories under <%= rfc.id %>?">Spawn batch</button>
-          <% } %>
-          <% if (canSunset) { %>
-            <button type="button" class="btn" data-relay="spawnloop/rfc-refine" data-payload="<%= JSON.stringify({ slug: rfc.id, note: "", mode: "sunset" }) %>" data-confirm="Sunset <%= rfc.id %>? An agent will re-home its remaining stories and close the RFC unless work is still in flight.">Sunset RFC</button>
-          <% } %>
-          <div class="field-note" data-relay-status hidden></div>
-        </div>
-      <% } %>
+      <div class="side-section rfc-actions">
+        <div class="side-head">Dispatch</div>
+        <% if (this.canBatch) { %>
+          <button type="button" class="btn" data-relay="spawnloop/rfc-batch-spawn" data-payload="<%= JSON.stringify({ slug: rfc.id }) %>" data-confirm="Spawn one worker for the next batch of stories under <%= rfc.id %>?">Spawn batch</button>
+        <% } %>
+        <textarea class="input" data-relay-note aria-label="Message for the agent" placeholder="Optional message for the agent (steers this refine pass)…"></textarea>
+        <button type="button" class="btn" data-relay="spawnloop/rfc-refine" data-payload="<%= JSON.stringify({ slug: rfc.id, note: "", mode: "refine" }) %>" data-confirm="Spawn an agent to groom every story under <%= rfc.id %>?">Refine stories</button>
+        <% if (this.canSunset) { %>
+          <button type="button" class="btn" data-relay="spawnloop/rfc-refine" data-payload="<%= JSON.stringify({ slug: rfc.id, note: "", mode: "sunset" }) %>" data-confirm="Sunset <%= rfc.id %>? An agent will re-home its remaining stories and close the RFC unless work is still in flight.">Sunset RFC</button>
+        <% } %>
+        <div class="field-note" data-relay-status hidden></div>
+      </div>
       <div class="side-section">
         <div class="side-head">Owner</div>
         <div class="side-value"><%= rfc.owner ? rfc.owner : "Nobody" %></div>
@@ -81,7 +82,7 @@
       <% if (rfc.superseded_by) { %>
         <div class="side-section">
           <div class="side-head">Superseded by</div>
-          <div class="side-value"><a href="/rfc/<%= rfc.superseded_by %>"><code><%= rfc.superseded_by %></code></a></div>
+          <div class="side-value"><a href="<%= rfcPath(rfc.superseded_by) %>"><code><%= rfc.superseded_by %></code></a></div>
         </div>
       <% } %>
       <div class="side-section">

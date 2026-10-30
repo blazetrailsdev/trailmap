@@ -13,7 +13,7 @@
     <div class="item-row">
       <span class="row-main">
         <span class="titleline">
-          <a class="row-title" href="/<%= @nwo %>/issues/<%= story.id %>"><%= story.title %></a>
+          <a class="row-title" href="<%= repo_issue_path(@owner.login, @repo.name, story.id) %>"><%= story.title %></a>
           <%= render "shared/status_badge", status: story.status %>
         </span>
         <div class="row-meta"><code><%= story.id %></code></div>

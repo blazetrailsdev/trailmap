@@ -147,7 +147,7 @@ export class SessionsController extends ApplicationController {
     // A transcript is a JSONL event log, not a terminal capture: ringo sends
     // it to the transcript page rather than replay JSON as scrollback.
     if (p.includes(".jsonl") && archivePathProblem(p) === null) {
-      this.redirectTo(`/sessions/transcript?p=${encodeURIComponent(p)}`);
+      this.redirectTo(this.sessionsTranscriptPath({ p }));
       return;
     }
     const read = await this.readArchive("/sessions/file", PANE_VIEW_MAX_BYTES, "tail");

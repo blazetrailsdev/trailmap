@@ -30,7 +30,7 @@ export class RepoWikiController extends RepoController {
         id: rfc.id,
         title: rfc.title ?? rfc.id,
         status: rfc.status,
-        href: `/${this.repo.nameWithOwner()}/wiki?page=${rfc.id}`,
+        href: this.repoWikiPath(this.repo.owner!.login, this.repo.name, { page: rfc.id }),
       }))
       .sort((a, b) => a.id.localeCompare(b.id));
 

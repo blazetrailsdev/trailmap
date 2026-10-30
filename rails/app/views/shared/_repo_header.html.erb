@@ -1,7 +1,7 @@
 <%# The owner/repo breadcrumb and the tab bar RepoController built. %>
 <div class="page-header">
   <h1 class="page-title">
-    <a href="/<%= @owner.login %>"><%= @owner.login %></a><span class="muted">/</span><a href="/<%= @nwo %>"><%= @repo.name %></a>
+    <a href="<%= owner_path(@owner.login) %>"><%= @owner.login %></a><span class="muted">/</span><a href="<%= repo_code_path(@owner.login, @repo.name) %>"><%= @repo.name %></a>
     <% unless @repo.visibility_public? %><span class="tag"><%= @repo.visibility %></span><% end %>
     <% if @repo.archived %><span class="tag">archived</span><% end %>
   </h1>

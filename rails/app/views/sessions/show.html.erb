@@ -4,7 +4,7 @@
     <% if @problem.nil? && @archives.any? %>
       <span class="muted"><%= @archives.length %> archived pane(s). A PR reworked by more than one agent has one archive per pane.</span>
     <% end %>
-    <a href="/sessions">All sessions</a>
+    <a href="<%= sessions_path %>">All sessions</a>
   </div>
 </div>
 
@@ -24,7 +24,7 @@
         <span class="muted"><%= session_time(archive.row["opened_at"]) %> → <%= archive.open? ? "open" : "closed (#{archive.reason})" %> · <%= short_dur(archive.duration(@now)) %> · <%= money(archive.cost) %> · cwd <%= or_dash(archive.cwd) %></span>
       </div>
       <% if archive.pane_log != "" %>
-        <div class="field-note">Pane log: <a href="/sessions/pane?p=<%= ERB::Util.url_encode(archive.pane_log) %>">view scrollback</a> · <a href="/sessions/file?p=<%= ERB::Util.url_encode(archive.pane_log) %>">raw (<%= human_bytes(archive.pane_log_bytes) %>)</a><% if archive.truncated %> <span class="session-pill trunc">truncated at the size cap</span><% end %></div>
+        <div class="field-note">Pane log: <a href="<%= sessions_pane_path(p: archive.pane_log) %>">view scrollback</a> · <a href="<%= sessions_file_path(p: archive.pane_log) %>">raw (<%= human_bytes(archive.pane_log_bytes) %>)</a><% if archive.truncated %> <span class="session-pill trunc">truncated at the size cap</span><% end %></div>
       <% end %>
       <% if archive.transcripts.empty? %>
         <div class="field-note">No transcripts pinned.</div>
@@ -34,7 +34,7 @@
           <tbody>
             <% archive.transcripts.each do |t| %>
               <tr>
-                <td><a href="/sessions/transcript?p=<%= ERB::Util.url_encode(t["path"]) %>"><code><%= short_id(t["session_id"]) %></code></a></td>
+                <td><a href="<%= sessions_transcript_path(p: t["path"]) %>"><code><%= short_id(t["session_id"]) %></code></a></td>
                 <td><% if t["role"] == "agent" || t["role"] == "reviewer" %><span class="session-role <%= t["role"] %>"><%= t["role"] %></span><% end %></td>
                 <td><%= session_time(t["first_at"]) %></td>
                 <td><%= session_time(t["last_at"]) %></td>

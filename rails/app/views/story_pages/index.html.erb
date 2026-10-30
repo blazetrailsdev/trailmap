@@ -25,7 +25,7 @@
       <%= render "shared/status_badge", status: row.status %>
       <span class="row-main">
         <span class="titleline">
-          <a class="row-title" href="/story/<%= row.id %>"><%= row.title %></a>
+          <a class="row-title" href="<%= story_path(row.id) %>"><%= row.title %></a>
           <% if row.queue_pos == 0 %><span class="tag next">next up</span><% elsif row.queue_pos %><span class="tag queue">#<%= row.queue_pos + 1 %> in queue</span><% end %>
           <% if row.cluster.present? %><span class="tag"><%= row.cluster %></span><% end %>
           <% if row.icebox %><span class="tag icebox" title="its RFC is a draft or postponed">icebox</span><% end %>
@@ -33,10 +33,10 @@
           <% unless row.priority.nil? %><span class="tag prio" title="ready-queue priority (lower = sooner)<%= row.priority_inherited ? ", inherited from RFC #{row.rfc_id}" : "" %>">pri <%= row.priority %><%= row.priority_inherited ? "*" : "" %></span><% end %>
         </span>
         <div class="row-meta">
-          <code><%= row.id %></code> &middot; <a href="/rfc/<%= row.rfc_id %>">RFC <%= row.rfc_id %></a><% if row.est_loc.to_i != 0 %> &middot; ~<%= row.est_loc %> LOC<% end %><% unless row.stale_days.nil? %> &middot; updated <%= row.stale_days %>d ago<% end %><% if row.assignee.present? %> &middot; by <%= row.assignee %><% end %>
+          <code><%= row.id %></code> &middot; <a href="<%= rfc_path(row.rfc_id) %>">RFC <%= row.rfc_id %></a><% if row.est_loc.to_i != 0 %> &middot; ~<%= row.est_loc %> LOC<% end %><% unless row.stale_days.nil? %> &middot; updated <%= row.stale_days %>d ago<% end %><% if row.assignee.present? %> &middot; by <%= row.assignee %><% end %>
         </div>
       </span>
-      <% unless row.pr.nil? %><span class="row-aside"><a href="/story/<%= row.id %>"><%= row.pr %></a></span><% end %>
+      <% unless row.pr.nil? %><span class="row-aside"><a href="<%= story_path(row.id) %>"><%= row.pr %></a></span><% end %>
     </div>
   <% end %>
 </div>

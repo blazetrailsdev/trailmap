@@ -95,7 +95,7 @@ export class RepoSettingsController extends RepoController {
     }
     const row = this.repo.settings ?? this.repo.buildSettings();
     await row.updateBang(this.switchParams());
-    this.redirectTo(`/${this.repo.nameWithOwner()}/settings`, { status: 303 });
+    this.redirectTo(this.repoSettingsPath(this.repo.owner!.login, this.repo.name), { status: 303 });
   }
 
   /**

@@ -11,7 +11,7 @@ class OwnersController < ApplicationController
     repos = @owner.repositories.order(:name).select { |r| r.readable_by?(viewer) }
     open_counts = RepoScope.open_counts_by_repo(repos.map(&:name))
     @rows = repos.map do |r|
-      Row.new(name: r.name, href: "/#{@owner.login}/#{r.name}", description: r.description, visibility: r.visibility,
+      Row.new(name: r.name, href: repo_code_path(@owner.login, r.name), description: r.description, visibility: r.visibility,
               default_branch: r.default_branch, archived: r.archived, open_count: open_counts.fetch(r.name, 0))
     end
   end

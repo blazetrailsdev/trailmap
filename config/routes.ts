@@ -44,73 +44,73 @@ Trails.application!.routes().draw(function () {
   // The two probes beside `/up`, which stays the only one a supervisor polls.
   // `ready` opens the database and the tasks checkout; `deep` computes a ready
   // queue. Both are loopback-only (ProbesController).
-  this.get("up/ready", { to: "probes#ready" });
-  this.get("up/deep", { to: "probes#deep" });
+  this.get("up/ready", { to: "probes#ready", as: "up_ready" });
+  this.get("up/deep", { to: "probes#deep", as: "up_deep" });
 
   // The fleet dashboard, ported from ringo's `/`. It is NOT trailmap's root:
   // ringo keeps serving `/` until this is verified against the live fleet, and
   // moving trailmap's own landing page out from under `/` before then would
   // change two things in one step.
-  this.get("dashboard", { to: "dashboard#index" });
-  this.get("fleet/socket", { to: "fleet#socket" });
+  this.get("dashboard", { to: "dashboard#index", as: "dashboard" });
+  this.get("fleet/socket", { to: "fleet#socket", as: "fleet_socket" });
   this.post("fleet/control/*path", { to: "fleet#control" });
 
   // Who is reviewing each open PR, relayed from ringo: the reviewer half of
   // every PR row's pane mini-table, which the event envelope does not carry.
-  this.get("fleet/reviewers", { to: "fleet#reviewers" });
+  this.get("fleet/reviewers", { to: "fleet#reviewers", as: "fleet_reviewers" });
   // Usage, relayed questions and drain progress: ringo answers these outside
   // the stream too. `:name` is a key of `FLEET_READS`, not a ringo path.
-  this.get("fleet/read/:name", { to: "fleet#read" });
+  this.get("fleet/read/:name", { to: "fleet#read", as: "fleet_read" });
 
   // One agent's tmux pane, live and read-only: the page, and the relay it
   // polls for ringo's capture of the screen. `:id` is the pane id without its
   // `%` (`%42` is `/panes/42`), which both actions check as digits.
-  this.get("panes/:id", { to: "panes#show" });
-  this.get("fleet/pane/:id/screen", { to: "fleet#screen" });
+  this.get("panes/:id", { to: "panes#show", as: "pane" });
+  this.get("fleet/pane/:id/screen", { to: "fleet#screen", as: "fleet_pane_screen" });
 
   // The deploy history and one run's log, relayed read-only from ringo, which
   // keeps both on its own disk (DeploysController). ringo's spelling of the
   // log URL, `?id=`, is kept so a link copied from either page works on both.
-  this.get("deploys", { to: "deploys#index" });
-  this.get("deploys/log", { to: "deploys#log" });
+  this.get("deploys", { to: "deploys#index", as: "deploys" });
+  this.get("deploys/log", { to: "deploys#log", as: "deploys_log" });
 
   // The session archive, relayed read-only from ringo (SessionsController):
   // the index, one PR's archives at ringo's own path, and ringo's JSON.
-  this.get("sessions", { to: "sessions#index" });
+  this.get("sessions", { to: "sessions#index", as: "sessions" });
   // One archive file: raw, a transcript's page, a pane log's scrollback. The
   // path is ringo's `?p=`, checked by `archivePathProblem` before ringo is asked.
-  this.get("sessions/file", { to: "sessions#file" });
-  this.get("sessions/transcript", { to: "sessions#transcript" });
-  this.get("sessions/pane", { to: "sessions#pane" });
-  this.get("sessions/:owner/:repo/:pr", { to: "sessions#show", constraints: { pr: /\d+/ } });
-  this.get("api/sessions", { to: "sessions#api" });
+  this.get("sessions/file", { to: "sessions#file", as: "sessions_file" });
+  this.get("sessions/transcript", { to: "sessions#transcript", as: "sessions_transcript" });
+  this.get("sessions/pane", { to: "sessions#pane", as: "sessions_pane" });
+  this.get("sessions/:owner/:repo/:pr", { to: "sessions#show", constraints: { pr: /\d+/ }, as: "session" });
+  this.get("api/sessions", { to: "sessions#api", as: "api_sessions" });
 
   // The list pages. Plural, and they come BEFORE the singular show routes only
   // by convention — the patterns cannot collide. The status/filter tab is a
   // query parameter rather than a path segment (`/rfcs?status=draft`) because
   // it selects a slice of one list, not a different resource, and ringo's
   // deep-link (`/tasks/done`) is the only path form it ever had.
-  this.get("rfcs", { to: "rfc_pages#index" });
-  this.get("backlog", { to: "story_pages#index" });
+  this.get("rfcs", { to: "rfc_pages#index", as: "rfcs" });
+  this.get("backlog", { to: "story_pages#index", as: "backlog" });
   // Search over every story and RFC: one ranked list, paged like the backlog.
-  this.get("search", { to: "searches#show" });
+  this.get("search", { to: "searches#show", as: "search" });
 
   // The show pages. Singular paths, matching the URLs ringo already serves and
   // the ones the wiki-link renderer emits (`/story/<id>`) — a link that lives
   // in a story body has to keep working when trailmap takes these over. They
   // are distinct from the plural `stories/:id` JSON route below, which is the
   // loopback-only read verb and not a page.
-  this.get("rfc/:id", { to: "rfc_pages#show" });
+  this.get("rfc/:id", { to: "rfc_pages#show", as: "rfc" });
   // The lifecycle buttons on that page. Page POSTs, not loopback API verbs:
   // the page is their caller, and a refusal renders on it.
-  this.post("rfc/:id/status", { to: "rfc_pages#move" });
-  this.post("rfc/:id/ready-drafts", { to: "rfc_pages#readyDrafts" });
-  this.get("story/:id", { to: "story_pages#show" });
-  this.post("story/:id/ready", { to: "story_pages#markReady" });
-  this.post("story/:id/top", { to: "story_pages#topQueue" });
-  this.post("story/:id/block", { to: "story_pages#blockStory" });
-  this.post("story/:id/close", { to: "story_pages#closeStory" });
-  this.post("story/:id/release", { to: "story_pages#releaseClaim" });
+  this.post("rfc/:id/status", { to: "rfc_pages#move", as: "rfc_status" });
+  this.post("rfc/:id/ready-drafts", { to: "rfc_pages#readyDrafts", as: "rfc_ready_drafts" });
+  this.get("story/:id", { to: "story_pages#show", as: "story" });
+  this.post("story/:id/ready", { to: "story_pages#markReady", as: "story_ready" });
+  this.post("story/:id/top", { to: "story_pages#topQueue", as: "story_top" });
+  this.post("story/:id/block", { to: "story_pages#blockStory", as: "story_block" });
+  this.post("story/:id/close", { to: "story_pages#closeStory", as: "story_close" });
+  this.post("story/:id/release", { to: "story_pages#releaseClaim", as: "story_release" });
 
   // The parity graphs, ported from ringo's `/graphs/parity`. Two routes, not
   // one with content negotiation: the page is a static document and the data
@@ -119,8 +119,8 @@ Trails.application!.routes().draw(function () {
   // `parity-graphs-controller.ts` by, as `read_models` is below — a camelCase
   // spelling here is a 404 at dispatch. The data route comes FIRST only for
   // readability; the patterns cannot collide.
-  this.get("graphs/parity/data", { to: "parity_graphs#data" });
-  this.get("graphs/parity", { to: "parity_graphs#show" });
+  this.get("graphs/parity/data", { to: "parity_graphs#data", as: "parity_graph_data" });
+  this.get("graphs/parity", { to: "parity_graphs#show", as: "parity_graph" });
 
   // The audits, ported from ringo's `/audits`. A resource: `index` is the
   // list, `show` an audit's page, and the member `raw` the file on its own,
@@ -141,6 +141,7 @@ Trails.application!.routes().draw(function () {
     to: this.redirect((params) => `/audits/${encodeURIComponent(String(params.file))}/raw`),
     constraints: { file: AUDIT_SEGMENT },
     format: false,
+    as: "audit_view",
   });
 
   // ─────────────────────────── the JSON API ───────────────────────────
@@ -226,16 +227,16 @@ Trails.application!.routes().draw(function () {
     // a trails story, not something to paper over here.
     this.scope(":owner/:repo", { as: "repo" }, () => {
       // The code tab IS the repository page, as `/owner/repo` is on GitHub.
-      this.get("", { to: "repo_code#show" });
+      this.get("", { to: "repo_code#show", as: "code" });
       this.resources("issues", { only: ["index", "show"], controller: "repo_issues" });
       this.resources("pulls", { only: ["index", "show"], controller: "repo_pulls" });
       this.resources("projects", { only: ["index", "show"], controller: "repo_projects" });
-      this.get("actions", { to: "repo_actions#index" });
-      this.get("wiki", { to: "repo_wiki#index" });
+      this.get("actions", { to: "repo_actions#index", as: "actions" });
+      this.get("wiki", { to: "repo_wiki#index", as: "wiki" });
       // `pulse`, not `insights`: GitHub's Insights tab lands on /pulse.
-      this.get("pulse", { to: "repo_insights#show" });
-      this.get("settings", { to: "repo_settings#show" });
-      this.patch("settings", { to: "repo_settings#update" });
+      this.get("pulse", { to: "repo_insights#show", as: "pulse" });
+      this.get("settings", { to: "repo_settings#show", as: "settings" });
+      this.patch("settings", { to: "repo_settings#update", as: "update_settings" });
     });
   });
 });

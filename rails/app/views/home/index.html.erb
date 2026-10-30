@@ -4,9 +4,9 @@ ready queue, read and written in one place.</p>
 
 <h2>Pages</h2>
 <div class="box">
-  <div class="box-row"><a href="/rfcs">RFCs</a> — every RFC and its stories.</div>
-  <div class="box-row"><a href="/backlog">Backlog</a> — the ready queue, in rank order.</div>
-  <div class="box-row"><a href="/dashboard">Fleet</a> — open PRs, panes, spawns and CI, live from ringo.</div>
+  <div class="box-row"><a href="<%= rfcs_path %>">RFCs</a> — every RFC and its stories.</div>
+  <div class="box-row"><a href="<%= backlog_path %>">Backlog</a> — the ready queue, in rank order.</div>
+  <div class="box-row"><a href="<%= dashboard_path %>">Fleet</a> — open PRs, panes, spawns and CI, live from ringo.</div>
 </div>
 
 <h2>Owners</h2>
@@ -18,7 +18,7 @@ under each one.</p>
     <div class="empty">No owner is configured. <code>bin/rails db:seed</code> writes them.</div>
   <% end %>
   <% @owners.each do |owner| %>
-    <div class="box-row"><a href="/<%= owner.login %>"><%= owner.login %></a>
+    <div class="box-row"><a href="<%= owner_path(owner.login) %>"><%= owner.login %></a>
       <% if owner.display_name.present? %> — <%= owner.display_name %><% end %></div>
   <% end %>
 </div>

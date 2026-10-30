@@ -14,7 +14,7 @@
 <h2>Features</h2>
 <p class="muted">A tab turned off is not drawn above and answers 404.</p>
 <% if (canAdminister) { %>
-<%= formWith({ model: form, url: `/${nwo}/settings`, method: "patch", scope: "repository_setting" }, (f) => { %>
+<%= formWith({ model: form, url: repoSettingsPath(owner.login, repo.name), method: "patch", scope: "repository_setting" }, (f) => { %>
   <div class="box">
     <% if (!hasSwitches) { %>
       <div class="box-row muted">This repository has no settings row, so every tab is on. Saving writes one.</div>
@@ -52,7 +52,7 @@ Postgres enforces as the table's real PRIMARY KEY.</p>
   <% } %>
   <% for (const row of collaborators) { %>
     <div class="box-row">
-      <a href="/<%= row.login %>"><%= row.login %></a> &middot;
+      <a href="<%= ownerPath(row.login) %>"><%= row.login %></a> &middot;
       <span class="badge s-<%= row.canPush ? "ready" : "draft" %>"><%= row.role %></span>
       <% if (!row.canPush) { %><span class="muted">read-only</span><% } %>
     </div>

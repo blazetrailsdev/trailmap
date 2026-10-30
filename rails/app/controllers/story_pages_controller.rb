@@ -93,7 +93,7 @@ class StoryPagesController < ApplicationController
       return render_show(id, %(story #{id} is "#{story.status}"; cannot #{action} it), :conflict)
     end
     ApplicationRecord.transaction { yield story }
-    redirect_to "/story/#{id}", status: :see_other
+    redirect_to story_path(id), status: :see_other
   rescue VerbExit => e
     render_show(id, e.message, e.code == 1 ? :unprocessable_entity : :conflict)
   end
@@ -133,7 +133,7 @@ class StoryPagesController < ApplicationController
   end
 
   def backlog_href(filter, page = nil)
-    page.nil? ? "/backlog?filter=#{filter}" : "/backlog?filter=#{filter}&page=#{page}"
+    backlog_path(filter: filter, page: page)
   end
 
   # RFC statuses have no override: stored is shown.

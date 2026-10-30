@@ -9,7 +9,8 @@ class SearchesController < ApplicationController
     @phrase = Search.phrase(raw)
     hits = @phrase.nil? ? [] : Search.search(@phrase)
     @pager = Pager.for(hits.size, PAGE_SIZE, Pager.requested_page(params[:page])) do |page|
-      "/search?q=#{ERB::Util.url_encode(@phrase.to_s)}&page=#{page}"
+      # Not `search_path(q:, page:)`: that sorts `page` first and writes a space `+`.
+      "#{search_path}?q=#{ERB::Util.url_encode(@phrase.to_s)}&page=#{page}"
     end
     @hits = Search.with_snippets(hits[(@pager.from.zero? ? 0 : @pager.from - 1)...@pager.to], @phrase.to_s)
     @too_short = !@asked.empty? && @phrase.nil?

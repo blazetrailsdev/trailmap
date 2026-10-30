@@ -96,7 +96,7 @@ class SessionsController < ApplicationController
     no_store
     @p = params[:p].to_s
     if @p.include?(".jsonl") && self.class.archive_path_problem(@p).nil?
-      return redirect_to "/sessions/transcript?p=#{ERB::Util.url_encode(@p)}"
+      return redirect_to sessions_transcript_path(p: @p)
     end
     read = read_archive("/sessions/file", keep: :tail) or return
     @bytes, @total = read

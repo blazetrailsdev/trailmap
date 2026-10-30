@@ -119,7 +119,7 @@ class RfcStatusTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "Mark ready"
     assert_includes response.body, "Close this RFC? Refused while any of its stories are unfinished — use Sunset for that."
     get "/rfc/0006-closed"
-    assert_not_includes response.body, 'class="side-section rfc-actions"'
+    assert_not_includes response.body, ">Lifecycle<"
   end
 
   test "relays Spawn batch and Sunset to ringo, with ringo's payload and confirm text" do
@@ -138,7 +138,15 @@ class RfcStatusTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "Spawn batch"
     assert_includes response.body, "Sunset RFC"
     get "/rfc/0003-postponed"
-    assert_not_includes response.body, "data-relay="
+    assert_not_includes response.body, "Sunset RFC"
+  end
+
+  test "offers Refine stories with ringo's note and confirm text on any RFC" do
+    get "/rfc/0003-postponed"
+    assert_includes response.body, "data-relay-note"
+    assert_includes response.body, "&quot;mode&quot;:&quot;refine&quot;"
+    assert_includes response.body, "Spawn an agent to groom every story under 0003-postponed?"
+    assert_includes response.body, "Refine stories"
   end
 
   test "writes a blank reason as no note" do

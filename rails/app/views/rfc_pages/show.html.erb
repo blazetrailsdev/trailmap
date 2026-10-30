@@ -37,7 +37,7 @@
           <div class="item-row">
             <%= render "shared/status_badge", status: story.status %>
             <span class="row-main">
-              <a class="row-title" href="/story/<%= story.id %>"><%= story.title %></a>
+              <a class="row-title" href="<%= story_path(story.id) %>"><%= story.title %></a>
               <div class="row-meta">
                 <%= story.id %><% if story.est_loc.to_i != 0 %> &middot; <%= story.est_loc %> loc<% end %><% if story.cluster.present? %> &middot; <%= story.cluster %><% end %><% unless story.priority.nil? %> &middot; p<%= story.priority %><% end %>
               </div>
@@ -55,25 +55,25 @@
         <div class="side-section rfc-actions">
           <div class="side-head">Lifecycle</div>
           <% @moves.each do |move| %>
-            <%= button_to move.label, "/rfc/#{@rfc.id}/status", params: { status: move.to }, form: { "data-confirm": move.confirm }, class: "btn" %>
+            <%= button_to move.label, rfc_status_path(@rfc.id), params: { status: move.to }, form: { "data-confirm": move.confirm }, class: "btn" %>
           <% end %>
           <% if @has_drafts %>
-            <%= button_to "Mark drafts ready", "/rfc/#{@rfc.id}/ready-drafts", form: { "data-confirm": "Mark every draft story under this RFC ready? All or nothing." }, class: "btn" %>
+            <%= button_to "Mark drafts ready", rfc_ready_drafts_path(@rfc.id), form: { "data-confirm": "Mark every draft story under this RFC ready? All or nothing." }, class: "btn" %>
           <% end %>
         </div>
       <% end %>
-      <% if @can_batch || @can_sunset %>
-        <div class="side-section rfc-actions">
-          <div class="side-head">Dispatch</div>
-          <% if @can_batch %>
-            <button type="button" class="btn" data-relay="spawnloop/rfc-batch-spawn" data-payload="<%= { slug: @rfc.id }.to_json %>" data-confirm="Spawn one worker for the next batch of stories under <%= @rfc.id %>?">Spawn batch</button>
-          <% end %>
-          <% if @can_sunset %>
-            <button type="button" class="btn" data-relay="spawnloop/rfc-refine" data-payload="<%= { slug: @rfc.id, note: "", mode: "sunset" }.to_json %>" data-confirm="Sunset <%= @rfc.id %>? An agent will re-home its remaining stories and close the RFC unless work is still in flight.">Sunset RFC</button>
-          <% end %>
-          <div class="field-note" data-relay-status hidden></div>
-        </div>
-      <% end %>
+      <div class="side-section rfc-actions">
+        <div class="side-head">Dispatch</div>
+        <% if @can_batch %>
+          <button type="button" class="btn" data-relay="spawnloop/rfc-batch-spawn" data-payload="<%= { slug: @rfc.id }.to_json %>" data-confirm="Spawn one worker for the next batch of stories under <%= @rfc.id %>?">Spawn batch</button>
+        <% end %>
+        <textarea class="input" data-relay-note aria-label="Message for the agent" placeholder="Optional message for the agent (steers this refine pass)…"></textarea>
+        <button type="button" class="btn" data-relay="spawnloop/rfc-refine" data-payload="<%= { slug: @rfc.id, note: "", mode: "refine" }.to_json %>" data-confirm="Spawn an agent to groom every story under <%= @rfc.id %>?">Refine stories</button>
+        <% if @can_sunset %>
+          <button type="button" class="btn" data-relay="spawnloop/rfc-refine" data-payload="<%= { slug: @rfc.id, note: "", mode: "sunset" }.to_json %>" data-confirm="Sunset <%= @rfc.id %>? An agent will re-home its remaining stories and close the RFC unless work is still in flight.">Sunset RFC</button>
+        <% end %>
+        <div class="field-note" data-relay-status hidden></div>
+      </div>
       <div class="side-section">
         <div class="side-head">Owner</div>
         <div class="side-value"><%= @rfc.owner.presence || "Nobody" %></div>
@@ -81,7 +81,7 @@
       <% if @rfc.superseded_by.present? %>
         <div class="side-section">
           <div class="side-head">Superseded by</div>
-          <div class="side-value"><a href="/rfc/<%= @rfc.superseded_by %>"><code><%= @rfc.superseded_by %></code></a></div>
+          <div class="side-value"><a href="<%= rfc_path(@rfc.superseded_by) %>"><code><%= @rfc.superseded_by %></code></a></div>
         </div>
       <% end %>
       <div class="side-section">

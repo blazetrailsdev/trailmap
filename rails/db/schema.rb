@@ -72,7 +72,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_30_000009) do
     t.string "superseded_by"
     t.integer "priority"
     t.string "file_path"
-    t.text "body"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "created_on"
@@ -80,6 +79,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_30_000009) do
     t.text "packages"
     t.text "clusters"
     t.text "related_rfcs"
+    t.text "body"
     t.index ["status"], name: "index_rfcs_on_status"
   end
 
@@ -90,7 +90,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_30_000009) do
     t.integer "priority"
     t.integer "est_loc"
     t.string "file_path"
-    t.text "body"
     t.string "status", default: "draft", null: false
     t.string "pr"
     t.string "assignee"
@@ -100,6 +99,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_30_000009) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "updated_on"
+    t.text "body"
     t.index ["rfc_id", "status"], name: "index_stories_on_rfc_id_and_status"
     t.index ["status"], name: "index_stories_on_status"
   end

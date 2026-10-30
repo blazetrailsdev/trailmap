@@ -7,9 +7,9 @@ class RepoController < ApplicationController
 
   # The keys are the route segments.
   TAB_LABELS = [
-    [ "code", "Code", "" ], [ "issues", "Issues", "/issues" ], [ "pulls", "Pull requests", "/pulls" ],
-    [ "actions", "Actions", "/actions" ], [ "projects", "Projects", "/projects" ], [ "wiki", "Wiki", "/wiki" ],
-    [ "insights", "Insights", "/pulse" ], [ "settings", "Settings", "/settings" ]
+    [ "code", "Code", :repo_code_path ], [ "issues", "Issues", :repo_issues_path ], [ "pulls", "Pull requests", :repo_pulls_path ],
+    [ "actions", "Actions", :repo_actions_path ], [ "projects", "Projects", :repo_projects_path ], [ "wiki", "Wiki", :repo_wiki_path ],
+    [ "insights", "Insights", :repo_pulse_path ], [ "settings", "Settings", :repo_settings_path ]
   ].freeze
 
   # The tab this controller serves.
@@ -27,8 +27,8 @@ class RepoController < ApplicationController
     raise ActiveRecord::RecordNotFound, "#{login}/#{name} has its #{tab} tab turned off" unless switches.enabled?(tab)
     @owner = @repo.owner
     @nwo = @repo.name_with_owner
-    @tabs = TAB_LABELS.select { |key, _, _| switches.enabled?(key) }.map do |key, label, suffix|
-      Tab.new(key: key, label: label, href: "/#{@nwo}#{suffix}", active: key == tab)
+    @tabs = TAB_LABELS.select { |key, _, _| switches.enabled?(key) }.map do |key, label, helper|
+      Tab.new(key: key, label: label, href: public_send(helper, @owner.login, @repo.name), active: key == tab)
     end
   end
 

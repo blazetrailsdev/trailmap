@@ -8,7 +8,7 @@
       <span class="id"><%= story.id %></span>
       <%= render({ partial: "shared/status-state", locals: { status: shownStatus, label: heldLabel } }) %>
       <span class="muted">
-        in <a href="/rfc/<%= story.rfc_id %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a><% if (story.pr !== null) { %>, PR <%= story.pr %><% } %>
+        in <a href="<%= rfcPath(story.rfc_id) %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a><% if (story.pr !== null) { %>, PR <%= story.pr %><% } %>
       </span>
     </div>
   </div>
@@ -43,7 +43,7 @@
                 <div class="item-row" style="padding-left: <%= 16 + (node.depth - 1) * 20 %>px">
                   <%= render({ partial: "shared/status-badge", locals: { status: node.status } }) %>
                   <span class="row-main">
-                    <a class="row-title" href="/story/<%= node.id %>"><%= node.title ?? node.id %></a>
+                    <a class="row-title" href="<%= storyPath(node.id) %>"><%= node.title ?? node.id %></a>
                     <div class="row-meta"><%= node.id %><% if (node.via !== null) { %> · via <%= node.via %><% } %></div>
                   </span>
                 </div>
@@ -60,7 +60,7 @@
             <div class="item-row">
               <%= render({ partial: "shared/status-badge", locals: { status: dep.status } }) %>
               <span class="row-main">
-                <a class="row-title" href="/story/<%= dep.id %>"><%= dep.id %></a>
+                <a class="row-title" href="<%= storyPath(dep.id) %>"><%= dep.id %></a>
               </span>
             </div>
           <% } %>
@@ -68,7 +68,7 @@
             <div class="item-row">
               <%= render({ partial: "shared/status-badge", locals: { status: dep.status } }) %>
               <span class="row-main">
-                <a class="row-title" href="/rfc/<%= dep.id %>"><%= dep.id %></a>
+                <a class="row-title" href="<%= rfcPath(dep.id) %>"><%= dep.id %></a>
                 <div class="row-meta">RFC</div>
               </span>
             </div>
@@ -89,17 +89,17 @@
             <div class="field-note" data-relay-status hidden></div>
           <% } %>
           <% if (actions.ready) { %>
-            <%= buttonTo("Mark ready", `/story/${story.id}/ready`, { class: "btn" }) %>
+            <%= buttonTo("Mark ready", storyReadyPath(story.id), { class: "btn" }) %>
           <% } %>
           <% if (actions.top) { %>
-            <%= buttonTo("Top of queue", `/story/${story.id}/top`, { class: "btn" }) %>
+            <%= buttonTo("Top of queue", storyTopPath(story.id), { class: "btn" }) %>
           <% } %>
           <% if (actions.release) { %>
-            <%= buttonTo("Release claim", `/story/${story.id}/release`, { form: { "data-confirm": "Release this claim? The story goes back to ready." }, class: "btn" }) %>
+            <%= buttonTo("Release claim", storyReleasePath(story.id), { form: { "data-confirm": "Release this claim? The story goes back to ready." }, class: "btn" }) %>
           <% } %>
-          <% for (const verb of [{ show: actions.block, path: "block", label: "Block" }, { show: actions.close, path: "close", label: "Close story" }]) { %>
+          <% for (const verb of [{ show: actions.block, url: storyBlockPath(story.id), label: "Block" }, { show: actions.close, url: storyClosePath(story.id), label: "Close story" }]) { %>
             <% if (verb.show) { %>
-              <%= formWith({ url: `/story/${story.id}/${verb.path}`, method: "post" }, () => { %>
+              <%= formWith({ url: verb.url, method: "post" }, () => { %>
                 <input class="input" name="reason" placeholder="Reason" aria-label="<%= verb.label %> reason">
                 <button type="submit" class="btn"><%= verb.label %></button>
               <% }) %>
@@ -110,7 +110,7 @@
       <div class="side-section">
         <div class="side-head">RFC</div>
         <div class="side-value">
-          <a href="/rfc/<%= story.rfc_id %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a>
+          <a href="<%= rfcPath(story.rfc_id) %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a>
           <% if (rfc !== null) { %>
             <%= render({ partial: "shared/status-badge", locals: { status: rfc.status } }) %>
           <% } %>

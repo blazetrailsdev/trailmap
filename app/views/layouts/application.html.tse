@@ -9,18 +9,18 @@
 </head>
 <body>
   <nav class="nav">
-    <a class="nav-brand" href="/"><span class="dot"></span>trailmap</a>
+    <a class="nav-brand" href="<%= rootPath() %>"><span class="dot"></span>trailmap</a>
     <input type="checkbox" id="navToggle" class="nav-toggle">
     <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">
-      <a href="/rfcs">RFCs</a>
-      <a href="/backlog">Backlog</a>
-      <a href="/dashboard">Fleet</a>
-      <a href="/graphs/parity">Parity</a>
-      <a href="/audits">Audits</a>
-      <a href="/deploys">Deploys</a>
-      <a href="/sessions">Sessions</a>
-      <a href="/search">Search</a>
+      <a href="<%= rfcsPath() %>">RFCs</a>
+      <a href="<%= backlogPath() %>">Backlog</a>
+      <a href="<%= dashboardPath() %>">Fleet</a>
+      <a href="<%= parityGraphPath() %>">Parity</a>
+      <a href="<%= auditsPath() %>">Audits</a>
+      <a href="<%= deploysPath() %>">Deploys</a>
+      <a href="<%= sessionsPath() %>">Sessions</a>
+      <a href="<%= searchPath() %>">Search</a>
     </nav>
   </nav>
 
