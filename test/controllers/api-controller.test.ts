@@ -54,7 +54,7 @@ describe("a 500", () => {
     const tc = await controllerTestCase(MissingReadModelsController, { Host: "127.0.0.1" });
     await expect(tc.get("index")).rejects.toThrow(RecordNotFound);
 
-    // One with a mapping of actionpack's own, which needs no boot at all.
+    // One with a mapping of actionpack's own.
     const missing = new ActionController.ParameterMissing("id");
     expect(new ExceptionWrapper(missing).statusCode).toBe(400);
   });

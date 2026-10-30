@@ -22,7 +22,6 @@ import {
   truncateHub,
 } from "../support/hub-schema.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { ParityGraphsController } from "../../app/controllers/parity-graphs-controller.ts";
 import { ParityDay } from "../../app/models/parity-day.ts";
 import * as refresh from "../../app/models/parity-refresh.ts";
@@ -52,9 +51,6 @@ async function data(params: Record<string, string> = {}): Promise<Record<string,
 describe.skipIf(!hasHubTestDatabase())("ParityGraphsController", () => {
   beforeAll(async () => {
     await connectHubTestDatabase();
-    // The application's own templates, which a test process has no boot to
-    // register for it.
-    ApplicationController.prependViewPath("app/views");
     // No stats database anywhere in this file — see the file comment.
     setEnv("STATS_DB", undefined);
   }, HUB_SETUP_TIMEOUT);

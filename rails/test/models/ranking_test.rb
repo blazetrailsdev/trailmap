@@ -106,9 +106,7 @@ class RankingTest < ActiveSupport::TestCase
   end
 
   test "the queue scopes to an RFC, and an empty bundle says why" do
-    # The RFC first: `belongs_to :rfc` is required under Rails 8 defaults. The
-    # TypeScript test seeds the story first, which only works because its
-    # suite never boots the application that sets that default.
+    # The RFC first: `belongs_to :rfc` is required under Rails 8 defaults.
     rfc!("0004-other")
     seed("ours", "0136-trailmap", "ready", cluster: "c1", est_loc: 50)
     seed("theirs", "0004-other", "ready", cluster: "c1", est_loc: 50)

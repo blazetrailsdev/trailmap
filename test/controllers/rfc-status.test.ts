@@ -225,6 +225,8 @@ describe("RfcPagesController lifecycle", () => {
     // A per-form token is bound to the form's path, and `tc.post` here sees
     // `/rfc/:id`, not `/rfc/:id/status`. The Rails twin, an integration test,
     // covers the per-form path; this covers the token round trip.
+    // Temporary: removed by trails story
+    // `controller-test-case-request-path-ignores-the-routed-action` (RFC 0142).
     ApplicationController.perFormCsrfTokens = false;
     try {
       await tc.get("show", { params: { id: "0015-csrf" } });
