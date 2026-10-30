@@ -41,6 +41,11 @@ Rails.application.routes.draw do
   post "rfc/:id/status", to: "rfc_pages#move", format: false
   post "rfc/:id/ready-drafts", to: "rfc_pages#ready_drafts", format: false
   get "story/:id", to: "story_pages#show", format: false
+  post "story/:id/ready", to: "story_pages#mark_ready", format: false
+  post "story/:id/top", to: "story_pages#top_queue", format: false
+  post "story/:id/block", to: "story_pages#block_story", format: false
+  post "story/:id/close", to: "story_pages#close_story", format: false
+  post "story/:id/release", to: "story_pages#release_claim", format: false
 
   # The loopback JSON API: its clients parse every answer as JSON.
   scope defaults: { format: :json } do

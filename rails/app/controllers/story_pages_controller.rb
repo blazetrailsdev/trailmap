@@ -53,13 +53,60 @@ class StoryPagesController < ApplicationController
   end
 
   def show
-    @id = params[:id].to_s
+    render_show(params[:id].to_s, nil, :ok)
+  end
+
+  # `status-set <id> ready --from draft`, ringo's `HandleStoryReady`.
+  def mark_ready
+    act(:ready) { |story| Story.status_set_all([ story.id ], "ready", from: "draft") }
+  end
+
+  # `priority <id> 0`, ringo's `HandleStoryTop`.
+  def top_queue
+    act(:top) { |story| story.priority_set(0) }
+  end
+
+  def block_story
+    reason = params[:reason].to_s.strip
+    act(:block) do |story|
+      raise VerbExit.new(1, "block requires a reason") if reason.empty?
+      story.block(reason)
+    end
+  end
+
+  def close_story
+    act(:close) { |story| story.close(params[:reason].to_s) }
+  end
+
+  def release_claim
+    act(:release) { |story| Story.release_all([ story.id ]) }
+  end
+
+  private
+
+  # One button's POST: only what the page offers, then the verb's own rules.
+  def act(action)
+    id = params[:id].to_s
+    story = Story.find_by(id: id)
+    return render_show(id, nil, :not_found) if story.nil?
+    unless StoryActions.for(story.status, story.priority)[action]
+      return render_show(id, %(story #{id} is "#{story.status}"; cannot #{action} it), :conflict)
+    end
+    ApplicationRecord.transaction { yield story }
+    redirect_to "/story/#{id}", status: :see_other
+  rescue VerbExit => e
+    render_show(id, e.message, e.code == 1 ? :unprocessable_entity : :conflict)
+  end
+
+  def render_show(id, refusal, status)
+    @id = id
+    @refusal = refusal
     @story = @id.empty? ? nil : Story.find_by(id: @id)
     @body = nil
     @error = ""
     @shown_status = ""
     @held_label = nil
-    return render status: :not_found if @story.nil?
+    return render :show, status: :not_found if @story.nil?
 
     # ORDERED BY ROWID: the order the frontmatter listed them in.
     @rfc = Rfc.find_by(id: @story.rfc_id)
@@ -81,9 +128,9 @@ class StoryPagesController < ApplicationController
     doc = Document.read(@story.file_path)
     @body = doc.markdown.empty? ? nil : helpers.render_markdown(doc.markdown)
     @error = doc.error
+    @actions = StoryActions.for(@story.status, @story.priority)
+    render :show, status: status
   end
-
-  private
 
   def backlog_href(filter, page = nil)
     page.nil? ? "/backlog?filter=#{filter}" : "/backlog?filter=#{filter}&page=#{page}"

@@ -90,6 +90,7 @@ describe("FLEET_CONTROLS", () => {
       "spawnloop/rfc-refine",
       "spawnloop/skip",
       "spawnloop/spawn-now",
+      "spawnloop/story-spawn",
       "worker/spawn",
     ]);
   });

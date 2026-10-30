@@ -12,6 +12,9 @@ import {
   orderBacklog,
   type BacklogFilter,
 } from "../models/concerns/backlog.ts";
+import { storyActions, type StoryActions } from "../models/concerns/story-actions.ts";
+import { VerbExit } from "../models/verb-exit.ts";
+import { ApplicationRecord } from "../models/application-record.ts";
 import { daysSince } from "../models/concerns/elapsed.ts";
 import { pagerFor, requestedPage } from "../models/concerns/pager.ts";
 import { depGraphFor } from "../models/concerns/dep-graph.ts";
@@ -85,9 +88,10 @@ export interface DepRow {
  * (`webhook/story.go:100`).
  *
  * The metadata, the deps with the statuses that gate them, and the rendered
- * markdown. Left behind with the same reasoning as the RFC page: the action
- * buttons, the PR body, the event log and the spawn history are ringo's
- * local artifacts or writes, and this story is the read.
+ * markdown. The buttons are ported: the lifecycle verbs run here, and "Spawn
+ * worker" is ringo's dispatch, relayed by `app/assets/javascripts/rfc-actions.js`
+ * through `fleet/control`. Left behind: the PR body, the event log and the
+ * spawn history, which are ringo's local artifacts.
  *
  * Packages fall back to the parent RFC's when the story declares none, which
  * is what ringo does (`webhook/story.go:161`) and what the ready queue
@@ -245,11 +249,65 @@ export class StoryPagesController extends ApplicationController {
   }
 
   async show(): Promise<void> {
+    await this.renderShow(String(this.params.get("id") ?? ""), null, 200);
+  }
+
+  /** `POST /story/<id>/ready` — `status-set <id> ready --from draft`, ringo's `HandleStoryReady`. */
+  async markReady(): Promise<void> {
+    await this.act("ready", (story) => Story.statusSetAll([story.id], "ready", { from: "draft" }));
+  }
+
+  /** `POST /story/<id>/top` — `priority <id> 0`, ringo's `HandleStoryTop`. */
+  async topQueue(): Promise<void> {
+    await this.act("top", (story) => story.prioritySet(0));
+  }
+
+  /** `POST /story/<id>/block` — `block <id> <reason>`, the refusal `MutationsController#block` gives. */
+  async blockStory(): Promise<void> {
+    const reason = String(this.params.get("reason") ?? "").trim();
+    await this.act("block", (story) => {
+      if (reason === "") throw new VerbExit(1, "block requires a reason");
+      return story.block(reason);
+    });
+  }
+
+  /** `POST /story/<id>/close` — `close <id> <reason>`; the model refuses a blank reason. */
+  async closeStory(): Promise<void> {
+    const reason = String(this.params.get("reason") ?? "");
+    await this.act("close", (story) => story.close(reason));
+  }
+
+  /** `POST /story/<id>/release` — `release <id>`. */
+  async releaseClaim(): Promise<void> {
+    await this.act("release", (story) => Story.releaseAll([story.id]));
+  }
+
+  /**
+   * One button's POST. Only what the page offers runs, as `RfcPagesController#move`
+   * refuses a move it does not list; the rest of the rules are the verb's. A
+   * verb that lands redirects (303), and a refusal renders on the page.
+   */
+  private async act(action: keyof StoryActions, verb: (story: Story) => Promise<unknown>): Promise<void> {
     const id = String(this.params.get("id") ?? "");
+    const story = await Story.findBy({ id });
+    if (story === null) return this.renderShow(id, null, 404);
+    if (!storyActions(story.status, story.priority)[action]) {
+      return this.renderShow(id, `story ${id} is "${story.status}"; cannot ${action} it`, 409);
+    }
+    try {
+      await ApplicationRecord.transaction(() => verb(story));
+    } catch (error) {
+      if (!(error instanceof VerbExit)) throw error;
+      return this.renderShow(id, error.message, error.code === 1 ? 422 : 409);
+    }
+    this.redirectTo(`/story/${id}`, { status: 303 });
+  }
+
+  private async renderShow(id: string, refusal: string | null, code: number): Promise<void> {
     const story = id === "" ? null : await Story.findBy({ id });
     if (story === null) {
       await this.renderPage(
-        { id, story: null, rfc: null, deps: [], rfcDeps: [], packages: [], inherited: false, graph: null },
+        { id, story: null, rfc: null, deps: [], rfcDeps: [], packages: [], inherited: false, graph: null, refusal },
         404,
       );
       return;
@@ -313,15 +371,30 @@ export class StoryPagesController extends ApplicationController {
         inherited,
         body: doc.markdown === "" ? null : renderMarkdown(doc.markdown),
         error: doc.error,
+        actions: storyActions(story.status, story.priority),
+        refusal,
       },
-      200,
+      code,
     );
   }
 
   /** Named for the same reason as the RFC page's — see `renderPage` there. */
   private async renderPage(locals: Record<string, unknown>, status: number): Promise<void> {
+    // A `string`, not the literal: trails-tsc-views goes strict on every view
+    // once all of the app's `render` sites resolve, and then types a view fed
+    // by instance assigns (audits, repo-*) as `never`. Removed by trails story
+    // `tsc-views-strict-mode-misses-instance-assigns`.
+    const action: string = "show";
     await this.render({
-      locals: { body: null as SafeBuffer | null, error: "", shownStatus: "", heldLabel: null, ...locals },
+      action,
+      locals: {
+        body: null as SafeBuffer | null,
+        error: "",
+        shownStatus: "",
+        heldLabel: null,
+        actions: null as StoryActions | null,
+        ...locals,
+      },
       status,
     });
   }

@@ -13,6 +13,10 @@
     </div>
   </div>
 
+  <% if (refusal) { %>
+    <p class="flash flash-error"><%= refusal %></p>
+  <% } %>
+
   <div class="layout">
     <div>
       <% if (story.blocked_by) { %>
@@ -77,6 +81,32 @@
     </div>
 
     <div class="side">
+      <% if (Object.values(actions).some(Boolean)) { %>
+        <div class="side-section rfc-actions">
+          <div class="side-head">Lifecycle</div>
+          <% if (actions.spawn) { %>
+            <button type="button" class="btn" data-relay="spawnloop/story-spawn" data-payload="<%= JSON.stringify({ id: story.id }) %>" data-confirm="Spawn a worker for <%= story.id %> now, using the current loop settings?">Spawn worker</button>
+            <div class="field-note" data-relay-status hidden></div>
+          <% } %>
+          <% if (actions.ready) { %>
+            <%= buttonTo("Mark ready", `/story/${story.id}/ready`, { class: "btn" }) %>
+          <% } %>
+          <% if (actions.top) { %>
+            <%= buttonTo("Top of queue", `/story/${story.id}/top`, { class: "btn" }) %>
+          <% } %>
+          <% if (actions.release) { %>
+            <%= buttonTo("Release claim", `/story/${story.id}/release`, { form: { "data-confirm": "Release this claim? The story goes back to ready." }, class: "btn" }) %>
+          <% } %>
+          <% for (const verb of [{ show: actions.block, path: "block", label: "Block" }, { show: actions.close, path: "close", label: "Close story" }]) { %>
+            <% if (verb.show) { %>
+              <%= formWith({ url: `/story/${story.id}/${verb.path}`, method: "post" }, () => { %>
+                <input class="input" name="reason" placeholder="Reason" aria-label="<%= verb.label %> reason">
+                <button type="submit" class="btn"><%= verb.label %></button>
+              <% }) %>
+            <% } %>
+          <% } %>
+        </div>
+      <% } %>
       <div class="side-section">
         <div class="side-head">RFC</div>
         <div class="side-value">
@@ -123,3 +153,4 @@
     </div>
   </div>
 <% } %>
+<script src="<%= javascriptPath("rfc-actions") %>" type="module"></script>

@@ -143,4 +143,6 @@ export const FLEET_CONTROLS: readonly string[] = [
   // /rfc/<id>'s dispatches: "Spawn batch", and "Sunset" (rfc-refine, mode sunset).
   "spawnloop/rfc-batch-spawn",
   "spawnloop/rfc-refine",
+  // /story/<id>'s "Spawn worker".
+  "spawnloop/story-spawn",
 ];

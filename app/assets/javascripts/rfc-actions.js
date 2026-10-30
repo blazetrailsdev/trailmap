@@ -1,5 +1,5 @@
 /*
- * /rfc/<id>: the lifecycle buttons ask before they post, with the confirm
+ * /rfc/<id> and /story/<id>: the lifecycle buttons ask before they post, with the confirm
  * text ringo's page asked (`rfcStatusMoves`, webhook/rfcs.go:1158).
  */
 for (const form of document.querySelectorAll("form[data-confirm]")) {
@@ -13,6 +13,7 @@ for (const form of document.querySelectorAll("form[data-confirm]")) {
  * post through trailmap's `fleet/control` relay with ringo's own payload and
  * confirm text (webhook/rfcs.go), and show ringo's answer — its error text
  * verbatim when it refuses or cannot be reached.
+ * /story/<id>'s "Spawn worker" is the same relay.
  */
 const relayStatus = document.querySelector("[data-relay-status]");
 const relayButtons = document.querySelectorAll("button[data-relay]");
@@ -28,6 +29,7 @@ function relayed(path, data) {
     const ids = (data && data.stories) || [];
     return `Spawned ${ids.length} stor${ids.length === 1 ? "y" : "ies"} in pane ${data.pane || "?"}: ${ids.join(", ")}`;
   }
+  if (path === "spawnloop/story-spawn") return `Spawned ${data.story} in pane ${data.pane || "?"}`;
   return "Agent spawned — its summary will appear on ringo's Refinements tab when it finishes.";
 }
 

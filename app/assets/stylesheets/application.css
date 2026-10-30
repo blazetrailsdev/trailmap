@@ -823,4 +823,5 @@ ul { margin: 0 0 10px 20px; }
 /* /rfc/<id>: the lifecycle buttons, one per line, and a refused move's message. */
 .rfc-actions form { margin: 0 0 6px; }
 .rfc-actions .btn { width: 100%; }
+.rfc-actions .input { width: 100%; margin-bottom: 4px; }
 .flash-error { border: 1px solid var(--red); color: var(--red); border-radius: 6px; padding: 8px 12px; }

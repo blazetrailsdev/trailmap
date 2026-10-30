@@ -14,6 +14,10 @@
     </div>
   </div>
 
+  <% if @refusal %>
+    <p class="flash flash-error"><%= @refusal %></p>
+  <% end %>
+
   <div class="layout">
     <div>
       <% if @story.blocked_by.present? %>
@@ -76,6 +80,32 @@
     </div>
 
     <div class="side">
+      <% if @actions.to_h.values.any? %>
+        <div class="side-section rfc-actions">
+          <div class="side-head">Lifecycle</div>
+          <% if @actions.spawn %>
+            <button type="button" class="btn" data-relay="spawnloop/story-spawn" data-payload="<%= { id: @story.id }.to_json %>" data-confirm="Spawn a worker for <%= @story.id %> now, using the current loop settings?">Spawn worker</button>
+            <div class="field-note" data-relay-status hidden></div>
+          <% end %>
+          <% if @actions.ready %>
+            <%= button_to "Mark ready", "/story/#{@story.id}/ready", class: "btn" %>
+          <% end %>
+          <% if @actions.top %>
+            <%= button_to "Top of queue", "/story/#{@story.id}/top", class: "btn" %>
+          <% end %>
+          <% if @actions.release %>
+            <%= button_to "Release claim", "/story/#{@story.id}/release", form: { "data-confirm": "Release this claim? The story goes back to ready." }, class: "btn" %>
+          <% end %>
+          <% [ [ @actions.block, "block", "Block" ], [ @actions.close, "close", "Close story" ] ].each do |show, path, label| %>
+            <% if show %>
+              <%= form_with url: "/story/#{@story.id}/#{path}", method: :post do %>
+                <input class="input" name="reason" placeholder="Reason" aria-label="<%= label %> reason">
+                <button type="submit" class="btn"><%= label %></button>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
       <div class="side-section">
         <div class="side-head">RFC</div>
         <div class="side-value">
@@ -122,3 +152,4 @@
     </div>
   </div>
 <% end %>
+<script src="<%= javascript_path("rfc-actions") %>" type="module"></script>
