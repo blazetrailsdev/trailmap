@@ -9,5 +9,6 @@ export default defineConfig({
     // browser JavaScript (it is served to the page, not compiled), so its
     // test is plain JavaScript too.
     include: ["test/**/*.test.ts", "test/**/*.test.js"],
+    setupFiles: ["test/support/boot.ts"],
   },
 });

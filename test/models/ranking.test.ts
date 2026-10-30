@@ -164,9 +164,9 @@ describe("Story.readyQueue and Story.bundle", () => {
   });
 
   it("scopes the queue to an RFC, and names why a bundle came back empty", async () => {
+    await Rfc.create({ id: "0004-other", status: "active", title: "Other" });
     await seed("ours", "0136-trailmap", "ready", { cluster: "c1", est_loc: 50 });
     await seed("theirs", "0004-other", "ready", { cluster: "c1", est_loc: 50 });
-    await Rfc.create({ id: "0004-other", status: "active", title: "Other" });
 
     expect((await Story.readyQueue({ rfc: "0136-trailmap" })).stories.map((s) => s.id)).toEqual(["ours"]);
     expect((await Story.bundle({ maxLoc: 10 })).emptyReason).toBe("none-within-budget");

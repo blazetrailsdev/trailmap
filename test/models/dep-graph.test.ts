@@ -6,7 +6,7 @@ import { depGraphFor } from "../../app/models/concerns/dep-graph.ts";
 
 async function chain(...ids: string[]): Promise<void> {
   for (let i = 0; i + 1 < ids.length; i += 1) {
-    await StoryDep.create({ story_id: ids[i], depends_on_id: ids[i + 1] });
+    await new StoryDep({ story_id: ids[i], depends_on_id: ids[i + 1] }).save({ validate: false });
   }
 }
 
