@@ -91,6 +91,8 @@ export class Story extends ApplicationRecord {
   declare isReady: () => boolean;
 
   static {
+    // Only `/search` reads it, in SQL; a loaded row should not carry 3 KB of markdown.
+    this.ignoredColumns = ["body"];
     this.belongsTo("rfc");
     this.hasMany("storyDeps", { inverseOf: "story" });
     this.hasMany("deps", { through: "storyDeps", source: "dependsOn" });

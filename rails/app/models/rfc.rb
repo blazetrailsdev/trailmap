@@ -1,4 +1,7 @@
 class Rfc < ApplicationRecord
+  # Only `/search` reads it, in SQL; a loaded row should not carry 3 KB of markdown.
+  self.ignored_columns = %w[body]
+
   STATUSES = %w[draft active closed postponed superseded].freeze
 
   has_many :stories

@@ -24,6 +24,8 @@ import { LoopbackOnly } from "./concerns/loopback-only.ts";
 export class ApiController extends ApplicationController {
   static {
     include(this, LoopbackOnly);
+    // The CLI posts JSON with no session, so it has no token to send.
+    this.skipForgeryProtection();
     this.rescueFrom(Error, { with: "renderServerError" });
   }
 

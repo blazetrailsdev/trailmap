@@ -1,8 +1,7 @@
 # `/search` — stories and RFCs whose id, title or body mention a phrase.
 #
-# Ids and titles are columns, matched with Arel `matches`. Bodies live on
-# disk, and are matched against a lowercased copy read once per ingest, keyed
-# on `meta.last_ingested_sha`. Tiers: 0 id is the phrase, 1 title starts with
+# Ids, titles and bodies are columns, matched with Arel `matches`. `ingest`
+# writes each body with its frontmatter stripped. Tiers: 0 id is the phrase, 1 title starts with
 # it, 2 id or title contains it, 3 only the body does.
 module Search
   MIN_LENGTH = 2
@@ -11,9 +10,6 @@ module Search
 
   Hit = Struct.new(:kind, :id, :title, :status, :rfc_id, :tier, :mentions, :file_path, :snippet, keyword_init: true)
   Row = Struct.new(:kind, :id, :title, :status, :rfc_id, :file_path, keyword_init: true)
-
-  @cache = nil
-  @lock = Mutex.new
 
   module_function
 
@@ -27,11 +23,10 @@ module Search
   def search(phrase)
     needle = phrase.downcase
     titled = title_matches(phrase)
-    bodies = body_index
+    mentioned = body_mentions(phrase)
     hits = all_rows.filter_map do |row|
       key = "#{row.kind}:#{row.id}"
-      body = bodies[key]
-      mentions = body ? count_mentions(body, needle) : 0
+      mentions = mentioned.fetch(key, 0)
       tier =
         if row.id.downcase == needle then 0
         elsif row.title.to_s.downcase.start_with?(needle) && titled.include?(key) then 1
@@ -80,26 +75,17 @@ module Search
     rfcs + stories
   end
 
-  # Every body, lowercased, keyed `kind:id` — read once per ingest.
-  def body_index
-    sha = Meta.get("last_ingested_sha")
-    @lock.synchronize do
-      @cache = { sha: sha, bodies: read_bodies } if @cache.nil? || @cache[:sha] != sha
-      @cache[:bodies]
+  # Mentions of the phrase per `kind:id`. SQL picks the bodies that have any;
+  # they are counted here, for this one search, and nothing is kept.
+  def body_mentions(phrase)
+    needle = phrase.downcase
+    pattern = "%#{Story.sanitize_sql_like(needle)}%"
+    { "story" => Story, "rfc" => Rfc }.each_with_object({}) do |(kind, model), mentions|
+      condition = model.arel_table[:body].lower.matches(pattern, "\\")
+      model.where(condition).pluck(:id, :body).each do |id, body|
+        mentions["#{kind}:#{id}"] = body.downcase.scan(needle).size
+      end
     end
-  end
-
-  # For tests, which change the files under one sha.
-  def reset_body_index
-    @lock.synchronize { @cache = nil }
-  end
-
-  def read_bodies
-    all_rows.select(&:file_path).to_h { |row| [ "#{row.kind}:#{row.id}", Document.read(row.file_path).markdown.downcase ] }
-  end
-
-  def count_mentions(body, needle)
-    body.scan(needle).size
   end
 
   def snippet_of(text, needle)

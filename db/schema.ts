@@ -13,7 +13,7 @@
 import { Schema } from "@blazetrails/activerecord";
 import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapters/sqlite3-adapter.js";
 
-await Schema.get(8).define<SQLite3Adapter>({ version: 2026_10_22_000008 }, async (ctx) => {
+await Schema.get(8).define<SQLite3Adapter>({ version: 2026_10_30_000009 }, async (ctx) => {
   await ctx.createTable("events", { force: "cascade" }, (t) => {
     t.string("at", { null: false });
     t.string("verb", { null: false });
@@ -75,6 +75,7 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_10_22_000008 }, async
     t.string("superseded_by");
     t.integer("priority");
     t.string("file_path");
+    t.text("body");
     t.datetime("created_at", { null: false });
     t.datetime("updated_at", { null: false });
     t.string("created_on");
@@ -92,6 +93,7 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_10_22_000008 }, async
     t.integer("priority");
     t.integer("est_loc");
     t.string("file_path");
+    t.text("body");
     t.string("status", { default: "draft", null: false });
     t.string("pr");
     t.string("assignee");

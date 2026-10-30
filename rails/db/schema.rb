@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_10_22_000008) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_30_000009) do
   create_table "events", force: :cascade do |t|
     t.string "at", null: false
     t.string "verb", null: false
@@ -72,6 +72,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_22_000008) do
     t.string "superseded_by"
     t.integer "priority"
     t.string "file_path"
+    t.text "body"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "created_on"
@@ -89,6 +90,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_22_000008) do
     t.integer "priority"
     t.integer "est_loc"
     t.string "file_path"
+    t.text "body"
     t.string "status", default: "draft", null: false
     t.string "pr"
     t.string "assignee"

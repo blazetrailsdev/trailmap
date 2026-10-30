@@ -1,4 +1,7 @@
 class Story < ApplicationRecord
+  # Only `/search` reads it, in SQL; a loaded row should not carry 3 KB of markdown.
+  self.ignored_columns = %w[body]
+
   STATUSES = %w[draft ready claimed in-progress done blocked closed].freeze
 
   # A dep is satisfied when it is `done` OR `closed`.

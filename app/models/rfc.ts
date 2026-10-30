@@ -49,6 +49,8 @@ export class Rfc extends ApplicationRecord {
   declare static closed: () => Relation<Rfc>;
 
   static {
+    // Only `/search` reads it, in SQL; a loaded row should not carry 3 KB of markdown.
+    this.ignoredColumns = ["body"];
     this.hasMany("stories");
     for (const column of ["packages", "clusters", "related_rfcs"]) {
       this.serialize(column, { coder: JsonArray });
