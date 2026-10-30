@@ -43,20 +43,12 @@ run skipped, so that is the first thing to rule out.
 `ApiController` does not opt out of forgery protection, and the 8.0 defaults
 turn it on. So `POST /stories/claim` from the CLI (JSON, no session, no token)
 answers "Can't verify CSRF token authenticity" in development and production.
-Both frameworks agree on this. The TypeScript suite never sees it, because
-`config/environments/test.ts` disables forgery protection. It has not
+Both frameworks agree on this. The TypeScript suite does not hit it by
+default, because `config/environments/test.ts` disables forgery protection,
+as Rails' test environment does. It has not
 mattered yet only because the CLI still writes `tasks.db` directly. The Rails
 app declares `skip_forgery_protection` in `ApiController`, which is what a
 Rails JSON API inside a full app does.
-
-### app: the TypeScript suite does not run with the application's configuration
-
-The vitest suite imports models without booting the application, so
-`loadDefaults("8.0")` never applies there. `belongs_to` is therefore optional
-in the suite and required in the running app. `ranking.test.ts` saves a story
-whose RFC does not exist yet, which passes there and fails under Rails, whose
-suite boots the app (`test/models/ranking_test.rb` has the note). The CSRF
-defect above hides behind the same gap.
 
 ### trails: a concern's `before_action` method cannot be private
 

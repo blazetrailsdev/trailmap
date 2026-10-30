@@ -220,20 +220,24 @@ describe("RfcPagesController lifecycle", () => {
   it("writes an authenticity token into each buttonTo form, and a POST carrying it lands", async () => {
     const tc = await controllerTestCase(RfcPagesController);
     const was = ApplicationController.allowForgeryProtection;
+    const perForm = ApplicationController.perFormCsrfTokens;
     ApplicationController.allowForgeryProtection = true;
+    // A per-form token is bound to the form's path, and `tc.post` here sees
+    // `/rfc/:id`, not `/rfc/:id/status`. The Rails twin, an integration test,
+    // covers the per-form path; this covers the token round trip.
+    // Temporary: removed by trails story
+    // `controller-test-case-request-path-ignores-the-routed-action` (RFC 0141, tasks#302).
+    ApplicationController.perFormCsrfTokens = false;
     try {
       await tc.get("show", { params: { id: "0015-csrf" } });
       const token = /name="authenticity_token" value="([^"]+)"/.exec(String(tc.response.body))?.[1];
       expect(token).toBeTruthy();
-      // The refusal of a tokenless POST is not asserted here: the suite does
-      // not boot, so `defaultProtectFromForgery` never installs
-      // `protectFromForgery` (trails story
-      // `controller-tests-cannot-reach-app-helpers-without-booting`). The Rails
-      // twin, which boots, asserts it.
+      await expect(tc.post("move", { params: { id: "0015-csrf", status: "active" } })).rejects.toThrow(/CSRF token/);
       await tc.post("move", { params: { id: "0015-csrf", status: "active", authenticity_token: token! } });
       expect(tc.response.status).toBe(303);
     } finally {
       ApplicationController.allowForgeryProtection = was;
+      ApplicationController.perFormCsrfTokens = perForm;
     }
     expect((await Rfc.find("0015-csrf")).status).toBe("active");
   });

@@ -55,10 +55,10 @@ beforeAll(async () => {
   });
   // A dep on a story that is not in the index — an unknown status, not a
   // satisfied one, which is the distinction the page has to keep.
-  await StoryDep.create({
+  await new StoryDep({
     story_id: "render-the-rfc-and-story-show-pages",
     depends_on_id: "vanished",
-  });
+  }).save({ validate: false });
   await StoryRfcDep.create({ story_id: "render-the-rfc-and-story-show-pages", rfc_id: "0061-ci" });
 
   // Deps and packages inserted in REVERSE alphabetical order, so rowid order

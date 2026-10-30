@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { RouteSet, registerController } from "@blazetrails/actionpack";
 import { Trails } from "@blazetrails/trailties";
-import "../config/application.ts";
-import "../config/routes.ts";
 import { AuditsController } from "../app/controllers/audits-controller.ts";
 import { DashboardController } from "../app/controllers/dashboard-controller.ts";
 import { FleetController } from "../app/controllers/fleet-controller.ts";

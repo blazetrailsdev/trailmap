@@ -169,8 +169,8 @@ describe("Story.semanticErrors", () => {
   it("collects per-row, graph and RFC-lifecycle violations together", async () => {
     await seed("good", "0136-trailmap", "draft");
     await seed("bad", "0136-trailmap", "ready", { assignee: "someone" });
-    await StoryDep.create({ story_id: "good", depends_on_id: "ghost" });
-    await StoryRfcDep.create({ story_id: "good", rfc_id: "0000-nope" });
+    await new StoryDep({ story_id: "good", depends_on_id: "ghost" }).save({ validate: false });
+    await new StoryRfcDep({ story_id: "good", rfc_id: "0000-nope" }).save({ validate: false });
     await Rfc.create({ id: "0099-old", status: "closed", title: "Old" });
     await seed("stranded", "0099-old", "ready");
 

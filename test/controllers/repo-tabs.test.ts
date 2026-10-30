@@ -358,7 +358,12 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
   }
 
   it("draws a form posting the six switches back to the tab", async () => {
-    const { body } = await get(RepoSettingsController, "show", TASKS, OWNER);
+    // The test environment turns forgery protection off, and with it the token.
+    const was = ApplicationController.allowForgeryProtection;
+    ApplicationController.allowForgeryProtection = true;
+    const { body } = await get(RepoSettingsController, "show", TASKS, OWNER).finally(() => {
+      ApplicationController.allowForgeryProtection = was;
+    });
 
     expect(body).toContain('action="/blazetrailsdev/tasks/settings"');
     expect(body).toContain('name="_method" value="patch"');
