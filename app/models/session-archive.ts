@@ -52,6 +52,14 @@ export interface SessionArchiveStatus {
   unclaimed_pane_log_bytes: number;
 }
 
+/** ringo had nothing to say: no note, nothing unclaimed. Neither note is printed. */
+export const NO_ARCHIVE_STATUS: SessionArchiveStatus = Object.freeze({
+  mode: "",
+  note: "",
+  unclaimed_pane_logs: 0,
+  unclaimed_pane_log_bytes: 0,
+});
+
 /** The archive could not be read: ringo is unset, down, or answered something else. */
 export class SessionArchiveUnavailable extends Error {
   readonly status: number;
@@ -148,19 +156,19 @@ export class SessionArchive extends Model {
   }
 
   /**
-   * The archive's mode note and unclaimed-capture count, or null when ringo
-   * cannot say: unset, down, or a ringo from before the endpoint. Only two
-   * notes hang on it, so `all()` reports the failure and this stays quiet.
+   * The archive's mode note and unclaimed-capture count — `NO_ARCHIVE_STATUS`
+   * when ringo cannot say: unset, down, or a ringo from before the endpoint.
+   * Only two notes hang on it, so `all()` reports the failure and this stays quiet.
    */
-  static async status(): Promise<SessionArchiveStatus | null> {
+  static async status(): Promise<SessionArchiveStatus> {
     const base = await Setting.ringoBase();
-    if (base === null) return null;
+    if (base === null) return NO_ARCHIVE_STATUS;
     try {
       const response = await fetch(`${base}/api/sessions/status`, { signal: AbortSignal.timeout(SESSIONS_TIMEOUT_MS) });
-      if (!response.ok) return null;
-      return (await response.json()) as SessionArchiveStatus;
+      if (!response.ok) return NO_ARCHIVE_STATUS;
+      return { ...NO_ARCHIVE_STATUS, ...((await response.json()) as Partial<SessionArchiveStatus>) };
     } catch {
-      return null;
+      return NO_ARCHIVE_STATUS;
     }
   }
 

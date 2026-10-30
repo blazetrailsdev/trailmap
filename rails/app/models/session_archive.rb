@@ -43,6 +43,9 @@ class SessionArchive
           truncated: row["truncated"] || false).tap { |archive| archive.row = row }
     end
 
+    # ringo had nothing to say: no note, nothing unclaimed.
+    NO_STATUS = { "mode" => "", "note" => "", "unclaimed_pane_logs" => 0, "unclaimed_pane_log_bytes" => 0 }.freeze
+
     # Every archive in ringo's `List` order, kept.
     def all
       base = Setting.ringo_base
@@ -64,16 +67,16 @@ class SessionArchive
     end
 
     # ringo's `/api/sessions/status`: the archive's mode note and its unclaimed
-    # pane captures, or nil when ringo cannot say (unset, down, or older than
-    # the endpoint). Only two notes hang on it; `all` reports the failure.
+    # pane captures, NO_STATUS when ringo cannot say (unset, down, or older
+    # than the endpoint). Only two notes hang on it; `all` reports the failure.
     def status
       base = Setting.ringo_base
-      return nil if base.nil?
+      return NO_STATUS if base.nil?
       response = Fleet::Relay.get("#{base}/api/sessions/status", timeout: TIMEOUT)
-      return nil unless response.is_a?(Net::HTTPSuccess)
-      JSON.parse(response.body)
+      return NO_STATUS unless response.is_a?(Net::HTTPSuccess)
+      NO_STATUS.merge(JSON.parse(response.body))
     rescue Fleet::Relay::Failure, JSON::ParserError
-      nil
+      NO_STATUS
     end
 
     # ringo's `ForPR`: every archive recorded against one PR, one per pane.
