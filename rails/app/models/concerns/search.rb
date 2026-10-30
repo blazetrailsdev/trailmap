@@ -1,7 +1,8 @@
 # `/search` — stories and RFCs whose id, title or body mention a phrase.
 #
 # Ids, titles and bodies are columns, matched with Arel `matches`. `ingest`
-# writes each body with its frontmatter stripped. Tiers: 0 id is the phrase, 1 title starts with
+# writes each body with its frontmatter stripped.
+# Tiers: 0 id is the phrase, 1 title starts with
 # it, 2 id or title contains it, 3 only the body does.
 module Search
   MIN_LENGTH = 2
@@ -81,7 +82,7 @@ module Search
     needle = phrase.downcase
     pattern = "%#{Story.sanitize_sql_like(needle)}%"
     { "story" => Story, "rfc" => Rfc }.each_with_object({}) do |(kind, model), mentions|
-      condition = model.arel_table[:body].lower.matches(pattern, "\\")
+      condition = model.arel_table[:body].matches(pattern, "\\")
       model.where(condition).pluck(:id, :body).each do |id, body|
         mentions["#{kind}:#{id}"] = body.downcase.scan(needle).size
       end

@@ -106,7 +106,6 @@ beforeAll(async () => {
   );
 });
 
-
 afterAll(async () => {
   await getFs().rm!(dir, { recursive: true, force: true });
 });

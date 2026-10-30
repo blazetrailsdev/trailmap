@@ -198,7 +198,7 @@ async function bodyMentions(phrase: string): Promise<Map<string, number>> {
   const pattern = `%${Story.sanitizeSqlLike(needle)}%`;
   const mentions = new Map<string, number>();
   for (const model of [Story, Rfc] as const) {
-    const condition = model.arelTable.get("body").lower().matches(pattern, "\\");
+    const condition = model.arelTable.get("body").matches(pattern, "\\");
     const rows = (await model.where(condition).pluck("id", "body")) as [string, string][];
     const kind: SearchKind = model === Story ? "story" : "rfc";
     for (const [id, body] of rows) {
