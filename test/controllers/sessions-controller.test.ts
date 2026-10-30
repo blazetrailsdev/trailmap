@@ -36,6 +36,14 @@ const PILOT_STATUS = {
   unclaimed_pane_log_bytes: 5 * 1024 * 1024,
 };
 
+/** ringo's `/api/sessions/timeline` for trails#9001: an event, a wait, an event. */
+const TIMELINE = { events: 2, gap_floor: "1m", quiet_floor: "5m", elapsed: "1h30m", working: "1h00m", waiting: "30m", rows: [
+    { kind: "session", when: "Oct 27 09:00", title: "agent <session>", ran: "1h00m", active: "40m", meta: ["7 turns · $1.50"] },
+    { wait: "⋯ waiting 30m — PR sat unreviewed" },
+    { kind: "review", when: "Oct 27 10:30", title: "review 1", body_html: "<p>looks <strong>good</strong></p>", open: true },
+  ] };
+
+let timelineAnswer: unknown = TIMELINE;
 let ringo: HttpServer;
 let ringoBaseUrl = "";
 let asked: string[] = [];
@@ -48,6 +56,9 @@ beforeAll(async () => {
     if (req.url === "/api/sessions") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(ARCHIVES));
+    } else if (req.url === "/api/sessions/timeline?owner=blazetrailsdev&repo=trails&pr=9001") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(timelineAnswer));
     } else if (req.url === "/api/sessions/status") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(PILOT_STATUS));
@@ -73,6 +84,7 @@ afterAll(async () => {
 
 afterEach(() => {
   asked = [];
+  timelineAnswer = TIMELINE;
   setEnv("RINGO_BASE", undefined);
 });
 
@@ -184,6 +196,41 @@ describe("SessionsController#show", () => {
     expect(body).toContain("$1.50");
     expect(body).toContain("cwd /w/fix-arel");
     expect(body).not.toContain("trailmap#80");
+  });
+
+  it("renders ringo's timeline above the cards, in ringo's order", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const body = (await get("show", { owner: "blazetrailsdev", repo: "trails", pr: "9001" })).body;
+
+    expect(body).toContain("2 events, oldest first");
+    expect(body).toContain('<div class="tl-ev k-session">');
+    expect(body).toContain("agent &lt;session&gt;");
+    expect(body).toContain('<span class="tl-dur tl-active">active 40m</span>');
+    expect(body).toContain('<details class="tl-body" open><summary>hide</summary><div class="md"><p>looks <strong>good</strong></p></div></details>');
+    const order = ["Timeline", "agent &lt;session&gt;", "⋯ waiting 30m", "review 1", "pane %42"].map((text) => body.indexOf(text));
+    expect(order).not.toContain(-1);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it("keeps the cards when ringo cannot give the timeline", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const body = (await get("show", { owner: "blazetrailsdev", repo: "trailmap", pr: "80" })).body;
+
+    expect(body).toContain("pane %7");
+    expect(body).not.toContain('class="tl-totals"');
+  });
+
+  it("keeps the cards when ringo's timeline has no rows", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    timelineAnswer = { error: "nope" };
+
+    const response = await get("show", { owner: "blazetrailsdev", repo: "trails", pr: "9001" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toContain("pane %42");
+    expect(response.body).not.toContain('class="tl-totals"');
   });
 
   it("says a PR with no archive has none", async () => {

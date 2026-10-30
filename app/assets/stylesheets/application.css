@@ -825,3 +825,78 @@ ul { margin: 0 0 10px 20px; }
 .rfc-actions .btn { width: 100%; }
 .rfc-actions .input { width: 100%; margin-bottom: 4px; }
 .flash-error { border: 1px solid var(--red); color: var(--red); border-radius: 6px; padding: 8px 12px; }
+
+/* ringo's `sessionTimelineCSS`: the PR timeline on /sessions/:owner/:repo/:pr. */
+.tl-card { padding: 14px; }
+/* One rail, events hanging off it in order. The rail is what makes a gap
+   legible: a wait is drawn as a labelled break in the line, not as absence. */
+.tl { position: relative; margin: 0 0 8px; padding-left: 26px; }
+.tl::before { content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px;
+  width: 2px; background: var(--border); }
+.tl-ev { position: relative; margin: 0 0 14px; }
+.tl-ev::before { content: ""; position: absolute; left: -26px; top: 5px;
+  width: 10px; height: 10px; border-radius: 50%; background: var(--border);
+  box-shadow: 0 0 0 3px var(--bg); }
+.tl-ev.k-session::before { background: var(--accent); }
+.tl-ev.k-work::before { background: var(--accent); }
+/* A work stretch is a consequence of the review above it, so it is indented
+   under it rather than sitting at the same level as the events themselves. */
+.tl-ev.k-work { margin-left: 14px; }
+.tl-ev.k-work .tl-title { font-weight: 500; color: var(--muted); }
+.tl-slow { font-size: 11px; color: var(--muted); margin-top: 2px;
+  font-variant-numeric: tabular-nums; }
+.tl-ev.k-review::before { background: var(--purple); }
+.tl-ev.k-ci-failure::before { background: var(--red); }
+.tl-ev.k-findings::before { background: var(--green); }
+.tl-ev.k-pane-open::before, .tl-ev.k-pane-close::before { background: var(--muted); }
+.tl-line { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.tl-when { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+  white-space: nowrap; }
+.tl-title { font-size: 13px; font-weight: 600; }
+.tl-meta { font-size: 12px; color: var(--muted); }
+.tl-dur { font-size: 11px; color: var(--muted); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0 7px; white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
+/* Active time sits next to the span it is a fraction of, and carries the
+   weight: it is the honest number of the two. */
+.tl-dur.tl-active { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+
+/* A wait. It sits ON the rail between two events and says what was being
+   waited for, because "34m" alone does not tell you whether that was CI
+   being slow or a PR sitting unreviewed. */
+.tl-wait { position: relative; margin: 0 0 14px; padding: 2px 0; }
+.tl-wait::before { content: ""; position: absolute; left: -26px; top: 50%;
+  width: 10px; height: 2px; background: var(--bg);
+  border-top: 2px dashed var(--yellow); }
+.tl-wait .w { font-size: 11.5px; color: var(--yellow); font-variant-numeric: tabular-nums; }
+
+.tl-body { margin: 7px 0 0; border: 1px solid var(--border); border-radius: 6px;
+  overflow: hidden; }
+.tl-body > summary { cursor: pointer; list-style: none; padding: 6px 11px;
+  font-size: 11.5px; color: var(--muted); background: var(--surface); }
+.tl-body > summary::-webkit-details-marker { display: none; }
+.tl-body > summary::before { content: "▸ "; }
+.tl-body[open] > summary::before { content: "▾ "; }
+.tl-body > summary:hover { color: var(--fg); }
+.tl-body .md { padding: 2px 13px 10px; font-size: 13px; line-height: 1.55; }
+.tl-body .md h1, .tl-body .md h2, .tl-body .md h3 { font-size: 13.5px; margin: 11px 0 5px; }
+.tl-body .md ul, .tl-body .md ol { margin: 5px 0 5px 20px; }
+.tl-body .md li { margin: 3px 0; }
+.tl-body .md p { margin: 6px 0; }
+.tl-body .md code { background: var(--bg); border: 1px solid var(--border);
+  border-radius: 3px; padding: 0 4px; }
+.tl-body .md pre { background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 9px 11px; overflow-x: auto; }
+.tl-body pre.raw { margin: 0; padding: 10px 13px; font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word; color: var(--muted);
+  max-height: 26em; overflow-y: auto; }
+
+/* Where the time went, as three totals. Working and waiting are the pair the
+   reader is here to compare. */
+.tl-totals { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }
+.tl-totals .t { flex: 1 1 130px; border: 1px solid var(--border); border-radius: 6px;
+  padding: 9px 12px; background: var(--surface); }
+.tl-totals .t .n { font-size: 18px; font-weight: 600; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; }
+.tl-totals .t .n.wait { color: var(--yellow); }
+.tl-totals .t .l { font-size: 11px; color: var(--muted); margin-top: 1px; }

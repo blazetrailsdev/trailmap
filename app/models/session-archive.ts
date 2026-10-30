@@ -9,6 +9,12 @@ import { Setting } from "./setting.ts";
  */
 export const SESSIONS_TIMEOUT_MS = 5_000;
 
+/**
+ * How long ringo has to assemble one PR's timeline. Longer than the index's:
+ * ringo scans the PR's transcripts from disk to answer.
+ */
+export const TIMELINE_TIMEOUT_MS = 10_000;
+
 /** One pinned transcript, as ringo's `ArchivedTranscript` marshals it. */
 export interface ArchivedTranscriptRow {
   session_id: string;
@@ -50,6 +56,32 @@ export interface SessionArchiveStatus {
   note: string;
   unclaimed_pane_logs: number;
   unclaimed_pane_log_bytes: number;
+}
+
+/** One drawn row of a PR's timeline: a wait when `wait` is set, else an event. */
+export interface TimelineRow {
+  wait?: string;
+  kind?: string;
+  when?: string;
+  title?: string;
+  ran?: string;
+  active?: string;
+  meta?: string[];
+  slow?: string;
+  body?: string;
+  body_html?: string;
+  open?: boolean;
+}
+
+/** ringo's `/api/sessions/timeline`: `prTimelineView`, its rows and totals decided. */
+export interface PrTimeline {
+  events: number;
+  gap_floor: string;
+  quiet_floor: string;
+  elapsed: string;
+  working: string;
+  waiting: string;
+  rows: TimelineRow[];
 }
 
 /** ringo had nothing to say: no note, nothing unclaimed. Neither note is printed. */
@@ -169,6 +201,27 @@ export class SessionArchive extends Model {
       return { ...NO_ARCHIVE_STATUS, ...((await response.json()) as Partial<SessionArchiveStatus>) };
     } catch {
       return NO_ARCHIVE_STATUS;
+    }
+  }
+
+  /**
+   * One PR's timeline as ringo draws it, rows and order ringo's own — `null`
+   * when there is none to show: no events, or ringo cannot say. The cards below
+   * it stand without it, so a failure here leaves the page whole. Asked after
+   * the archives on purpose: a PR with no archive draws no timeline, and a slow
+   * ringo holds this page for both timeouts at worst.
+   */
+  static async timeline({ owner, repo, pr }: { owner: string; repo: string; pr: number }): Promise<PrTimeline | null> {
+    const base = await Setting.ringoBase();
+    if (base === null) return null;
+    const query = new URLSearchParams({ owner, repo, pr: String(pr) });
+    try {
+      const response = await fetch(`${base}/api/sessions/timeline?${query}`, { signal: AbortSignal.timeout(TIMELINE_TIMEOUT_MS) });
+      if (!response.ok) return null;
+      const timeline = (await response.json()) as PrTimeline | null;
+      return Array.isArray(timeline?.rows) ? timeline : null;
+    } catch {
+      return null;
     }
   }
 

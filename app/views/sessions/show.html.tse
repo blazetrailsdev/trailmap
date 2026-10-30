@@ -16,6 +16,9 @@
 <% } else if (archives.length === 0) { %>
   <div class="card"><div class="field-note">No archive recorded for this PR.</div></div>
 <% } else { %>
+  <% if (timeline !== null) { %>
+    <%= render({ partial: "sessions/timeline", locals: { timeline } }) %>
+  <% } %>
   <% for (const archive of archives) { %>
     <div class="card">
       <div class="card-head">

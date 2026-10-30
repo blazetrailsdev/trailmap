@@ -52,6 +52,7 @@ class SessionsController < ApplicationController
     @pr = params[:pr].to_i
     @now = Time.now
     @archives = SessionArchive.for_pr(owner: @owner, repo: @repo, pr: @pr)
+    @timeline = SessionArchive.timeline(owner: @owner, repo: @repo, pr: @pr) if @archives.any?
   rescue SessionArchive::Unavailable => e
     @archives = []
     @problem = e.message
