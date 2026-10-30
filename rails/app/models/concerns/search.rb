@@ -1,9 +1,8 @@
 # `/search` — stories and RFCs whose id, title or body mention a phrase.
 #
 # Ids, titles and bodies are columns, matched with Arel `matches`. `ingest`
-# writes each body with its frontmatter stripped.
-# Tiers: 0 id is the phrase, 1 title starts with
-# it, 2 id or title contains it, 3 only the body does.
+# writes each body with its frontmatter stripped. Tiers: 0 id is the phrase,
+# 1 title starts with it, 2 id or title contains it, 3 only the body does.
 module Search
   MIN_LENGTH = 2
   MAX_LENGTH = 100
