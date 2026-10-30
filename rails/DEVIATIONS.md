@@ -165,3 +165,9 @@ each language spells it; the rest of that report's list was converged.
   `MutationsController`'s mapping (exit 1 → 422, otherwise 409): a refusal is
   an answer, not a server error. The 409s for an unoffered move and for no
   drafts are ringo's (`rfcs.go:1208`, `:1305`).
+
+## `StoryPagesController#renderPage` passes `action` as a `string`
+
+- **trails**: the literal resolves the app's last `render` site, and
+  `trails-tsc-views` then types every view fed by instance assigns as `never`.
+  Story `tsc-views-strict-mode-misses-instance-assigns`. Rails has no such step.

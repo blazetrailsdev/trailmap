@@ -106,6 +106,11 @@ Trails.application!.routes().draw(function () {
   this.post("rfc/:id/status", { to: "rfc_pages#move" });
   this.post("rfc/:id/ready-drafts", { to: "rfc_pages#readyDrafts" });
   this.get("story/:id", { to: "story_pages#show" });
+  this.post("story/:id/ready", { to: "story_pages#markReady" });
+  this.post("story/:id/top", { to: "story_pages#topQueue" });
+  this.post("story/:id/block", { to: "story_pages#blockStory" });
+  this.post("story/:id/close", { to: "story_pages#closeStory" });
+  this.post("story/:id/release", { to: "story_pages#releaseClaim" });
 
   // The parity graphs, ported from ringo's `/graphs/parity`. Two routes, not
   // one with content negotiation: the page is a static document and the data
