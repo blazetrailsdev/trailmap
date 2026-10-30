@@ -23,6 +23,7 @@
  */
 import { ActionController, RouteSet } from "@blazetrails/actionpack";
 import { Trails } from "@blazetrails/trailties";
+import "./boot.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { getFs } from "@blazetrails/ruby-compat";
 import { STYLESHEET, boxRules, classListsIn, collisionsInList, type BoxRules } from "../../scripts/class-collisions.ts";
