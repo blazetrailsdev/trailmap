@@ -29,7 +29,7 @@ class RepoSettingsController < RepoController
     raise ActiveRecord::RecordNotFound, "#{@repo.name_with_owner} has no settings this viewer may change" unless @repo.administrable_by?(viewer)
     row = @repo.settings || @repo.build_settings
     row.update!(switch_params)
-    redirect_to "/#{@repo.name_with_owner}/settings", status: :see_other
+    redirect_to repo_settings_path(@owner.login, @repo.name), status: :see_other
   end
 
   private

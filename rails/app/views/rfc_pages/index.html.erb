@@ -15,7 +15,7 @@
     <div class="item-row">
       <span class="row-main">
         <span class="titleline">
-          <a class="row-title" href="/rfc/<%= row.id %>"><%= row.title %></a>
+          <a class="row-title" href="<%= rfc_path(row.id) %>"><%= row.title %></a>
           <% unless row.priority.nil? %><span class="tag prio" title="RFC priority (lower = sooner)">P<%= row.priority %></span><% end %>
           <% if row.counts.total.positive? %><span class="tag prog" title="stories done / total"><%= row.counts.done %>/<%= row.counts.total %> done</span><% end %>
           <% if row.stalled %><span class="tag stalled" title="no story ready and none in flight: nothing here can be picked up">needs refine</span><% end %>

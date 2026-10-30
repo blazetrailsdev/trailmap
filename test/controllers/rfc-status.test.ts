@@ -143,7 +143,9 @@ describe("RfcPagesController lifecycle", () => {
 
     const closed = await controllerTestCase(RfcPagesController);
     await closed.get("show", { params: { id: "0006-closed" } });
-    expect(closed.response.body).not.toContain('class="side-section rfc-actions"');
+    expect(closed.response.body).not.toContain(">Lifecycle<");
+    expect(closed.response.body).not.toContain("Spawn batch");
+    expect(closed.response.body).not.toContain("Sunset RFC");
   });
 
   it("relays Spawn batch and Sunset to ringo, with ringo's payload and confirm text", async () => {
@@ -168,7 +170,17 @@ describe("RfcPagesController lifecycle", () => {
 
     const parked = await controllerTestCase(RfcPagesController);
     await parked.get("show", { params: { id: "0003-postponed" } });
-    expect(parked.response.body).not.toContain("data-relay=");
+    expect(parked.response.body).not.toContain("Sunset RFC");
+  });
+
+  it("offers Refine stories with ringo's note and confirm text on any RFC", async () => {
+    const parked = await controllerTestCase(RfcPagesController);
+    await parked.get("show", { params: { id: "0003-postponed" } });
+    const body = parked.response.body;
+    expect(body).toContain("data-relay-note");
+    expect(body).toContain("&quot;mode&quot;:&quot;refine&quot;");
+    expect(body).toContain("Spawn an agent to groom every story under 0003-postponed?");
+    expect(body).toContain("Refine stories");
   });
 
   it("writes a blank reason as no note", async () => {

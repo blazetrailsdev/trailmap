@@ -13,7 +13,7 @@ class RepoIssuesController < RepoController
     @state = params[:state] == "closed" ? "closed" : "open"
     shown = by_priority_then_id(@state == "closed" ? closed : open)
     @pager = Pager.for(shown.size, PAGE_SIZE, Pager.requested_page(params[:page])) do |page|
-      "/#{@nwo}/issues?state=#{@state}&page=#{page}"
+      repo_issues_path(@owner.login, @repo.name, state: @state, page: page)
     end
     @tab_counts = { open: open.size, closed: closed.size }
     @rows = shown[(@pager.from.zero? ? 0 : @pager.from - 1)...@pager.to].map { |s| row_of(s) }

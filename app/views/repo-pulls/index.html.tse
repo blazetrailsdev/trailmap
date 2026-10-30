@@ -1,8 +1,8 @@
 <%= render({ partial: "shared/repo-header", locals: { repo: repo, owner: owner, nwo: nwo, tabs: tabs } }) %>
 
 <%= render({ partial: "shared/filter-tabs", locals: { tabs: [
-  { href: "/" + nwo + "/pulls?state=open", label: "Open", count: tabCounts.open, active: state === "open" },
-  { href: "/" + nwo + "/pulls?state=merged", label: "Merged", count: tabCounts.merged, active: state === "merged" },
+  { href: repoPullsPath(owner.login, repo.name, { state: "open" }), label: "Open", count: tabCounts.open, active: state === "open" },
+  { href: repoPullsPath(owner.login, repo.name, { state: "merged" }), label: "Merged", count: tabCounts.merged, active: state === "merged" },
 ] } }) %>
 
 <p class="muted">A pull request exists here because a story was stamped with it
@@ -17,13 +17,13 @@ the only merge signal this database holds.</p>
     <div class="item-row">
       <span class="row-main">
         <span class="titleline">
-          <a class="row-title" href="/<%= nwo %>/pulls/<%= row.number %>">#<%= row.number %></a>
+          <a class="row-title" href="<%= repoPullPath(owner.login, repo.name, row.number) %>">#<%= row.number %></a>
           <span class="tag prog"><%= row.stories.length %> <%= row.stories.length === 1 ? "story" : "stories" %></span>
           <a class="tag" href="<%= row.href %>">on GitHub</a>
         </span>
         <div class="row-meta">
           <% for (const story of row.stories) { %>
-            <a href="/<%= nwo %>/issues/<%= story.id %>"><%= story.title %></a>
+            <a href="<%= repoIssuePath(owner.login, repo.name, story.id) %>"><%= story.title %></a>
             <%= render({ partial: "shared/status-badge", locals: { status: story.status } }) %>
           <% } %>
         </div>

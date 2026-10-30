@@ -2,7 +2,7 @@
   <h1 class="page-title"><%= @name %></h1>
   <div class="page-subhead">
     <span class="muted"><%= human_bytes(@bytes.bytesize) %> of capture replayed to <%= @lines %> lines of scrollback. This is the pane's final screen state, not every frame: the agent redraws its UI in place, so intermediate repaints overwrite rather than stack — the same thing you would see scrolling back through the live pane.</span>
-    <a href="/sessions/file?p=<%= ERB::Util.url_encode(@p) %>">Download the raw capture</a>
+    <a href="<%= sessions_file_path(p: @p) %>">Download the raw capture</a>
   </div>
 </div>
 

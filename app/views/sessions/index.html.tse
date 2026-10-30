@@ -27,7 +27,7 @@
         <tbody>
           <% for (const archive of archives) { %>
             <tr>
-              <td><a href="/sessions/<%= archive.owner %>/<%= archive.repo %>/<%= archive.pr %>"><%= archive.owner %>/<%= archive.repo %>#<%= archive.pr %></a></td>
+              <td><a href="<%= sessionPath(archive.owner, archive.repo, archive.pr) %>"><%= archive.owner %>/<%= archive.repo %>#<%= archive.pr %></a></td>
               <td><code><%= orDash(archive.branch) %></code></td>
               <td><code><%= archive.pane %></code></td>
               <td><%= sessionTime(archive.row.opened_at) %></td>

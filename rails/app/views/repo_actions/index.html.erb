@@ -13,7 +13,7 @@
         <span class="titleline">
           <span class="badge s-<%= row.verb %>"><%= row.verb %></span>
           <% if row.story_id.present? %>
-            <a class="row-title" href="/<%= @nwo %>/issues/<%= row.story_id %>"><%= row.story_title || row.story_id %></a>
+            <a class="row-title" href="<%= repo_issue_path(@owner.login, @repo.name, row.story_id) %>"><%= row.story_title || row.story_id %></a>
           <% else %>
             <span class="row-title muted">(no story)</span>
           <% end %>

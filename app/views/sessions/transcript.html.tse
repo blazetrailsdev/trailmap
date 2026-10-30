@@ -112,4 +112,4 @@
   </div>
 <% }); %>
 
-<p class="muted">Rendered from the archived JSONL: <%= tr.Skipped %> bookkeeping events (attachments, mode latches, snapshots) are not shown. <a href="/sessions/file?p=<%= encodeURIComponent(p) %>">Download the raw transcript</a>.</p>
+<p class="muted">Rendered from the archived JSONL: <%= tr.Skipped %> bookkeeping events (attachments, mode latches, snapshots) are not shown. <a href="<%= sessionsFilePath({ p: p }) %>">Download the raw transcript</a>.</p>

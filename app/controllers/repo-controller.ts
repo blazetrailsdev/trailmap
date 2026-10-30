@@ -58,17 +58,17 @@ export class RepoController extends ApplicationController {
   }
 }
 
-/** Human labels for the tab bar; the keys are the route segments. */
-const TAB_LABELS: ReadonlyArray<[string, string, string]> = [
-  ["code", "Code", ""],
-  ["issues", "Issues", "/issues"],
-  ["pulls", "Pull requests", "/pulls"],
-  ["actions", "Actions", "/actions"],
-  ["projects", "Projects", "/projects"],
-  ["wiki", "Wiki", "/wiki"],
-  ["insights", "Insights", "/pulse"],
-  ["settings", "Settings", "/settings"],
-];
+/** The tab bar: key, label, and the route helper of its page. */
+const TAB_LABELS = [
+  ["code", "Code", "repoCodePath"],
+  ["issues", "Issues", "repoIssuesPath"],
+  ["pulls", "Pull requests", "repoPullsPath"],
+  ["actions", "Actions", "repoActionsPath"],
+  ["projects", "Projects", "repoProjectsPath"],
+  ["wiki", "Wiki", "repoWikiPath"],
+  ["insights", "Insights", "repoPulsePath"],
+  ["settings", "Settings", "repoSettingsPath"],
+] as const;
 
 /**
  * Resolve `:owner`/`:repo` into the record, refuse a repository the viewer may
@@ -113,7 +113,7 @@ async function loadRepository(
   }
 
   base.repo = repo;
-  base.tabs = tabsFor(repo, tab);
+  base.tabs = tabsFor(base, repo, tab);
   return true;
 }
 
@@ -123,13 +123,12 @@ function switchesOf(repo: Repository): TabSwitches {
 }
 
 /** The tab bar: every enabled tab, in GitHub's order, with this one marked. */
-function tabsFor(repo: Repository, current: string): RepoTab[] {
+function tabsFor(controller: RepoController, repo: Repository, current: string): RepoTab[] {
   const switches = switchesOf(repo);
-  const prefix = `/${repo.nameWithOwner()}`;
-  return TAB_LABELS.filter(([key]) => switches.enabled(key)).map(([key, label, suffix]) => ({
+  return TAB_LABELS.filter(([key]) => switches.enabled(key)).map(([key, label, helper]) => ({
     key,
     label,
-    href: `${prefix}${suffix}`,
+    href: controller[helper](repo.owner!.login, repo.name),
     active: key === current,
   }));
 }

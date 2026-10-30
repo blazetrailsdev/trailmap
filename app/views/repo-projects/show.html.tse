@@ -8,7 +8,7 @@
       <%= render({ partial: "shared/status-badge", locals: { status: rfc.status } }) %>
     </h1>
     <div class="page-subhead"><span class="muted"><code><%= rfc.id %></code> &middot;
-      <a href="/rfc/<%= rfc.id %>">RFC page</a></span></div>
+      <a href="<%= rfcPath(rfc.id) %>">RFC page</a></span></div>
   </div>
 
   <p class="muted">This repository's stories only, by status.</p>
@@ -23,7 +23,7 @@
         <div class="item-row">
           <span class="row-main">
             <span class="titleline">
-              <a class="row-title" href="/<%= nwo %>/issues/<%= story.id %>"><%= story.title %></a>
+              <a class="row-title" href="<%= repoIssuePath(owner.login, repo.name, story.id) %>"><%= story.title %></a>
             </span>
             <div class="row-meta"><code><%= story.id %></code></div>
           </span>

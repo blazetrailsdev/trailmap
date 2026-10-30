@@ -13,7 +13,7 @@
         <span class="titleline">
           <span class="badge s-<%= row.verb %>"><%= row.verb %></span>
           <% if (row.storyId) { %>
-            <a class="row-title" href="/<%= nwo %>/issues/<%= row.storyId %>"><%= row.storyTitle ?? row.storyId %></a>
+            <a class="row-title" href="<%= repoIssuePath(owner.login, repo.name, row.storyId) %>"><%= row.storyTitle ?? row.storyId %></a>
           <% } else { %>
             <span class="row-title muted">(no story)</span>
           <% } %>

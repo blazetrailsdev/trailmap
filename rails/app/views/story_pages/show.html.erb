@@ -9,7 +9,7 @@
       <span class="id"><%= @story.id %></span>
       <%= render "shared/status_state", status: @shown_status, label: @held_label %>
       <span class="muted">
-        in <a href="/rfc/<%= @story.rfc_id %>"><%= rfc_label %></a><% unless @story.pr.nil? %>, PR <%= @story.pr %><% end %>
+        in <a href="<%= rfc_path(@story.rfc_id) %>"><%= rfc_label %></a><% unless @story.pr.nil? %>, PR <%= @story.pr %><% end %>
       </span>
     </div>
   </div>
@@ -42,7 +42,7 @@
                 <div class="item-row" style="padding-left: <%= 16 + (node.depth - 1) * 20 %>px">
                   <%= render "shared/status_badge", status: node.status %>
                   <span class="row-main">
-                    <a class="row-title" href="/story/<%= node.id %>"><%= node.title || node.id %></a>
+                    <a class="row-title" href="<%= story_path(node.id) %>"><%= node.title || node.id %></a>
                     <div class="row-meta"><%= node.id %><% unless node.via.nil? %> · via <%= node.via %><% end %></div>
                   </span>
                 </div>
@@ -59,7 +59,7 @@
             <div class="item-row">
               <%= render "shared/status_badge", status: dep.status %>
               <span class="row-main">
-                <a class="row-title" href="/story/<%= dep.id %>"><%= dep.id %></a>
+                <a class="row-title" href="<%= story_path(dep.id) %>"><%= dep.id %></a>
               </span>
             </div>
           <% end %>
@@ -67,7 +67,7 @@
             <div class="item-row">
               <%= render "shared/status_badge", status: dep.status %>
               <span class="row-main">
-                <a class="row-title" href="/rfc/<%= dep.id %>"><%= dep.id %></a>
+                <a class="row-title" href="<%= rfc_path(dep.id) %>"><%= dep.id %></a>
                 <div class="row-meta">RFC</div>
               </span>
             </div>
@@ -88,17 +88,17 @@
             <div class="field-note" data-relay-status hidden></div>
           <% end %>
           <% if @actions.ready %>
-            <%= button_to "Mark ready", "/story/#{@story.id}/ready", class: "btn" %>
+            <%= button_to "Mark ready", story_ready_path(@story.id), class: "btn" %>
           <% end %>
           <% if @actions.top %>
-            <%= button_to "Top of queue", "/story/#{@story.id}/top", class: "btn" %>
+            <%= button_to "Top of queue", story_top_path(@story.id), class: "btn" %>
           <% end %>
           <% if @actions.release %>
-            <%= button_to "Release claim", "/story/#{@story.id}/release", form: { "data-confirm": "Release this claim? The story goes back to ready." }, class: "btn" %>
+            <%= button_to "Release claim", story_release_path(@story.id), form: { "data-confirm": "Release this claim? The story goes back to ready." }, class: "btn" %>
           <% end %>
-          <% [ [ @actions.block, "block", "Block" ], [ @actions.close, "close", "Close story" ] ].each do |show, path, label| %>
+          <% [ [ @actions.block, story_block_path(@story.id), "Block" ], [ @actions.close, story_close_path(@story.id), "Close story" ] ].each do |show, path, label| %>
             <% if show %>
-              <%= form_with url: "/story/#{@story.id}/#{path}", method: :post do %>
+              <%= form_with url: path, method: :post do %>
                 <input class="input" name="reason" placeholder="Reason" aria-label="<%= label %> reason">
                 <button type="submit" class="btn"><%= label %></button>
               <% end %>
@@ -109,7 +109,7 @@
       <div class="side-section">
         <div class="side-head">RFC</div>
         <div class="side-value">
-          <a href="/rfc/<%= @story.rfc_id %>"><%= rfc_label %></a>
+          <a href="<%= rfc_path(@story.rfc_id) %>"><%= rfc_label %></a>
           <% if @rfc %>
             <%= render "shared/status_badge", status: @rfc.status %>
           <% end %>

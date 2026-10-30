@@ -10,7 +10,7 @@
 %>
 <div class="page-header">
   <h1 class="page-title">
-    <a href="/<%= owner.login %>"><%= owner.login %></a><span class="muted">/</span><a href="/<%= nwo %>"><%= repo.name %></a>
+    <a href="<%= ownerPath(owner.login) %>"><%= owner.login %></a><span class="muted">/</span><a href="<%= repoCodePath(owner.login, repo.name) %>"><%= repo.name %></a>
     <% if (repo.visibility !== "public") { %><span class="tag"><%= repo.visibility %></span><% } %>
     <% if (repo.archived) { %><span class="tag">archived</span><% } %>
   </h1>

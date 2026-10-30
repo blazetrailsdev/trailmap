@@ -5,7 +5,7 @@
   </div>
 </div>
 
-<form class="search-form" action="/search" method="get" role="search">
+<form class="search-form" action="<%= search_path %>" method="get" role="search">
   <input class="search-input" type="search" name="q" value="<%= @asked %>" maxlength="<%= @max_length %>" placeholder="serialize, has_many, est-loc…" aria-label="Search stories and RFCs" autofocus>
   <button class="search-button" type="submit">Search</button>
 </form>
@@ -25,12 +25,12 @@
         <%= render "shared/status_badge", status: hit.status %>
         <span class="row-main">
           <span class="titleline">
-            <a class="row-title" href="/<%= hit.kind %>/<%= hit.id %>"><%= hit.title %></a>
+            <a class="row-title" href="<%= hit.kind == "rfc" ? rfc_path(hit.id) : story_path(hit.id) %>"><%= hit.title %></a>
             <span class="tag"><%= hit.kind == "rfc" ? "RFC" : "story" %></span>
             <% if hit.mentions.positive? %><span class="tag" title="mentions in the body"><%= hit.mentions %>&times;</span><% end %>
           </span>
           <div class="row-meta">
-            <code><%= hit.id %></code><% if hit.rfc_id.present? %> &middot; <a href="/rfc/<%= hit.rfc_id %>">RFC <%= hit.rfc_id %></a><% end %>
+            <code><%= hit.id %></code><% if hit.rfc_id.present? %> &middot; <a href="<%= rfc_path(hit.rfc_id) %>">RFC <%= hit.rfc_id %></a><% end %>
           </div>
           <% if hit.snippet.present? %><div class="row-meta search-snippet"><%= hit.snippet %></div><% end %>
         </span>

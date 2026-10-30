@@ -108,4 +108,4 @@
   </div>
 <% end %>
 
-<p class="muted">Rendered from the archived JSONL: <%= @tr["Skipped"] %> bookkeeping events (attachments, mode latches, snapshots) are not shown. <a href="/sessions/file?p=<%= ERB::Util.url_encode(@p) %>">Download the raw transcript</a>.</p>
+<p class="muted">Rendered from the archived JSONL: <%= @tr["Skipped"] %> bookkeeping events (attachments, mode latches, snapshots) are not shown. <a href="<%= sessions_file_path(p: @p) %>">Download the raw transcript</a>.</p>

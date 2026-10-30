@@ -1,15 +1,15 @@
 <div class="page-header">
   <h1 class="page-title">RFCs</h1>
   <div class="page-subhead">
-    <span class="muted"><%= total %> <%= total === 1 ? "RFC" : "RFCs" %></span>
+    <span class="muted"><%= this.total %> <%= this.total === 1 ? "RFC" : "RFCs" %></span>
   </div>
 </div>
 
-<%= render({ partial: "shared/filter-tabs", locals: { tabs: tabs } }) %>
+<%= render({ partial: "shared/filter-tabs", locals: { tabs: this.tabs } }) %>
 
 <div class="box">
-  <% if (rows.length === 0) { %>
-    <div class="empty">No <%= filter %> RFCs.</div>
+  <% if (this.rows.length === 0) { %>
+    <div class="empty">No <%= this.filter %> RFCs.</div>
   <% } %>
   <%#
     No status badge on a row. Every row here has the status of the selected
@@ -17,11 +17,11 @@
     down the whole page, and the tab already says it once. `/backlog` keeps
     its badges: its Open and Icebox tabs each hold several statuses.
   %>
-  <% for (const row of rows) { %>
+  <% for (const row of this.rows) { %>
     <div class="item-row">
       <span class="row-main">
         <span class="titleline">
-          <a class="row-title" href="/rfc/<%= row.id %>"><%= row.title %></a>
+          <a class="row-title" href="<%= rfcPath(row.id) %>"><%= row.title %></a>
           <% if (row.priority !== null) { %><span class="tag prio" title="RFC priority (lower = sooner)">P<%= row.priority %></span><% } %>
           <% if (row.counts.total > 0) { %><span class="tag prog" title="stories done / total"><%= row.counts.done %>/<%= row.counts.total %> done</span><% } %>
           <% if (row.stalled) { %><span class="tag stalled" title="no story ready and none in flight: nothing here can be picked up">needs refine</span><% } %>

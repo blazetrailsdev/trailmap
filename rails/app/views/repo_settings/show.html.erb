@@ -14,7 +14,7 @@
 <h2>Features</h2>
 <p class="muted">A tab turned off is not drawn above and answers 404.</p>
 <% if @can_administer %>
-<%= form_with model: @form, url: "/#{@nwo}/settings", method: :patch, scope: :repository_setting do |f| %>
+<%= form_with model: @form, url: repo_settings_path(@owner.login, @repo.name), method: :patch, scope: :repository_setting do |f| %>
   <div class="box">
     <% unless @has_switches %>
       <div class="box-row muted">This repository has no settings row, so every tab is on. Saving writes one.</div>
@@ -52,7 +52,7 @@ Postgres enforces as the table's real PRIMARY KEY.</p>
   <% end %>
   <% @collaborators.each do |row| %>
     <div class="box-row">
-      <a href="/<%= row.login %>"><%= row.login %></a> &middot;
+      <a href="<%= owner_path(row.login) %>"><%= row.login %></a> &middot;
       <span class="badge s-<%= row.can_push ? "ready" : "draft" %>"><%= row.role %></span>
       <% unless row.can_push %><span class="muted">read-only</span><% end %>
     </div>

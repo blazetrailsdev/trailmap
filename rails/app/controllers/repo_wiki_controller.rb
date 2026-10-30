@@ -8,7 +8,7 @@ class RepoWikiController < RepoController
   def index
     rfc_ids = RepoScope.stories_for(@repo.name).to_set(&:rfc_id)
     pages = Rfc.all.select { |r| rfc_ids.include?(r.id) }.map do |rfc|
-      Page.new(id: rfc.id, title: rfc.title || rfc.id, status: rfc.status, href: "/#{@nwo}/wiki?page=#{rfc.id}")
+      Page.new(id: rfc.id, title: rfc.title || rfc.id, status: rfc.status, href: repo_wiki_path(@owner.login, @repo.name, page: rfc.id))
     end
     @pages = StableSort.sort(pages) { |a, b| LocaleCompare.compare(a.id, b.id) }
     requested = params[:page].to_s

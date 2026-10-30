@@ -13,7 +13,7 @@
     <div class="item-row">
       <span class="row-main">
         <span class="titleline">
-          <a class="row-title" href="/<%= nwo %>/issues/<%= story.id %>"><%= story.title %></a>
+          <a class="row-title" href="<%= repoIssuePath(owner.login, repo.name, story.id) %>"><%= story.title %></a>
           <%= render({ partial: "shared/status-badge", locals: { status: story.status } }) %>
         </span>
         <div class="row-meta"><code><%= story.id %></code></div>

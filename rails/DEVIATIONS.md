@@ -15,6 +15,14 @@ apart from the differences it lists in `INTENDED`.
 
 ## Found by the port (open)
 
+### trails: route helpers have no generated types
+
+`ApplicationController` declares each route helper it calls by hand, as
+`(...args: unknown[]) => string`, because trails installs them at runtime and
+emits no types. A renamed `as:` compiles and fails at request time. Rails has
+no equivalent problem. Story to file: generate the helper types from the route
+table.
+
 ### trails: `config.x` reads empty in the development server
 
 `config/application.ts` sets `config.x.tasks.dir = env.TASKS_DIR` in the

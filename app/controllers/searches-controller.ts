@@ -12,10 +12,6 @@ import { pagerFor, requestedPage } from "../models/concerns/pager.ts";
 /** Results to a page. Each carries a body snippet, so fewer than the backlog's hundred. */
 export const SEARCH_PAGE_SIZE = 50;
 
-function searchHref(phrase: string, page: number): string {
-  return `/search?q=${encodeURIComponent(phrase)}&page=${page}`;
-}
-
 /**
  * `/search?q=` — stories and RFCs by id, title and body
  * (`app/models/concerns/search.ts` has the matching and the ranking).
@@ -35,7 +31,8 @@ export class SearchesController extends ApplicationController {
       hits.length,
       SEARCH_PAGE_SIZE,
       requestedPage(this.params.get("page")),
-      (page) => searchHref(phrase ?? "", page),
+      // Not `searchPath({ q, page })`: that sorts `page` first and writes a space `+`.
+      (page) => `${this.searchPath()}?q=${encodeURIComponent(phrase ?? "")}&page=${page}`,
     );
     const onPage = await withSnippets(
       hits.slice(pager.from === 0 ? 0 : pager.from - 1, pager.to),

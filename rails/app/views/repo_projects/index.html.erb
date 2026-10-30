@@ -11,13 +11,13 @@ not this repository's slice of it, which would call a forty-story project finish
     <div class="item-row">
       <span class="row-main">
         <span class="titleline">
-          <a class="row-title" href="/<%= @nwo %>/projects/<%= row.id %>"><%= row.title %></a>
+          <a class="row-title" href="<%= repo_project_path(@owner.login, @repo.name, row.id) %>"><%= row.title %></a>
           <%= render "shared/status_badge", status: row.status %>
           <% unless row.priority.nil? %><span class="tag prio">P<%= row.priority %></span><% end %>
           <% if row.counts.total.positive? %><span class="tag prog" title="stories done / total"><%= row.counts.done %>/<%= row.counts.total %> done</span><% end %>
           <span class="tag" title="stories scoped to this repository"><%= row.mine %> here</span>
         </span>
-        <div class="row-meta"><code><%= row.id %></code> &middot; <a href="/rfc/<%= row.id %>">RFC page</a></div>
+        <div class="row-meta"><code><%= row.id %></code> &middot; <a href="<%= rfc_path(row.id) %>">RFC page</a></div>
         <% if row.bar.any? %>
           <div class="sbarwrap">
             <span class="sbartrack">

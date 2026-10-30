@@ -36,7 +36,7 @@ export class OwnersController extends ApplicationController {
     for (const repo of repos) {
       rows.push({
         name: repo.name,
-        href: `/${owner.login}/${repo.name}`,
+        href: this.repoCodePath(owner.login, repo.name),
         description: repo.description,
         visibility: repo.visibility,
         defaultBranch: repo.default_branch,

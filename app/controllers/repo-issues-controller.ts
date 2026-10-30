@@ -55,7 +55,7 @@ export class RepoIssuesController extends RepoController {
       shown.length,
       ISSUES_PAGE_SIZE,
       requestedPage(this.params.get("page")),
-      (page) => `/${this.repo.nameWithOwner()}/issues?state=${state}&page=${page}`,
+      (page) => this.repoIssuesPath(this.repo.owner!.login, this.repo.name, { state, page }),
     );
 
     await this.render({

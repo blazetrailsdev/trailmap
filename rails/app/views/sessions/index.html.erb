@@ -27,7 +27,7 @@
         <tbody>
           <% @archives.each do |archive| %>
             <tr>
-              <td><a href="/sessions/<%= archive.owner %>/<%= archive.repo %>/<%= archive.pr %>"><%= archive.owner %>/<%= archive.repo %>#<%= archive.pr %></a></td>
+              <td><a href="<%= session_path(archive.owner, archive.repo, archive.pr) %>"><%= archive.owner %>/<%= archive.repo %>#<%= archive.pr %></a></td>
               <td><code><%= or_dash(archive.branch) %></code></td>
               <td><code><%= archive.pane %></code></td>
               <td><%= session_time(archive.row["opened_at"]) %></td>

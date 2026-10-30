@@ -34,7 +34,7 @@ class RfcPagesController < ApplicationController
     @filter = STATUS_TABS.include?(params[:status]) ? params[:status] : "active"
     @total = rfcs.size
     @tabs = STATUS_TABS.map do |s|
-      Tab.new(key: s, label: s, count: tab_counts.fetch(s, 0), href: "/rfcs?status=#{s}", active: s == @filter)
+      Tab.new(key: s, label: s, count: tab_counts.fetch(s, 0), href: rfcs_path(status: s), active: s == @filter)
     end
     shown = RfcProgress.order_rfcs_for_index(rfcs.select { |r| r.status == @filter }, open_count)
     @rows = shown.map do |rfc|
@@ -82,7 +82,7 @@ class RfcPagesController < ApplicationController
 
   def mutate(id)
     yield
-    redirect_to "/rfc/#{id}", status: :see_other
+    redirect_to rfc_path(id), status: :see_other
   rescue VerbExit => e
     render_show(id, e.message, e.code == 1 ? :unprocessable_entity : :conflict)
   end

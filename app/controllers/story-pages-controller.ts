@@ -26,11 +26,6 @@ import { depGraphFor } from "../models/concerns/dep-graph.ts";
  */
 export const BACKLOG_PAGE_SIZE = 100;
 
-/** A tab's URL, and one of its pages'. The tab link carries no page: it opens at the first. */
-function backlogHref(filter: BacklogFilter, page?: number): string {
-  return page === undefined ? `/backlog?filter=${filter}` : `/backlog?filter=${filter}&page=${page}`;
-}
-
 /** The tab captions, which are not all the filter's own name. */
 const BACKLOG_TAB_LABELS: Record<BacklogFilter, string> = {
   open: "Open",
@@ -171,7 +166,7 @@ export class StoryPagesController extends ApplicationController {
       key,
       label: BACKLOG_TAB_LABELS[key],
       count: listed.filter((s) => matchesBacklogFilter(s, key, index.rfcStatus)).length,
-      href: backlogHref(key),
+      href: this.backlogPath({ filter: key }),
       active: key === filter,
     }));
 
@@ -189,7 +184,7 @@ export class StoryPagesController extends ApplicationController {
       shown.length,
       BACKLOG_PAGE_SIZE,
       requestedPage(this.params.get("page")),
-      (page) => backlogHref(filter, page),
+      (page) => this.backlogPath({ filter, page }),
     );
     const onPage = shown.slice(pager.from === 0 ? 0 : pager.from - 1, pager.to);
 
@@ -300,7 +295,7 @@ export class StoryPagesController extends ApplicationController {
       if (!(error instanceof VerbExit)) throw error;
       return this.renderShow(id, error.message, error.code === 1 ? 422 : 409);
     }
-    this.redirectTo(`/story/${id}`, { status: 303 });
+    this.redirectTo(this.storyPath(id), { status: 303 });
   }
 
   private async renderShow(id: string, refusal: string | null, code: number): Promise<void> {

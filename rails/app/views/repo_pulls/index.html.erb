@@ -1,8 +1,8 @@
 <%= render "shared/repo_header" %>
 
 <%= render "shared/filter_tabs", tabs: [
-  RfcPagesController::Tab.new(href: "/#{@nwo}/pulls?state=open", label: "Open", count: @tab_counts[:open], active: @state == "open"),
-  RfcPagesController::Tab.new(href: "/#{@nwo}/pulls?state=merged", label: "Merged", count: @tab_counts[:merged], active: @state == "merged"),
+  RfcPagesController::Tab.new(href: repo_pulls_path(@owner.login, @repo.name, state: "open"), label: "Open", count: @tab_counts[:open], active: @state == "open"),
+  RfcPagesController::Tab.new(href: repo_pulls_path(@owner.login, @repo.name, state: "merged"), label: "Merged", count: @tab_counts[:merged], active: @state == "merged"),
 ] %>
 
 <p class="muted">A pull request exists here because a story was stamped with it
@@ -17,13 +17,13 @@ the only merge signal this database holds.</p>
     <div class="item-row">
       <span class="row-main">
         <span class="titleline">
-          <a class="row-title" href="/<%= @nwo %>/pulls/<%= row.number %>">#<%= row.number %></a>
+          <a class="row-title" href="<%= repo_pull_path(@owner.login, @repo.name, row.number) %>">#<%= row.number %></a>
           <span class="tag prog"><%= row.stories.size %> <%= row.stories.size == 1 ? "story" : "stories" %></span>
           <a class="tag" href="<%= row.href %>">on GitHub</a>
         </span>
         <div class="row-meta">
           <% row.stories.each do |story| %>
-            <a href="/<%= @nwo %>/issues/<%= story.id %>"><%= story.title %></a>
+            <a href="<%= repo_issue_path(@owner.login, @repo.name, story.id) %>"><%= story.title %></a>
             <%= render "shared/status_badge", status: story.status %>
           <% end %>
         </div>
