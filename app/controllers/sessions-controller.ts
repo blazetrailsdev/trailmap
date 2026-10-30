@@ -28,6 +28,16 @@ export const ARCHIVE_FILE_MAX_BYTES = 128 << 20;
  */
 export const PANE_VIEW_MAX_BYTES = 2 << 20;
 
+/**
+ * The most of a transcript `/sessions/transcript` parses: the HEAD, cut back to
+ * the last whole line. `parseTranscript` is synchronous like the pane replay,
+ * so this bound IS the longest any other request waits behind it. Measured
+ * over the largest transcripts on the box (44–400 MB): 60–130 ms per MB, so
+ * 4 MiB holds the loop for 0.3–0.5 s, where the old 128 MiB took 9 s.
+ * `TRANSCRIPT_MAX_STEPS` does not help here: ringo reads every line either way.
+ */
+export const TRANSCRIPT_MAX_BYTES = 4 << 20;
+
 /** The steps one transcript page draws, ringo's `ParseTranscript(src, 20000)`. */
 export const TRANSCRIPT_MAX_STEPS = 20_000;
 
@@ -48,13 +58,14 @@ export class SessionsController extends ApplicationController {
     this.noStore();
     let archives: SessionArchive[] = [];
     let problem: string | null = null;
+    const status = SessionArchive.status();
     try {
       archives = await SessionArchive.all();
     } catch (error) {
       if (!(error instanceof SessionArchiveUnavailable)) throw error;
       problem = error.message;
     }
-    await this.render({ locals: { archives, problem, now: new Date() } });
+    await this.render({ locals: { archives, problem, status: await status, now: new Date() } });
   }
 
   /**
@@ -107,11 +118,14 @@ export class SessionsController extends ApplicationController {
    */
   async transcript(): Promise<void> {
     this.noStore();
-    const read = await this.readArchive("/sessions/file", ARCHIVE_FILE_MAX_BYTES, "head");
+    const read = await this.readArchive("/sessions/file", TRANSCRIPT_MAX_BYTES, "head");
     if (read === null) return;
-    if (read.truncated) return this.refuseTooLarge();
-    const tr = await parseTranscript(read.bytes, TRANSCRIPT_MAX_STEPS);
-    await this.render({ locals: { p: String(this.params.get("p") ?? ""), tr } });
+    // A half line is a JSON error to ringo's reader; end on the last whole one.
+    const bytes = read.truncated ? read.bytes.subarray(0, read.bytes.lastIndexOf(0x0a) + 1) : read.bytes;
+    const tr = await parseTranscript(bytes, TRANSCRIPT_MAX_STEPS);
+    await this.render({
+      locals: { p: String(this.params.get("p") ?? ""), tr, cut: read.truncated, maxBytes: TRANSCRIPT_MAX_BYTES },
+    });
   }
 
   /**

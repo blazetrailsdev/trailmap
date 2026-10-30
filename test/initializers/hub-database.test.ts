@@ -6,6 +6,9 @@ import { Hub } from "../../app/models/hub.ts";
 import { Owner } from "../../app/models/owner.ts";
 import { missingHubTables } from "../../app/models/index.ts";
 
+/** See "refuses to boot against a database that has no hub schema". */
+const HUB_SCRATCH_DATABASE_TIMEOUT_MS = 30_000;
+
 /**
  * The hub initializer, as `tasks-database.test.ts` tests the other one:
  * importing it registers `connectToHubDatabase` as a `server` block, and these
@@ -73,8 +76,15 @@ describe("connectToHubDatabase", () => {
    * connection, and `two-adapters` truncated `settings` while this file had it
    * renamed. Nothing about "make a table missing" can be done to a database
    * other tests are using, so this one does not share it.
+   *
+   * WHAT IT WAITS ON is that database: a `CREATE DATABASE` and a `DROP
+   * DATABASE`, each of which makes Postgres checkpoint, plus three full boots
+   * that reflect every hub schema. About 1 s alone; under a full parallel
+   * `pnpm test` the checkpoints queue behind every other worker's writes and it
+   * ran past vitest's 5 s default. None of that can be bounded from here, so
+   * the clock is HUB_SCRATCH_DATABASE_TIMEOUT_MS: thirty times the quiet run.
    */
-  it("refuses to boot against a database that has no hub schema", async () => {
+  it("refuses to boot against a database that has no hub schema", { timeout: HUB_SCRATCH_DATABASE_TIMEOUT_MS }, async () => {
     if (!env.HUB_DATABASE_URL) return;
     await connectToHubDatabase();
 

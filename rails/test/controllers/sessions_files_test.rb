@@ -15,12 +15,16 @@ class SessionsFilesTest < ActionDispatch::IntegrationTest
   ].join("\n").freeze
   # Bigger than the replay bound, ending in a line the tail must keep.
   BIG_LOG = (("x" * 80 + "\r\n") * (SessionsController::PANE_VIEW_MAX_BYTES / 82 * 1.25).to_i + "THE END\r\n").freeze
+  # Past the parse bound: the session, then bookkeeping lines that run on beyond it.
+  LONG_TRANSCRIPT = (TRANSCRIPT + %(\n{"type":"attachment","timestamp":"2026-08-26T14:02:00Z","pad":"#{"x" * 1000}"}) *
+    (SessionsController::TRANSCRIPT_MAX_BYTES * 1.25 / 1060).ceil).freeze
   PANE_LOG = "plain \e[31mred <b>\e[0m\r\nsecond row\r\n".freeze
   RINGO = {
     "/sessions/file?p=trails%2F9001%2Fpane-42.log.gz" => [ 200, PANE_LOG ],
     "/sessions/file?p=trails%2F9001%2Fgone.log" => [ 404, "not found\n" ],
     "/sessions/file?p=trails%2F9001%2Fbig.log" => [ 200, BIG_LOG ],
-    "/sessions/file?p=trails%2F9001%2Fa.jsonl" => [ 200, TRANSCRIPT ]
+    "/sessions/file?p=trails%2F9001%2Fa.jsonl" => [ 200, TRANSCRIPT ],
+    "/sessions/file?p=trails%2F9001%2Flong.jsonl" => [ 200, LONG_TRANSCRIPT ]
   }.freeze
 
   test "accepts a path the archive writes" do
@@ -99,6 +103,14 @@ class SessionsFilesTest < ActionDispatch::IntegrationTest
     assert_includes body, "12.0s slow"
     assert_includes body, "&lt;script&gt;x&lt;/script&gt;"
     assert_includes body, "1 bookkeeping events"
+    assert_not_includes body, "longer than trailmap reads"
+  end
+
+  test "parses only the head of a transcript past the bound" do
+    with_ringo(RINGO) { get "/sessions/transcript", params: { p: "trails/9001/long.jsonl" } }
+    assert_response 200
+    assert_includes response.body, "port &lt;the&gt; thing"
+    assert_includes response.body, "showing its first 4.0 MB"
   end
 
   # ringo's own page carried ringo's nav: /tasks, /velocity, /cost, /crons,

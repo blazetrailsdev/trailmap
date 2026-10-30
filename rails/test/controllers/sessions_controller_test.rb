@@ -26,13 +26,20 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
       "closed_at" => "2026-10-20T11:05:00-04:00", "reason" => "merge", "truncated" => true
     }
   ].freeze
-  RINGO = { "/api/sessions" => [ 200, ARCHIVES.to_json ] }.freeze
+  # ringo's `/api/sessions/status` in pilot mode, with captures no PR claimed.
+  PILOT_STATUS = {
+    mode: "pilot",
+    note: "pilot mode: capturing 2 more spawn(s) and 1 hand-enrolled pane(s). Every other agent is ignored. Measure disk here before setting SESSION_ARCHIVE=on.",
+    unclaimed_pane_logs: 3,
+    unclaimed_pane_log_bytes: 5 * 1024 * 1024
+  }.freeze
+  RINGO = { "/api/sessions" => [ 200, ARCHIVES.to_json ], "/api/sessions/status" => [ 200, PILOT_STATUS.to_json ] }.freeze
 
   test "index renders ringo's archives in ringo's order with ringo's columns" do
     asked = []
     with_ringo(RINGO, asked: asked) { get "/sessions" }
     assert_response 200
-    assert_equal [ "/api/sessions" ], asked
+    assert_equal [ "/api/sessions", "/api/sessions/status" ], asked.sort
     body = response.body
     %w[PR Branch Pane Opened Duration State Sessions Pane\ log Cost].each { |c| assert_includes body, "<th>#{c}</th>" }
     assert_includes body, "2 recorded"
@@ -54,6 +61,25 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     with_ringo({ "/api/sessions" => [ 200, "null\n" ] }) { get "/sessions" }
     assert_response 200
     assert_includes response.body, "Nothing archived yet."
+  end
+
+  test "index shows ringo's archive mode note and its unclaimed pane captures" do
+    with_ringo(RINGO) { get "/sessions" }
+    assert_includes response.body, "mode: <strong>pilot</strong> — #{PILOT_STATUS[:note]}"
+    assert_includes response.body, "3 unclaimed pane capture(s), 5.0 MB — panes armed at spawn that ended before linking to a PR. Kept and compressed, never deleted."
+  end
+
+  test "index shows neither note when the archive is on and every capture is claimed" do
+    status = { mode: "on", note: "", unclaimed_pane_logs: 0, unclaimed_pane_log_bytes: 0 }
+    with_ringo({ "/api/sessions" => [ 200, "null\n" ], "/api/sessions/status" => [ 200, status.to_json ] }) { get "/sessions" }
+    assert_not_includes response.body, "mode: <strong>"
+    assert_not_includes response.body, "unclaimed pane capture"
+  end
+
+  test "index shows neither note when ringo cannot say" do
+    with_ringo({}) { get "/sessions" }
+    assert_not_includes response.body, "mode: <strong>"
+    assert_not_includes response.body, "unclaimed pane capture"
   end
 
   test "index says ringo is not configured rather than guessing where it is" do

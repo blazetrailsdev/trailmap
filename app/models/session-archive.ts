@@ -40,6 +40,18 @@ export interface SessionArchiveRow {
   transcripts?: ArchivedTranscriptRow[];
 }
 
+/**
+ * ringo's `/api/sessions/status`: `SessionStore.Status()`, `Mode()` and
+ * `UnclaimedPaneLogs()`, the two notes ringo's own index prints above and
+ * below the table. `note` is empty when the archive is fully on.
+ */
+export interface SessionArchiveStatus {
+  mode: string;
+  note: string;
+  unclaimed_pane_logs: number;
+  unclaimed_pane_log_bytes: number;
+}
+
 /** The archive could not be read: ringo is unset, down, or answered something else. */
 export class SessionArchiveUnavailable extends Error {
   readonly status: number;
@@ -133,6 +145,23 @@ export class SessionArchive extends Model {
     }
     // Go encodes an empty archive's nil slice as `null`.
     return (rows ?? []).map((row) => SessionArchive.fromRow(row));
+  }
+
+  /**
+   * The archive's mode note and unclaimed-capture count, or null when ringo
+   * cannot say: unset, down, or a ringo from before the endpoint. Only two
+   * notes hang on it, so `all()` reports the failure and this stays quiet.
+   */
+  static async status(): Promise<SessionArchiveStatus | null> {
+    const base = await Setting.ringoBase();
+    if (base === null) return null;
+    try {
+      const response = await fetch(`${base}/api/sessions/status`, { signal: AbortSignal.timeout(SESSIONS_TIMEOUT_MS) });
+      if (!response.ok) return null;
+      return (await response.json()) as SessionArchiveStatus;
+    } catch {
+      return null;
+    }
   }
 
   /** ringo's `ForPR`: every archive recorded against one PR, one per pane. */

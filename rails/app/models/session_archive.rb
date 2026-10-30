@@ -63,6 +63,19 @@ class SessionArchive
       (rows || []).map { |row| from_row(row) }
     end
 
+    # ringo's `/api/sessions/status`: the archive's mode note and its unclaimed
+    # pane captures, or nil when ringo cannot say (unset, down, or older than
+    # the endpoint). Only two notes hang on it; `all` reports the failure.
+    def status
+      base = Setting.ringo_base
+      return nil if base.nil?
+      response = Fleet::Relay.get("#{base}/api/sessions/status", timeout: TIMEOUT)
+      return nil unless response.is_a?(Net::HTTPSuccess)
+      JSON.parse(response.body)
+    rescue Fleet::Relay::Failure, JSON::ParserError
+      nil
+    end
+
     # ringo's `ForPR`: every archive recorded against one PR, one per pane.
     def for_pr(owner:, repo:, pr:)
       all.select { |a| a.owner == owner && a.repo == repo && a.pr == pr }

@@ -92,6 +92,8 @@ class RfcPagesController < ApplicationController
     @refusal = refusal
     @moves = []
     @has_drafts = false
+    @can_batch = false
+    @can_sunset = false
     @rfc = @id.empty? ? nil : Rfc.find_by(id: @id)
     @body = nil
     @error = ""
@@ -110,6 +112,13 @@ class RfcPagesController < ApplicationController
     @error = doc.error
     @moves = RfcStatus.moves(@rfc.status)
     @has_drafts = own.any? { |s| s.status == "draft" }
+    # What ringo's batch could pick up, as its page counts it (`BatchCount`,
+    # webhook/rfcs.go): ready and not dep-held, or a draft under a draft RFC.
+    @can_batch = own.any? do |s|
+      (s.status == "ready" && !held.include?(s.id)) || (@rfc.status == "draft" && s.status == "draft")
+    end
+    # A sunset winds down an active RFC; the others are iceboxed or ended.
+    @can_sunset = @rfc.status == "active"
     render :show, status: status
   end
 end

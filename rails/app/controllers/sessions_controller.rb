@@ -11,6 +11,10 @@ class SessionsController < ApplicationController
   # The tail of a pane log replayed, and the rows kept: the trails app's bounds.
   PANE_VIEW_MAX_BYTES = 2 << 20
   PANE_VIEW_MAX_LINES = 20_000
+  # The most of a transcript `transcript` parses: the head, cut back to the last
+  # whole line. The parse holds the request for 60-130 ms per MB, so 4 MiB
+  # keeps the worst one under half a second (see the trails controller).
+  TRANSCRIPT_MAX_BYTES = 4 << 20
   # The steps one transcript page draws, ringo's `ParseTranscript(src, 20000)`.
   TRANSCRIPT_MAX_STEPS = 20_000
   # Stricter than ringo's `OpenPath`: refused before ringo is asked.
@@ -32,6 +36,7 @@ class SessionsController < ApplicationController
   def index
     no_store
     @now = Time.now
+    @status = SessionArchive.status
     @archives = SessionArchive.all
   rescue SessionArchive::Unavailable => e
     @archives = []
@@ -73,8 +78,12 @@ class SessionsController < ApplicationController
   # own `core.ParseTranscript`, drawn in this layout.
   def transcript
     no_store
-    body = read_archive("/sessions/file") or return
+    body = read_archive("/sessions/file", keep: :head_cut) or return
     @p = params[:p].to_s
+    @max_bytes = TRANSCRIPT_MAX_BYTES
+    @cut = body.bytesize > TRANSCRIPT_MAX_BYTES
+    # A half line is a JSON error to ringo's reader; end on the last whole one.
+    body = body.byteslice(0, (body.b.byteslice(0, TRANSCRIPT_MAX_BYTES).rindex("\n") || -1) + 1) if @cut
     @tr = RingoCore.parse_transcript(body, TRANSCRIPT_MAX_STEPS)
   end
 
@@ -99,7 +108,8 @@ class SessionsController < ApplicationController
 
   # Ask ringo for `path?p=`. nil when the answer has already been rendered: a
   # refused path, no ringo, ringo down, too large, or ringo's own refusal.
-  # `keep: :tail` answers [the last PANE_VIEW_MAX_BYTES, total bytes] instead.
+  # `keep: :tail` answers [the last PANE_VIEW_MAX_BYTES, total bytes] instead;
+  # `keep: :head_cut` answers at most one byte past TRANSCRIPT_MAX_BYTES, never 413.
   def read_archive(path, keep: :head)
     p = params[:p].to_s
     problem = self.class.archive_path_problem(p)
@@ -109,6 +119,8 @@ class SessionsController < ApplicationController
     url = "#{base}#{path}?p=#{ERB::Util.url_encode(p)}"
     if keep == :tail
       answer, body, total = Fleet::Relay.get_tail(url, timeout: ARCHIVE_FILE_TIMEOUT, limit: PANE_VIEW_MAX_BYTES)
+    elsif keep == :head_cut
+      answer, body = Fleet::Relay.get_head(url, timeout: ARCHIVE_FILE_TIMEOUT, limit: TRANSCRIPT_MAX_BYTES + 1)
     else
       answer, body = Fleet::Relay.get_bounded(url, timeout: ARCHIVE_FILE_TIMEOUT, limit: ARCHIVE_FILE_MAX_BYTES)
     end

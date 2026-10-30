@@ -60,6 +60,7 @@ beforeAll(async () => {
   await rfc("0013-together-a", "draft");
   await rfc("0014-together-b", "draft");
   await rfc("0015-csrf", "draft");
+  await rfc("0016-quiet", "active");
   await Story.create({ id: "parked-done", rfc_id: "0008-finished-parked", status: "ready" });
   await Story.where({ id: "parked-done" }).updateAll({ status: "done" });
   await Story.create({ id: "d-1", rfc_id: "0007-drafts", status: "draft" });
@@ -143,6 +144,31 @@ describe("RfcPagesController lifecycle", () => {
     const closed = await controllerTestCase(RfcPagesController);
     await closed.get("show", { params: { id: "0006-closed" } });
     expect(closed.response.body).not.toContain('class="side-section rfc-actions"');
+  });
+
+  it("relays Spawn batch and Sunset to ringo, with ringo's payload and confirm text", async () => {
+    const tc = await controllerTestCase(RfcPagesController);
+    await tc.get("show", { params: { id: "0004-open" } });
+    const body = tc.response.body;
+    expect(body).toContain('data-relay="spawnloop/rfc-batch-spawn"');
+    expect(body).toContain('data-payload="{&quot;slug&quot;:&quot;0004-open&quot;}"');
+    expect(body).toContain("Spawn one worker for the next batch of stories under 0004-open?");
+    expect(body).toContain('data-relay="spawnloop/rfc-refine"');
+    expect(body).toContain("&quot;mode&quot;:&quot;sunset&quot;");
+    expect(body).toContain(
+      "Sunset 0004-open? An agent will re-home its remaining stories and close the RFC unless work is still in flight.",
+    );
+  });
+
+  it("offers no batch with nothing claimable, and no sunset unless the RFC is active", async () => {
+    const finished = await controllerTestCase(RfcPagesController);
+    await finished.get("show", { params: { id: "0016-quiet" } });
+    expect(finished.response.body).not.toContain("Spawn batch");
+    expect(finished.response.body).toContain("Sunset RFC");
+
+    const parked = await controllerTestCase(RfcPagesController);
+    await parked.get("show", { params: { id: "0003-postponed" } });
+    expect(parked.response.body).not.toContain("data-relay=");
   });
 
   it("writes a blank reason as no note", async () => {

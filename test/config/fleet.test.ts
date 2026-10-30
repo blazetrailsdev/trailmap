@@ -86,6 +86,8 @@ describe("FLEET_CONTROLS", () => {
       "spawnloop/config",
       "spawnloop/dismiss",
       "spawnloop/dismiss-failed",
+      "spawnloop/rfc-batch-spawn",
+      "spawnloop/rfc-refine",
       "spawnloop/skip",
       "spawnloop/spawn-now",
       "worker/spawn",
