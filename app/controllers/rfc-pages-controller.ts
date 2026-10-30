@@ -301,7 +301,15 @@ export class RfcPagesController extends ApplicationController {
   private async renderPage(locals: Record<string, unknown>, status: number): Promise<void> {
     await this.render({
       action: "show",
-      locals: { body: null as SafeBuffer | null, error: "", moves: [] as RfcStatusMove[], hasDrafts: false, canBatch: false, canSunset: false, ...locals },
+      locals: {
+        body: null as SafeBuffer | null,
+        error: "",
+        moves: [] as RfcStatusMove[],
+        hasDrafts: false,
+        canBatch: false,
+        canSunset: false,
+        ...locals,
+      },
       status,
     });
   }

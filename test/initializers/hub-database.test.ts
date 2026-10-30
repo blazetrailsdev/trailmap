@@ -84,59 +84,63 @@ describe("connectToHubDatabase", () => {
    * ran past vitest's 5 s default. None of that can be bounded from here, so
    * the clock is HUB_SCRATCH_DATABASE_TIMEOUT_MS: thirty times the quiet run.
    */
-  it("refuses to boot against a database that has no hub schema", { timeout: HUB_SCRATCH_DATABASE_TIMEOUT_MS }, async () => {
-    if (!env.HUB_DATABASE_URL) return;
-    await connectToHubDatabase();
-
-    expect(await missingHubTables()).toEqual([]);
-
-    // Unique per run, because vitest's workers run at the same time.
-    // `toString(36)` keeps it to [0-9a-z]; the prefix keeps it a legal
-    // identifier, which may not start with a digit.
-    const suffix = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e9).toString(36)}`;
-    const scratch = `hub_schema_probe_${suffix}`;
-    await Hub.connectionPool().withConnection(async (connection) => {
-      await connection.execute(`DROP DATABASE IF EXISTS ${scratch}`);
-      await connection.execute(`CREATE DATABASE ${scratch}`);
-    });
-
-    const url = String(env.HUB_DATABASE_URL);
-    const empty = url.replace(/\/[^/?]+(\?|$)/, `/${scratch}$1`);
-    try {
-      // The ENVIRONMENT, not just the pool: `connectToHubDatabase` builds its
-      // config from `HUB_DATABASE_URL` every time it runs, so pointing only
-      // the pool at the scratch database left it reconnecting to the real hub
-      // and finding every table.
-      setEnv("HUB_DATABASE_URL", empty);
-      await Hub.establishConnection({ adapter: "postgresql", url: empty, pool: 1 });
-
-      // Every table a hub model names, sorted — `missingHubTables` derives the
-      // list from HUB_MODELS rather than a written-out one, so a model added
-      // to the barrel belongs here too.
-      expect(await missingHubTables()).toEqual([
-        "owners",
-        "parity_days",
-        "repositories",
-        "repository_collaborators",
-        "repository_settings",
-        "settings",
-      ]);
-
-      await expect(connectToHubDatabase()).rejects.toThrow(
-        /database without the hub schema/,
-      );
-    } finally {
-      // Back to the real hub, then drop the scratch — in that order, because
-      // a database cannot be dropped from a connection that is using it.
-      setEnv("HUB_DATABASE_URL", url);
-      await Hub.removeConnection();
+  it(
+    "refuses to boot against a database that has no hub schema",
+    { timeout: HUB_SCRATCH_DATABASE_TIMEOUT_MS },
+    async () => {
+      if (!env.HUB_DATABASE_URL) return;
       await connectToHubDatabase();
-      await Hub.connectionPool().withConnection((connection) =>
-        connection.execute(`DROP DATABASE IF EXISTS ${scratch}`),
-      );
-    }
 
-    expect(await missingHubTables()).toEqual([]);
-  });
+      expect(await missingHubTables()).toEqual([]);
+
+      // Unique per run, because vitest's workers run at the same time.
+      // `toString(36)` keeps it to [0-9a-z]; the prefix keeps it a legal
+      // identifier, which may not start with a digit.
+      const suffix = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e9).toString(36)}`;
+      const scratch = `hub_schema_probe_${suffix}`;
+      await Hub.connectionPool().withConnection(async (connection) => {
+        await connection.execute(`DROP DATABASE IF EXISTS ${scratch}`);
+        await connection.execute(`CREATE DATABASE ${scratch}`);
+      });
+
+      const url = String(env.HUB_DATABASE_URL);
+      const empty = url.replace(/\/[^/?]+(\?|$)/, `/${scratch}$1`);
+      try {
+        // The ENVIRONMENT, not just the pool: `connectToHubDatabase` builds its
+        // config from `HUB_DATABASE_URL` every time it runs, so pointing only
+        // the pool at the scratch database left it reconnecting to the real hub
+        // and finding every table.
+        setEnv("HUB_DATABASE_URL", empty);
+        await Hub.establishConnection({ adapter: "postgresql", url: empty, pool: 1 });
+
+        // Every table a hub model names, sorted — `missingHubTables` derives the
+        // list from HUB_MODELS rather than a written-out one, so a model added
+        // to the barrel belongs here too.
+        expect(await missingHubTables()).toEqual([
+          "owners",
+          "parity_days",
+          "repositories",
+          "repository_collaborators",
+          "repository_settings",
+          "settings",
+        ]);
+
+        await expect(connectToHubDatabase()).rejects.toThrow(
+          /database without the hub schema/,
+        );
+      } finally {
+        // Back to the real hub, then drop the scratch — in that order, because
+        // a database cannot be dropped from a connection that is using it.
+        setEnv("HUB_DATABASE_URL", url);
+        await Hub.removeConnection();
+        await connectToHubDatabase();
+        await Hub.connectionPool().withConnection((connection) =>
+          connection.execute(`DROP DATABASE IF EXISTS ${scratch}`),
+        );
+      }
+
+      expect(await missingHubTables()).toEqual([]);
+    },
+  );
 
 });

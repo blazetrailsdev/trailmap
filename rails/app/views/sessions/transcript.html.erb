@@ -56,7 +56,9 @@
 <% if @tr["Oversized"] > 0 %>
   <div class="field-note"><%= @tr["Oversized"] %> <%= plural(@tr["Oversized"], "line", "lines") %> over 4 MB could not be read and <%= plural(@tr["Oversized"], "is", "are") %> left out.</div>
 <% end %>
-<% if @cut %>
+<% if @first_line_too_long %>
+  <div class="field-note">The session's first line alone is longer than <%= human_bytes(@max_bytes) %>, so nothing could be read here. The download link at the foot of the page has the whole thing.</div>
+<% elsif @cut %>
   <div class="field-note">Session is longer than trailmap reads on one request — showing its first <%= human_bytes(@max_bytes) %>. The download link at the foot of the page has the whole thing.</div>
 <% end %>
 <% if @tr["Truncated"] %>

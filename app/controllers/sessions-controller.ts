@@ -124,7 +124,14 @@ export class SessionsController extends ApplicationController {
     const bytes = read.truncated ? read.bytes.subarray(0, read.bytes.lastIndexOf(0x0a) + 1) : read.bytes;
     const tr = await parseTranscript(bytes, TRANSCRIPT_MAX_STEPS);
     await this.render({
-      locals: { p: String(this.params.get("p") ?? ""), tr, cut: read.truncated, maxBytes: TRANSCRIPT_MAX_BYTES },
+      locals: {
+        p: String(this.params.get("p") ?? ""),
+        tr,
+        cut: read.truncated,
+        // No newline in the whole head: its first line alone is past the bound.
+        firstLineTooLong: read.truncated && bytes.length === 0,
+        maxBytes: TRANSCRIPT_MAX_BYTES,
+      },
     });
   }
 

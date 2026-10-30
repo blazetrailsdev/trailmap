@@ -38,6 +38,9 @@ const LONG_TRANSCRIPT =
  */
 const WASM_REPLAY_TIMEOUT_MS = 30_000;
 
+/** One line, past the parse bound: no newline anywhere in the head. */
+const ONE_LONG_LINE = `{"type":"user","pad":"${"x".repeat(TRANSCRIPT_MAX_BYTES * 1.25)}"}\n`;
+
 let ringo: HttpServer;
 let ringoBaseUrl = "";
 let asked: string[] = [];
@@ -58,6 +61,9 @@ beforeAll(async () => {
     } else if (url.pathname === "/sessions/file" && p === "trails/9001/long.jsonl") {
       res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       res.end(LONG_TRANSCRIPT);
+    } else if (url.pathname === "/sessions/file" && p === "trails/9001/one-line.jsonl") {
+      res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+      res.end(ONE_LONG_LINE);
     } else if (url.pathname === "/sessions/file" && p === "trails/9001/a.jsonl") {
       res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       res.end(TRANSCRIPT);
@@ -175,9 +181,21 @@ describe("SessionsController#transcript", () => {
       expect(response.status).toBe(200);
       expect(body).toContain("port &lt;the&gt; thing");
       expect(body).toContain("showing its first 4.0 MB");
+      expect(body).not.toContain("first line alone");
     },
     WASM_REPLAY_TIMEOUT_MS,
   );
+
+  it("says so when the first line alone is past the bound", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await get("transcript", { p: "trails/9001/one-line.jsonl" });
+    const body = String(response.body);
+
+    expect(response.status).toBe(200);
+    expect(body).toContain("The session's first line alone is longer than 4.0 MB, so nothing could be read here.");
+    expect(body).not.toContain("showing its first");
+  });
 
   it("links only to pages trailmap serves", async () => {
     setEnv("RINGO_BASE", ringoBaseUrl);

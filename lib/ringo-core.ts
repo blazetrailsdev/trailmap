@@ -21,7 +21,10 @@
  * `_start` does not yield, so the `Promise` here only covers loading the
  * module. Measured over ringo's own archive, the pane replay costs roughly
  * 110 ms per megabyte of log: the median log is 2 MB (0.2 s), the 90th
- * percentile 10 MB (1.1 s), the largest 104 MB (10 s). Fine for a script or a
+ * percentile 10 MB (1.1 s), the largest 104 MB (10 s). The transcript parse
+ * costs about the same: 60–130 ms per megabyte over the largest transcripts on
+ * the box (44–400 MB), 9 s for 128 MB, and `maxSteps` does not lower it
+ * because every line is still read. Fine for a script or a
  * gate; a request handler has to bound what it passes in, or every other
  * request waits behind the replay. Moving it off the main thread needs a
  * worker, and trails has no adapter for one yet — that is a framework story,

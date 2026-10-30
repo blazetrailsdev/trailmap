@@ -84,6 +84,8 @@ class SessionsController < ApplicationController
     @cut = body.bytesize > TRANSCRIPT_MAX_BYTES
     # A half line is a JSON error to ringo's reader; end on the last whole one.
     body = body.byteslice(0, (body.b.byteslice(0, TRANSCRIPT_MAX_BYTES).rindex("\n") || -1) + 1) if @cut
+    # No newline in the whole head: its first line alone is past the bound.
+    @first_line_too_long = @cut && body.empty?
     @tr = RingoCore.parse_transcript(body, TRANSCRIPT_MAX_STEPS)
   end
 
