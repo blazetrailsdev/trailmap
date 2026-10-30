@@ -60,6 +60,11 @@
 <% if (tr.Oversized > 0) { %>
   <div class="field-note"><%= tr.Oversized %> <%= plural(tr.Oversized, "line", "lines") %> over 4 MB could not be read and <%= plural(tr.Oversized, "is", "are") %> left out.</div>
 <% } %>
+<% if (firstLineTooLong) { %>
+  <div class="field-note">The session's first line alone is longer than <%= humanBytes(maxBytes) %>, so nothing could be read here. The download link at the foot of the page has the whole thing.</div>
+<% } else if (cut) { %>
+  <div class="field-note">Session is longer than trailmap reads on one request — showing its first <%= humanBytes(maxBytes) %>. The download link at the foot of the page has the whole thing.</div>
+<% } %>
 <% if (tr.Truncated) { %>
   <div class="field-note">Session is longer than this page renders — showing the first 20,000 steps.</div>
 <% } %>

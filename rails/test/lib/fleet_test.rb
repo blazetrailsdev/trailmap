@@ -83,6 +83,41 @@ class FleetLibTest < ActiveSupport::TestCase
     assert_equal [ "200", "xxxTHE END", 300_007 ], [ response.code, tail, total ]
   end
 
+  test "Relay.get_head keeps the first bytes and stops reading there" do
+    server = TCPServer.new("127.0.0.1", 0)
+    port = server.addr[1]
+    thread = Thread.new do
+      client = server.accept
+      client.gets("\r\n\r\n")
+      body = "THE START#{"x" * 300_000}"
+      begin
+        client.write("HTTP/1.1 200 OK\r\nContent-Length: #{body.bytesize}\r\nConnection: close\r\n\r\n#{body}")
+      rescue Errno::EPIPE, Errno::ECONNRESET
+        # The relay hung up once it had its head, which is the point.
+      end
+      client.close
+    end
+    response, head = Fleet::Relay.get_head("http://127.0.0.1:#{port}/x", timeout: 5, limit: 10)
+    thread.join
+    server.close
+    assert_equal [ "200", "THE STARTx" ], [ response.code, head ]
+  end
+
+  test "Relay.get_head answers a short body whole" do
+    server = TCPServer.new("127.0.0.1", 0)
+    port = server.addr[1]
+    thread = Thread.new do
+      client = server.accept
+      client.gets("\r\n\r\n")
+      client.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nhi")
+      client.close
+    end
+    response, head = Fleet::Relay.get_head("http://127.0.0.1:#{port}/x", timeout: 5, limit: 10)
+    thread.join
+    server.close
+    assert_equal [ "200", "hi" ], [ response.code, head ]
+  end
+
   test "SocketRelay.websocket? reads the upgrade headers" do
     assert Fleet::SocketRelay.websocket?(upgrade_env)
     assert_not Fleet::SocketRelay.websocket?({ "REQUEST_METHOD" => "GET", "HTTP_HOST" => "x" })

@@ -40,6 +40,26 @@ export interface SessionArchiveRow {
   transcripts?: ArchivedTranscriptRow[];
 }
 
+/**
+ * ringo's `/api/sessions/status`: `SessionStore.Status()`, `Mode()` and
+ * `UnclaimedPaneLogs()`, the two notes ringo's own index prints above and
+ * below the table. `note` is empty when the archive is fully on.
+ */
+export interface SessionArchiveStatus {
+  mode: string;
+  note: string;
+  unclaimed_pane_logs: number;
+  unclaimed_pane_log_bytes: number;
+}
+
+/** ringo had nothing to say: no note, nothing unclaimed. Neither note is printed. */
+export const NO_ARCHIVE_STATUS: SessionArchiveStatus = Object.freeze({
+  mode: "",
+  note: "",
+  unclaimed_pane_logs: 0,
+  unclaimed_pane_log_bytes: 0,
+});
+
 /** The archive could not be read: ringo is unset, down, or answered something else. */
 export class SessionArchiveUnavailable extends Error {
   readonly status: number;
@@ -133,6 +153,23 @@ export class SessionArchive extends Model {
     }
     // Go encodes an empty archive's nil slice as `null`.
     return (rows ?? []).map((row) => SessionArchive.fromRow(row));
+  }
+
+  /**
+   * The archive's mode note and unclaimed-capture count — `NO_ARCHIVE_STATUS`
+   * when ringo cannot say: unset, down, or a ringo from before the endpoint.
+   * Only two notes hang on it, so `all()` reports the failure and this stays quiet.
+   */
+  static async status(): Promise<SessionArchiveStatus> {
+    const base = await Setting.ringoBase();
+    if (base === null) return NO_ARCHIVE_STATUS;
+    try {
+      const response = await fetch(`${base}/api/sessions/status`, { signal: AbortSignal.timeout(SESSIONS_TIMEOUT_MS) });
+      if (!response.ok) return NO_ARCHIVE_STATUS;
+      return { ...NO_ARCHIVE_STATUS, ...((await response.json()) as Partial<SessionArchiveStatus>) };
+    } catch {
+      return NO_ARCHIVE_STATUS;
+    }
   }
 
   /** ringo's `ForPR`: every archive recorded against one PR, one per pane. */

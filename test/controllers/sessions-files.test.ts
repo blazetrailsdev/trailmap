@@ -6,7 +6,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { getHttpAsync, setEnv, type HttpServer } from "@blazetrails/ruby-compat";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
-import { PANE_VIEW_MAX_BYTES, SessionsController } from "../../app/controllers/sessions-controller.ts";
+import { PANE_VIEW_MAX_BYTES, SessionsController, TRANSCRIPT_MAX_BYTES } from "../../app/controllers/sessions-controller.ts";
 import { archivePathProblem } from "../../lib/archive-read.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -22,6 +22,24 @@ const TRANSCRIPT = [
 const PANE_LOG = "plain \x1b[31mred <b>\x1b[0m\r\nsecond row\r\n";
 /** Bigger than the replay bound, ending in a line the tail must keep. */
 const BIG_LOG = `${"x".repeat(80)}\r\n`.repeat((PANE_VIEW_MAX_BYTES / 82) * 1.25) + "THE END\r\n";
+
+/** Past the parse bound: the session, then bookkeeping lines that run on beyond it. */
+const LONG_TRANSCRIPT =
+  TRANSCRIPT +
+  `\n{"type":"attachment","timestamp":"2026-08-26T14:02:00Z","pad":"${"x".repeat(1000)}"}`.repeat(
+    Math.ceil((TRANSCRIPT_MAX_BYTES * 1.25) / 1060),
+  );
+
+/**
+ * Replaying or parsing megabytes through core.wasm runs synchronously at about
+ * 110 ms/MB (lib/ringo-core.ts): ~0.5 s alone, but several times that under a
+ * full parallel `pnpm test`, past vitest's 5 s default. The bound is the
+ * point of these tests, so the input stays over it and the clock gets room.
+ */
+const WASM_REPLAY_TIMEOUT_MS = 30_000;
+
+/** One line, past the parse bound: no newline anywhere in the head. */
+const ONE_LONG_LINE = `{"type":"user","pad":"${"x".repeat(TRANSCRIPT_MAX_BYTES * 1.25)}"}\n`;
 
 let ringo: HttpServer;
 let ringoBaseUrl = "";
@@ -40,6 +58,12 @@ beforeAll(async () => {
     } else if (url.pathname === "/sessions/file" && p === "trails/9001/big.log") {
       res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       res.end(BIG_LOG);
+    } else if (url.pathname === "/sessions/file" && p === "trails/9001/long.jsonl") {
+      res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+      res.end(LONG_TRANSCRIPT);
+    } else if (url.pathname === "/sessions/file" && p === "trails/9001/one-line.jsonl") {
+      res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+      res.end(ONE_LONG_LINE);
     } else if (url.pathname === "/sessions/file" && p === "trails/9001/a.jsonl") {
       res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       res.end(TRANSCRIPT);
@@ -143,6 +167,34 @@ describe("SessionsController#transcript", () => {
     expect(body).toContain("12.0s slow");
     expect(body).toContain("&lt;script&gt;x&lt;/script&gt;");
     expect(body).toContain("1 bookkeeping events");
+    expect(body).not.toContain("longer than trailmap reads");
+  });
+
+  it(
+    "parses only the head of a transcript past the bound",
+    async () => {
+      setEnv("RINGO_BASE", ringoBaseUrl);
+
+      const response = await get("transcript", { p: "trails/9001/long.jsonl" });
+      const body = String(response.body);
+
+      expect(response.status).toBe(200);
+      expect(body).toContain("port &lt;the&gt; thing");
+      expect(body).toContain("showing its first 4.0 MB");
+      expect(body).not.toContain("first line alone");
+    },
+    WASM_REPLAY_TIMEOUT_MS,
+  );
+
+  it("says so when the first line alone is past the bound", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await get("transcript", { p: "trails/9001/one-line.jsonl" });
+    const body = String(response.body);
+
+    expect(response.status).toBe(200);
+    expect(body).toContain("The session's first line alone is longer than 4.0 MB, so nothing could be read here.");
+    expect(body).not.toContain("showing its first");
   });
 
   it("links only to pages trailmap serves", async () => {
@@ -172,15 +224,19 @@ describe("SessionsController#pane", () => {
     expect(response.body).not.toContain("showing the last");
   });
 
-  it("replays only the tail of a log past the bound", async () => {
-    setEnv("RINGO_BASE", ringoBaseUrl);
+  it(
+    "replays only the tail of a log past the bound",
+    async () => {
+      setEnv("RINGO_BASE", ringoBaseUrl);
 
-    const response = await get("pane", { p: "trails/9001/big.log" });
+      const response = await get("pane", { p: "trails/9001/big.log" });
 
-    expect(response.status).toBe(200);
-    expect(response.body).toContain("THE END");
-    expect(response.body).toContain("showing the last 2.0 MB");
-  });
+      expect(response.status).toBe(200);
+      expect(response.body).toContain("THE END");
+      expect(response.body).toContain("showing the last 2.0 MB");
+    },
+    WASM_REPLAY_TIMEOUT_MS,
+  );
 
   it("sends a transcript to the transcript page", async () => {
     setEnv("RINGO_BASE", ringoBaseUrl);

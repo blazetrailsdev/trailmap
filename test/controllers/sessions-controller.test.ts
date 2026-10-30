@@ -28,6 +28,14 @@ const ARCHIVES: SessionArchiveRow[] = [
   },
 ];
 
+/** ringo's `/api/sessions/status` in pilot mode, with captures no PR claimed. */
+const PILOT_STATUS = {
+  mode: "pilot",
+  note: "pilot mode: capturing 2 more spawn(s) and 1 hand-enrolled pane(s). Every other agent is ignored. Measure disk here before setting SESSION_ARCHIVE=on.",
+  unclaimed_pane_logs: 3,
+  unclaimed_pane_log_bytes: 5 * 1024 * 1024,
+};
+
 let ringo: HttpServer;
 let ringoBaseUrl = "";
 let asked: string[] = [];
@@ -40,6 +48,12 @@ beforeAll(async () => {
     if (req.url === "/api/sessions") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(ARCHIVES));
+    } else if (req.url === "/api/sessions/status") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(PILOT_STATUS));
+    } else if (req.url === "/empty/api/sessions/status") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ mode: "on", note: "", unclaimed_pane_logs: 0, unclaimed_pane_log_bytes: 0 }));
     } else if (req.url === "/empty/api/sessions") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end("null\n");
@@ -75,7 +89,7 @@ describe("SessionsController#index", () => {
     const response = await get("index");
 
     expect(response.status).toBe(200);
-    expect(asked).toEqual(["/api/sessions"]);
+    expect([...asked].sort()).toEqual(["/api/sessions", "/api/sessions/status"]);
     const body = response.body;
     for (const column of ["PR", "Branch", "Pane", "Opened", "Duration", "State", "Sessions", "Pane log", "Cost"]) {
       expect(body).toContain(`<th>${column}</th>`);
@@ -103,6 +117,35 @@ describe("SessionsController#index", () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toContain("Nothing archived yet.");
+  });
+
+  it("shows ringo's archive mode note and its unclaimed pane captures", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const body = String((await get("index")).body);
+
+    expect(body).toContain(`mode: <strong>pilot</strong> — ${PILOT_STATUS.note}`);
+    expect(body).toContain(
+      "3 unclaimed pane capture(s), 5.0 MB — panes armed at spawn that ended before linking to a PR. Kept and compressed, never deleted.",
+    );
+  });
+
+  it("shows neither note when the archive is on and every capture is claimed", async () => {
+    setEnv("RINGO_BASE", `${ringoBaseUrl}/empty`);
+
+    const body = String((await get("index")).body);
+
+    expect(body).not.toContain("mode: <strong>");
+    expect(body).not.toContain("unclaimed pane capture");
+  });
+
+  it("shows neither note when ringo cannot say", async () => {
+    setEnv("RINGO_BASE", `${ringoBaseUrl}/proxy-down`);
+
+    const body = String((await get("index")).body);
+
+    expect(body).not.toContain("mode: <strong>");
+    expect(body).not.toContain("unclaimed pane capture");
   });
 
   it("says ringo is not configured rather than guessing where it is", async () => {

@@ -5,6 +5,9 @@
   </div>
 </div>
 
+<% if @status["note"].present? %>
+  <div class="field-note">mode: <strong><%= @status["mode"] %></strong> — <%= @status["note"] %></div>
+<% end %>
 <% if @problem %>
   <div class="card ci-fixer paused">
     <div class="card-head"><span class="card-title">No session data</span></div>
@@ -42,4 +45,7 @@
       </table></div>
     <% end %>
   </div>
+  <% if @status["unclaimed_pane_logs"].to_i > 0 %>
+    <div class="field-note"><%= @status["unclaimed_pane_logs"] %> unclaimed pane capture(s), <%= human_bytes(@status["unclaimed_pane_log_bytes"]) %> — panes armed at spawn that ended before linking to a PR. Kept and compressed, never deleted.</div>
+  <% end %>
 <% end %>

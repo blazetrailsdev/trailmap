@@ -12,7 +12,7 @@ class RfcStatusTest < ActionDispatch::IntegrationTest
     { "0001-draft" => "draft", "0002-active" => "active", "0003-postponed" => "postponed", "0004-open" => "active",
       "0005-finished" => "active", "0006-closed" => "closed", "0007-drafts" => "active",
       "0008-finished-parked" => "postponed", "0009-blank-reason" => "draft", "0010-hooked" => "draft",
-      "0012-conflict" => "draft", "0015-csrf" => "draft" }.each { |id, status| rfc_file!(id, status) }
+      "0012-conflict" => "draft", "0015-csrf" => "draft", "0016-quiet" => "active" }.each { |id, status| rfc_file!(id, status) }
     rfc_file!("0011-listy", "draft", "updated:\n  - 2026-01-01")
     story!("open-1", rfc_id: "0004-open")
     story!("open-2", rfc_id: "0004-open", status: "done")
@@ -120,6 +120,25 @@ class RfcStatusTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Close this RFC? Refused while any of its stories are unfinished — use Sunset for that."
     get "/rfc/0006-closed"
     assert_not_includes response.body, 'class="side-section rfc-actions"'
+  end
+
+  test "relays Spawn batch and Sunset to ringo, with ringo's payload and confirm text" do
+    get "/rfc/0004-open"
+    body = response.body
+    assert_includes body, 'data-relay="spawnloop/rfc-batch-spawn"'
+    assert_includes body, 'data-payload="{&quot;slug&quot;:&quot;0004-open&quot;}"'
+    assert_includes body, "Spawn one worker for the next batch of stories under 0004-open?"
+    assert_includes body, 'data-relay="spawnloop/rfc-refine"'
+    assert_includes body, "&quot;mode&quot;:&quot;sunset&quot;"
+    assert_includes body, "Sunset 0004-open? An agent will re-home its remaining stories and close the RFC unless work is still in flight."
+  end
+
+  test "offers no batch with nothing claimable, and no sunset unless the RFC is active" do
+    get "/rfc/0016-quiet"
+    assert_not_includes response.body, "Spawn batch"
+    assert_includes response.body, "Sunset RFC"
+    get "/rfc/0003-postponed"
+    assert_not_includes response.body, "data-relay="
   end
 
   test "writes a blank reason as no note" do

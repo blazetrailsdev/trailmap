@@ -3,7 +3,8 @@ require "minitest/mock"
 # A stand-in for ringo: `Fleet::Relay.get` answers from `answers`, a map of
 # path to [code, body], and a 502 proxy page for any other path. Every path
 # asked is pushed onto `asked`. `Fleet::Relay.get_bounded` answers the same,
-# with a nil body past its limit, and `get_tail` with the body's last `limit`
+# with a nil body past its limit, `get_head` with the body's first `limit`
+# bytes, and `get_tail` with the body's last `limit`
 # bytes and its size.
 module StandInRingo
   BASE = "http://ringo.test".freeze
@@ -20,6 +21,10 @@ module StandInRingo
       response = relay.call(url, timeout: timeout)
       [ response, response.body.bytesize > limit ? nil : response.body ]
     end
+    head = lambda do |url, timeout:, limit:|
+      response = relay.call(url, timeout: timeout)
+      [ response, response.body.byteslice(0, limit) ]
+    end
     tail = lambda do |url, timeout:, limit:|
       response = relay.call(url, timeout: timeout)
       body = response.body
@@ -29,7 +34,9 @@ module StandInRingo
     ENV["RINGO_BASE"] = base
     Setting.forget_resolved
     Fleet::Relay.stub(:get, relay) do
-      Fleet::Relay.stub(:get_bounded, bounded) { Fleet::Relay.stub(:get_tail, tail, &block) }
+      Fleet::Relay.stub(:get_bounded, bounded) do
+        Fleet::Relay.stub(:get_head, head) { Fleet::Relay.stub(:get_tail, tail, &block) }
+      end
     end
   ensure
     ENV["RINGO_BASE"] = previous

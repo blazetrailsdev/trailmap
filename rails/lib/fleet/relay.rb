@@ -21,6 +21,26 @@ module Fleet
       request(Net::HTTP::Get.new(URI(url)), timeout: timeout)
     end
 
+    # GET, keeping only the first `limit` bytes of the body and closing the
+    # socket there: [response, head]. The head is shorter than `limit` only
+    # when the body was.
+    def get_head(url, timeout:, limit:)
+      head = +""
+      response = nil
+      catch(:full) do
+        request(Net::HTTP::Get.new(URI(url)), timeout: timeout) do |res|
+          response = res
+          res.read_body do |chunk|
+            head << chunk
+            next if head.bytesize < limit
+            head = head.byteslice(0, limit)
+            throw :full
+          end
+        end
+      end
+      [ response, head ]
+    end
+
     # GET, reading the body in chunks and stopping once it passes `limit`
     # bytes. Answers [response, body]; body is nil when the limit was passed,
     # so an oversized answer is never held whole.

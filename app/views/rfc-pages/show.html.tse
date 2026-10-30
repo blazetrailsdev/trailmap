@@ -62,6 +62,18 @@
           <% } %>
         </div>
       <% } %>
+      <% if (canBatch || canSunset) { %>
+        <div class="side-section rfc-actions">
+          <div class="side-head">Dispatch</div>
+          <% if (canBatch) { %>
+            <button type="button" class="btn" data-relay="spawnloop/rfc-batch-spawn" data-payload="<%= JSON.stringify({ slug: rfc.id }) %>" data-confirm="Spawn one worker for the next batch of stories under <%= rfc.id %>?">Spawn batch</button>
+          <% } %>
+          <% if (canSunset) { %>
+            <button type="button" class="btn" data-relay="spawnloop/rfc-refine" data-payload="<%= JSON.stringify({ slug: rfc.id, note: "", mode: "sunset" }) %>" data-confirm="Sunset <%= rfc.id %>? An agent will re-home its remaining stories and close the RFC unless work is still in flight.">Sunset RFC</button>
+          <% } %>
+          <div class="field-note" data-relay-status hidden></div>
+        </div>
+      <% } %>
       <div class="side-section">
         <div class="side-head">Owner</div>
         <div class="side-value"><%= rfc.owner ? rfc.owner : "Nobody" %></div>

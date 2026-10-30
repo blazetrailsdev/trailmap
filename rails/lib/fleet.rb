@@ -24,6 +24,7 @@ module Fleet
     spawn merge-pr spawnloop/dismiss spawnloop/dismiss-failed spawnloop/config spawnloop/skip
     spawnloop/spawn-now ci-fixer/spawn reviewer/assign worker/spawn broadcast drain drain-one
     poke-stalled cancel-cleanup ask/answer reviewer/drain-codex reviewer/drain-claude pause refresh-usage
+    spawnloop/rfc-batch-spawn spawnloop/rfc-refine
   ].freeze
 
   SCREEN_HASH_MAX = 128

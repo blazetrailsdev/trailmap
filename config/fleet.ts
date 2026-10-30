@@ -140,4 +140,7 @@ export const FLEET_CONTROLS: readonly string[] = [
   "reviewer/drain-claude",
   "pause",
   "refresh-usage",
+  // /rfc/<id>'s dispatches: "Spawn batch", and "Sunset" (rfc-refine, mode sunset).
+  "spawnloop/rfc-batch-spawn",
+  "spawnloop/rfc-refine",
 ];

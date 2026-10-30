@@ -81,8 +81,11 @@ export interface RfcRow {
  *
  * The lifecycle buttons — draft / ready / postpone / close, and "Mark drafts
  * ready" — are ported (`move`, `readyDrafts`, app/models/rfc-status.ts).
- * What is still NOT: refine, sunset, spawn a batch, the refinements tab and
- * the charts tab, every one of them ringo's own local state or dispatch.
+ * "Spawn batch" and "Sunset" start an agent, which is ringo's dispatch and
+ * not a database write, so they are NOT ported: the page posts them through
+ * the `fleet/control` relay to ringo (`app/assets/javascripts/rfc-actions.js`).
+ * What is still missing: refine, the refinements tab and the charts tab, each
+ * ringo's own local state.
  *
  * A missing RFC renders the page with a 404 rather than an error page — same
  * as ringo, and it is what makes a stale link say which id it was looking for.
@@ -280,6 +283,14 @@ export class RfcPagesController extends ApplicationController {
         error: doc.error,
         moves: rfcStatusMoves(rfc.status),
         hasDrafts: own.some((story) => story.status === "draft"),
+        // What ringo's batch could pick up, as its page counts it (`BatchCount`,
+        // webhook/rfcs.go): ready and not dep-held, or a draft under a draft RFC.
+        canBatch: own.some(
+          (story) =>
+            (story.status === "ready" && !held.has(story.id)) || (rfc.status === "draft" && story.status === "draft"),
+        ),
+        // A sunset winds down an active RFC; the others are iceboxed or ended.
+        canSunset: rfc.status === "active",
         refusal,
       },
       code,
@@ -290,7 +301,15 @@ export class RfcPagesController extends ApplicationController {
   private async renderPage(locals: Record<string, unknown>, status: number): Promise<void> {
     await this.render({
       action: "show",
-      locals: { body: null as SafeBuffer | null, error: "", moves: [] as RfcStatusMove[], hasDrafts: false, ...locals },
+      locals: {
+        body: null as SafeBuffer | null,
+        error: "",
+        moves: [] as RfcStatusMove[],
+        hasDrafts: false,
+        canBatch: false,
+        canSunset: false,
+        ...locals,
+      },
       status,
     });
   }
