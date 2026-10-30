@@ -69,7 +69,8 @@ const STATS_MODELS = [
   ApiCallArgsStat,
 ];
 
-registerModel([...MODELS, ...HUB_MODELS, ...STATS_MODELS]);
+export const ALL_MODELS = [...MODELS, ...HUB_MODELS, ...STATS_MODELS];
+registerModel(ALL_MODELS);
 
 /**
  * Force every model's column information to load.

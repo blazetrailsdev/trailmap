@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { getFs, isRegisteredConstant } from "@blazetrails/ruby-compat";
-import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { getFs } from "@blazetrails/ruby-compat";
+import { ALL_MODELS, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
 import { migrateScratchDatabase } from "../models/schema.ts";
 
 describe("the model barrel", () => {
-  // The boot loads the barrel, so a model left out of it would only surface in
-  // a process that traverses an association without it. Every concrete Base
-  // subclass any file exports, at any depth of inheritance, must be registered.
+  // Compared with the barrel's own list, not the constant registry: the boot
+  // registers a class however it was loaded, so the registry cannot see a model
+  // left out, and that model's schema is never loaded. Covers every concrete
+  // Base subclass any file exports, at any depth of inheritance.
   it("registers every model in app/models", async () => {
+    const listed = new Set(ALL_MODELS.map((model) => model.name));
     const seen: string[] = [];
     const missing: string[] = [];
     for (const file of await getFs().readdir!("app/models")) {
@@ -18,7 +20,7 @@ describe("the model barrel", () => {
         if (typeof value !== "function" || !(value.prototype instanceof Base)) continue;
         if ((value as unknown as typeof Base).abstractClass) continue;
         seen.push(value.name);
-        if (!isRegisteredConstant(value.name)) missing.push(value.name);
+        if (!listed.has(value.name)) missing.push(value.name);
       }
     }
     expect(seen).toContain("Story");
