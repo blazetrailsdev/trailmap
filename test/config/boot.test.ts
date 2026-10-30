@@ -1,21 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { getFs } from "@blazetrails/ruby-compat";
+import { Base } from "@blazetrails/activerecord";
+import { getFs, isRegisteredConstant } from "@blazetrails/ruby-compat";
 import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
 import { migrateScratchDatabase } from "../models/schema.ts";
 
 describe("the model barrel", () => {
   // The boot loads the barrel, so a model left out of it would only surface in
-  // a process that traverses an association without it.
+  // a process that traverses an association without it. Every concrete Base
+  // subclass any file exports, at any depth of inheritance, must be registered.
   it("registers every model in app/models", async () => {
-    const barrel = await getFs().readFile!("app/models/index.ts", "utf8");
+    const seen: string[] = [];
     const missing: string[] = [];
     for (const file of await getFs().readdir!("app/models")) {
-      if (!String(file).endsWith(".ts") || file === "index.ts") continue;
-      const source = await getFs().readFile!(`app/models/${file}`, "utf8");
-      for (const [, name] of source.matchAll(/^export class (\w+) extends (?:ApplicationRecord|Hub|Stats)\b/gm)) {
-        if (!new RegExp(`\\b${name}\\b`).test(barrel)) missing.push(name!);
+      if (!String(file).endsWith(".ts")) continue;
+      const exported = (await import(`../../app/models/${file}`)) as Record<string, unknown>;
+      for (const value of Object.values(exported)) {
+        if (typeof value !== "function" || !(value.prototype instanceof Base)) continue;
+        if ((value as unknown as typeof Base).abstractClass) continue;
+        seen.push(value.name);
+        if (!isRegisteredConstant(value.name)) missing.push(value.name);
       }
     }
+    expect(seen).toContain("Story");
+    expect(seen).toContain("ApiCompareStat");
     expect(missing).toEqual([]);
   });
 });
