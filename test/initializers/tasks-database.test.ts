@@ -76,8 +76,8 @@ describe("connectToTasksDatabase", () => {
     expect(String(await connection.selectValue("PRAGMA journal_mode"))).toBe(
       writeProtocol.journalMode.toLowerCase(),
     );
-    expect(Number(await connection.selectValue("PRAGMA busy_timeout"))).toBe(
-      writeProtocol.busyTimeoutMs,
-    );
+    // trails waits in the adapter so the event loop stays free (trails#9490), so
+    // `PRAGMA busy_timeout` reads 0 and the configured timeout is what counts.
+    expect(Base.connectionDbConfig().configurationHash.timeout).toBe(writeProtocol.busyTimeoutMs);
   });
 });
