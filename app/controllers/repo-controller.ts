@@ -58,18 +58,8 @@ export class RepoController extends ApplicationController {
   }
 }
 
-type TabHelper =
-  | "repoCodePath"
-  | "repoIssuesPath"
-  | "repoPullsPath"
-  | "repoActionsPath"
-  | "repoProjectsPath"
-  | "repoWikiPath"
-  | "repoPulsePath"
-  | "repoSettingsPath";
-
 /** The tab bar: key, label, and the route helper of its page. */
-const TAB_LABELS: ReadonlyArray<[string, string, TabHelper]> = [
+const TAB_LABELS = [
   ["code", "Code", "repoCodePath"],
   ["issues", "Issues", "repoIssuesPath"],
   ["pulls", "Pull requests", "repoPullsPath"],
@@ -78,7 +68,7 @@ const TAB_LABELS: ReadonlyArray<[string, string, TabHelper]> = [
   ["wiki", "Wiki", "repoWikiPath"],
   ["insights", "Insights", "repoPulsePath"],
   ["settings", "Settings", "repoSettingsPath"],
-];
+] as const;
 
 /**
  * Resolve `:owner`/`:repo` into the record, refuse a repository the viewer may

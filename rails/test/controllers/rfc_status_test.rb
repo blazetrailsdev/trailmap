@@ -120,6 +120,8 @@ class RfcStatusTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Close this RFC? Refused while any of its stories are unfinished — use Sunset for that."
     get "/rfc/0006-closed"
     assert_not_includes response.body, ">Lifecycle<"
+    assert_not_includes response.body, "Spawn batch"
+    assert_not_includes response.body, "Sunset RFC"
   end
 
   test "relays Spawn batch and Sunset to ringo, with ringo's payload and confirm text" do

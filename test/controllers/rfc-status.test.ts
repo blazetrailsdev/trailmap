@@ -144,6 +144,8 @@ describe("RfcPagesController lifecycle", () => {
     const closed = await controllerTestCase(RfcPagesController);
     await closed.get("show", { params: { id: "0006-closed" } });
     expect(closed.response.body).not.toContain(">Lifecycle<");
+    expect(closed.response.body).not.toContain("Spawn batch");
+    expect(closed.response.body).not.toContain("Sunset RFC");
   });
 
   it("relays Spawn batch and Sunset to ringo, with ringo's payload and confirm text", async () => {
