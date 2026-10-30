@@ -89,8 +89,10 @@ class SessionArchive
       query = { owner: owner, repo: repo, pr: pr }.to_query
       response = Fleet::Relay.get("#{base}/api/sessions/timeline?#{query}", timeout: TIMELINE_TIMEOUT)
       return unless response.is_a?(Net::HTTPSuccess)
-      JSON.parse(response.body)
-    rescue Fleet::Relay::Failure, JSON::ParserError
+      timeline = JSON.parse(response.body)
+      timeline if timeline.is_a?(Hash) && timeline["rows"].is_a?(Array)
+    rescue StandardError
+      # Everything, as the trails side: the cards must survive any failure here.
       nil
     end
 

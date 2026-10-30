@@ -134,6 +134,13 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, 'class="tl-totals"'
   end
 
+  test "show keeps the cards when ringo's timeline has no rows" do
+    with_ringo(RINGO.merge(TIMELINE_PATH => [ 200, { error: "nope" }.to_json ])) { get "/sessions/blazetrailsdev/trails/9001" }
+    assert_response 200
+    assert_includes response.body, "pane %42"
+    assert_not_includes response.body, 'class="tl-totals"'
+  end
+
   test "show says a PR with no archive has none" do
     with_ringo(RINGO) { get "/sessions/blazetrailsdev/trails/1" }
     assert_response 200

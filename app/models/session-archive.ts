@@ -207,7 +207,9 @@ export class SessionArchive extends Model {
   /**
    * One PR's timeline as ringo draws it, rows and order ringo's own — `null`
    * when there is none to show: no events, or ringo cannot say. The cards below
-   * it stand without it, so a failure here leaves the page whole.
+   * it stand without it, so a failure here leaves the page whole. Asked after
+   * the archives on purpose: a PR with no archive draws no timeline, and a slow
+   * ringo holds this page for both timeouts at worst.
    */
   static async timeline({ owner, repo, pr }: { owner: string; repo: string; pr: number }): Promise<PrTimeline | null> {
     const base = await Setting.ringoBase();
@@ -216,7 +218,8 @@ export class SessionArchive extends Model {
     try {
       const response = await fetch(`${base}/api/sessions/timeline?${query}`, { signal: AbortSignal.timeout(TIMELINE_TIMEOUT_MS) });
       if (!response.ok) return null;
-      return (await response.json()) as PrTimeline | null;
+      const timeline = (await response.json()) as PrTimeline | null;
+      return Array.isArray(timeline?.rows) ? timeline : null;
     } catch {
       return null;
     }

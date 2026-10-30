@@ -43,6 +43,7 @@ const TIMELINE = { events: 2, gap_floor: "1m", quiet_floor: "5m", elapsed: "1h30
     { kind: "review", when: "Oct 27 10:30", title: "review 1", body_html: "<p>looks <strong>good</strong></p>", open: true },
   ] };
 
+let timelineAnswer: unknown = TIMELINE;
 let ringo: HttpServer;
 let ringoBaseUrl = "";
 let asked: string[] = [];
@@ -57,7 +58,7 @@ beforeAll(async () => {
       res.end(JSON.stringify(ARCHIVES));
     } else if (req.url === "/api/sessions/timeline?owner=blazetrailsdev&repo=trails&pr=9001") {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify(TIMELINE));
+      res.end(JSON.stringify(timelineAnswer));
     } else if (req.url === "/api/sessions/status") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(PILOT_STATUS));
@@ -83,6 +84,7 @@ afterAll(async () => {
 
 afterEach(() => {
   asked = [];
+  timelineAnswer = TIMELINE;
   setEnv("RINGO_BASE", undefined);
 });
 
@@ -218,6 +220,17 @@ describe("SessionsController#show", () => {
 
     expect(body).toContain("pane %7");
     expect(body).not.toContain('class="tl-totals"');
+  });
+
+  it("keeps the cards when ringo's timeline has no rows", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    timelineAnswer = { error: "nope" };
+
+    const response = await get("show", { owner: "blazetrailsdev", repo: "trails", pr: "9001" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toContain("pane %42");
+    expect(response.body).not.toContain('class="tl-totals"');
   });
 
   it("says a PR with no archive has none", async () => {
