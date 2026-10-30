@@ -85,7 +85,8 @@ export class SessionsController extends ApplicationController {
       if (!(error instanceof SessionArchiveUnavailable)) throw error;
       problem = error.message;
     }
-    await this.render({ locals: { owner, repo, pr, archives, problem, now: new Date() } });
+    const timeline = archives.length > 0 ? await SessionArchive.timeline({ owner, repo, pr }) : null;
+    await this.render({ locals: { owner, repo, pr, archives, timeline, problem, now: new Date() } });
   }
 
   /** ringo's `HandleSessionsAPI`: the index as JSON, in ringo's own shape. */

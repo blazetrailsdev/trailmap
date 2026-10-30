@@ -16,6 +16,7 @@
 <% elsif @archives.empty? %>
   <div class="card"><div class="field-note">No archive recorded for this PR.</div></div>
 <% else %>
+  <%= render partial: "sessions/timeline", locals: { timeline: @timeline } if @timeline %>
   <% @archives.each do |archive| %>
     <div class="card">
       <div class="card-head">

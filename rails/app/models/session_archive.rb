@@ -10,6 +10,8 @@ class SessionArchive
 
   # How long ringo has to answer for the archive index.
   TIMEOUT = 5
+  # How long ringo has to assemble one PR's timeline: it scans transcripts from disk.
+  TIMELINE_TIMEOUT = 10
 
   # The archive could not be read: ringo is unset, down, or answered something else.
   class Unavailable < StandardError
@@ -77,6 +79,19 @@ class SessionArchive
       NO_STATUS.merge(JSON.parse(response.body))
     rescue Fleet::Relay::Failure, JSON::ParserError
       NO_STATUS
+    end
+
+    # One PR's timeline as ringo draws it, rows and order ringo's own. nil when
+    # there is none to show: the cards stand without it.
+    def timeline(owner:, repo:, pr:)
+      base = Setting.ringo_base
+      return if base.nil?
+      query = { owner: owner, repo: repo, pr: pr }.to_query
+      response = Fleet::Relay.get("#{base}/api/sessions/timeline?#{query}", timeout: TIMELINE_TIMEOUT)
+      return unless response.is_a?(Net::HTTPSuccess)
+      JSON.parse(response.body)
+    rescue Fleet::Relay::Failure, JSON::ParserError
+      nil
     end
 
     # ringo's `ForPR`: every archive recorded against one PR, one per pane.

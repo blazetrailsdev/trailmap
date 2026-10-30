@@ -1,0 +1,36 @@
+<div class="card">
+  <div class="card-head">
+    <span class="card-title">Timeline</span>
+    <span class="muted"><%= timeline["events"] %> events, oldest first — gaps between events over <%= timeline["gap_floor"] %>, and silences inside a session over <%= timeline["quiet_floor"] %>, are drawn as waits</span>
+  </div>
+  <div class="tl-card">
+    <div class="tl-totals">
+      <div class="t"><div class="n"><%= timeline["elapsed"] %></div><div class="l">wall clock, first event to last</div></div>
+      <div class="t"><div class="n"><%= timeline["working"] %></div><div class="l">agent &amp; reviewer sessions live</div></div>
+      <div class="t"><div class="n wait"><%= timeline["waiting"] %></div><div class="l">waiting between events</div></div>
+    </div>
+    <div class="tl">
+      <% timeline["rows"].each do |row| %>
+        <% if row["wait"].present? %>
+          <div class="tl-wait"><span class="w"><%= row["wait"] %></span></div>
+        <% else %>
+          <div class="tl-ev k-<%= row["kind"] %>">
+            <div class="tl-line">
+              <span class="tl-when"><%= row["when"] %></span>
+              <span class="tl-title"><%= row["title"] %></span>
+              <% if row["ran"].present? %><span class="tl-dur">ran <%= row["ran"] %></span><% end %>
+              <% if row["active"].present? %><span class="tl-dur tl-active">active <%= row["active"] %></span><% end %>
+              <% Array(row["meta"]).each do |meta| %><span class="tl-meta"><%= meta %></span><% end %>
+            </div>
+            <% if row["slow"].present? %><div class="tl-slow">slowest: <%= row["slow"] %></div><% end %>
+            <% if row["body_html"].present? %>
+              <details class="tl-body"<%= row["open"] ? " open" : "" %>><summary><%= row["open"] ? "hide" : "read" %></summary><div class="md"><%= row["body_html"].html_safe %></div></details>
+            <% elsif row["body"].present? %>
+              <details class="tl-body"><summary>read</summary><pre class="raw"><%= row["body"] %></pre></details>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

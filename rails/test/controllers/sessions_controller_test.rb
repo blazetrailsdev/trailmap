@@ -33,6 +33,13 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     unclaimed_pane_logs: 3,
     unclaimed_pane_log_bytes: 5 * 1024 * 1024
   }.freeze
+  # ringo's `/api/sessions/timeline` for trails#9001: an event, a wait, an event.
+  TIMELINE = { events: 2, gap_floor: "1m", quiet_floor: "5m", elapsed: "1h30m", working: "1h00m", waiting: "30m", rows: [
+    { kind: "session", when: "Oct 27 09:00", title: "agent <session>", ran: "1h00m", active: "40m", meta: ["7 turns · $1.50"] },
+    { wait: "⋯ waiting 30m — PR sat unreviewed" },
+    { kind: "review", when: "Oct 27 10:30", title: "review 1", body_html: "<p>looks <strong>good</strong></p>", open: true }
+  ] }.freeze
+  TIMELINE_PATH = "/api/sessions/timeline?owner=blazetrailsdev&pr=9001&repo=trails".freeze
   RINGO = { "/api/sessions" => [ 200, ARCHIVES.to_json ], "/api/sessions/status" => [ 200, PILOT_STATUS.to_json ] }.freeze
 
   test "index renders ringo's archives in ringo's order with ringo's columns" do
@@ -107,6 +114,24 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_includes body, "$1.50"
     assert_includes body, "cwd /w/fix-arel"
     assert_not_includes body, "trailmap#80"
+  end
+
+  test "show renders ringo's timeline above the cards, in ringo's order" do
+    with_ringo(RINGO.merge(TIMELINE_PATH => [ 200, TIMELINE.to_json ])) { get "/sessions/blazetrailsdev/trails/9001" }
+    body = response.body
+    assert_includes body, "2 events, oldest first"
+    assert_includes body, '<div class="tl-ev k-session">'
+    assert_includes body, "agent &lt;session&gt;"
+    assert_includes body, '<span class="tl-dur tl-active">active 40m</span>'
+    assert_includes body, '<details class="tl-body" open><summary>hide</summary><div class="md"><p>looks <strong>good</strong></p></div></details>'
+    order = [ "Timeline", "agent &lt;session&gt;", "⋯ waiting 30m", "review 1", "pane %42" ].map { |text| body.index(text) }
+    assert_equal order.sort, order
+  end
+
+  test "show keeps the cards when ringo cannot give the timeline" do
+    with_ringo(RINGO) { get "/sessions/blazetrailsdev/trailmap/80" }
+    assert_includes response.body, "pane %7"
+    assert_not_includes response.body, 'class="tl-totals"'
   end
 
   test "show says a PR with no archive has none" do
