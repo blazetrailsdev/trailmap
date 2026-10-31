@@ -8,7 +8,7 @@
 
 import { Schema } from "@blazetrails/activerecord";
 
-await Schema.get(7.1).define({ version: 1 }, async (ctx) => {
+await Schema.get(8).define({ version: 1 }, async (ctx) => {
   await ctx.createTable("solid_queue_blocked_executions", { force: "cascade" }, (t) => {
     t.bigint("job_id", { null: false });
     t.string("queue_name", { null: false });

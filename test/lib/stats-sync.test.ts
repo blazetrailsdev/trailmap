@@ -1,5 +1,7 @@
 import { env, getFs, getOs, getPath } from "@blazetrails/ruby-compat";
+import { Base, MigrationContext } from "@blazetrails/activerecord";
 import { describe, expect, it } from "vitest";
+import { STATS_SYNC_MIGRATIONS_PATH, statsSyncDatabaseConfig } from "../../config/database.ts";
 
 const PULL_REQUEST = JSON.stringify([
   {
@@ -39,8 +41,11 @@ describe("syncLatest", () => {
     writable["STATS_SYNC_DB"] = getPath().join(dir, "stats.db");
 
     try {
-      const { currentStage, StatsSyncRecord, syncLatest } =
-        await import("../../lib/stats-sync/sync.ts");
+      const { currentStage, syncLatest } = await import("../../lib/stats-sync/sync.ts");
+      const { StatsSyncRecord } = await import("../../app/models/stats-sync/index.ts");
+      // Migrations run on Base's connection, as `trails db` points it at each database.
+      await Base.establishConnection(statsSyncDatabaseConfig());
+      await new MigrationContext([getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)]).migrate();
       await syncLatest();
 
       expect(currentStage()).toBe("Database Summary");

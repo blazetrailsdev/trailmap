@@ -577,7 +577,11 @@ dokku config:set --no-restart trailmap \
 dokku ps:scale trailmap worker=1
 ```
 
-`StatsSyncJob` runs at 06:00 America/Detroit. During the trial it writes
+The release task migrates that file from `db/stats-sync-migrate`, so it exists
+before the job first runs.
+
+`StatsSyncJob` runs at 03:00 America/Detroit, three hours ahead of the crontab
+so the two do not draw on the same GitHub API budget at once. During the trial it writes
 `stats-job.db` beside the crontab's `stats.db`, and its own log, so the crontab
 keeps running and neither can hide a gap in the other. Each run ends in a
 `[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. Once

@@ -5,11 +5,11 @@
 production:
   # The trails stats sync, replacing the host crontab's
   #   0 6 * * * …/trails/scripts/sync-stats/cron-wrapper.sh
-  # at the same minute in the same zone: cron reads the host's local time
-  # (America/Detroit) and the container runs in UTC, so the zone is spelled out.
-  # Both run during the cutover, each writing its own database
-  # (app/jobs/stats-sync-job.ts), so they cannot collide.
+  # three hours ahead of it, so the two do not spend the same GitHub API budget
+  # at once. Cron reads the host's local time (America/Detroit) and the container
+  # runs in UTC, so the zone is spelled out. Both run during the cutover, each
+  # writing its own database (app/jobs/stats-sync-job.ts).
   stats_sync:
     class: StatsSyncJob
-    schedule: "0 6 * * * America/Detroit"
+    schedule: "0 3 * * * America/Detroit"
     description: "Sync trails PRs, CI runs and compare stats into the job's stats database"
