@@ -103,6 +103,11 @@ Bumping the framework is deliberate and revertible:
 pnpm install
 ```
 
+The script builds what it packs: a throwaway detached worktree at the ref gets
+`pnpm install --frozen-lockfile` and `pnpm build`, is packed, and is removed.
+The ref need not be checked out, and the checkout's `dist/` and uncommitted
+changes never reach a tarball.
+
 ## A framework bug gets fixed in trails, never patched here
 
 trailmap is the first real application built on trails, so it finds framework

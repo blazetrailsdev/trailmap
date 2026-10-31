@@ -9,20 +9,32 @@
 #
 # Usage: scripts/vendor-trails.sh [trails-checkout] [git-ref]
 #
-# NOTE: the ref is used to RECORD the pin and to verify the checkout is on it —
-# packing reads the WORKING TREE, not the ref. Passing an old ref while the
-# checkout sits on main used to relabel the pin file without changing a single
-# byte of vendored code, so the pin lied about what was installed. It now
-# refuses rather than mislabel.
+# The tarballs are built from the ref, never from the checkout's working tree:
+# a throwaway detached worktree at <git-ref> gets a frozen install and a full
+# build, is packed, and is removed. The checkout only supplies the objects, so
+# its branch, its stale `dist/` and its uncommitted changes cannot reach a
+# tarball (on #83 that built a ruby-compat older than its pin, caught before
+# landing), and TRAILS_PIN names what was built. Nothing is written to the
+# checkout's tree.
 set -euo pipefail
 TRAILS="${1:-$HOME/github/blazetrailsdev/trails}"
 REF="${2:-HEAD}"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 VENDOR="$HERE/vendor"
 
+SHA="$(git -C "$TRAILS" rev-parse --verify "$REF^{commit}")"
+BUILD_ROOT="$(mktemp -d)"
+BUILD="$BUILD_ROOT/trails"
+cleanup() {
+  git -C "$TRAILS" worktree remove --force "$BUILD" 2>/dev/null || true
+  rm -rf "$BUILD_ROOT"
+}
+trap cleanup EXIT
+git -C "$TRAILS" worktree add --quiet --detach "$BUILD" "$SHA"
+
 # Transitive closure of @blazetrails/* deps from activerecord. Computed rather
 # than hardcoded: activesupport pulls tse-compiler, which is easy to miss.
-mapfile -t PKGS < <(cd "$TRAILS" && node -e '
+mapfile -t PKGS < <(cd "$BUILD" && node -e '
 const fs=require("fs"),path=require("path");
 const byName={};
 for(const d of fs.readdirSync("packages")){
@@ -41,37 +53,19 @@ while(stack.length){
 console.log([...seen].map(n=>byName[n].dir).sort().join("\n"));
 ')
 
-SHA="$(git -C "$TRAILS" rev-parse "$REF")"
-HEAD_SHA="$(git -C "$TRAILS" rev-parse HEAD)"
-if [ "$SHA" != "$HEAD_SHA" ]; then
-  echo "refusing to vendor: checkout is at ${HEAD_SHA:0:9} but you asked for ${SHA:0:9}." >&2
-  echo "  Packing reads the working tree, so the pin would not match the code." >&2
-  echo "  Check the ref out first:  git -C $TRAILS checkout $REF" >&2
-  exit 1
-fi
-if [ -n "$(git -C "$TRAILS" status --porcelain)" ]; then
-  echo "warning: trails checkout is dirty — vendored code will include uncommitted changes" >&2
-fi
 echo "vendoring ${#PKGS[@]} packages from trails @ ${SHA:0:9}"
 
-# Pack from a CLEAN build. `tsc --build` never deletes an output whose source
-# is gone, so a checkout built at another commit first carries leftovers into
-# `dist` — #39 found both kinds: `validations/_accessor.*` with no source at the
-# pin, and `thor/*.test.*` from a build of a LATER commit. Each packed
-# package's `dist` and its build info go, and the whole workspace is rebuilt
-# (the root `build`, so the templates the packages ship are regenerated too).
-# Slower than an incremental build, and the only way re-running this
-# reproduces the committed tarballs whatever the checkout was built at last.
-for p in "${PKGS[@]}"; do
-  rm -rf "$TRAILS/packages/$p/dist" "$TRAILS/packages/$p"/*.tsbuildinfo
-done
-echo "  rebuilding trails from clean dist directories"
-pnpm -C "$TRAILS" build >/dev/null
+# pnpm picks its version from the current directory's `packageManager`, so this
+# runs inside the worktree: `pnpm -C` from here would switch to trails' pnpm
+# with trailmap's configuration, and fail. The worktree starts with no `dist`,
+# so nothing a previous build left behind (#39) can be packed.
+echo "  installing and building trails at the ref"
+( cd "$BUILD" && pnpm install --frozen-lockfile >/dev/null && pnpm build >/dev/null )
 
 rm -f "$VENDOR"/*.tgz
 mkdir -p "$VENDOR"
 for p in "${PKGS[@]}"; do
-  ( cd "$TRAILS/packages/$p" && pnpm pack --pack-destination "$VENDOR" >/dev/null )
+  ( cd "$BUILD/packages/$p" && pnpm pack --pack-destination "$VENDOR" >/dev/null )
   echo "  packed $p"
 done
 echo "$SHA" > "$VENDOR/TRAILS_PIN"
