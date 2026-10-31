@@ -7,8 +7,8 @@
 # not the fleet's ability to dispatch the agent who would fix it, so this is
 # ordinary CD: keep a red trails main out of anything that deploys.
 #
-#   1. Build trails at <ref> in a tracking clone of our own — never an agent's
-#      checkout, which is dirty and on some branch.
+#   1. Fetch <ref> into a tracking clone of our own, which supplies the commit
+#      vendor-trails.sh builds — never an agent's checkout.
 #   2. Vendor it into a SCRATCH worktree of trailmap main, install, and run
 #      `pnpm smoke` (boot, migrate, render pages through the .tse pipeline, one
 #      JSON endpoint). A red trails dies here, having touched nothing.
