@@ -81,13 +81,6 @@ fi
 LOG="$CACHE/track-$(date -u +%Y%m%dT%H%M%SZ).log"
 say "trails $REF = ${SHA:0:9}, pinned ${PIN:0:9}; log: $LOG"
 
-# vendor-trails.sh packs the WORKING TREE and refuses a ref HEAD is not on, so
-# the clone is put exactly on the commit: detached, reset, cleaned.
-git -C "$CLONE" checkout --quiet --detach "$SHA"
-git -C "$CLONE" reset --quiet --hard "$SHA"
-git -C "$CLONE" clean -qxfd -e node_modules
-( cd "$CLONE" && pnpm install --frozen-lockfile && pnpm build ) >>"$LOG" 2>&1 || fail trails-build "$LOG"
-
 git -C "$HERE" worktree remove --force "$SCRATCH" >/dev/null 2>&1 || true
 rm -rf "$SCRATCH"
 git -C "$HERE" worktree add --quiet -b "$BRANCH" "$SCRATCH" origin/main
@@ -98,10 +91,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-{
-  "$SCRATCH/scripts/vendor-trails.sh" "$CLONE" "$SHA" \
-    && ( cd "$SCRATCH" && pnpm install --prefer-offline && pnpm build && bash scripts/smoke-boot.sh )
-} >>"$LOG" 2>&1 || fail candidate-smoke "$LOG"
+# vendor-trails.sh builds $SHA in its own worktree, so the clone only has to
+# hold the commit.
+"$SCRATCH/scripts/vendor-trails.sh" "$CLONE" "$SHA" >>"$LOG" 2>&1 || fail trails-build "$LOG"
+( cd "$SCRATCH" && pnpm install --prefer-offline && pnpm build && bash scripts/smoke-boot.sh ) \
+  >>"$LOG" 2>&1 || fail candidate-smoke "$LOG"
 say "candidate passed"
 
 if [ -n "${TRAILS_TRACK_DRY_RUN:-}" ]; then

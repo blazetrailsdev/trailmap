@@ -37,8 +37,8 @@ Two things follow:
   behind trails `main`.** `scripts/vendor-trails.sh` builds the tarballs from
   the ref in a throwaway worktree, so the pin names what was built, for every
   bump since that change. Tarballs vendored before it were packed from a
-  checkout's `dist/` and could differ (#9's `ActionView::Base.withHelpers`,
-  #83's ruby-compat). When behaviour surprises you, read the code in
+  checkout's `dist/` and could differ (#9's `ActionView::Base.withHelpers`).
+  When behaviour surprises you, read the code in
   `node_modules/@blazetrails/*`, which is what actually runs, and compare it
   against the trails checkout before concluding anything about "the framework".
 - **Bumping is its own PR.** `scripts/vendor-trails.sh <trails-checkout> <ref>`

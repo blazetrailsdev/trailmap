@@ -13,7 +13,7 @@
 # a throwaway detached worktree at <git-ref> gets a frozen install and a full
 # build, is packed, and is removed. The checkout only supplies the objects, so
 # its branch, its stale `dist/` and its uncommitted changes cannot reach a
-# tarball (#83 shipped a ruby-compat older than its pin from exactly that), and
+# tarball (on #83 that built a ruby-compat older than its pin, caught before landing), and
 # TRAILS_PIN names what was built. Nothing is written to the checkout's tree.
 set -euo pipefail
 TRAILS="${1:-$HOME/github/blazetrailsdev/trails}"
@@ -43,7 +43,7 @@ for(const d of fs.readdirSync("packages")){
   const p=JSON.parse(fs.readFileSync(pj,"utf8"));
   byName[p.name]={dir:d,deps:Object.keys(p.dependencies||{})};
 }
-const seen=new Set(),stack=["@blazetrails/activerecord","@blazetrails/activerecord-cli","@blazetrails/actionpack","@blazetrails/actionview","@blazetrails/trailties","@blazetrails/rack","@blazetrails/trails-tsc","@blazetrails/solid-queue"];
+const seen=new Set(),stack=["@blazetrails/activerecord","@blazetrails/actionpack","@blazetrails/actionview","@blazetrails/trailties","@blazetrails/rack","@blazetrails/trails-tsc","@blazetrails/solid-queue"];
 while(stack.length){
   const n=stack.pop();
   if(seen.has(n)||!byName[n])continue;
