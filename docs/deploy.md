@@ -563,6 +563,26 @@ The `worker` process (`bin/jobs`) runs config/queue.yml and the recurring
 schedule in config/recurring.yml. Its queue is a SQLite database in
 `/app/storage`, created by the release task's `db prepare`.
 
+**Before anything below, compare `stats.db` with the schema.** The migration
+adopts any file with a `sync_log` table as it stands and repairs nothing, so a
+missing column would only surface when a sync fails. Migrate an empty scratch
+file from a checkout and diff it against `stats.db`; `pr_readmes`, abandoned, is
+the one expected difference. Production's `db prepare` covers every database, so
+give it a throwaway Postgres: the SQLite files it writes are the checkout's own
+`storage/`, and nothing live is touched.
+
+```sh
+docker run -d --rm --name stats-check -e POSTGRES_PASSWORD=p -p 55439:5432 postgres:16
+sleep 6
+TRAILS_ENV=production NODE_ENV=production STATS_SYNC_DB="$PWD/scratch.db" \
+  HUB_DATABASE_URL=postgres://postgres:p@localhost:55439/postgres \
+  pnpm exec trails db prepare
+docker rm -f stats-check
+columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT IN ('schema_migrations', 'ar_internal_metadata') ORDER BY 1"; }
+diff <(columns /home/dean/github/blazetrailsdev/stats.db) <(columns scratch.db)
+rm scratch.db*
+```
+
 ```sh
 # Owned by uid 1000, the container's user, and mounted before the first deploy
 # so the release container can create the database.
@@ -589,18 +609,6 @@ dokku config:set --no-restart trailmap \
   STATS_SYNC_DB=/home/dean/github/blazetrailsdev/stats-job.db \
   STATS_SYNC_LOG=/home/dean/github/blazetrailsdev/stats-sync-job.log
 dokku ps:scale trailmap worker=1
-```
-
-**Before seeding, compare `stats.db` with the schema.** The migration adopts any
-file with a `sync_log` table as it stands and repairs nothing, so a missing column
-would only surface when a sync fails. From a checkout, migrate an empty scratch
-file (a `db prepare` with `STATS_SYNC_DB` pointing at it, on the production
-configuration) and diff it against `stats.db`. `pr_readmes`, abandoned, is the one
-expected difference:
-
-```sh
-columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT IN ('schema_migrations', 'ar_internal_metadata') ORDER BY 1"; }
-diff <(columns /home/dean/github/blazetrailsdev/stats.db) <(columns scratch.db)
 ```
 
 Seed before the first deploy that sets `STATS_SYNC_DB`: the release task migrates
