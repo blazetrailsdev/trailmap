@@ -570,6 +570,12 @@ sudo mkdir -p /var/lib/dokku/data/storage/trailmap-queue
 sudo chown 1000:1000 /var/lib/dokku/data/storage/trailmap-queue
 dokku storage:mount trailmap /var/lib/dokku/data/storage/trailmap-queue:/app/storage
 
+# Seed the job's database from stats.db, so the first run syncs only what is new
+# rather than refilling 8 GB from GitHub. `.backup` is consistent while the file
+# is in WAL and the crontab may be writing..
+sqlite3 -readonly /home/dean/github/blazetrailsdev/stats.db \
+  ".backup /home/dean/github/blazetrailsdev/stats-job.db"
+
 dokku config:set --no-restart trailmap \
   GH_TOKEN=<token with read access to blazetrailsdev/trails> \
   STATS_SYNC_DB=/home/dean/github/blazetrailsdev/stats-job.db \
@@ -577,8 +583,10 @@ dokku config:set --no-restart trailmap \
 dokku ps:scale trailmap worker=1
 ```
 
-The release task migrates that file from `db/stats-sync-migrate`, so it exists
-before the job first runs.
+Seed before the first deploy that sets `STATS_SYNC_DB`: the release task migrates
+that file from `db/stats-sync-migrate`, and an empty one gets empty tables and a
+sync from scratch. A seeded file already has `sync_log`, so the migration records
+itself and leaves the data alone.
 
 `StatsSyncJob` runs at 03:00 America/Detroit, three hours ahead of the crontab
 so the two do not draw on the same GitHub API budget at once. During the trial it writes
