@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const syncLatest = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/stats-sync/sync.ts", () => ({ syncLatest, currentStage: () => "Syncing job logs" }));
 
+import { constantize } from "@blazetrails/activesupport";
 import { env } from "@blazetrails/ruby-compat";
 import { StatsSyncJob } from "../../app/jobs/stats-sync-job.ts";
 
@@ -37,7 +38,7 @@ describe("StatsSyncJob", () => {
     syncLatest.mockRejectedValue(new Error("no such table: x\nstack"));
     await expect(new StatsSyncJob().perform()).rejects.toThrow("no such table");
     expect(read()).toMatch(
-      /\[cron-wrapper\] stats sync failed at stage "Syncing job logs" \(attempt 0\): no such table: x\n/,
+      /\[cron-wrapper\] stats sync failed at stage "Syncing job logs" \(execution 0\): no such table: x\n/,
     );
   });
 
@@ -59,6 +60,33 @@ describe("StatsSyncJob", () => {
   it("never runs two syncs at once", () => {
     const job = new StatsSyncJob() as unknown as { concurrencyKey(): string };
     expect(job.concurrencyKey()).toContain("stats_sync");
+  });
+
+  it("holds the concurrency lock for 23 hours", () => {
+    const klass = StatsSyncJob as unknown as { concurrencyDuration: { toI(): number } };
+    expect(klass.concurrencyDuration.toI()).toBe(23 * 3600);
+  });
+
+  it("retries a rate limit once, after 120 seconds, without a failed verdict", async () => {
+    syncLatest.mockRejectedValue(new Error("API rate limit exceeded"));
+    const job = new StatsSyncJob() as unknown as {
+      executions: number;
+      performNow(): Promise<unknown>;
+      retryJob(options: { wait: unknown }): Promise<void>;
+    };
+    const retryJob = vi.spyOn(job, "retryJob").mockResolvedValue();
+    await job.performNow();
+    expect(retryJob).toHaveBeenCalledOnce();
+    const wait = retryJob.mock.calls[0]![0].wait as number;
+    expect(Number(wait)).toBeGreaterThanOrEqual(120);
+    expect(read()).toContain("[cron-wrapper] retrying");
+    expect(read()).not.toContain("[cron-wrapper] stats sync failed");
+  });
+
+  it("is what config/recurring.yml schedules, by a registered name", () => {
+    const config = getFs().readFileSync("config/recurring.yml", "utf8");
+    expect(config).toContain("class: StatsSyncJob");
+    expect(constantize("StatsSyncJob")).toBe(StatsSyncJob);
   });
 
   it("refuses to run without its database", async () => {

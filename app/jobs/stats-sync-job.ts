@@ -4,6 +4,9 @@ import { isTransientGhError } from "../../lib/stats-sync/gh-transient-error.ts";
 import { ApplicationJob } from "./application-job.ts";
 
 const STALE_HOURS = 26;
+// Total executions, as retry_on counts them: the wrapper's run plus its retries.
+const RATE_LIMIT_ATTEMPTS = 2;
+const TRANSIENT_ATTEMPTS = 3;
 
 class RateLimitedSync extends Error {}
 class TransientGhSync extends Error {}
@@ -26,8 +29,8 @@ export class StatsSyncJob extends ApplicationJob {
   static {
     // A sync can outlive its retries' waits; a second one would race the first.
     this.limitsConcurrency({ key: "stats_sync", duration: Duration.hours(23) });
-    this.retryOn(RateLimitedSync, { wait: 120, attempts: 2 });
-    this.retryOn(TransientGhSync, { wait: 1800, attempts: 3 });
+    this.retryOn(RateLimitedSync, { wait: Duration.seconds(120), attempts: RATE_LIMIT_ATTEMPTS });
+    this.retryOn(TransientGhSync, { wait: Duration.seconds(1800), attempts: TRANSIENT_ATTEMPTS });
   }
 
   async perform(): Promise<void> {
@@ -42,15 +45,17 @@ export class StatsSyncJob extends ApplicationJob {
       await syncLatest();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const firstLine = message.split("\n")[0];
-      getFs().appendFileSync(
-        log,
-        `[cron-wrapper] stats sync failed at stage "${currentStage()}" (attempt ${this.executions ?? 0}): ${firstLine}\n`,
-      );
-      if (/rate limit|secondary rate|abuse detection/i.test(message)) {
-        throw new RateLimitedSync(message);
-      }
-      if (isTransientGhError(message)) throw new TransientGhSync(message);
+      const rateLimited = /rate limit|secondary rate|abuse detection/i.test(message);
+      const transient = isTransientGhError(message);
+      const attempts = rateLimited ? RATE_LIMIT_ATTEMPTS : transient ? TRANSIENT_ATTEMPTS : 1;
+      const execution = this.executions ?? 1;
+      const verdict =
+        execution < attempts
+          ? `retrying at stage "${currentStage()}" (execution ${execution} of ${attempts})`
+          : `stats sync failed at stage "${currentStage()}" (execution ${execution}): ${message.split("\n")[0]}`;
+      getFs().appendFileSync(log, `${message}\n[cron-wrapper] ${verdict}\n`);
+      if (rateLimited) throw new RateLimitedSync(message);
+      if (transient) throw new TransientGhSync(message);
       throw error;
     }
     getFs().appendFileSync(log, "[cron-wrapper] ok\n");
