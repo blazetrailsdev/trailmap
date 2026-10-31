@@ -1,281 +1,17 @@
 import { Migration } from "@blazetrails/activerecord";
 import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapters/sqlite3-adapter.js";
 
-async function tableExists(
-  adapter: SQLite3Adapter,
-  name: string,
-): Promise<boolean> {
-  const rows = (
-    await adapter.execQuery(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-      "SQL",
-      [name],
-    )
-  ).toArray();
-  return rows.length > 0;
-}
-
-async function columnExists(
-  adapter: SQLite3Adapter,
-  table: string,
-  column: string,
-): Promise<boolean> {
-  const quoted = `"${table.replace(/"/g, '""')}"`;
-  const cols = (
-    await adapter.selectAll(`PRAGMA table_info(${quoted})`)
-  ).toArray() as {
-    name: string;
-  }[];
-  return cols.some((c) => c.name === column);
-}
-
 /**
- * The stats sync's whole schema, imported from what used to run at the top of
- * every sync. It stays idempotent, branching on what the file already holds,
- * because it has two starting points: an empty database, and the crontab's
- * stats.db at cutover, which may carry any older shape of these tables.
+ * The stats sync's whole schema, as it stands in the crontab's stats.db on
+ * 2026-10-31 (every column compared; only the abandoned `pr_readmes` is absent
+ * here). So an empty file gets the tables, and stats.db, adopted at cutover,
+ * is recorded as migrated and left alone: `sync_log` is the sync's last table,
+ * which is why it marks the schema as already there.
  */
 export class CreateStatsSyncTables extends Migration.get(8) {
   async up(): Promise<void> {
     const adapter = (await this.connection) as SQLite3Adapter;
-    const hasExistingSchema = await tableExists(adapter, "sync_log");
-
-    if (hasExistingSchema) {
-      if (!(await tableExists(adapter, "compare_logs"))) {
-        await adapter.createTable("compare_logs", {}, (t) => {
-          t.string("merge_commit_sha");
-          t.integer("pr_number");
-          t.string("step_name");
-          t.text("log_output");
-          t.index(["merge_commit_sha", "step_name"], { unique: true });
-        });
-      }
-      if (await tableExists(adapter, "raw_job_logs")) {
-        if (
-          !(await columnExists(adapter, "raw_job_logs", "run_id")) ||
-          !(await columnExists(adapter, "raw_job_logs", "job_name"))
-        ) {
-          await adapter.execute(
-            `CREATE TABLE raw_job_logs_new (
-              job_id INTEGER PRIMARY KEY,
-              run_id INTEGER,
-              job_name TEXT,
-              merge_commit_sha TEXT,
-              pr_number INTEGER,
-              log_output TEXT
-            )`,
-          );
-          await adapter.execute(
-            `INSERT OR IGNORE INTO raw_job_logs_new (job_id, merge_commit_sha, pr_number, log_output)
-             SELECT job_id, merge_commit_sha, pr_number, log_output FROM raw_job_logs`,
-          );
-          await adapter.execute(`DROP TABLE raw_job_logs`);
-          await adapter.execute(
-            `ALTER TABLE raw_job_logs_new RENAME TO raw_job_logs`,
-          );
-          await adapter.execute(
-            `CREATE INDEX index_raw_job_logs_on_merge_commit_sha ON raw_job_logs (merge_commit_sha)`,
-          );
-          await adapter.execute(
-            `CREATE INDEX index_raw_job_logs_on_run_id ON raw_job_logs (run_id)`,
-          );
-        }
-        if (await tableExists(adapter, "workflow_jobs")) {
-          await adapter.execute(
-            `UPDATE raw_job_logs SET
-              run_id = (SELECT wj.run_id FROM workflow_jobs wj WHERE wj.id = raw_job_logs.job_id),
-              job_name = (SELECT wj.name FROM workflow_jobs wj WHERE wj.id = raw_job_logs.job_id)
-            WHERE run_id IS NULL OR job_name IS NULL`,
-          );
-        }
-      } else {
-        await adapter.createTable("raw_job_logs", { id: false }, (t) => {
-          t.integer("job_id", { primaryKey: true });
-          t.integer("run_id");
-          t.string("job_name");
-          t.string("merge_commit_sha");
-          t.integer("pr_number");
-          t.text("log_output");
-          t.index(["merge_commit_sha"]);
-          t.index(["run_id"]);
-        });
-      }
-
-      if (await tableExists(adapter, "pull_requests")) {
-        if (!(await columnExists(adapter, "pull_requests", "state"))) {
-          await adapter.execute(
-            `ALTER TABLE pull_requests ADD COLUMN state TEXT DEFAULT 'merged'`,
-          );
-        }
-        if (!(await columnExists(adapter, "pull_requests", "is_draft"))) {
-          await adapter.execute(
-            `ALTER TABLE pull_requests ADD COLUMN is_draft INTEGER DEFAULT 0`,
-          );
-        }
-        for (const col of [
-          "reviewers_synced",
-          "linked_issues_synced",
-          "timeline_synced",
-          "reactions_synced",
-        ]) {
-          if (!(await columnExists(adapter, "pull_requests", col))) {
-            await adapter.execute(
-              `ALTER TABLE pull_requests ADD COLUMN ${col} INTEGER DEFAULT 0`,
-            );
-          }
-        }
-      }
-
-      if (await tableExists(adapter, "pr_reviews")) {
-        if (!(await columnExists(adapter, "pr_reviews", "source"))) {
-          await adapter.execute(
-            `ALTER TABLE pr_reviews ADD COLUMN source TEXT DEFAULT 'github'`,
-          );
-        }
-        if (!(await columnExists(adapter, "pr_reviews", "source_path"))) {
-          await adapter.execute(
-            `ALTER TABLE pr_reviews ADD COLUMN source_path TEXT`,
-          );
-        }
-        // Match the fresh-DB schema below. NULLs (every github-sourced row) are
-        // distinct under a SQLite unique index, so this only constrains the
-        // source_path of local reviews.
-        await adapter.execute(
-          `CREATE UNIQUE INDEX IF NOT EXISTS index_pr_reviews_on_source_path ON pr_reviews (source_path)`,
-        );
-      }
-
-      if (await tableExists(adapter, "workflow_runs")) {
-        if (!(await columnExists(adapter, "workflow_runs", "run_attempt"))) {
-          await adapter.execute(
-            `ALTER TABLE workflow_runs ADD COLUMN run_attempt INTEGER DEFAULT 1`,
-          );
-          await adapter.execute(
-            `UPDATE workflow_runs SET run_attempt = 1 WHERE run_attempt IS NULL`,
-          );
-        }
-      }
-
-      if (!(await tableExists(adapter, "pr_requested_reviewers"))) {
-        await adapter.createTable("pr_requested_reviewers", {}, (t) => {
-          t.integer("pr_number");
-          t.string("reviewer");
-          t.string("reviewer_type");
-          t.index(["pr_number", "reviewer", "reviewer_type"], { unique: true });
-        });
-      }
-
-      if (!(await tableExists(adapter, "pr_linked_issues"))) {
-        await adapter.createTable("pr_linked_issues", {}, (t) => {
-          t.integer("pr_number");
-          t.integer("issue_number");
-          t.string("issue_title");
-          t.string("issue_state");
-          t.index(["pr_number", "issue_number"], { unique: true });
-        });
-      }
-
-      if (!(await tableExists(adapter, "pr_timeline_events"))) {
-        await adapter.createTable("pr_timeline_events", {}, (t) => {
-          t.integer("pr_number");
-          t.string("event_type");
-          t.string("actor");
-          t.string("created_at");
-          t.string("label_name");
-          t.text("body");
-          t.index(["pr_number"]);
-        });
-      }
-
-      if (!(await tableExists(adapter, "pr_reactions"))) {
-        await adapter.createTable("pr_reactions", { id: false }, (t) => {
-          t.integer("reaction_id", { primaryKey: true });
-          t.integer("pr_number");
-          t.string("user");
-          t.string("content");
-          t.string("created_at");
-          t.index(["reaction_id"], { unique: true });
-          t.index(["pr_number"]);
-        });
-      }
-
-      if (!(await tableExists(adapter, "check_annotations"))) {
-        await adapter.createTable("check_annotations", {}, (t) => {
-          t.integer("run_id");
-          t.integer("job_id");
-          t.string("path");
-          t.integer("start_line");
-          t.integer("end_line");
-          t.string("annotation_level");
-          t.text("message");
-          t.string("title");
-          t.index(["run_id"]);
-          t.index(["job_id"]);
-        });
-      }
-
-      if (!(await tableExists(adapter, "workflow_steps"))) {
-        await adapter.createTable("workflow_steps", {}, (t) => {
-          t.integer("job_id");
-          t.string("name");
-          t.string("status");
-          t.string("conclusion");
-          t.integer("number");
-          t.string("started_at");
-          t.string("completed_at");
-          t.integer("duration_seconds");
-          t.index(["job_id", "number"], { unique: true });
-        });
-      }
-
-      for (const col of [
-        "assertion_count_mismatch",
-        "assertion_kind_mismatch",
-      ]) {
-        if (await columnExists(adapter, "test_compare_stats", col)) continue;
-        await adapter.execute(
-          `ALTER TABLE test_compare_stats ADD COLUMN ${col} INTEGER DEFAULT 0`,
-        );
-      }
-
-      for (const table of ["api_calls_stats", "api_call_args_stats"]) {
-        if (await tableExists(adapter, table)) continue;
-        await adapter.createTable(table, {}, (t) => {
-          t.string("merge_commit_sha");
-          t.integer("pr_number");
-          t.string("package");
-          t.integer("matched");
-          t.integer("total");
-          t.float("percent");
-          t.integer("mismatched", { default: 0 });
-          t.index(["merge_commit_sha", "package"], { unique: true });
-        });
-      }
-
-      if (!(await tableExists(adapter, "api_compare_privates_stats"))) {
-        await adapter.createTable("api_compare_privates_stats", {}, (t) => {
-          t.string("merge_commit_sha");
-          t.integer("pr_number");
-          t.string("package");
-          t.integer("matched");
-          t.integer("total");
-          t.float("percent");
-          t.integer("missing", { default: 0 });
-          t.index(["merge_commit_sha", "package"], { unique: true });
-        });
-      }
-
-      if (!(await tableExists(adapter, "expired_job_logs"))) {
-        await adapter.createTable("expired_job_logs", { id: false }, (t) => {
-          t.integer("job_id", { primaryKey: true });
-          t.string("job_name");
-          t.integer("pr_number");
-          t.string("checked_at");
-        });
-      }
-
-      return;
-    }
+    if (await adapter.tableExists("sync_log")) return;
 
     await adapter.beginTransaction();
     try {
@@ -541,5 +277,11 @@ export class CreateStatsSyncTables extends Migration.get(8) {
       await adapter.rollbackTransaction();
       throw err;
     }
+  }
+
+  /** Dropping these would destroy a stats.db this migration merely adopted. */
+  async down(): Promise<void> {
+    // IrreversibleMigration is not exported by the vendored activerecord.
+    throw new Error("CreateStatsSyncTables is irreversible");
   }
 }
