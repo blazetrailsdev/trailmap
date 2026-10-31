@@ -10,13 +10,21 @@ import { CompareRun } from "./compare-run.ts";
  * `test_compare_stats` and only one of them charts its counters.
  */
 
-/** `api:compare` — the public API surface against Rails'. */
+/**
+ * `api:compare` — the public API surface against Rails'.
+ *
+ * @trails-typegen no-schema
+ */
 export class ApiCompareStat extends CompareRun {
   declare misplaced: number;
   declare missing: number;
 }
 
-/** `api:compare --privates` — the same, for Rails' private surface. */
+/**
+ * `api:compare --privates` — the same, for Rails' private surface.
+ *
+ * @trails-typegen no-schema
+ */
 export class ApiComparePrivatesStat extends CompareRun {
   declare missing: number;
 }
@@ -32,6 +40,8 @@ export class ApiComparePrivatesStat extends CompareRun {
  * `assertion_count_mismatch` and `assertion_kind_mismatch` are gaps rather
  * than metrics here because they are advisory counters on tests that ARE
  * mapped: the tests percent does not move when one of them does.
+ *
+ * @trails-typegen no-schema
  */
 export class TestCompareStat extends CompareRun {
   declare misplaced: number;
@@ -50,12 +60,18 @@ export class TestCompareStat extends CompareRun {
  * the chart one line; nothing here special-cases it, which is why
  * `/graphs/parity?packages=activerecord&metrics=calls` has to drop the
  * package rather than fail (see the controller).
+ *
+ * @trails-typegen no-schema
  */
 export class ApiCallsStat extends CompareRun {
   declare mismatched: number;
 }
 
-/** `calls:args` — the second advisory call check, same synthetic `all` package. */
+/**
+ * `calls:args` — the second advisory call check, same synthetic `all` package.
+ *
+ * @trails-typegen no-schema
+ */
 export class ApiCallArgsStat extends CompareRun {
   declare mismatched: number;
 }

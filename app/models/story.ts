@@ -20,14 +20,13 @@ import {
   type RankedStory,
   type RankingIndex,
 } from "./concerns/ranking.ts";
-import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
+import type { AssociationProxy } from "@blazetrails/activerecord";
 import {
   checkDepGraph,
   depGraphMessages,
   estLocErrors,
   lifecycleErrors,
 } from "./concerns/semantic-validation.ts";
-import type { Temporal } from "@blazetrails/date";
 import type { SerializedStory } from "../serializers/story-json.ts";
 
 export const STORY_STATUSES = [
@@ -50,45 +49,21 @@ export type StoryStatus = (typeof STORY_STATUSES)[number];
 export const RESOLVED_DEP_STATUSES: readonly StoryStatus[] = ["done", "closed"];
 
 export class Story extends ApplicationRecord {
-  // ── markdown-owned: written only by `tasks ingest` ──
-  declare id: string; // slug
-  declare rfc_id: string;
-  declare title: string | null;
-  declare cluster: string | null;
-  declare priority: number | null;
-  declare est_loc: number | null;
-  declare file_path: string | null;
-  declare updated_on: string | null;
-
-  // ── DB-owned: written only by the mutation verbs ──
-  declare status: StoryStatus;
-  /** `repo#N` — see the tasks CLI's src/pr-ref.ts. */
-  declare pr: string | null;
-  declare assignee: string | null;
-  declare blocked_by: string | null;
-  declare closed_reason: string | null;
-  declare claim_at: Temporal.Instant | Temporal.PlainDateTime | null;
-  declare updated_at: Temporal.Instant | Temporal.PlainDateTime;
-
-  declare rfc: Rfc | null;
-  declare storyDeps: AssociationProxy<StoryDep>;
+  // id, rfc_id, title, cluster, priority, est_loc, file_path and updated_on are
+  // markdown-owned, written only by `tasks ingest`. status, pr, assignee,
+  // blocked_by, closed_reason and claim_at are DB-owned, written only by the
+  // mutation verbs. `pr` is `repo#N`: see the tasks CLI's src/pr-ref.ts.
+  //
+  // trails-tsc reads a through association's name, not its `source`, across
+  // files. Story: trails-tsc-resolve-through-source-across-files.
   declare deps: AssociationProxy<Story>;
-  declare storyRfcDeps: AssociationProxy<StoryRfcDep>;
   declare rfcDeps: AssociationProxy<Rfc>;
-  declare paths: AssociationProxy<StoryPath>;
-  declare packages: AssociationProxy<StoryPackage>;
-  declare events: AssociationProxy<Event>;
+
 
   // NOTE: `enum` generates a static `Story.ready()` meaning `status='ready'`.
   // That is NOT the ready queue — see `Story.claimable()` below, which
   // additionally requires the RFC to be active and every dep resolved. Keep the
   // two names distinct; conflating them would hand agents unclaimable stories.
-  declare static ready: () => Relation<Story>;
-  declare static done: () => Relation<Story>;
-  declare static claimed: () => Relation<Story>;
-  declare isDone: () => boolean;
-  declare isClosed: () => boolean;
-  declare isReady: () => boolean;
 
   static {
     // Only `/search` reads it, in SQL; a loaded row should not carry 3 KB of markdown.

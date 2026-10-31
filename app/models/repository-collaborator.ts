@@ -1,7 +1,6 @@
 import { Hub } from "./hub.ts";
 import type { Owner } from "./owner.ts";
 import type { Repository } from "./repository.ts";
-import type { Relation } from "@blazetrails/activerecord";
 
 export const COLLABORATOR_ROLES = ["read", "write", "admin"] as const;
 export type CollaboratorRole = (typeof COLLABORATOR_ROLES)[number];
@@ -25,18 +24,6 @@ export type CollaboratorRole = (typeof COLLABORATOR_ROLES)[number];
  *   pretending to be the guard.
  */
 export class RepositoryCollaborator extends Hub {
-  declare repository_id: number;
-  declare owner_id: number;
-  declare role: CollaboratorRole;
-
-  declare repository: Repository | null;
-  declare owner: Owner | null;
-
-  declare isRoleRead: () => boolean;
-  declare isRoleWrite: () => boolean;
-  declare isRoleAdmin: () => boolean;
-  declare static roleAdmin: () => Relation<RepositoryCollaborator>;
-
   static {
     // ASSIGNED through the setter, never `static _primaryKey = [...]`.
     // `_compositePrimaryKey` — the flag every composite-key path in the

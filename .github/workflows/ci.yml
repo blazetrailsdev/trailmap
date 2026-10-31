@@ -25,7 +25,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec trails-tsc-views build --views app/views
-      - run: pnpm exec tsc --noEmit
+      - run: pnpm build --noEmit
 
   test:
     runs-on: ubuntu-latest

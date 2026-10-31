@@ -64,7 +64,7 @@ async function walk(start: string, direction: Direction): Promise<{ reached: Rea
       if (id === start) cyclic = true;
       if (seen.has(id)) continue;
       seen.add(id);
-      reached.push({ id, story: story ?? null, depth, via: depth === 1 ? null : from });
+      reached.push({ id, story: (await story) ?? null, depth, via: depth === 1 ? null : from });
       next.push(id);
     }
     frontier = next;

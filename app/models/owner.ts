@@ -1,6 +1,5 @@
 import { Hub } from "./hub.ts";
 import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "../../config/owner-names.ts";
-import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 import type { Repository } from "./repository.ts";
 import type { RepositoryCollaborator } from "./repository-collaborator.ts";
 
@@ -19,21 +18,6 @@ export type OwnerKind = (typeof OWNER_KINDS)[number];
  * that; the uniqueness index on `login` is what keeps it a key.
  */
 export class Owner extends Hub {
-  declare id: number;
-  declare login: string;
-  declare kind: OwnerKind;
-  declare display_name: string | null;
-  declare description: string | null;
-
-  declare repositories: AssociationProxy<Repository>;
-  /** Repositories this owner collaborates on, via the composite-key join. */
-  declare collaborations: AssociationProxy<RepositoryCollaborator>;
-
-  declare isUser: () => boolean;
-  declare isOrganization: () => boolean;
-  declare static user: () => Relation<Owner>;
-  declare static organization: () => Relation<Owner>;
-
   static {
     // `dependent` on both, because the migrations add REAL foreign keys:
     // without it `owner.destroy()` raises a Postgres FK violation rather than

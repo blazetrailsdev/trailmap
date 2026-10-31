@@ -9,6 +9,7 @@ overrides:
   "@blazetrails/activejob": "file:./vendor/blazetrails-activejob-0.1.0.tgz"
   "@blazetrails/activemodel": "file:./vendor/blazetrails-activemodel-0.1.0.tgz"
   "@blazetrails/activerecord": "file:./vendor/blazetrails-activerecord-0.1.0.tgz"
+  "@blazetrails/activerecord-cli": "file:./vendor/blazetrails-activerecord-cli-0.1.0.tgz"
   "@blazetrails/activesupport": "file:./vendor/blazetrails-activesupport-0.1.0.tgz"
   "@blazetrails/arel": "file:./vendor/blazetrails-arel-0.1.0.tgz"
   "@blazetrails/builder": "file:./vendor/blazetrails-builder-0.1.0.tgz"

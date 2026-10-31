@@ -415,7 +415,7 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
   it("assigns only the six switches, never repository_id or id", async () => {
     const tasks = await Repository.findByNwo("blazetrailsdev", "tasks");
     const trails = await Repository.findByNwo("blazetrailsdev", "trails");
-    const before = tasks!.settings!;
+    const before = (await tasks!.settings)!;
     await patchSettings({
       repository_setting: { pulls_enabled: "1", repository_id: String(trails!.id), id: "999" },
     });
@@ -427,7 +427,7 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
 
   it("writes a settings row on the first save of a repository without one", async () => {
     const tasks = await Repository.findByNwo("blazetrailsdev", "tasks");
-    await tasks!.settings!.destroy();
+    await (await tasks!.settings)!.destroy();
     try {
       const { status } = await patchSettings({ repository_setting: { insights_enabled: "0" } });
 
@@ -447,7 +447,7 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     ).rejects.toThrow(RecordNotFound);
 
     const repo = await Repository.findByNwo("blazetrailsdev", "tasks");
-    await repo!.settings!.update({ issues_enabled: false });
+    await (await repo!.settings)!.update({ issues_enabled: false });
     try {
       await expect(get(RepoIssuesController, "index", TASKS)).rejects.toThrow(RecordNotFound);
       // The tab is also gone from the bar every other tab draws, so nothing
@@ -455,7 +455,7 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
       const code = await get(RepoCodeController, "show", TASKS);
       expect(code.body).not.toContain('href="/blazetrailsdev/tasks/issues"');
     } finally {
-      await repo!.settings!.update({ issues_enabled: true });
+      await (await repo!.settings)!.update({ issues_enabled: true });
     }
   });
 
