@@ -14,7 +14,8 @@
 # build, is packed, and is removed. The checkout only supplies the objects, so
 # its branch, its stale `dist/` and its uncommitted changes cannot reach a
 # tarball (on #83 that built a ruby-compat older than its pin, caught before
-# landing), and TRAILS_PIN names what was built. Nothing is written to the checkout's tree.
+# landing), and TRAILS_PIN names what was built. Nothing is written to the
+# checkout's tree.
 set -euo pipefail
 TRAILS="${1:-$HOME/github/blazetrailsdev/trails}"
 REF="${2:-HEAD}"
