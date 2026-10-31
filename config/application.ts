@@ -11,6 +11,11 @@ import { Application } from "@blazetrails/trailties";
 // is on disk and in `config.helpersPaths` and reaches no view.
 import "@blazetrails/trailties/all";
 
+// Solid Queue's engine: Rails loads it through `Bundler.require`, and its
+// initializers are what point `SolidQueue::Record` at the `queue` database
+// (config/environments/production.ts, config/database.ts).
+import "@blazetrails/solid-queue";
+
 export class Trailmap extends Application {
   static {
     // Initialize configuration defaults for originally generated trails version.

@@ -44,6 +44,9 @@ importers:
       '@blazetrails/actionview':
         specifier: file:vendor/blazetrails-actionview-0.1.0.tgz
         version: file:vendor/blazetrails-actionview-0.1.0.tgz
+      '@blazetrails/activejob':
+        specifier: file:vendor/blazetrails-activejob-0.1.0.tgz
+        version: file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
       '@blazetrails/activemodel':
         specifier: file:vendor/blazetrails-activemodel-0.1.0.tgz
         version: file:vendor/blazetrails-activemodel-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
@@ -62,6 +65,9 @@ importers:
       '@blazetrails/ruby-compat':
         specifier: file:vendor/blazetrails-ruby-compat-0.1.0.tgz
         version: file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+      '@blazetrails/solid-queue':
+        specifier: file:vendor/blazetrails-solid-queue-0.1.0.tgz
+        version: file:vendor/blazetrails-solid-queue-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(better-sqlite3@12.11.1)(pg@8.23.1)(tsx@4.23.13)(typescript@5.9.3)(vitest@3.2.7(tsx@4.23.13)(yaml@2.9.0))(websocket-driver@0.7.4)(yaml@2.9.0)
       '@blazetrails/trailties':
         specifier: file:vendor/blazetrails-trailties-0.1.0.tgz
         version: file:vendor/blazetrails-trailties-0.1.0.tgz(better-sqlite3@12.11.1)(pg@8.23.1)(tsx@4.23.13)(typescript@5.9.3)(vitest@3.2.7(tsx@4.23.13)(yaml@2.9.0))(websocket-driver@0.7.4)(yaml@2.9.0)
@@ -201,6 +207,16 @@ packages:
     version: 0.1.0
     engines: {node: '>=24'}
 
+  '@blazetrails/et-orbi@file:vendor/blazetrails-et-orbi-0.1.0.tgz':
+    resolution: {integrity: sha512-OsWlEOOGnPuPLOenjTcCJF3jZ7L/gbsf7jhNILzuNRs3wBmwc4LRXKz7jFRDwUUNGpB7JrJ1t82xqRSIoWHk6Q==, tarball: file:vendor/blazetrails-et-orbi-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=24'}
+
+  '@blazetrails/fugit@file:vendor/blazetrails-fugit-0.1.0.tgz':
+    resolution: {integrity: sha512-iCkZhjmVF5hSlTkxAVM9qus4AIgr4tnoMK0WQ0TY8v17OIzhJb9x2vjWT67MWo5hB3GVdl/HLfTTWfifsGSnFA==, tarball: file:vendor/blazetrails-fugit-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=24'}
+
   '@blazetrails/globalid@file:vendor/blazetrails-globalid-0.1.0.tgz':
     resolution: {integrity: sha512-3Ku1U/W//a0rICOCye0ExmgTKYwCmmuW/j1wn9PTeajJEZn6JCSlWHubILpzjl5UtakA6VPzTIisXOxIODSfew==, tarball: file:vendor/blazetrails-globalid-0.1.0.tgz}
     version: 0.1.0
@@ -221,6 +237,11 @@ packages:
     version: 0.1.0
     engines: {node: '>=24'}
 
+  '@blazetrails/raabro@file:vendor/blazetrails-raabro-0.1.0.tgz':
+    resolution: {integrity: sha512-nnP4R1s6FD0H19DhgWnlYRT7wX8DIWpgnK7Xmh4POAm1aTNMSQagTWflXHBH+SMdYFWDyy7KMSMPdi4ma96OWw==, tarball: file:vendor/blazetrails-raabro-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=24'}
+
   '@blazetrails/rack-session@file:vendor/blazetrails-rack-session-0.1.0.tgz':
     resolution: {integrity: sha512-WuwoMSx2XyXibd+OYJD+6bic4ISWva97k78W+4+7mPsqlBKk9m9SDHtD4t7fl4xlOpiPIvdqIg/OdiWjwVWOUw==, tarball: file:vendor/blazetrails-rack-session-0.1.0.tgz}
     version: 0.1.0
@@ -238,6 +259,11 @@ packages:
 
   '@blazetrails/ruby-compat@file:vendor/blazetrails-ruby-compat-0.1.0.tgz':
     resolution: {integrity: sha512-KM2dXLEQaKxw8kVPKaxZfmKR/MP/xA+xWx+jW8LCv/o3ndKPcptrnMdpKZF4aZdHrjaWmfIj1eeYG6kAKtNvsA==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=24'}
+
+  '@blazetrails/solid-queue@file:vendor/blazetrails-solid-queue-0.1.0.tgz':
+    resolution: {integrity: sha512-rxjPa0o/NMA08+poR4iAC181l/HPC8AuF2bQh/YJ6rF3s7UKdLP+rObKvkxsIG9P4M1IYxYL3DBAfmIBFCq6Dg==, tarball: file:vendor/blazetrails-solid-queue-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=24'}
 
@@ -1247,6 +1273,20 @@ snapshots:
     dependencies:
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
 
+  '@blazetrails/et-orbi@file:vendor/blazetrails-et-orbi-0.1.0.tgz':
+    dependencies:
+      '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+      '@blazetrails/tzinfo': file:vendor/blazetrails-tzinfo-0.1.0.tgz
+
+  '@blazetrails/fugit@file:vendor/blazetrails-fugit-0.1.0.tgz':
+    dependencies:
+      '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
+      '@blazetrails/et-orbi': file:vendor/blazetrails-et-orbi-0.1.0.tgz
+      '@blazetrails/raabro': file:vendor/blazetrails-raabro-0.1.0.tgz
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+      '@blazetrails/tzinfo': file:vendor/blazetrails-tzinfo-0.1.0.tgz
+
   '@blazetrails/globalid@file:vendor/blazetrails-globalid-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)':
     dependencies:
       '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
@@ -1276,6 +1316,10 @@ snapshots:
       libxml2-wasm: 0.7.1
       parse5: 8.0.1
 
+  '@blazetrails/raabro@file:vendor/blazetrails-raabro-0.1.0.tgz':
+    dependencies:
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+
   '@blazetrails/rack-session@file:vendor/blazetrails-rack-session-0.1.0.tgz':
     dependencies:
       '@blazetrails/rack': file:vendor/blazetrails-rack-0.1.0.tgz
@@ -1299,6 +1343,44 @@ snapshots:
   '@blazetrails/ruby-compat@file:vendor/blazetrails-ruby-compat-0.1.0.tgz':
     optionalDependencies:
       yaml: 2.9.0
+
+  '@blazetrails/solid-queue@file:vendor/blazetrails-solid-queue-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(better-sqlite3@12.11.1)(pg@8.23.1)(tsx@4.23.13)(typescript@5.9.3)(vitest@3.2.7(tsx@4.23.13)(yaml@2.9.0))(websocket-driver@0.7.4)(yaml@2.9.0)':
+    dependencies:
+      '@blazetrails/activejob': file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
+      '@blazetrails/activemodel': file:vendor/blazetrails-activemodel-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
+      '@blazetrails/activerecord': file:vendor/blazetrails-activerecord-0.1.0.tgz(@blazetrails/activejob@file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(better-sqlite3@12.11.1)(pg@8.23.1)
+      '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
+      '@blazetrails/arel': file:vendor/blazetrails-arel-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
+      '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
+      '@blazetrails/fugit': file:vendor/blazetrails-fugit-0.1.0.tgz
+      '@blazetrails/globalid': file:vendor/blazetrails-globalid-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+      '@blazetrails/thor': file:vendor/blazetrails-thor-0.1.0.tgz
+      '@blazetrails/trailties': file:vendor/blazetrails-trailties-0.1.0.tgz(better-sqlite3@12.11.1)(pg@8.23.1)(tsx@4.23.13)(typescript@5.9.3)(vitest@3.2.7(tsx@4.23.13)(yaml@2.9.0))(websocket-driver@0.7.4)(yaml@2.9.0)
+    transitivePeerDependencies:
+      - '@blazetrails/msgpack'
+      - '@blazetrails/nokogiri'
+      - '@types/node'
+      - better-sqlite3
+      - expo-sqlite
+      - ioredis
+      - jiti
+      - less
+      - libsql
+      - lightningcss
+      - mysql2
+      - pg
+      - playwright
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - typescript
+      - vitest
+      - websocket-driver
+      - yaml
 
   '@blazetrails/thor@file:vendor/blazetrails-thor-0.1.0.tgz':
     dependencies:

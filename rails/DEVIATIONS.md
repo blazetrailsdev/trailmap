@@ -159,3 +159,8 @@ each language spells it; the rest of that report's list was converged.
 - **trails**: the literal resolves the app's last `render` site, and
   `trails-tsc-views` then types every view fed by instance assigns as `never`.
   Story `tsc-views-strict-mode-misses-instance-assigns`. Rails has no such step.
+
+## Solid Queue is trails-only so far
+
+`StatsSyncJob` and the queue database exist on the trails side only. The twin is
+filed as `rails-twin-runs-solid-queue`; until then no job crosses between them.
