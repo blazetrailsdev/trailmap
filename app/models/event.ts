@@ -1,5 +1,4 @@
 import { ApplicationRecord } from "./application-record.ts";
-import type { Temporal } from "@blazetrails/date";
 
 /**
  * Append-only. This is what replaced parsing 27k git commit subjects: the
@@ -7,15 +6,6 @@ import type { Temporal } from "@blazetrails/date";
  * `git log`.
  */
 export class Event extends ApplicationRecord {
-  declare id: number;
-  declare at: Temporal.Instant | Temporal.PlainDateTime;
-  declare verb: string;
-  declare story_id: string | null;
-  declare rfc_id: string | null;
-  declare pr: string | null;
-  declare actor: string | null;
-  declare detail: string | null;
-
   static {
     this.belongsTo("story", { optional: true });
     this.belongsTo("rfc", { optional: true });

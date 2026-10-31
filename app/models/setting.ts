@@ -22,9 +22,6 @@ export interface ResolvedSetting {
  * time without a redeploy.
  */
 export class Setting extends Hub {
-  declare key: string;
-  declare value: string | null;
-
   /**
    * The settings this model knows about, and the env var each one falls back
    * to.

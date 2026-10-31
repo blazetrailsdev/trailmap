@@ -23,7 +23,7 @@ export class RepoSettingsController extends RepoController {
   static tab = "settings";
 
   async show(): Promise<void> {
-    const switches = this.repo.settings;
+    const switches = await this.repo.settings;
 
     // One `resolve` per key: it answers the value and its source together,
     // so this page cannot disagree with the resolver about what is in effect.
@@ -54,13 +54,15 @@ export class RepoSettingsController extends RepoController {
 
     await this.render({
       locals: this.repoLocals({
-        collaborators: collaborators
-          .map((c) => ({
-            login: c.owner?.login ?? String(c.owner_id),
-            role: c.role,
-            canPush: c.canPush(),
-          }))
-          .sort((a, b) => a.login.localeCompare(b.login)),
+        collaborators: (
+          await Promise.all(
+            collaborators.map(async (c) => ({
+              login: (await c.owner)?.login ?? String(c.owner_id),
+              role: c.role,
+              canPush: c.canPush(),
+            })),
+          )
+        ).sort((a, b) => a.login.localeCompare(b.login)),
         // `null` when the row has not been written: the tabs are all on, and
         // the page says so rather than drawing six switches that do not exist.
         hasSwitches: switches !== null,
@@ -91,11 +93,11 @@ export class RepoSettingsController extends RepoController {
    */
   async update(): Promise<void> {
     if (!(await this.repo.isAdministrableBy(await viewerOf(this.request)))) {
-      throw new RecordNotFound(`${this.repo.nameWithOwner()} has no settings this viewer may change`);
+      throw new RecordNotFound(`${this.nwo} has no settings this viewer may change`);
     }
-    const row = this.repo.settings ?? this.repo.buildSettings();
+    const row = (await this.repo.settings) ?? this.repo.buildSettings();
     await row.updateBang(this.switchParams());
-    this.redirectTo(this.repoSettingsPath(this.repo.owner!.login, this.repo.name), { status: 303 });
+    this.redirectTo(this.repoSettingsPath(this.repoOwner.login, this.repo.name), { status: 303 });
   }
 
   /**

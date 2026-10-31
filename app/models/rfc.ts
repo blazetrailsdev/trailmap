@@ -1,7 +1,5 @@
 import { ApplicationRecord } from "./application-record.ts";
-import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 import { closedRfcErrors } from "./concerns/semantic-validation.ts";
-import type { Story } from "./story.ts";
 
 /**
  * The coder of the JSON array columns (`packages`, `clusters`,
@@ -28,25 +26,11 @@ export const RFC_STATUSES = ["draft", "active", "closed", "postponed", "supersed
 export type RfcStatus = (typeof RFC_STATUSES)[number];
 
 export class Rfc extends ApplicationRecord {
-  declare id: string; // slug, e.g. "0061-ci-failures"
-  declare number: number | null;
-  declare slug: string | null;
-  declare title: string | null;
-  declare status: RfcStatus;
-  declare owner: string | null;
-  declare superseded_by: string | null;
-  declare priority: number | null;
-  declare file_path: string | null;
-  declare created_on: string | null;
-  declare updated_on: string | null;
+  // A custom attribute type's cast type is invisible to trails-tsc, which types
+  // these from their text columns. Story: trails-tsc-type-custom-attribute-casts.
   declare packages: string[];
   declare clusters: string[];
   declare related_rfcs: string[];
-  declare stories: AssociationProxy<Story>;
-
-  declare isActive: () => boolean;
-  declare static active: () => Relation<Rfc>;
-  declare static closed: () => Relation<Rfc>;
 
   static {
     // Only `/search` reads it, in SQL; a loaded row should not carry 3 KB of markdown.

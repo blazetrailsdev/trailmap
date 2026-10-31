@@ -33,6 +33,8 @@ export class CompareRun extends Stats {
     this.abstractClass = true;
   }
 
+  // The stats-sync cron owns this schema, so trails-tsc has none to read.
+  // Story: trails-tsc-type-models-on-unowned-schema.
   /** The merge commit this run measured; the join key to `pull_requests`. */
   declare merge_commit_sha: string;
   declare pr_number: number;

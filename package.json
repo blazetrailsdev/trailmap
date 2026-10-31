@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "trails-tsc --schema db/schema.ts --schema db/hub_schema.ts",
     "test": "vitest run",
     "gate": "tsx scripts/equivalence.ts",
     "smoke": "bash scripts/smoke-boot.sh",
@@ -46,6 +46,7 @@
     "websocket-driver": "0.7.4"
   },
   "devDependencies": {
+    "@blazetrails/activerecord-cli": "file:vendor/blazetrails-activerecord-cli-0.1.0.tgz",
     "@blazetrails/trails-tsc": "file:vendor/blazetrails-trails-tsc-0.1.0.tgz",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0",

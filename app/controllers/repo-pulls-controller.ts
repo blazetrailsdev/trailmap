@@ -36,7 +36,7 @@ export class RepoPullsController extends RepoController {
       byRef.set(ref, {
         ref,
         number: prNumber(ref),
-        href: `https://github.com/${this.repo.nameWithOwner()}/pull/${prNumber(ref)}`,
+        href: `https://github.com/${this.nwo}/pull/${prNumber(ref)}`,
         stories: [],
         merged: true,
       });
@@ -77,7 +77,7 @@ export class RepoPullsController extends RepoController {
       locals: this.repoLocals({
         ref,
         number,
-        href: `https://github.com/${this.repo.nameWithOwner()}/pull/${number}`,
+        href: `https://github.com/${this.nwo}/pull/${number}`,
         stories: stories.map((story) => ({
           id: story.id,
           title: story.title ?? story.id,

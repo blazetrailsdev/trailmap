@@ -26,17 +26,6 @@ export type OptionalTab = (typeof OPTIONAL_TABS)[number];
  * repository, and a repository whose settings you cannot reach cannot be fixed.
  */
 export class RepositorySetting extends Hub {
-  declare id: number;
-  declare repository_id: number;
-  declare issues_enabled: boolean;
-  declare pulls_enabled: boolean;
-  declare actions_enabled: boolean;
-  declare projects_enabled: boolean;
-  declare wiki_enabled: boolean;
-  declare insights_enabled: boolean;
-
-  declare repository: Repository | null;
-
   static {
     this.belongsTo("repository");
     this.validates("repository_id", { presence: true, uniqueness: true });

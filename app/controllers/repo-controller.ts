@@ -2,6 +2,7 @@ import type { AbstractController } from "@blazetrails/actionpack";
 import { RecordNotFound } from "@blazetrails/activerecord";
 import { ApplicationController } from "./application-controller.ts";
 import { Repository } from "../models/repository.ts";
+import type { Owner } from "../models/owner.ts";
 import { viewerOf } from "./concerns/viewer.ts";
 import { ALL_TABS_ENABLED, type TabSwitches } from "../models/repository-setting.ts";
 
@@ -38,6 +39,9 @@ export class RepoController extends ApplicationController {
 
   declare repo: Repository;
   declare tabs: RepoTab[];
+  /** `this.repo`'s owner, awaited once here so a sync path helper can read it. */
+  declare repoOwner: Owner;
+  declare nwo: string;
 
   static {
     this.beforeAction(loadRepository);
@@ -50,8 +54,8 @@ export class RepoController extends ApplicationController {
   protected repoLocals(extra: Record<string, unknown> = {}): Record<string, unknown> {
     return {
       repo: this.repo,
-      owner: this.repo.owner,
-      nwo: this.repo.nameWithOwner(),
+      owner: this.repoOwner,
+      nwo: this.nwo,
       tabs: this.tabs,
       ...extra,
     };
@@ -108,27 +112,29 @@ async function loadRepository(
   if (repo === null || !(await repo.isReadableBy(await viewerOf(base.request)))) {
     throw new RecordNotFound(`No repository ${login}/${name}`);
   }
-  if (!switchesOf(repo).enabled(tab)) {
+  const switches = await switchesOf(repo);
+  if (!switches.enabled(tab)) {
     throw new RecordNotFound(`${login}/${name} has its ${tab} tab turned off`);
   }
 
   base.repo = repo;
-  base.tabs = tabsFor(base, repo, tab);
+  base.repoOwner = (await repo.owner)!;
+  base.nwo = await repo.nameWithOwner();
+  base.tabs = tabsFor(base, switches, tab);
   return true;
 }
 
 /** A repo's switches, or everything-on when its row has not been written. */
-function switchesOf(repo: Repository): TabSwitches {
-  return repo.settings ?? ALL_TABS_ENABLED;
+async function switchesOf(repo: Repository): Promise<TabSwitches> {
+  return (await repo.settings) ?? ALL_TABS_ENABLED;
 }
 
 /** The tab bar: every enabled tab, in GitHub's order, with this one marked. */
-function tabsFor(controller: RepoController, repo: Repository, current: string): RepoTab[] {
-  const switches = switchesOf(repo);
+function tabsFor(controller: RepoController, switches: TabSwitches, current: string): RepoTab[] {
   return TAB_LABELS.filter(([key]) => switches.enabled(key)).map(([key, label, helper]) => ({
     key,
     label,
-    href: controller[helper](repo.owner!.login, repo.name),
+    href: controller[helper](controller.repoOwner.login, controller.repo.name),
     active: key === current,
   }));
 }
