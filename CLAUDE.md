@@ -33,13 +33,14 @@ already exports — it is a framework bug wearing an application costume.
 `@blazetrails/*` resolves to committed tarballs, not a registry — see README.
 Two things follow:
 
-- **The vendored build is a snapshot, and it can be behind trails `main` by
-  more than you expect.** `vendor/TRAILS_PIN` records the commit, but trust it
-  only as far as you have checked it: as of #9 the tarballs carried an
-  `ActionView::Base.withHelpers` that the pinned commit does not have. When
-  behaviour surprises you, read the code in `node_modules/@blazetrails/*`,
-  which is what actually runs, and compare it against the trails checkout
-  before concluding anything about "the framework".
+- **The vendored build is a snapshot of `vendor/TRAILS_PIN`, and it can be far
+  behind trails `main`.** `scripts/vendor-trails.sh` builds the tarballs from
+  the ref in a throwaway worktree, so the pin names what was built, for every
+  bump since that change. Tarballs vendored before it were packed from a
+  checkout's `dist/` and could differ (#9's `ActionView::Base.withHelpers`,
+  #83's ruby-compat). When behaviour surprises you, read the code in
+  `node_modules/@blazetrails/*`, which is what actually runs, and compare it
+  against the trails checkout before concluding anything about "the framework".
 - **Bumping is its own PR.** `scripts/vendor-trails.sh <trails-checkout> <ref>`
   then `pnpm install`, and nothing else in the same change, so a regression can
   be reverted without taking application work with it.

@@ -90,7 +90,8 @@ ringo must not drop a webhook event because trailmap is busy or redeploying.
 - **ringo restarting while events are queued**: GitHub redelivers anything that
   was not acknowledged, which is why the acknowledgement follows the commit.
 
-ringo implements this in `webhook/taskswrite.go` (btwhooks `0eeb2e1`):
+ringo implements this in `vendor/ringo/db/taskswrite.go`, vendored at ringo pin
+`bd783e9` (`webhook/taskswrite.go` in ringo's own source, btwhooks `0eeb2e1`):
 `tasksWriter.Commit` queues a transaction and returns once it is committed,
 retrying `SQLITE_BUSY`, `SQLITE_LOCKED` and the schema errors (`no such column`,
 `no such table`, `has no column named`) on that backoff, and `AckAfterCommit`
