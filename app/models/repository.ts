@@ -4,7 +4,6 @@ import { Owner } from "./owner.ts";
 import { RepositorySetting } from "./repository-setting.ts";
 import { RepositoryCollaborator } from "./repository-collaborator.ts";
 import { fleetRepos, type FleetRepo } from "../../config/fleet.ts";
-import type { AssociationProxy, Relation } from "@blazetrails/activerecord";
 
 export const REPOSITORY_VISIBILITIES = ["public", "private"] as const;
 export type RepositoryVisibility = (typeof REPOSITORY_VISIBILITIES)[number];
@@ -19,46 +18,28 @@ export type RepositoryVisibility = (typeof REPOSITORY_VISIBILITIES)[number];
  * page — the dashboard's spawn `<option>` list was the whole of it. The env
  * variable stays as the BOOTSTRAP source (`importFleetRepos` below); the rows
  * are what the application reads.
+ *
+ * `checkout_path` is the local checkout, as `FLEET_REPO_PATHS` pairs it: ringo
+ * spawns there.
  */
 export class Repository extends Hub {
-  declare id: number;
-  declare owner_id: number;
-  declare name: string;
-  /** The local checkout, as `FLEET_REPO_PATHS` pairs it — ringo spawns there. */
-  declare checkout_path: string | null;
-  declare default_branch: string;
-  declare visibility: RepositoryVisibility;
-  declare description: string | null;
-  declare archived: boolean;
-
-  declare owner: Owner | null;
-  /**
-   * The repo's feature switches.
-   *
-   * Named `settings`, never `setting`: trails answers the writer `setting=`
-   * with a `setSetting` method when one exists, and an association accessor
-   * one letter away from an attribute writer is the trap CLAUDE.md's
-   * `set<Attribute>` rule is about.
-   */
-  declare settings: RepositorySetting | null;
+  // trails-tsc types the `hasOne` reader but not its builder.
+  // Story: trails-tsc-synthesize-singular-association-builders.
   declare buildSettings: (attributes?: Record<string, unknown>) => RepositorySetting;
-
-  /** Who may push here — the composite-key join, see RepositoryCollaborator. */
-  declare collaborators: AssociationProxy<RepositoryCollaborator>;
-
-  declare static visibilityPublic: () => Relation<Repository>;
-  declare static visibilityPrivate: () => Relation<Repository>;
-  declare isVisibilityPublic: () => boolean;
-  declare isVisibilityPrivate: () => boolean;
 
   static {
     this.belongsTo("owner");
     // `dependent` for the same reason as Owner's: real FKs mean a destroy
     // without it raises instead of cascading.
+    // The repo's feature switches. Named `settings`, never `setting`: trails
+    // answers the writer `setting=` with a `setSetting` method when one exists,
+    // and an association accessor one letter away from an attribute writer is
+    // the trap CLAUDE.md's `set<Attribute>` rule is about.
     this.hasOne("settings", {
       className: "RepositorySetting",
       dependent: "destroy",
     });
+    // Who may push here: the composite-key join, see RepositoryCollaborator.
     this.hasMany("collaborators", {
       className: "RepositoryCollaborator",
       inverseOf: "repository",
@@ -93,8 +74,8 @@ export class Repository extends Hub {
    * `owner/repo`, the way every other system here spells a repo:
    * `FLEET_REPO_PATHS`, ringo's spawn keys, and GitHub's own URLs.
    */
-  nameWithOwner(): string {
-    return `${this.owner?.login ?? String(this.owner_id)}/${this.name}`;
+  async nameWithOwner(): Promise<string> {
+    return `${(await this.owner)?.login ?? String(this.owner_id)}/${this.name}`;
   }
 
   /**
@@ -218,10 +199,15 @@ export class Repository extends Hub {
         .where("checkout_path IS NOT NULL")
         .includes("owner")
         .toArray();
-      return rows
-        .filter((repo) => repo.checkout_path)
-        .map((repo) => ({ name: repo.nameWithOwner(), path: repo.checkout_path as string }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+      const checkouts = await Promise.all(
+        rows
+          .filter((repo) => repo.checkout_path)
+          .map(async (repo) => ({
+            name: await repo.nameWithOwner(),
+            path: repo.checkout_path as string,
+          })),
+      );
+      return checkouts.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
       if (error instanceof ConnectionNotDefined) return [];
       throw error;

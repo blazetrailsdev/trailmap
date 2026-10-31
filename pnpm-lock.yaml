@@ -11,6 +11,7 @@ overrides:
   '@blazetrails/activejob': file:./vendor/blazetrails-activejob-0.1.0.tgz
   '@blazetrails/activemodel': file:./vendor/blazetrails-activemodel-0.1.0.tgz
   '@blazetrails/activerecord': file:./vendor/blazetrails-activerecord-0.1.0.tgz
+  '@blazetrails/activerecord-cli': file:./vendor/blazetrails-activerecord-cli-0.1.0.tgz
   '@blazetrails/activesupport': file:./vendor/blazetrails-activesupport-0.1.0.tgz
   '@blazetrails/arel': file:./vendor/blazetrails-arel-0.1.0.tgz
   '@blazetrails/builder': file:./vendor/blazetrails-builder-0.1.0.tgz
@@ -75,6 +76,9 @@ importers:
         specifier: 0.7.4
         version: 0.7.4
     devDependencies:
+      '@blazetrails/activerecord-cli':
+        specifier: file:vendor/blazetrails-activerecord-cli-0.1.0.tgz
+        version: file:vendor/blazetrails-activerecord-cli-0.1.0.tgz(@blazetrails/actionview@file:vendor/blazetrails-actionview-0.1.0.tgz)(@blazetrails/activejob@file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(better-sqlite3@12.11.1)(pg@8.23.1)
       '@blazetrails/trails-tsc':
         specifier: file:vendor/blazetrails-trails-tsc-0.1.0.tgz
         version: file:vendor/blazetrails-trails-tsc-0.1.0.tgz(@blazetrails/actionview@file:vendor/blazetrails-actionview-0.1.0.tgz)(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
@@ -139,6 +143,12 @@ packages:
     resolution: {integrity: sha512-8NHbm4TrpH6AD4mxkIX0mUJeXWOZC3AXw9n1/aLb1nfbwV1xQEfdtolf1uLLau6RQHPcmRa0f5dvfE7D7DfEdA==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=24'}
+
+  '@blazetrails/activerecord-cli@file:vendor/blazetrails-activerecord-cli-0.1.0.tgz':
+    resolution: {integrity: sha512-UQ/3kLwGEZ9JoAHD+/KIhsr0UyoJwak8zWj52ZyxFSiq3cLp7rI6LBPkp8jke0p132YDTVjucfSBJwJcXT9iug==, tarball: file:vendor/blazetrails-activerecord-cli-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=24'}
+    hasBin: true
 
   '@blazetrails/activerecord@file:vendor/blazetrails-activerecord-0.1.0.tgz':
     resolution: {integrity: sha512-9VPj3iDnrBDnlS3o3F4111E1rEOUgqXcVSrJELov94YnXxs76kBcoXGzu5t+nHSo/B1REdxlyJxwCKRiRKGVgA==, tarball: file:vendor/blazetrails-activerecord-0.1.0.tgz}
@@ -582,6 +592,48 @@ packages:
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
 
+  '@typescript/typescript-darwin-arm64@7.1.0-dev.20260920.1':
+    resolution: {integrity: sha512-0KZLj5/VP1f77InjhsIou9wok+bCxZCr4r/SkyQF4GRxl9DqMTLGfEt91Zy5SbjusgZ0QComiqfrdWZY5Z4axw==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@typescript/typescript-darwin-x64@7.1.0-dev.20260920.1':
+    resolution: {integrity: sha512-+6rUIK5ic1m3/QhmfMdcV/dlI9U+SO6MqtfpAAfTjtOcWHIQGLrtXkLJ1TGJx/VfToxzryZiHjrL3H7MkUVElQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@typescript/typescript-linux-arm64@7.1.0-dev.20260920.1':
+    resolution: {integrity: sha512-yoURYqZHC3Tlk02D/tC3DJQH49M+iOVN6krqZDE57fmX0WbD/7/yE4LSR/7wx31lyJbWKSYM/psxNzh6U7b7MA==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@typescript/typescript-linux-arm@7.1.0-dev.20260920.1':
+    resolution: {integrity: sha512-niXTqU2j0NdBHMbxaU2JNCLeb7+QxmUZoaTtW2EfaG5ODRjE5tAhXHXJu96G4jDiXiuNAfr7b36L9JBiUy9UjQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm]
+    os: [linux]
+
+  '@typescript/typescript-linux-x64@7.1.0-dev.20260920.1':
+    resolution: {integrity: sha512-V300mgrCdnyFn37jmM97+m9Pb5pUzV/AxBGMZF3UIV3y9meU9ov3QbiOb/qkxF0W4DJZEziod2ID7fPOcfSM2w==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@typescript/typescript-win32-arm64@7.1.0-dev.20260920.1':
+    resolution: {integrity: sha512-VG4RUrdKvFXkoDhRejF4VFJBL08oOqOQMYCkjBnwe5Ze7gqv3++pMYs+iC1qUESTNGADcHVKLDUJYB0FjYb62A==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@typescript/typescript-win32-x64@7.1.0-dev.20260920.1':
+    resolution: {integrity: sha512-LoBcpahjQK9AnWoA/s3C1vz1TYxdttG+jm4ndiD3YYwWjNaLURnGLbUvek164SUvEI1y+KH45gL/FqbOZbU9kg==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [win32]
+
   '@vitest/expect@3.2.7':
     resolution: {integrity: sha512-E8eBXaKibuvH2pSZErOjdVb5vF4PbKYcrnluBTYxEk1l/VhhwZg1kZQsdtjq+CsF5CFydf2Rdkz7jDHKSisi3w==}
 
@@ -1011,6 +1063,11 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  typescript@7.1.0-dev.20260920.1:
+    resolution: {integrity: sha512-ljRXAaWoHs11KCWSImmvNRX9OF9ELw60r0oMvh9gmgbZ5sht3PlCFPPxtBMFA1I/SlvqB0Jv0HB+htkb2tTbXg==}
+    engines: {node: '>=16.20.0'}
+    hasBin: true
+
   ua-is-frozen@0.1.2:
     resolution: {integrity: sha512-RwKDW2p3iyWn4UbaxpP2+VxwqXh0jpvdxsYpZ5j/MLLiQOfbsV5shpgQiw93+KMYQPcteeMQ289MaAFzs3G9pw==}
 
@@ -1191,6 +1248,25 @@ snapshots:
     transitivePeerDependencies:
       - '@blazetrails/msgpack'
       - '@blazetrails/nokogiri'
+
+  '@blazetrails/activerecord-cli@file:vendor/blazetrails-activerecord-cli-0.1.0.tgz(@blazetrails/actionview@file:vendor/blazetrails-actionview-0.1.0.tgz)(@blazetrails/activejob@file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(better-sqlite3@12.11.1)(pg@8.23.1)':
+    dependencies:
+      '@blazetrails/activerecord': file:vendor/blazetrails-activerecord-0.1.0.tgz(@blazetrails/activejob@file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(better-sqlite3@12.11.1)(pg@8.23.1)
+      '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
+      '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+      '@blazetrails/trails-tsc': file:vendor/blazetrails-trails-tsc-0.1.0.tgz(@blazetrails/actionview@file:vendor/blazetrails-actionview-0.1.0.tgz)(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
+      typescript: 7.1.0-dev.20260920.1
+    transitivePeerDependencies:
+      - '@blazetrails/actionview'
+      - '@blazetrails/activejob'
+      - '@blazetrails/msgpack'
+      - '@blazetrails/nokogiri'
+      - better-sqlite3
+      - expo-sqlite
+      - libsql
+      - mysql2
+      - pg
 
   '@blazetrails/activerecord@file:vendor/blazetrails-activerecord-0.1.0.tgz(@blazetrails/activejob@file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(better-sqlite3@12.11.1)(pg@8.23.1)':
     dependencies:
@@ -1540,6 +1616,27 @@ snapshots:
   '@types/deep-eql@4.0.2': {}
 
   '@types/estree@1.0.9': {}
+
+  '@typescript/typescript-darwin-arm64@7.1.0-dev.20260920.1':
+    optional: true
+
+  '@typescript/typescript-darwin-x64@7.1.0-dev.20260920.1':
+    optional: true
+
+  '@typescript/typescript-linux-arm64@7.1.0-dev.20260920.1':
+    optional: true
+
+  '@typescript/typescript-linux-arm@7.1.0-dev.20260920.1':
+    optional: true
+
+  '@typescript/typescript-linux-x64@7.1.0-dev.20260920.1':
+    optional: true
+
+  '@typescript/typescript-win32-arm64@7.1.0-dev.20260920.1':
+    optional: true
+
+  '@typescript/typescript-win32-x64@7.1.0-dev.20260920.1':
+    optional: true
 
   '@vitest/expect@3.2.7':
     dependencies:
@@ -1995,6 +2092,16 @@ snapshots:
       safe-buffer: 5.2.1
 
   typescript@5.9.3: {}
+
+  typescript@7.1.0-dev.20260920.1:
+    optionalDependencies:
+      '@typescript/typescript-darwin-arm64': 7.1.0-dev.20260920.1
+      '@typescript/typescript-darwin-x64': 7.1.0-dev.20260920.1
+      '@typescript/typescript-linux-arm': 7.1.0-dev.20260920.1
+      '@typescript/typescript-linux-arm64': 7.1.0-dev.20260920.1
+      '@typescript/typescript-linux-x64': 7.1.0-dev.20260920.1
+      '@typescript/typescript-win32-arm64': 7.1.0-dev.20260920.1
+      '@typescript/typescript-win32-x64': 7.1.0-dev.20260920.1
 
   ua-is-frozen@0.1.2: {}
 

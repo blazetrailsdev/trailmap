@@ -36,16 +36,9 @@ const BATCH = 500;
 export class ParityDay extends Hub {
   static _tableName = "parity_days";
 
-  declare id: number;
-  declare metric: string;
-  declare package: string;
-  /** A real `date`; the stats database only has a text timestamp to slice. */
-  declare day: string;
-  declare pr_number: number;
-  declare matched: number;
-  declare total: number;
-  declare percent: number;
-  /** The run's own counters, which vary by metric. `null` for the derived ones. */
+  // A `jsonb` column is `unknown` to trails-tsc. The run's own counters, which
+  // vary by metric; `null` for the derived ones.
+  // Story: trails-tsc-type-custom-attribute-casts.
   declare gaps: Record<string, number> | null;
 
   /**

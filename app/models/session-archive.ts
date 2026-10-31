@@ -115,6 +115,8 @@ export class SessionArchiveUnavailable extends Error {
  * row ringo sent is kept verbatim so `/api/sessions` relays its shape exactly.
  */
 export class SessionArchive extends Model {
+  // trails-tsc synthesizes from a table, and an ActiveModel has none.
+  // Story: trails-tsc-synthesize-activemodel-attributes.
   declare static attribute: AttributesClassHalf["attribute"];
   declare owner: string;
   declare repo: string;

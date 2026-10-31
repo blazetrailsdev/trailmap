@@ -146,9 +146,9 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
 
       const found = await Repository.findByNwo("BlazeTrailsDev", "TRAILS");
 
-      expect(found?.nameWithOwner()).toBe("blazetrailsdev/trails");
-      expect(found?.owner?.login).toBe("blazetrailsdev");
-      expect(found?.settings?.wiki_enabled).toBe(false);
+      expect(await found?.nameWithOwner()).toBe("blazetrailsdev/trails");
+      expect((await found?.owner)?.login).toBe("blazetrailsdev");
+      expect((await found?.settings)?.wiki_enabled).toBe(false);
       expect(await Repository.findByNwo("nobody", "trails")).toBeNull();
       expect(await Repository.findByNwo("blazetrailsdev", "nothing")).toBeNull();
     });

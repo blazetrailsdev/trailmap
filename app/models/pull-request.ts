@@ -17,12 +17,16 @@ import { Stats } from "./stats.ts";
  * package)` and there is NO index on `pr_number`, so joining on the sha is the
  * one direction that can use an index. We do not own this schema and cannot
  * add one.
+ *
+ * @trails-typegen no-schema
  */
 export class PullRequest extends Stats {
   static {
     this.primaryKey = "number";
   }
 
+  // The stats-sync cron owns this schema, so trails-tsc has none to read.
+  // Story: trails-tsc-type-models-on-unowned-schema.
   declare number: number;
   declare title: string | null;
   declare author: string | null;

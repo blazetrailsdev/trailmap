@@ -42,6 +42,8 @@ function isEnoent(e: unknown): boolean {
  * "table" is `AUDITS_DIR` and the primary key is the filename.
  */
 export class Audit extends Model {
+  // trails-tsc synthesizes from a table, and an ActiveModel has none.
+  // Story: trails-tsc-synthesize-activemodel-attributes.
   declare static attribute: AttributesClassHalf["attribute"];
 
   static {
