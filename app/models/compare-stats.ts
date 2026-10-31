@@ -16,6 +16,8 @@ import { CompareRun } from "./compare-run.ts";
  * @trails-typegen no-schema
  */
 export class ApiCompareStat extends CompareRun {
+  // The stats-sync cron owns this schema, so trails-tsc has none to read.
+  // Story: trails-tsc-type-models-on-unowned-schema.
   declare misplaced: number;
   declare missing: number;
 }
@@ -26,6 +28,8 @@ export class ApiCompareStat extends CompareRun {
  * @trails-typegen no-schema
  */
 export class ApiComparePrivatesStat extends CompareRun {
+  // The stats-sync cron owns this schema, so trails-tsc has none to read.
+  // Story: trails-tsc-type-models-on-unowned-schema.
   declare missing: number;
 }
 
@@ -44,6 +48,8 @@ export class ApiComparePrivatesStat extends CompareRun {
  * @trails-typegen no-schema
  */
 export class TestCompareStat extends CompareRun {
+  // The stats-sync cron owns this schema, so trails-tsc has none to read.
+  // Story: trails-tsc-type-models-on-unowned-schema.
   declare misplaced: number;
   declare skipped: number;
   declare files_mapped: number;
@@ -64,6 +70,8 @@ export class TestCompareStat extends CompareRun {
  * @trails-typegen no-schema
  */
 export class ApiCallsStat extends CompareRun {
+  // The stats-sync cron owns this schema, so trails-tsc has none to read.
+  // Story: trails-tsc-type-models-on-unowned-schema.
   declare mismatched: number;
 }
 
@@ -73,5 +81,7 @@ export class ApiCallsStat extends CompareRun {
  * @trails-typegen no-schema
  */
 export class ApiCallArgsStat extends CompareRun {
+  // The stats-sync cron owns this schema, so trails-tsc has none to read.
+  // Story: trails-tsc-type-models-on-unowned-schema.
   declare mismatched: number;
 }

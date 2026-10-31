@@ -59,7 +59,6 @@ export class Story extends ApplicationRecord {
   declare deps: AssociationProxy<Story>;
   declare rfcDeps: AssociationProxy<Rfc>;
 
-
   // NOTE: `enum` generates a static `Story.ready()` meaning `status='ready'`.
   // That is NOT the ready queue — see `Story.claimable()` below, which
   // additionally requires the RFC to be active and every dep resolved. Keep the

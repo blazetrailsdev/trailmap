@@ -1,6 +1,4 @@
 import { Hub } from "./hub.ts";
-import type { Owner } from "./owner.ts";
-import type { Repository } from "./repository.ts";
 
 export const COLLABORATOR_ROLES = ["read", "write", "admin"] as const;
 export type CollaboratorRole = (typeof COLLABORATOR_ROLES)[number];

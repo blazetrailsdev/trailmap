@@ -18,6 +18,9 @@ export type RepositoryVisibility = (typeof REPOSITORY_VISIBILITIES)[number];
  * page — the dashboard's spawn `<option>` list was the whole of it. The env
  * variable stays as the BOOTSTRAP source (`importFleetRepos` below); the rows
  * are what the application reads.
+ *
+ * `checkout_path` is the local checkout, as `FLEET_REPO_PATHS` pairs it: ringo
+ * spawns there.
  */
 export class Repository extends Hub {
   // trails-tsc types the `hasOne` reader but not its builder.
@@ -36,6 +39,7 @@ export class Repository extends Hub {
       className: "RepositorySetting",
       dependent: "destroy",
     });
+    // Who may push here: the composite-key join, see RepositoryCollaborator.
     this.hasMany("collaborators", {
       className: "RepositoryCollaborator",
       inverseOf: "repository",

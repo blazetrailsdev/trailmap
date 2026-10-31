@@ -1,7 +1,5 @@
 import { Hub } from "./hub.ts";
 import { LOGIN_FORMAT, RESERVED_OWNER_NAMES } from "../../config/owner-names.ts";
-import type { Repository } from "./repository.ts";
-import type { RepositoryCollaborator } from "./repository-collaborator.ts";
 
 export const OWNER_KINDS = ["user", "organization"] as const;
 export type OwnerKind = (typeof OWNER_KINDS)[number];
@@ -29,6 +27,7 @@ export class Owner extends Hub {
       inverseOf: "owner",
       dependent: "destroy",
     });
+    // Repositories this owner collaborates on, via the composite-key join.
     this.hasMany("collaborations", {
       className: "RepositoryCollaborator",
       inverseOf: "owner",

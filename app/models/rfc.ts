@@ -1,6 +1,5 @@
 import { ApplicationRecord } from "./application-record.ts";
 import { closedRfcErrors } from "./concerns/semantic-validation.ts";
-import type { Story } from "./story.ts";
 
 /**
  * The coder of the JSON array columns (`packages`, `clusters`,
