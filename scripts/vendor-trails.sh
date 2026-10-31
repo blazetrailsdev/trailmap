@@ -27,7 +27,6 @@ BUILD="$BUILD_ROOT/trails"
 cleanup() {
   git -C "$TRAILS" worktree remove --force "$BUILD" 2>/dev/null || true
   rm -rf "$BUILD_ROOT"
-  git -C "$TRAILS" worktree prune
 }
 trap cleanup EXIT
 git -C "$TRAILS" worktree add --quiet --detach "$BUILD" "$SHA"
