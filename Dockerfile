@@ -37,7 +37,13 @@ FROM base
 # "Author identity unknown"; match the identity the host's own tasks commits
 # use so the history stays uniform. safe.directory is needed because the
 # mounted checkout is owned by the host user, not root.
-RUN apt-get update -qq && apt-get install --no-install-recommends -y git \
+#
+# gh is what StatsSyncJob reads GitHub through, pinned so the JSON it parses
+# does not move under it.
+ARG GH_VERSION=2.97.0
+RUN apt-get update -qq && apt-get install --no-install-recommends -y ca-certificates curl git \
+ && curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" \
+  | tar -xz --strip-components=2 -C /usr/local/bin "gh_${GH_VERSION}_linux_amd64/bin/gh" \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app /app

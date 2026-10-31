@@ -556,3 +556,30 @@ kill -9 "$(docker inspect -f '{{.State.Pid}}' "$(docker ps -q --filter name=trai
   version.
 - **Run as uid 1000.** A commit written as root leaves root-owned objects in
   the bind-mounted tasks checkout that the host's agents cannot then rewrite.
+
+## The Solid Queue worker
+
+The `worker` process (`bin/jobs`) runs config/queue.yml and the recurring
+schedule in config/recurring.yml. Its queue is a SQLite database in
+`/app/storage`, created by the release task's `db prepare`.
+
+```sh
+# Owned by uid 1000, the container's user, and mounted before the first deploy
+# so the release container can create the database.
+sudo mkdir -p /var/lib/dokku/data/storage/trailmap-queue
+sudo chown 1000:1000 /var/lib/dokku/data/storage/trailmap-queue
+dokku storage:mount trailmap /var/lib/dokku/data/storage/trailmap-queue:/app/storage
+
+dokku config:set --no-restart trailmap \
+  GH_TOKEN=<token with read access to blazetrailsdev/trails> \
+  STATS_SYNC_DB=/home/dean/github/blazetrailsdev/stats-job.db \
+  STATS_SYNC_LOG=/home/dean/github/blazetrailsdev/stats-sync-job.log
+dokku ps:scale trailmap worker=1
+```
+
+`StatsSyncJob` runs at 06:00 America/Detroit. During the trial it writes
+`stats-job.db` beside the crontab's `stats.db`, and its own log, so the crontab
+keeps running and neither can hide a gap in the other. Each run ends in a
+`[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. Once
+the trial holds up, remove the crontab entry and point `STATS_SYNC_DB` and
+`STATS_SYNC_LOG` at the real files.
