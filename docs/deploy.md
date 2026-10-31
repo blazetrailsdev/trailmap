@@ -587,3 +587,13 @@ keeps running and neither can hide a gap in the other. Each run ends in a
 `[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. Once
 the trial holds up, remove the crontab entry and point `STATS_SYNC_DB` and
 `STATS_SYNC_LOG` at the real files.
+
+**Compare the columns first.** The migration adopts any file with a `sync_log`
+table as it stands and repairs nothing, so a missing column would only surface
+when a sync fails. Every table in `db/statsSync_schema.ts` must exist in
+`stats.db` with the same columns (`pr_readmes`, abandoned, is the one extra):
+
+```sh
+columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' ORDER BY 1"; }
+diff <(columns stats.db) <(columns stats-job.db)
+```
