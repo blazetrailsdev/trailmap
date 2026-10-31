@@ -13,10 +13,14 @@
 # alone, which is the property that makes this worth having: a hub that cannot
 # be migrated never gets a container serving pages against it.
 #
+# `db prepare`, not `db migrate`: it also creates the `queue` database and loads
+# db/queue_schema.ts the first time, which `migrate` cannot do because the
+# queue has no migrations.
+#
 # NO `--database` flag. The unflagged command registers both configurations
 # and migrates both; `--database hub` loads the task domain's SQLite schema
 # into Postgres (docs/deploy.md).
-release: bin/trails db migrate
+release: bin/trails db prepare
 
 # `web` is declared even though the Dockerfile's CMD says the same thing, and
 # the duplication is deliberate. A Procfile takes precedence over CMD for the
@@ -25,3 +29,7 @@ release: bin/trails db migrate
 # to zero" under `ps:scale --clear`. Naming it here costs one line and removes
 # the question entirely. Keep it in step with the Dockerfile.
 web: bin/trails server -b 0.0.0.0 -p 8080
+
+# Solid Queue's supervisor: dispatcher, worker and the recurring scheduler
+# (config/queue.yml, config/recurring.yml). Scale it to 1: dokku ps:scale.
+worker: bin/jobs

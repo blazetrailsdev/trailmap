@@ -43,6 +43,10 @@ Trails.application!.configure(function () {
 
   this.config.cacheStore = ":memory_store";
 
+  // Replace the default in-process and non-durable queuing backend for Active Job.
+  this.config.activeJob.queueAdapter = "solid_queue";
+  this.config.solidQueue.connectsTo = { database: { writing: ":queue" } };
+
   // Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   // the I18n.defaultLocale when a translation cannot be found).
   this.config.i18n.fallbacks = true;

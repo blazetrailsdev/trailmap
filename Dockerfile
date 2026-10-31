@@ -37,8 +37,19 @@ FROM base
 # "Author identity unknown"; match the identity the host's own tasks commits
 # use so the history stays uniform. safe.directory is needed because the
 # mounted checkout is owned by the host user, not root.
-RUN apt-get update -qq && apt-get install --no-install-recommends -y git \
- && rm -rf /var/lib/apt/lists/*
+#
+# gh is what StatsSyncJob reads GitHub through, pinned so the JSON it parses
+# does not move under it.
+ARG GH_VERSION=2.97.0
+ARG GH_SHA256_AMD64=a2c9b8497e1f85b1ad0dfcb78b5a622e098801b8e461e459e88e1ee12f018112
+ARG GH_SHA256_ARM64=73ea440ecad9c9e284429997ee6f93577bc6f7bc6fba357ef62c53ad8fb641a5
+RUN apt-get update -qq && apt-get install --no-install-recommends -y ca-certificates curl git \
+ && arch="$(dpkg --print-architecture)" \
+ && case "$arch" in amd64) sha="$GH_SHA256_AMD64";; arm64) sha="$GH_SHA256_ARM64";; *) exit 1;; esac \
+ && curl -fsSL -o /tmp/gh.tar.gz "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${arch}.tar.gz" \
+ && echo "$sha  /tmp/gh.tar.gz" | sha256sum -c - \
+ && tar -xzf /tmp/gh.tar.gz --strip-components=2 -C /usr/local/bin "gh_${GH_VERSION}_linux_${arch}/bin/gh" \
+ && rm -rf /tmp/gh.tar.gz /var/lib/apt/lists/*
 
 COPY --from=build /app /app
 

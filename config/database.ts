@@ -11,6 +11,12 @@ import { writeProtocol } from "./write-protocol.ts";
  */
 export const HUB_MIGRATIONS_PATH = "db/hub-migrate";
 
+/** `db/queue_migrate`, Rails' own name for Solid Queue's migrations. */
+export const QUEUE_MIGRATIONS_PATH = "db/queue_migrate";
+
+/** `db/stats-sync-migrate`: the stats sync's own schema history. */
+export const STATS_SYNC_MIGRATIONS_PATH = "db/stats-sync-migrate";
+
 /**
  * Rails' three-tier shape: each environment names its databases rather than
  * being one. `primary` is what it always was; `hub` is the second one, and it
@@ -48,6 +54,8 @@ export default {
       database: "storage/production.sqlite3",
     },
     hub: hubEntry(),
+    queue: queueEntry("storage/production_queue.sqlite3"),
+    statsSync: statsSyncDatabaseConfig(),
   },
 };
 
@@ -71,6 +79,44 @@ function hubEntry(): Record<string, unknown> {
     adapter: "postgresql",
     url: env.HUB_DATABASE_URL,
     migrationsPaths: HUB_MIGRATIONS_PATH,
+  };
+}
+
+/**
+ * Solid Queue's database, in the shape Rails 8 generates: its own SQLite file
+ * under `storage/`, its own `db/queue_migrate`, and its schema in
+ * `db/queue_schema.ts`, which `trails db prepare` loads into an empty file.
+ * Production only, as in Rails: development and test run jobs inline or on the
+ * test adapter, and only the `worker` process (Procfile) runs the supervisor.
+ *
+ * `storage/` is a dokku storage mount (docs/deploy.md), so the queue — the
+ * recurring-execution rows that keep one 03:00 run from enqueuing twice, and
+ * any failed execution waiting to be read — outlives a deploy.
+ */
+function queueEntry(database: string): Record<string, unknown> {
+  return {
+    adapter: "sqlite3",
+    database,
+    timeout: 5000,
+    pragmas: { journal_mode: "wal" },
+    migrationsPaths: QUEUE_MIGRATIONS_PATH,
+  };
+}
+
+/**
+ * What the stats sync writes (app/models/stats-sync). Unlike the read-only
+ * `statsDatabaseConfig()`, trailmap owns this schema, so `trails db` migrates it
+ * from `db/stats-sync-migrate`. Unset falls back to a file under `storage/`
+ * rather than throwing: the models connect as they load, and the suite and the
+ * web process load them without ever running the job.
+ */
+export function statsSyncDatabaseConfig(): Record<string, unknown> {
+  return {
+    adapter: "sqlite3",
+    database: env.STATS_SYNC_DB || "storage/stats_sync.sqlite3",
+    timeout: 5000,
+    pragmas: { journal_mode: "wal" },
+    migrationsPaths: STATS_SYNC_MIGRATIONS_PATH,
   };
 }
 
