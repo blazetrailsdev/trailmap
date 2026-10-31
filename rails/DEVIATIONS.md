@@ -162,5 +162,6 @@ each language spells it; the rest of that report's list was converged.
 
 ## Solid Queue is trails-only so far
 
-`StatsSyncJob` and the queue database exist on the trails side only. The twin is
+`StatsSyncJob`, the queue database, the writer models in
+`app/models/stats-sync` and the `statsSync` database exist on the trails side only. The twin is
 filed as `rails-twin-runs-solid-queue`; until then no job crosses between them.
