@@ -594,6 +594,6 @@ when a sync fails. Every table in `db/statsSync_schema.ts` must exist in
 `stats.db` with the same columns (`pr_readmes`, abandoned, is the one extra):
 
 ```sh
-columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' ORDER BY 1"; }
+columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT IN ('schema_migrations', 'ar_internal_metadata') ORDER BY 1"; }
 diff <(columns stats.db) <(columns stats-job.db)
 ```
