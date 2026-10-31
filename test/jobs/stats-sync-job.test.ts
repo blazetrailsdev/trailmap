@@ -36,9 +36,11 @@ describe("StatsSyncJob", () => {
 
   it("names the stage and error in a failed verdict and rethrows", async () => {
     syncLatest.mockRejectedValue(new Error("no such table: x\nstack"));
-    await expect(new StatsSyncJob().perform()).rejects.toThrow("no such table");
+    const job = new StatsSyncJob();
+    job.executions = 1;
+    await expect(job.perform()).rejects.toThrow("no such table");
     expect(read()).toMatch(
-      /\[cron-wrapper\] stats sync failed at stage "Syncing job logs" \(execution 0\): no such table: x\n/,
+      /\[cron-wrapper\] stats sync failed at stage "Syncing job logs" \(execution 1\): no such table: x\n/,
     );
   });
 
