@@ -94,7 +94,7 @@ async function checkRateLimitBudget() {
     await waitForCooldownAndInterval();
     let out: string;
     try {
-      out = (await run("gh api rate_limit --jq '.rate.remaining'")).trim();
+      out = (await run("timeout 10 gh api rate_limit --jq '.rate.remaining'")).trim();
     } catch (err) {
       console.warn(`  [budget check] probe failed: ${err instanceof Error ? err.message : err}`);
       return;
