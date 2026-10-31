@@ -1,5 +1,5 @@
 import { Duration } from "@blazetrails/activesupport";
-import { env, getFs, getPath, registerConstant } from "@blazetrails/ruby-compat";
+import { env, getFs, getPath } from "@blazetrails/ruby-compat";
 import { isTransientGhError } from "../../lib/stats-sync/gh-transient-error.ts";
 import { ApplicationJob } from "./application-job.ts";
 
@@ -79,5 +79,3 @@ export class StatsSyncJob extends ApplicationJob {
     }
   }
 }
-
-registerConstant("StatsSyncJob", StatsSyncJob);

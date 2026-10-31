@@ -6,7 +6,7 @@ vi.mock("../../lib/stats-sync/sync.ts", () => ({ syncLatest, currentStage: () =>
 
 import { constantize } from "@blazetrails/activesupport";
 import { env } from "@blazetrails/ruby-compat";
-import { StatsSyncJob } from "../../app/jobs/stats-sync-job.ts";
+import { StatsSyncJob } from "../../app/jobs/index.ts";
 
 describe("StatsSyncJob", () => {
   let dir: string;
