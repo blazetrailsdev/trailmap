@@ -570,12 +570,12 @@ sudo mkdir -p /var/lib/dokku/data/storage/trailmap-queue
 sudo chown 1000:1000 /var/lib/dokku/data/storage/trailmap-queue
 dokku storage:mount trailmap /var/lib/dokku/data/storage/trailmap-queue:/app/storage
 
-# Read-write, at the same path, so the paths below mean the same on the host and
-# in the container. The host's dean is uid 1000, the container's user, so the
-# worker can write the seeded file and its -wal and -shm siblings. The stats
-# setup above may have mounted this already; `dokku storage:list trailmap` shows it.
-dokku storage:mount trailmap \
-  /home/dean/github/blazetrailsdev:/home/dean/github/blazetrailsdev
+# The paths below need the read-write parent-directory mount from "First-time
+# setup", already in place on this host (`dokku storage:list trailmap`). Add it
+# only on a new host. The host's dean is uid 1000, the container's user, so the
+# worker can write the seeded file and its -wal and -shm siblings.
+#   dokku storage:mount trailmap \
+#     /home/dean/github/blazetrailsdev:/home/dean/github/blazetrailsdev
 
 # Seed the job's database from stats.db, once, so the first run syncs only what
 # is new rather than refilling 8 GB from GitHub. `.backup` is consistent while the
