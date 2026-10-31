@@ -45,8 +45,11 @@ describe("syncLatest", () => {
       const { StatsSyncRecord } = await import("../../app/models/stats-sync/index.ts");
       // Migrations run on Base's connection, as `trails db` points it at each database.
       await Base.establishConnection(statsSyncDatabaseConfig());
-      await new MigrationContext([getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)]).migrate();
-      await Base.removeConnection();
+      try {
+        await new MigrationContext([getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)]).migrate();
+      } finally {
+        await Base.removeConnection();
+      }
       await syncLatest();
 
       expect(currentStage()).toBe("Database Summary");

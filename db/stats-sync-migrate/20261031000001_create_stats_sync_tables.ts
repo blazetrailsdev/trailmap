@@ -281,7 +281,7 @@ export class CreateStatsSyncTables extends Migration.get(8) {
 
   /** Dropping these would destroy a stats.db this migration merely adopted. */
   async down(): Promise<void> {
-    // IrreversibleMigration is not exported by the vendored activerecord.
+    // Until irreversible-migration-exported-from-activerecord.
     throw new Error("CreateStatsSyncTables is irreversible");
   }
 }
