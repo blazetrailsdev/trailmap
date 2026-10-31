@@ -570,9 +570,10 @@ sudo mkdir -p /var/lib/dokku/data/storage/trailmap-queue
 sudo chown 1000:1000 /var/lib/dokku/data/storage/trailmap-queue
 dokku storage:mount trailmap /var/lib/dokku/data/storage/trailmap-queue:/app/storage
 
-# Seed the job's database from stats.db, so the first run syncs only what is new
-# rather than refilling 8 GB from GitHub. `.backup` is consistent while the file
-# is in WAL and the crontab may be writing..
+# Seed the job's database from stats.db, once, so the first run syncs only what
+# is new rather than refilling 8 GB from GitHub. `.backup` is consistent while the
+# file is in WAL and the crontab may be writing. Never rerun it: it overwrites
+# whatever the job has written since.
 sqlite3 -readonly /home/dean/github/blazetrailsdev/stats.db \
   ".backup /home/dean/github/blazetrailsdev/stats-job.db"
 
@@ -581,6 +582,18 @@ dokku config:set --no-restart trailmap \
   STATS_SYNC_DB=/home/dean/github/blazetrailsdev/stats-job.db \
   STATS_SYNC_LOG=/home/dean/github/blazetrailsdev/stats-sync-job.log
 dokku ps:scale trailmap worker=1
+```
+
+**Before seeding, compare `stats.db` with the schema.** The migration adopts any
+file with a `sync_log` table as it stands and repairs nothing, so a missing column
+would only surface when a sync fails. From a checkout, migrate an empty scratch
+file (a `db prepare` with `STATS_SYNC_DB` pointing at it, on the production
+configuration) and diff it against `stats.db`. `pr_readmes`, abandoned, is the one
+expected difference:
+
+```sh
+columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT IN ('schema_migrations', 'ar_internal_metadata') ORDER BY 1"; }
+diff <(columns /home/dean/github/blazetrailsdev/stats.db) <(columns scratch.db)
 ```
 
 Seed before the first deploy that sets `STATS_SYNC_DB`: the release task migrates
@@ -595,13 +608,3 @@ keeps running and neither can hide a gap in the other. Each run ends in a
 `[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. Once
 the trial holds up, remove the crontab entry and point `STATS_SYNC_DB` and
 `STATS_SYNC_LOG` at the real files.
-
-**Compare the columns first.** The migration adopts any file with a `sync_log`
-table as it stands and repairs nothing, so a missing column would only surface
-when a sync fails. Every table in `db/statsSync_schema.ts` must exist in
-`stats.db` with the same columns (`pr_readmes`, abandoned, is the one extra):
-
-```sh
-columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT IN ('schema_migrations', 'ar_internal_metadata') ORDER BY 1"; }
-diff <(columns stats.db) <(columns stats-job.db)
-```
