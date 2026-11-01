@@ -556,3 +556,77 @@ kill -9 "$(docker inspect -f '{{.State.Pid}}' "$(docker ps -q --filter name=trai
   version.
 - **Run as uid 1000.** A commit written as root leaves root-owned objects in
   the bind-mounted tasks checkout that the host's agents cannot then rewrite.
+
+## The Solid Queue worker
+
+The `worker` process (`bin/jobs`) runs config/queue.yml and the recurring
+schedule in config/recurring.yml. Its queue is a SQLite database in
+`/app/storage`, created by the release task's `db prepare`.
+
+**Before anything below, compare `stats.db` with the schema.** The migration
+adopts any file with a `sync_log` table as it stands and repairs nothing, so a
+missing column would only surface when a sync fails. Migrate an empty scratch
+file from a checkout and diff it against `stats.db`; `pr_readmes`, abandoned, is
+the one expected difference. Production's `db prepare` covers every database, so
+give it a throwaway Postgres: the SQLite files it writes are the checkout's own
+`storage/`, any seeds go to that throwaway hub (nothing seeds the task domain), and
+with `TASKS_DATABASE` unset nothing live is touched.
+
+```sh
+docker run -d --rm --name stats-check -e POSTGRES_PASSWORD=p -p 55439:5432 postgres:16
+sleep 6
+env -u TASKS_DATABASE -u STATS_DB TRAILS_ENV=production NODE_ENV=production \
+  STATS_SYNC_DB="$PWD/scratch.db" \
+  HUB_DATABASE_URL=postgres://postgres:p@localhost:55439/postgres \
+  pnpm exec trails db prepare
+docker rm -f stats-check
+columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT IN ('schema_migrations', 'ar_internal_metadata') ORDER BY 1"; }
+diff <(columns /home/dean/github/blazetrailsdev/stats.db) <(columns scratch.db)
+rm scratch.db*
+```
+
+```sh
+# Owned by uid 1000, the container's user, and mounted before the first deploy
+# so the release container can create the database.
+sudo mkdir -p /var/lib/dokku/data/storage/trailmap-queue
+sudo chown 1000:1000 /var/lib/dokku/data/storage/trailmap-queue
+dokku storage:mount trailmap /var/lib/dokku/data/storage/trailmap-queue:/app/storage
+
+# The paths below need the read-write parent-directory mount from "First-time
+# setup", already in place on this host (`dokku storage:list trailmap`). Add it
+# only on a new host. The host's dean is uid 1000, the container's user, so the
+# worker can write the seeded file and its -wal and -shm siblings.
+#   dokku storage:mount trailmap \
+#     /home/dean/github/blazetrailsdev:/home/dean/github/blazetrailsdev
+
+# Seed the job's database from stats.db, once, so the first run syncs only what
+# is new rather than refilling 8 GB from GitHub. `.backup` is consistent while the
+# file is in WAL and the crontab may be writing. Never rerun it: it overwrites
+# whatever the job has written since.
+sqlite3 -readonly /home/dean/github/blazetrailsdev/stats.db \
+  ".backup /home/dean/github/blazetrailsdev/stats-job.db"
+# Stamp it as migrated. Without schema_migrations, `db prepare` treats the file as
+# uninitialized and loads db/statsSync_schema.ts with force: cascade, which DROPS
+# every table in the copy.
+sqlite3 /home/dean/github/blazetrailsdev/stats-job.db \
+  "CREATE TABLE schema_migrations (version varchar NOT NULL PRIMARY KEY);
+   INSERT INTO schema_migrations VALUES ('20261031000001');"
+
+dokku config:set --no-restart trailmap \
+  GH_TOKEN=<token with read access to blazetrailsdev/trails> \
+  STATS_SYNC_DB=/home/dean/github/blazetrailsdev/stats-job.db \
+  STATS_SYNC_LOG=/home/dean/github/blazetrailsdev/stats-sync-job.log
+dokku ps:scale trailmap worker=1
+```
+
+Seed and stamp before the first deploy that sets `STATS_SYNC_DB`: the release task
+runs `db prepare` on that file, an unstamped one is wiped, and a missing one gets
+empty tables and a sync from scratch.
+
+`StatsSyncJob` runs at 03:00 America/Detroit, three hours ahead of the crontab
+so the two do not draw on the same GitHub API budget at once. During the trial it writes
+`stats-job.db` beside the crontab's `stats.db`, and its own log, so the crontab
+keeps running and neither can hide a gap in the other. Each run ends in a
+`[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. Once
+the trial holds up, remove the crontab entry and point `STATS_SYNC_DB` and
+`STATS_SYNC_LOG` at the real files.

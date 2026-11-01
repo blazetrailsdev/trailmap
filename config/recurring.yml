@@ -1,0 +1,15 @@
+# Solid Queue's recurring schedule (solid_queue v1.1.3, config/recurring.yml).
+# The scheduler in the `worker` process enqueues each task at its time, and
+# `solid_queue_recurring_executions`' unique (task_key, run_at) index keeps a
+# second scheduler — two workers during a deploy — from enqueuing it twice.
+production:
+  # The trails stats sync, replacing the host crontab's
+  #   0 6 * * * …/trails/scripts/sync-stats/cron-wrapper.sh
+  # three hours ahead of it, so the two do not spend the same GitHub API budget
+  # at once. Cron reads the host's local time (America/Detroit) and the container
+  # runs in UTC, so the zone is spelled out. Both run during the cutover, each
+  # writing its own database (app/jobs/stats-sync-job.ts).
+  stats_sync:
+    class: StatsSyncJob
+    schedule: "0 3 * * * America/Detroit"
+    description: "Sync trails PRs, CI runs and compare stats into the job's stats database"
