@@ -7,8 +7,9 @@ import { ApplicationRecord } from "../application-record.ts";
  * writers have their own, on STATS_SYNC_DB, which is why `pull-request.ts` here
  * and in app/models are different classes.
  *
- * Connecting here, at import, is what lets the models beside it declare
- * attributes as they load. It opens no file until something queries.
+ * Connecting here, at import, means no caller has to before using the models
+ * beside it, whose attributes come from the schema. It opens no file until
+ * something queries.
  */
 export class StatsSyncRecord extends ApplicationRecord {
   static {
