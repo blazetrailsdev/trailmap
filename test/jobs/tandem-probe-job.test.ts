@@ -12,8 +12,8 @@ describe("TandemProbeJob", () => {
   });
 
   it("runs a payload the Rails app serialized", async () => {
-    await (Base as unknown as { execute(data: unknown): Promise<unknown> }).execute(
-      fixture("rails-enqueued.json"),
+    await Base.execute(
+      fixture("rails-enqueued.json") as never,
     );
     expect(TandemProbeJob.performed).toEqual(["from rails"]);
   });
@@ -21,16 +21,15 @@ describe("TandemProbeJob", () => {
   it("runs a solid_queue_jobs row the Rails app wrote", async () => {
     const [row] = fixture("rails-queue-row.json") as unknown as [{ arguments: string; class_name: string }];
     expect(row.class_name).toBe("TandemProbeJob");
-    await (Base as unknown as { execute(data: unknown): Promise<unknown> }).execute(
-      JSON.parse(row.arguments),
+    await Base.execute(
+      JSON.parse(row.arguments) as never,
     );
     expect(TandemProbeJob.performed).toEqual(["from rails"]);
   });
 
   it("the committed trails payload is what this app serializes", () => {
     const expected = fixture("trails-enqueued.json");
-    const job = new TandemProbeJob("from trails") as unknown as { serialize(): Record<string, unknown> };
-    const serialized = job.serialize();
+    const serialized = new TandemProbeJob("from trails").serialize() as unknown as Record<string, unknown>;
     expect(Object.keys(serialized).sort()).toEqual(Object.keys(expected).sort());
     for (const key of ["job_class", "arguments", "queue_name"]) {
       expect(serialized[key]).toEqual(expected[key]);

@@ -23,6 +23,14 @@ emits no types. A renamed `as:` compiles and fails at request time. Rails has
 no equivalent problem. Story to file: generate the helper types from the route
 table.
 
+### trails: `bin/jobs` crashes at boot in production
+
+Eager load evaluates `StatsSyncJob` before the Solid Queue engine's `active_job`
+hook includes ConcurrencyControls, so `limitsConcurrency` is not a function. The
+Rails worker runs trails rows; the reverse is unproven until this is fixed, and
+docs/deploy.md's trial cannot start. Story:
+`solid-queue-hook-runs-before-eager-load`.
+
 ### trails: a serialized job's `timezone` is null
 
 `TandemProbeJob.new(...).serialize` writes `"timezone": "UTC"` in Rails and
