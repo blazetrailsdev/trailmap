@@ -8,8 +8,15 @@
 // engine's initializers point SolidQueue at the `queue` database, and the
 // job classes are loaded) and then runs dispatcher, worker and scheduler from
 // config/queue.yml and config/recurring.yml until it is signalled.
+//
+// app/jobs is imported dynamically, after the boot, and that ordering is load-bearing.
+// config/environment.ts awaits `Trails.initialize()` at its top level, and a
+// sibling static import does NOT wait for that: the module graph evaluates it
+// at the first await, before the initializers have run. A job's static block
+// would then call `limitsConcurrency`, which only exists once the Solid Queue
+// engine's `solid_queue.active_job.extensions` initializer has run.
 import "../config/environment.ts";
-import "../app/jobs/index.ts";
 import { Cli } from "@blazetrails/solid-queue/cli";
 
+await import("../app/jobs/index.ts");
 await new Cli().start();
