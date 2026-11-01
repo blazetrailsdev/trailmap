@@ -569,12 +569,14 @@ missing column would only surface when a sync fails. Migrate an empty scratch
 file from a checkout and diff it against `stats.db`; `pr_readmes`, abandoned, is
 the one expected difference. Production's `db prepare` covers every database, so
 give it a throwaway Postgres: the SQLite files it writes are the checkout's own
-`storage/`, and nothing live is touched.
+`storage/`, any seeds go to that throwaway hub (nothing seeds the task domain), and
+with `TASKS_DATABASE` unset nothing live is touched.
 
 ```sh
 docker run -d --rm --name stats-check -e POSTGRES_PASSWORD=p -p 55439:5432 postgres:16
 sleep 6
-TRAILS_ENV=production NODE_ENV=production STATS_SYNC_DB="$PWD/scratch.db" \
+env -u TASKS_DATABASE -u STATS_DB TRAILS_ENV=production NODE_ENV=production \
+  STATS_SYNC_DB="$PWD/scratch.db" \
   HUB_DATABASE_URL=postgres://postgres:p@localhost:55439/postgres \
   pnpm exec trails db prepare
 docker rm -f stats-check
