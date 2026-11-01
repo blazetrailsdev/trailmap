@@ -7,10 +7,5 @@ export class PrReaction extends StatsSyncRecord {
   static {
     this.tableName = "pr_reactions";
     this.primaryKey = "reaction_id";
-    this.attribute("pr_number", "integer");
-    this.attribute("reaction_id", "big_integer");
-    this.attribute("user", "string");
-    this.attribute("content", "string");
-    this.attribute("created_at", "string");
   }
 }
