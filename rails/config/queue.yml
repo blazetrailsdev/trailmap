@@ -1,5 +1,5 @@
 # Solid Queue's processes, as `solid_queue:install` writes this file
-# (solid_queue v1.1.3). Read by the `worker` process (Procfile, bin/jobs), the same file as ../config/queue.yml.
+# (solid_queue v1.1.3). Read by the `worker` process (Procfile, bin/jobs), the same file as ../../config/queue.yml.
 default: &default
   dispatchers:
     - polling_interval: 1

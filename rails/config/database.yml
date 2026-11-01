@@ -69,8 +69,10 @@ production:
     readonly: true
     database_tasks: false
   # Solid Queue's own file on the storage mount, as `solid_queue:install` shapes
-  # it, and ../config/database.ts's `queue` entry.
+  # it, and ../../config/database.ts's `queue` entry. The pool is Solid Queue's
+  # floor for config/queue.yml: threads + 2 (solid_queue configuration.rb).
   queue:
     <<: *sqlite
+    pool: 5
     database: storage/production_queue.sqlite3
     migrations_paths: db/queue_migrate

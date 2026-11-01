@@ -65,9 +65,9 @@ dokku domains:set trailmap-rails trailmap-rails.deanoftech.com
 dokku sso:protect trailmap-rails
 ```
 
-The hub is SHARED. `rails/Procfile`'s `release` runs `bin/rails db:migrate`,
-which touches only the hub (the other two databases are `database_tasks:
-false` in production). The migration versions are identical in both apps, so
+The hub is SHARED. `rails/Procfile`'s `release` runs `bin/rails db:prepare`,
+which touches only the hub and the queue (the other two databases are
+`database_tasks: false` in production). The migration versions are identical in both apps, so
 whichever deploys second finds nothing to do. A hub migration therefore lands
 in both apps in the same PR.
 

@@ -18,6 +18,15 @@ describe("TandemProbeJob", () => {
     expect(TandemProbeJob.performed).toEqual(["from rails"]);
   });
 
+  it("runs a solid_queue_jobs row the Rails app wrote", async () => {
+    const [row] = fixture("rails-queue-row.json") as unknown as [{ arguments: string; class_name: string }];
+    expect(row.class_name).toBe("TandemProbeJob");
+    await (Base as unknown as { execute(data: unknown): Promise<unknown> }).execute(
+      JSON.parse(row.arguments),
+    );
+    expect(TandemProbeJob.performed).toEqual(["from rails"]);
+  });
+
   it("the committed trails payload is what this app serializes", () => {
     const expected = fixture("trails-enqueued.json");
     const job = new TandemProbeJob("from trails") as unknown as { serialize(): Record<string, unknown> };

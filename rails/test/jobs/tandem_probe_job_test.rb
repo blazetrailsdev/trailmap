@@ -10,6 +10,13 @@ class TandemProbeJobTest < ActiveSupport::TestCase
     assert_equal [ "from trails" ], TandemProbeJob.performed
   end
 
+  test "runs a solid_queue_jobs row the trails app wrote" do
+    row = JSON.parse(FIXTURES.join("trails-queue-row.json").read).first
+    assert_equal "TandemProbeJob", row["class_name"]
+    ActiveJob::Base.execute(JSON.parse(row["arguments"]))
+    assert_equal [ "from trails" ], TandemProbeJob.performed
+  end
+
   test "the committed Rails payload is what this app serializes" do
     fixture = JSON.parse(FIXTURES.join("rails-enqueued.json").read)
     serialized = TandemProbeJob.new("from rails").serialize

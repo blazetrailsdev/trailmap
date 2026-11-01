@@ -9,6 +9,10 @@
 # uninitialized, and it loads db/statsSync_schema.ts with force: cascade, which
 # DROPS every table in the copy.
 #
+# So this stamps every migration as applied to the copy: while the crontab keeps
+# stats.db, a later stats-sync migration must be applied to it before seeding,
+# or its change never reaches the copy.
+#
 # Refuses an existing target: rerunning overwrites whatever the job has written.
 set -euo pipefail
 
