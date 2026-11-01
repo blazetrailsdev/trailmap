@@ -600,17 +600,11 @@ dokku storage:mount trailmap /var/lib/dokku/data/storage/trailmap-queue:/app/sto
 #     /home/dean/github/blazetrailsdev:/home/dean/github/blazetrailsdev
 
 # Seed the job's database from stats.db, once, so the first run syncs only what
-# is new rather than refilling 8 GB from GitHub. `.backup` is consistent while the
-# file is in WAL and the crontab may be writing. Never rerun it: it overwrites
-# whatever the job has written since.
-sqlite3 -readonly /home/dean/github/blazetrailsdev/stats.db \
-  ".backup /home/dean/github/blazetrailsdev/stats-job.db"
-# Stamp it as migrated. Without schema_migrations, `db prepare` treats the file as
-# uninitialized and loads db/statsSync_schema.ts with force: cascade, which DROPS
-# every table in the copy.
-sqlite3 /home/dean/github/blazetrailsdev/stats-job.db \
-  "CREATE TABLE schema_migrations (version varchar NOT NULL PRIMARY KEY);
-   INSERT INTO schema_migrations VALUES ('20261031000001');"
+# is new rather than refilling 8 GB from GitHub. The script stamps
+# schema_migrations from db/stats-sync-migrate (without that stamp `db prepare`
+# DROPS every table in the copy) and refuses a target that already exists.
+scripts/seed-stats-job-db.sh /home/dean/github/blazetrailsdev/stats.db \
+  /home/dean/github/blazetrailsdev/stats-job.db
 
 dokku config:set --no-restart trailmap \
   GH_TOKEN=<token with read access to blazetrailsdev/trails> \

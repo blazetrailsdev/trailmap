@@ -1,0 +1,16 @@
+{
+  "job_class": "TandemProbeJob",
+  "job_id": "9b9cb8c7-77ce-423f-9098-0e11f21040e2",
+  "provider_job_id": null,
+  "queue_name": "default",
+  "priority": null,
+  "arguments": [
+    "from rails"
+  ],
+  "executions": 0,
+  "exception_executions": {},
+  "locale": "en",
+  "timezone": "UTC",
+  "enqueued_at": "2026-11-01T15:13:02.142969845Z",
+  "scheduled_at": null
+}

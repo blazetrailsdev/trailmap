@@ -94,3 +94,11 @@ rails/script/tandem --trails http://127.0.0.1:8080 --rails http://127.0.0.1:8081
 
 `rails/script/tandem-cron` runs that comparison hourly from the host crontab
 and appends to `~/github/blazetrailsdev/tandem.log`.
+
+## The Solid Queue worker
+
+`bin/jobs` is declared as the `worker` process and left at scale 0. Before
+scaling it, mount a directory owned by uid 1000 on `/app/rails/storage`: a release
+container's writes are discarded, so `db:prepare` creates
+`storage/production_queue.sqlite3` only on a mount. The Rails app has no recurring
+job; `StatsSyncJob` stays TypeScript only.

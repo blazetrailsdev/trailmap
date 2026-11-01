@@ -68,3 +68,9 @@ production:
     database: <%= ENV["STATS_DB"] %>
     readonly: true
     database_tasks: false
+  # Solid Queue's own file on the storage mount, as `solid_queue:install` shapes
+  # it, and ../config/database.ts's `queue` entry.
+  queue:
+    <<: *sqlite
+    database: storage/production_queue.sqlite3
+    migrations_paths: db/queue_migrate

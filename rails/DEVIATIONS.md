@@ -23,6 +23,13 @@ emits no types. A renamed `as:` compiles and fails at request time. Rails has
 no equivalent problem. Story to file: generate the helper types from the route
 table.
 
+### trails: a serialized job's `timezone` is null
+
+`TandemProbeJob.new(...).serialize` writes `"timezone": "UTC"` in Rails and
+`"timezone": null` in trails (test/fixtures/solid-queue). Both sides run either
+payload, because Active Job treats a blank zone as "leave it alone", but the two
+artefacts are not byte-identical. Story to file: trails serializes `Time.zone`.
+
 ### trails: `config.x` reads empty in the development server
 
 `config/application.ts` sets `config.x.tasks.dir = env.TASKS_DIR` in the
