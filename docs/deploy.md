@@ -605,6 +605,12 @@ dokku storage:mount trailmap /var/lib/dokku/data/storage/trailmap-queue:/app/sto
 # whatever the job has written since.
 sqlite3 -readonly /home/dean/github/blazetrailsdev/stats.db \
   ".backup /home/dean/github/blazetrailsdev/stats-job.db"
+# Stamp it as migrated. Without schema_migrations, `db prepare` treats the file as
+# uninitialized and loads db/statsSync_schema.ts with force: cascade, which DROPS
+# every table in the copy.
+sqlite3 /home/dean/github/blazetrailsdev/stats-job.db \
+  "CREATE TABLE schema_migrations (version varchar NOT NULL PRIMARY KEY);
+   INSERT INTO schema_migrations VALUES ('20261031000001');"
 
 dokku config:set --no-restart trailmap \
   GH_TOKEN=<token with read access to blazetrailsdev/trails> \
@@ -613,10 +619,9 @@ dokku config:set --no-restart trailmap \
 dokku ps:scale trailmap worker=1
 ```
 
-Seed before the first deploy that sets `STATS_SYNC_DB`: the release task migrates
-that file from `db/stats-sync-migrate`, and an empty one gets empty tables and a
-sync from scratch. A seeded file already has `sync_log`, so the migration records
-itself and leaves the data alone.
+Seed and stamp before the first deploy that sets `STATS_SYNC_DB`: the release task
+runs `db prepare` on that file, an unstamped one is wiped, and a missing one gets
+empty tables and a sync from scratch.
 
 `StatsSyncJob` runs at 03:00 America/Detroit, three hours ahead of the crontab
 so the two do not draw on the same GitHub API budget at once. During the trial it writes

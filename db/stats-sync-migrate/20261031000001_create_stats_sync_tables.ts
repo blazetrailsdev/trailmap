@@ -4,9 +4,9 @@ import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapte
 /**
  * The stats sync's whole schema, as it stands in the crontab's stats.db on
  * 2026-10-31 (every column compared; only the abandoned `pr_readmes` is absent
- * here). So an empty file gets the tables, and stats.db, adopted at cutover,
- * is recorded as migrated and left alone: `sync_log` is the sync's last table,
- * which is why it marks the schema as already there.
+ * here). An empty file gets the tables. The seeded copy of stats.db is stamped
+ * with this version (docs/deploy.md), because `db prepare` drops the tables of a
+ * file with no schema_migrations; `sync_log` guards a plain `db migrate` of one.
  */
 export class CreateStatsSyncTables extends Migration.get(8) {
   async up(): Promise<void> {
