@@ -9,7 +9,8 @@ export class PrFile extends StatsSyncRecord {
     this.attribute("status", "string");
     this.attribute("additions", "integer");
     this.attribute("deletions", "integer");
-    this.attribute("changes", "integer");
+    // The `changes` column has no attribute: it would shadow Base#changes, which
+    // Rails refuses as a dangerous attribute. upsertAll writes it from the schema.
     this.attribute("patch", "string");
   }
 }
