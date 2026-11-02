@@ -289,6 +289,14 @@ fi
 # not the mechanism: it passes on the hang and will pass on the 500.
 echo "smoke-boot: a production server with no SECRET_KEY_BASE must not answer /up"
 nosecret_port=8124
+# Something already on the port would answer for this server, so nothing below
+# would reach it. Refuse to run the check rather than pass it for the wrong reason.
+free=0
+curl -sS -o /dev/null -m 5 "http://127.0.0.1:$nosecret_port/up" 2>/dev/null || free=$?
+if [ "$free" != 7 ]; then
+  echo "smoke-boot: port $nosecret_port is already in use" >&2
+  exit 1
+fi
 env -u SECRET_KEY_BASE -u SECRET_KEY_BASE_DUMMY \
   "$trails" server -b 127.0.0.1 -p "$nosecret_port" > "$work/no-secret.log" 2>&1 &
 nosecret=$!
@@ -308,15 +316,20 @@ nosecret_died() {
   exit 1
 }
 
-# Wait until it is LISTENING, which the server says itself once the socket is
-# bound ("=> Trails application starting ..."). Its own word, not a probe of
-# the port: something else answering on the port would satisfy a probe, and
-# this server would be dead of EADDRINUSE behind it. So "did not answer" below
+# Wait for an HTTP-level outcome. The banner ("=> Trails <version> application
+# starting ...") is printed BEFORE the bind, as Rails' server command prints
+# its own, so it proves nothing about the socket, and Handler.Node says nothing
+# once bound. So ask the port: curl exit 7 is "nothing listening yet", and
+# retried while this process lives. Any other exit means the connection was
+# made, and the port was free before this server started, so "did not answer"
 # means the request reached THIS server and went unanswered or was refused.
 listening=""
+answer=7
 for _ in $(seq 1 60); do
-  if grep -q "Trails application starting" "$work/no-secret.log"; then listening=1; break; fi
   if ! kill -0 "$nosecret" 2>/dev/null; then nosecret_died; listening=refused; break; fi
+  answer=0
+  curl -fsS -o /dev/null -m 5 "http://127.0.0.1:$nosecret_port/up" 2>/dev/null || answer=$?
+  if [ "$answer" != 7 ]; then listening=1; break; fi
   sleep 1
 done
 if [ -z "$listening" ]; then
@@ -324,7 +337,7 @@ if [ -z "$listening" ]; then
   tail -20 "$work/no-secret.log" >&2
   exit 1
 fi
-if [ "$listening" != refused ] && curl -fsS -o /dev/null -m 5 "http://127.0.0.1:$nosecret_port/up"; then
+if [ "$listening" != refused ] && [ "$answer" = 0 ]; then
   echo "smoke-boot: production answered /up green with no secret_key_base" >&2
   echo "  dokku would deploy it, and every signed cookie would be unverifiable." >&2
   exit 1
