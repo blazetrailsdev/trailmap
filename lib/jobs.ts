@@ -16,8 +16,13 @@
 // at the first await, before the initializers have run. A job's static block
 // would then call `limitsConcurrency`, which only exists once the Solid Queue
 // engine's `solid_queue.active_job.extensions` initializer has run.
+import { rbArgv } from "@blazetrails/ruby-compat";
 import "../config/environment.ts";
 
 await import("../app/jobs/index.ts");
 const { Cli } = await import("@blazetrails/solid-queue/cli");
-await new Cli().start();
+// Thor declares `start` on its class type, which Cli's type does not inherit.
+// Remove the cast with trails story thor-subclass-types-carry-static-start.
+await (Cli as unknown as { start(argv: string[]): Promise<unknown> }).start(
+  rbArgv(),
+);
