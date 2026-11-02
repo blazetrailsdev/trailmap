@@ -7,6 +7,12 @@
 # against `git archive` output, never the working tree's node_modules.
 set -euo pipefail
 
+# Required by name, first. Without it `bin/trails db create` below fails much
+# later, in Postgres's quoting of a nil name ("no implicit conversion of nil
+# into String", "Couldn't create 'undefined' database"), because the `hub` entry
+# of config/database.ts holds an undefined `url`.
+: "${HUB_DATABASE_URL:?smoke-boot: HUB_DATABASE_URL must name a Postgres database this smoke may create}"
+
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
