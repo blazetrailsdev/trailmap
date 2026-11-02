@@ -25,6 +25,7 @@ overrides:
   "@blazetrails/rack": "file:./vendor/blazetrails-rack-0.1.0.tgz"
   "@blazetrails/rack-session": "file:./vendor/blazetrails-rack-session-0.1.0.tgz"
   "@blazetrails/rack-test": "file:./vendor/blazetrails-rack-test-0.1.0.tgz"
+  "@blazetrails/rake": "file:./vendor/blazetrails-rake-0.1.0.tgz"
   "@blazetrails/ruby-compat": "file:./vendor/blazetrails-ruby-compat-0.1.0.tgz"
   "@blazetrails/solid-queue": "file:./vendor/blazetrails-solid-queue-0.1.0.tgz"
   "@blazetrails/thor": "file:./vendor/blazetrails-thor-0.1.0.tgz"
@@ -32,3 +33,4 @@ overrides:
   "@blazetrails/trailties": "file:./vendor/blazetrails-trailties-0.1.0.tgz"
   "@blazetrails/tse-compiler": "file:./vendor/blazetrails-tse-compiler-0.1.0.tgz"
   "@blazetrails/tzinfo": "file:./vendor/blazetrails-tzinfo-0.1.0.tgz"
+  "@blazetrails/zeitwerk": "file:./vendor/blazetrails-zeitwerk-0.1.0.tgz"
