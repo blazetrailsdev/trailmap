@@ -559,9 +559,6 @@ kill -9 "$(docker inspect -f '{{.State.Pid}}' "$(docker ps -q --filter name=trai
 
 ## The Solid Queue worker
 
-**Blocked:** `bin/jobs` crashes at boot until `solid-queue-hook-runs-before-eager-load`
-is fixed in trails and re-vendored, so do not scale the worker yet.
-
 The `worker` process (`bin/jobs`) runs config/queue.yml and the recurring
 schedule in config/recurring.yml. Its queue is a SQLite database in
 `/app/storage`, created by the release task's `db prepare`.
