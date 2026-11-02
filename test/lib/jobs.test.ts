@@ -1,15 +1,27 @@
 import { getFs } from "@blazetrails/ruby-compat";
+import { rbArgv } from "@blazetrails/ruby-compat";
 import { Cli } from "@blazetrails/solid-queue/cli";
 import { Supervisor } from "@blazetrails/solid-queue";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// lib/jobs.ts starts the supervisor as it loads, so it cannot be imported here.
+// lib/jobs.ts boots the application and starts the supervisor as it loads.
+vi.mock("../../config/environment.ts", () => ({}));
+vi.mock("../../app/jobs/index.ts", () => ({}));
+
 describe("bin/jobs entry point", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("hands ARGV to the CLI, as bin/jobs does", async () => {
-    const source = await getFs().readFile("lib/jobs.ts", "utf8");
-    expect(source).toContain(".start(rbArgv());");
+    const start = vi.spyOn(Supervisor, "start").mockResolvedValue(undefined as never);
+    rbArgv().push("-c", "config/other.yml", "--skip-recurring");
+    try {
+      await import("../../lib/jobs.ts");
+    } finally {
+      rbArgv().length = 0;
+    }
+    expect(start).toHaveBeenCalledWith(
+      expect.objectContaining({ configFile: "config/other.yml", skipRecurring: true }),
+    );
   });
 
   it("reads -c and --skip-recurring from the command line", async () => {
