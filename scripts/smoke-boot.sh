@@ -309,13 +309,13 @@ nosecret_died() {
 }
 
 # Wait until it is LISTENING, which the server says itself once the socket is
-# bound ("=> Trails application starting ..."). Its own word, not a probe of
+# bound ("=> Trails <version> application starting ..."). Its own word, not a probe of
 # the port: something else answering on the port would satisfy a probe, and
 # this server would be dead of EADDRINUSE behind it. So "did not answer" below
 # means the request reached THIS server and went unanswered or was refused.
 listening=""
 for _ in $(seq 1 60); do
-  if grep -q "Trails application starting" "$work/no-secret.log"; then listening=1; break; fi
+  if grep -Eq "Trails [^ ]+ application starting" "$work/no-secret.log"; then listening=1; break; fi
   if ! kill -0 "$nosecret" 2>/dev/null; then nosecret_died; listening=refused; break; fi
   sleep 1
 done
