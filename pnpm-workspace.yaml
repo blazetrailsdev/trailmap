@@ -2,6 +2,14 @@ allowBuilds:
   better-sqlite3: true
   esbuild: true
 
+# pnpm 11 defaults minimumReleaseAge on, and a `pnpm` script can reach it even
+# here on 10: Node's bin directory goes first on a script's PATH, and asdf's
+# Node holds a global pnpm 11. The policy asks the registry for each package's
+# age, and @blazetrails/* is on no registry (they are the tarballs in vendor/),
+# so `pnpm smoke` died on a 404 per package. Only this scope is exempt.
+minimumReleaseAgeExclude:
+  - "@blazetrails/*"
+
 overrides:
   "@blazetrails/actioncable": "file:./vendor/blazetrails-actioncable-0.1.0.tgz"
   "@blazetrails/actionpack": "file:./vendor/blazetrails-actionpack-0.1.0.tgz"

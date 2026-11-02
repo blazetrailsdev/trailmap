@@ -167,8 +167,11 @@ each language spells it; the rest of that report's list was converged.
   `trails-tsc-views` then types every view fed by instance assigns as `never`.
   Story `tsc-views-strict-mode-misses-instance-assigns`. Rails has no such step.
 
-## Solid Queue is trails-only so far
+## Solid Queue runs on both sides; the stats sync is trails-only
 
-`StatsSyncJob`, the queue database, the writer models in
-`app/models/stats-sync` and the `statsSync` database exist on the trails side only. The twin is
-filed as `rails-twin-runs-solid-queue`; until then no job crosses between them.
+Both apps run Solid Queue against one queue database, and `TandemProbeJob`
+crosses in each direction (`test/jobs/tandem-probe-job.test.ts`,
+`rails/test/jobs/tandem_probe_job_test.rb`).
+
+`StatsSyncJob`, the writer models in `app/models/stats-sync` and the `statsSync`
+database exist on the trails side only.
