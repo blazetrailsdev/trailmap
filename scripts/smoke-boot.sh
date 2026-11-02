@@ -308,15 +308,21 @@ nosecret_died() {
   exit 1
 }
 
-# Wait until it is LISTENING, which the server says itself once the socket is
-# bound ("=> Trails <version> application starting ..."). Its own word, not a probe of
-# the port: something else answering on the port would satisfy a probe, and
-# this server would be dead of EADDRINUSE behind it. So "did not answer" below
-# means the request reached THIS server and went unanswered or was refused.
+# Wait for an HTTP-level outcome. The banner ("=> Trails <version> application
+# starting ...") is printed BEFORE the bind, as Rails' server command prints
+# its own, so it proves nothing about the socket, and Handler.Node says nothing
+# once bound. So ask the port: curl exit 7 is "nothing listening yet", and
+# retried while this process lives. Any other exit means the connection was
+# made. A server dead of EADDRINUSE behind something else on the port is caught
+# by the liveness check below, so "did not answer" means the request reached
+# THIS server and went unanswered or was refused.
 listening=""
+answer=7
 for _ in $(seq 1 60); do
-  if grep -Eq "Trails [^ ]+ application starting" "$work/no-secret.log"; then listening=1; break; fi
   if ! kill -0 "$nosecret" 2>/dev/null; then nosecret_died; listening=refused; break; fi
+  answer=0
+  curl -fsS -o /dev/null -m 5 "http://127.0.0.1:$nosecret_port/up" 2>/dev/null || answer=$?
+  if [ "$answer" != 7 ]; then listening=1; break; fi
   sleep 1
 done
 if [ -z "$listening" ]; then
@@ -324,7 +330,7 @@ if [ -z "$listening" ]; then
   tail -20 "$work/no-secret.log" >&2
   exit 1
 fi
-if [ "$listening" != refused ] && curl -fsS -o /dev/null -m 5 "http://127.0.0.1:$nosecret_port/up"; then
+if [ "$listening" != refused ] && [ "$answer" = 0 ]; then
   echo "smoke-boot: production answered /up green with no secret_key_base" >&2
   echo "  dokku would deploy it, and every signed cookie would be unverifiable." >&2
   exit 1
