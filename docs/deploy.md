@@ -573,11 +573,11 @@ give it a throwaway Postgres: the SQLite files it writes are the checkout's own
 with `TASKS_DATABASE` unset nothing live is touched.
 
 ```sh
-docker run -d --rm --name stats-check -e POSTGRES_PASSWORD=p -p 55439:5432 postgres:16
+docker run -d --rm --name stats-check -e POSTGRES_PASSWORD=p -p 127.0.0.1:55449:5432 postgres:16
 sleep 6
 env -u TASKS_DATABASE -u STATS_DB TRAILS_ENV=production NODE_ENV=production \
   STATS_SYNC_DB="$PWD/scratch.db" \
-  HUB_DATABASE_URL=postgres://postgres:p@localhost:55439/postgres \
+  HUB_DATABASE_URL=postgres://postgres:p@127.0.0.1:55449/postgres \
   pnpm exec trails db prepare
 docker rm -f stats-check
 columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT IN ('schema_migrations', 'ar_internal_metadata') ORDER BY 1"; }
@@ -610,6 +610,17 @@ dokku config:set --no-restart trailmap \
   GH_TOKEN=<token with read access to blazetrailsdev/trails> \
   STATS_SYNC_DB=/home/dean/github/blazetrailsdev/stats-job.db \
   STATS_SYNC_LOG=/home/dean/github/blazetrailsdev/stats-sync-job.log
+
+# Deploy before scaling. On 2026-11-02 `ps:scale` left the queue file with no
+# tables: the release task did not run, the worker crashed at boot, and the old
+# `web` stayed up without the new mount. UNTESTED: `ps:rebuild` has not been run
+# here yet. It deliberately rebuilds the last pushed source; a normal `git push`
+# deploy does the same job when there are new commits.
+dokku ps:rebuild trailmap
+
+# Must list solid_queue_jobs and the other solid_queue_* tables. Empty output
+# means the release task did not run: do not scale.
+sqlite3 -readonly /var/lib/dokku/data/storage/trailmap-queue/production_queue.sqlite3 .tables
 dokku ps:scale trailmap worker=1
 ```
 
