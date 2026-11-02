@@ -12,6 +12,7 @@ gem "i18n", "1.14.8"
 gem "pg", "1.5.9"
 gem "bcrypt", "3.1.20"
 gem "msgpack", "1.8.0"
+gem "solid_queue", "1.1.3"
 group :test do
   gem "minitest", "5.27.0"
   gem "rack-test", "2.2.0"

@@ -65,9 +65,9 @@ dokku domains:set trailmap-rails trailmap-rails.deanoftech.com
 dokku sso:protect trailmap-rails
 ```
 
-The hub is SHARED. `rails/Procfile`'s `release` runs `bin/rails db:migrate`,
-which touches only the hub (the other two databases are `database_tasks:
-false` in production). The migration versions are identical in both apps, so
+The hub is SHARED. `rails/Procfile`'s `release` runs `bin/rails db:prepare`,
+which touches only the hub and the queue (the other two databases are
+`database_tasks: false` in production). The migration versions are identical in both apps, so
 whichever deploys second finds nothing to do. A hub migration therefore lands
 in both apps in the same PR.
 
@@ -94,3 +94,11 @@ rails/script/tandem --trails http://127.0.0.1:8080 --rails http://127.0.0.1:8081
 
 `rails/script/tandem-cron` runs that comparison hourly from the host crontab
 and appends to `~/github/blazetrailsdev/tandem.log`.
+
+## The Solid Queue worker
+
+`bin/jobs` is declared as the `worker` process and left at scale 0. Before
+scaling it, mount a directory owned by uid 1000 on `/app/rails/storage`: a release
+container's writes are discarded, so `db:prepare` creates
+`storage/production_queue.sqlite3` only on a mount. The Rails app has no recurring
+job; `StatsSyncJob` stays TypeScript only.

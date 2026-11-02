@@ -1,0 +1,16 @@
+{
+  "job_class": "TandemProbeJob",
+  "job_id": "51c9ad93-9811-42a7-a4b0-6fce3425a028",
+  "provider_job_id": null,
+  "queue_name": "default",
+  "priority": null,
+  "arguments": [
+    "from trails"
+  ],
+  "executions": 0,
+  "exception_executions": {},
+  "locale": "en",
+  "timezone": null,
+  "enqueued_at": "2026-11-01T15:13:20.897412000Z",
+  "scheduled_at": null
+}

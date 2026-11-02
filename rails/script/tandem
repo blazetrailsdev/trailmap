@@ -32,6 +32,7 @@ DEFAULT_PATHS = %w[
   /backlog?filter=icebox /search?q=serialize /search?q=has_many&page=2 /graphs/parity /audits /deploys
   /dashboard /panes/42 /sessions /sessions/blazetrailsdev/trails/1 /api/sessions
   /blazetrailsdev /blazetrailsdev/trails /blazetrailsdev/trails/issues /blazetrailsdev/trails/issues?state=closed
+  /blazetrailsdev/trails/issues?page=2 /blazetrailsdev/trails/issues?page=2&state=closed
   /blazetrailsdev/trails/pulls /blazetrailsdev/trails/pulls?state=merged /blazetrailsdev/trails/projects
   /blazetrailsdev/trails/actions /blazetrailsdev/trails/pulse /blazetrailsdev/trails/settings
   /blazetrailsdev/tasks/wiki /blazetrailsdev/trailmap/issues

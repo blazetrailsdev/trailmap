@@ -1,0 +1,38 @@
+import { Base } from "@blazetrails/activejob";
+import { getFs } from "@blazetrails/ruby-compat";
+import { beforeEach, describe, expect, it } from "vitest";
+import { TandemProbeJob } from "../../app/jobs/index.ts";
+
+const fixture = (name: string) =>
+  JSON.parse(getFs().readFileSync(`test/fixtures/solid-queue/${name}`, "utf8")) as Record<string, unknown>;
+
+describe("TandemProbeJob", () => {
+  beforeEach(() => {
+    TandemProbeJob.performed = [];
+  });
+
+  it("runs a payload the Rails app serialized", async () => {
+    await Base.execute(
+      fixture("rails-enqueued.json") as never,
+    );
+    expect(TandemProbeJob.performed).toEqual(["from rails"]);
+  });
+
+  it("runs a solid_queue_jobs row the Rails app wrote", async () => {
+    const [row] = fixture("rails-queue-row.json") as unknown as [{ arguments: string; class_name: string }];
+    expect(row.class_name).toBe("TandemProbeJob");
+    await Base.execute(
+      JSON.parse(row.arguments) as never,
+    );
+    expect(TandemProbeJob.performed).toEqual(["from rails"]);
+  });
+
+  it("the committed trails payload is what this app serializes", () => {
+    const expected = fixture("trails-enqueued.json");
+    const serialized = new TandemProbeJob("from trails").serialize() as unknown as Record<string, unknown>;
+    expect(Object.keys(serialized).sort()).toEqual(Object.keys(expected).sort());
+    for (const key of ["job_class", "arguments", "queue_name"]) {
+      expect(serialized[key]).toEqual(expected[key]);
+    }
+  });
+});

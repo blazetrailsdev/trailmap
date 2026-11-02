@@ -1,9 +1,14 @@
 # dokku reads this through `ps:set trailmap-rails procfile-path rails/Procfile`
 # (docs/deploy-rails.md). Paths are relative to the image's WORKDIR, /app/rails.
 #
-# `release` migrates the HUB only: the tasks database and the stats database
+# `release` prepares the hub and the queue only: the tasks database and the stats database
 # are `database_tasks: false` in production (config/database.yml). The hub is
 # shared with the trails app and the migration versions are identical, so this
 # is a no-op whenever trailmap has already migrated it, and vice versa.
-release: bin/rails db:migrate
+#
+# `db:prepare`, not `db:migrate`: it also loads db/queue_schema.rb into the empty
+# `queue` database, which has no migrations.
+release: bin/rails db:prepare
 web: bin/rails server -b 0.0.0.0 -p 8080
+# Solid Queue's supervisor (config/queue.yml). Scale it to 1: dokku ps:scale.
+worker: bin/jobs
