@@ -1,6 +1,6 @@
 import { ApplicationController } from "./application-controller.ts";
 import { hasStatsDatabase } from "../../config/database.ts";
-import { PARITY_METRICS, lookupParityMetric, type ParityMetric } from "../models/parity-metric.ts";
+import { PARITY_METRICS, lookupParityMetric, type ParityMetricDefinition } from "../models/parity-metric.ts";
 import { serializeParitySeries, type ParitySeries } from "../serializers/parity-json.ts";
 import { ParityDay } from "../models/parity-day.ts";
 import { refreshProjectionIfStale } from "../models/parity-refresh.ts";
@@ -34,7 +34,7 @@ function sinceFor(days: string | undefined): string | undefined {
 /**
  * One run's gap counters, as the PROJECTION actually stored them.
  *
- * `ParityMetric.gaps` is what a run may write; what a given database holds is
+ * `ParityMetricDefinition.gaps` is what a run may write; what a given database holds is
  * whatever was available when it was last synced, which is narrower if that
  * sync ran against a stats schema older than the metric table. Reading it off
  * a stored row keeps the answer true of the data being charted, and keeps the
@@ -47,7 +47,7 @@ function sinceFor(days: string | undefined): string | undefined {
  * `null`, not `[]`, for a run with no counters — Go marshals its nil slice as
  * null and the vendored drawing code reads that shape.
  */
-async function storedGapsFor(metric: ParityMetric): Promise<string[] | null> {
+async function storedGapsFor(metric: ParityMetricDefinition): Promise<string[] | null> {
   if (metric.gaps === undefined || metric.gaps.length === 0) return null;
   const row = await ParityDay.where({ metric: metric.key }).where().not({ gaps: null }).first();
   const stored = (row?.gaps ?? null) as Record<string, number> | null;
@@ -144,7 +144,7 @@ export class ParityGraphsController extends ApplicationController {
       return value === undefined || value === null ? undefined : String(value);
     };
 
-    const selected: ParityMetric[] = [];
+    const selected: ParityMetricDefinition[] = [];
     for (const key of [...splitCsv(param("metrics")), ...splitCsv(param("metric"))]) {
       const metric = lookupParityMetric(key);
       if (!metric) {

@@ -18,14 +18,35 @@ const CONCERNS = ["app/models/concerns", "app/controllers/concerns"];
 const camelize = (name: string) =>
   name.replace(/(^|-)([a-z0-9])/g, (_m, _sep: string, c: string) => c.toUpperCase());
 
-async function autoloadedFiles(): Promise<string[]> {
-  const fs = getFs();
-  const path = getPath();
-  const roots = (await fs.readdir!(`${ROOT}app`))
+/**
+ * The constant a file defines, namespaced by its directories below its root:
+ * app/models/stats-sync/api-compare-stat.ts is `StatsSync::ApiCompareStat`,
+ * as Zeitwerk maps it. The file exports only the last segment; trails seats it
+ * under the namespace (trailties CLAUDE.md, "File layout is a contract":
+ * `app/models/admin/user.ts` exports `User`, seated as `Admin::User`).
+ */
+function cpathOf(file: string, roots: readonly string[]): string {
+  const root = roots.filter((r) => file.startsWith(`${r}/`)).sort((a, b) => b.length - a.length)[0]!;
+  return file
+    .slice(root.length + 1)
+    .replace(/\.ts$/, "")
+    .split("/")
+    .map(camelize)
+    .join("::");
+}
+
+async function autoloadRoots(): Promise<string[]> {
+  return (await getFs().readdir!(`${ROOT}app`))
     .map(String)
     .filter((dir) => !NOT_AUTOLOADED.has(dir))
     .map((dir) => `app/${dir}`)
     .concat(CONCERNS);
+}
+
+async function autoloadedFiles(): Promise<string[]> {
+  const fs = getFs();
+  const path = getPath();
+  const roots = await autoloadRoots();
   const out: string[] = [];
   async function walk(dir: string): Promise<void> {
     for (const name of (await fs.readdir!(`${ROOT}${dir}`)).map(String)) {
@@ -81,7 +102,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 describe("autoloaded files", () => {
-  it("each define the constant their name spells", async () => {
+  it("each export the last segment of the constant their path spells", async () => {
     const files = await autoloadedFiles();
     expect(files).toContain("app/models/story.ts");
     expect(files).toContain("app/models/concerns/repo-scope.ts");
@@ -91,6 +112,21 @@ describe("autoloaded files", () => {
       if (!(name in (await load(file)))) missing.push(`${file} -> ${name}`);
     }
     expect(missing).toEqual([]);
+  });
+
+  it("claim one constant each, a namespaced one under a subdirectory", async () => {
+    const roots = await autoloadRoots();
+    const byCpath = new Map<string, string[]>();
+    for (const file of await autoloadedFiles()) {
+      const cpath = cpathOf(file, roots);
+      byCpath.set(cpath, [...(byCpath.get(cpath) ?? []), file]);
+    }
+    expect(byCpath.get("ApiCompareStat")).toEqual(["app/models/api-compare-stat.ts"]);
+    expect(byCpath.get("StatsSync::ApiCompareStat")).toEqual([
+      "app/models/stats-sync/api-compare-stat.ts",
+    ]);
+    expect(byCpath.get("RepoScope")).toEqual(["app/models/concerns/repo-scope.ts"]);
+    expect([...byCpath].filter(([, files]) => files.length > 1)).toEqual([]);
   });
 
   it("bundle every named export in their module, and nothing else", async () => {

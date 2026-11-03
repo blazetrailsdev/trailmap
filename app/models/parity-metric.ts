@@ -24,7 +24,7 @@ import { TestCompareStat } from "./test-compare-stat.ts";
  * controller and the view are driven entirely off this list, as ringo's are
  * off `parityMetrics` in webhook/parity.go.
  */
-export interface ParityMetric {
+export interface ParityMetricDefinition {
   /** The `?metrics=` value and the key the JSON is grouped by. */
   readonly key: string;
   /** Shown in the page's run picker. */
@@ -44,7 +44,7 @@ export interface ParityMetric {
   readonly gaps?: readonly string[];
 }
 
-export const PARITY_METRICS: readonly ParityMetric[] = Object.freeze([
+export const PARITY_METRICS: readonly ParityMetricDefinition[] = Object.freeze([
   { key: "api", label: "api:compare", model: ApiCompareStat, gaps: ["misplaced", "missing"] },
   {
     key: "api_privates",
@@ -85,15 +85,15 @@ export const PARITY_METRICS: readonly ParityMetric[] = Object.freeze([
   { key: "call_args", label: "calls:args", model: ApiCallArgsStat, gaps: ["mismatched"] },
 ]);
 
-export function lookupParityMetric(key: string): ParityMetric | undefined {
+export function lookupParityMetric(key: string): ParityMetricDefinition | undefined {
   return PARITY_METRICS.find((metric) => metric.key === key);
 }
 
-export function numeratorColumn(metric: ParityMetric): string {
+export function numeratorColumn(metric: ParityMetricDefinition): string {
   return metric.num ?? "matched";
 }
 
-export function denominatorColumn(metric: ParityMetric): string {
+export function denominatorColumn(metric: ParityMetricDefinition): string {
   return metric.den ?? "total";
 }
 
@@ -103,7 +103,7 @@ export function denominatorColumn(metric: ParityMetric): string {
  * If it is, the `percent` column CI wrote is authoritative and gets read
  * rather than recomputed. A derived metric has no percent column of its own.
  */
-export function isNativeMetric(metric: ParityMetric): boolean {
+export function isNativeMetric(metric: ParityMetricDefinition): boolean {
   return (
     numeratorColumn(metric) === "matched" &&
     denominatorColumn(metric) === "total" &&
@@ -112,7 +112,7 @@ export function isNativeMetric(metric: ParityMetric): boolean {
 }
 
 /** Every column this metric reads, so a database missing one can decline it. */
-export function metricColumns(metric: ParityMetric): string[] {
+export function metricColumns(metric: ParityMetricDefinition): string[] {
   const columns = [numeratorColumn(metric), denominatorColumn(metric)];
   if (metric.sub !== undefined) columns.push(metric.sub);
   if (isNativeMetric(metric)) columns.push("percent");
@@ -136,13 +136,13 @@ export function metricColumns(metric: ParityMetric): string[] {
  * what lets scripts/gate-ringo-parity.ts diff the two endpoints directly
  * instead of normalising first.
  */
-export function gapsFor(metric: ParityMetric): string[] | null {
+export function gapsFor(metric: ParityMetricDefinition): string[] | null {
   if (metric.gaps === undefined || metric.gaps.length === 0) return null;
   const present = metric.model.presentColumns(metric.gaps);
   return present.length > 0 ? present : null;
 }
 
-export function metricAvailable(metric: ParityMetric): boolean {
+export function metricAvailable(metric: ParityMetricDefinition): boolean {
   // Synchronous, and that is safe only because reflection is already warm:
   // `loadStatsSchemas()` awaits it once from
   // config/initializers/stats-database.ts. Without that warm-up this answers

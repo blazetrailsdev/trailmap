@@ -5,7 +5,7 @@ import { Base } from "@blazetrails/activejob";
  * app/jobs/application_job.rb). A job is found by its class NAME twice: the
  * recurring scheduler resolves `class:` from config/recurring.yml, and the
  * worker resolves the payload's `job_class`. Rails autoloads both. Here
- * lib/job-classes.ts registers every job by name, until the trails bump that
- * brings `Loader#importer` (trails#9683) lets the autoloader seat them.
+ * lib/job-classes.ts registers every job by name, until story
+ * trailmap-bump-trails-to-the-autoloader-importer lets the autoloader seat them.
  */
 export class ApplicationJob extends Base {}

@@ -75,9 +75,13 @@ const STATS_MODELS = [
 export const ALL_MODELS = [...MODELS, ...HUB_MODELS, ...STATS_MODELS];
 
 // Association targets are named by string (`belongsTo("rfc")`), so each model
-// must be seated under its name. Deleted by the trails bump that brings
-// `Loader#importer` (trails#9683): the autoloader then seats each model in the
-// same module graph as the code that imports it, and `registerModel` is gone.
+// must be seated under its name.
+//
+// Temporary: deleted by story trailmap-bump-trails-to-the-autoloader-importer,
+// the bump to a trails with `Loader#importer` (trails#9683, story
+// zeitwerk-seats-a-second-module-instance-under-vitest, done), whose
+// autoloader seats each model in the same module graph as the code that
+// imports it. That trails has no `registerModel` either (#9656).
 registerModel(ALL_MODELS);
 
 /**
