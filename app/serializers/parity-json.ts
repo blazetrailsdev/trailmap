@@ -68,3 +68,11 @@ export function serializeParitySeries(
     .filter((pkg) => byPackage.has(pkg))
     .map((pkg) => ({ metric: metricKey, package: pkg, points: byPackage.get(pkg)! }));
 }
+
+/**
+ * `ParityJson`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const ParityJson = {
+  serializeParitySeries,
+};

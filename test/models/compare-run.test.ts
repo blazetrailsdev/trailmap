@@ -7,7 +7,7 @@
  * that row is the LAST PR merged that day.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { ApiCompareStat } from "../../app/models/compare-stats.ts";
+import { ApiCompareStat } from "../../app/models/api-compare-stat.ts";
 import { createScratchStatsDatabase, seedApiCompare } from "./stats-schema.ts";
 
 const COLUMNS = ["matched", "total", "percent"];

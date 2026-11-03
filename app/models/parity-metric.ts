@@ -1,11 +1,9 @@
 import type { CompareRun } from "./compare-run.ts";
-import {
-  ApiCallArgsStat,
-  ApiCallsStat,
-  ApiCompareStat,
-  ApiComparePrivatesStat,
-  TestCompareStat,
-} from "./compare-stats.ts";
+import { ApiCallArgsStat } from "./api-call-args-stat.ts";
+import { ApiCallsStat } from "./api-calls-stat.ts";
+import { ApiCompareStat } from "./api-compare-stat.ts";
+import { ApiComparePrivatesStat } from "./api-compare-privates-stat.ts";
+import { TestCompareStat } from "./test-compare-stat.ts";
 
 /**
  * One measure the parity page can chart.
@@ -153,3 +151,18 @@ export function metricAvailable(metric: ParityMetric): boolean {
   if (columns.length === 0) return false;
   return metricColumns(metric).every((column) => columns.includes(column));
 }
+
+/**
+ * `ParityMetric`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const ParityMetric = {
+  PARITY_METRICS,
+  denominatorColumn,
+  gapsFor,
+  isNativeMetric,
+  lookupParityMetric,
+  metricAvailable,
+  metricColumns,
+  numeratorColumn,
+};

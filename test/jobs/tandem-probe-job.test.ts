@@ -1,7 +1,7 @@
 import { Base } from "@blazetrails/activejob";
 import { getFs } from "@blazetrails/ruby-compat";
 import { beforeEach, describe, expect, it } from "vitest";
-import { TandemProbeJob } from "../../app/jobs/index.ts";
+import { TandemProbeJob } from "../../lib/job-classes.ts";
 
 const fixture = (name: string) =>
   JSON.parse(getFs().readFileSync(`test/fixtures/solid-queue/${name}`, "utf8")) as Record<string, unknown>;

@@ -1,7 +1,7 @@
 import { Trails } from "@blazetrails/trailties";
 import { hasStatsDatabase, statsDatabaseConfig } from "../database.ts";
 import { Stats } from "../../app/models/stats.ts";
-import { loadStatsSchemas } from "../../app/models/index.ts";
+import { loadStatsSchemas } from "../../lib/model-schemas.ts";
 
 /**
  * Connect the trails comparison stats to the stats database, read-only.

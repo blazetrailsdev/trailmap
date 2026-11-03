@@ -181,3 +181,17 @@ export function depGraphMessages(violations: DepViolations): string[] {
   }
   return messages;
 }
+
+/**
+ * `SemanticValidation`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const SemanticValidation = {
+  MAX_EST_LOC,
+  checkDepGraph,
+  closedRfcErrors,
+  depGraphMessages,
+  estLocErrors,
+  isTerminalStatus,
+  lifecycleErrors,
+};

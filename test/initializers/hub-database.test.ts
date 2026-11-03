@@ -4,7 +4,7 @@ import { Trailmap } from "../../config/application.ts";
 import { connectToHubDatabase } from "../../config/initializers/hub-database.ts";
 import { Hub } from "../../app/models/hub.ts";
 import { Owner } from "../../app/models/owner.ts";
-import { missingHubTables } from "../../app/models/index.ts";
+import { missingHubTables } from "../../lib/model-schemas.ts";
 
 /** See "refuses to boot against a database that has no hub schema". */
 const HUB_SCRATCH_DATABASE_TIMEOUT_MS = 30_000;
@@ -115,7 +115,7 @@ describe("connectToHubDatabase", () => {
 
         // Every table a hub model names, sorted — `missingHubTables` derives the
         // list from HUB_MODELS rather than a written-out one, so a model added
-        // to the barrel belongs here too.
+        // to that list belongs here too.
         expect(await missingHubTables()).toEqual([
           "owners",
           "parity_days",

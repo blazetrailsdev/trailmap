@@ -10,7 +10,10 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { migrateScratchDatabase } from "../models/schema.ts";
-import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { Event } from "../../app/models/event.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { MutationsController } from "../../app/controllers/mutations-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";

@@ -1,7 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { migrateScratchDatabase } from "../models/schema.ts";
-import { Rfc, Story, StoryDep, loadModelSchemas } from "../../app/models/index.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
+import { StoryDep } from "../../app/models/story-dep.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";

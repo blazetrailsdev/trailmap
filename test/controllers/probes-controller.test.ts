@@ -3,7 +3,9 @@ import { setX } from "../support/config-x.ts";
 import { env, getChildProcess, getFs, setEnv, registeredConstant, type FsAdapter } from "@blazetrails/ruby-compat";
 import { MigrationContext } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "../models/schema.ts";
-import { Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ProbesController } from "../../app/controllers/probes-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 import {

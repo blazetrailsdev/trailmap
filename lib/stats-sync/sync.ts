@@ -1,29 +1,27 @@
 import { env, getChildProcessAsync } from "@blazetrails/ruby-compat";
-import {
-  StatsSyncRecord,
-  PullRequest,
-  PrFile,
-  PrCommit,
-  PrComment,
-  PrReview,
-  PrRequestedReviewer,
-  PrLinkedIssue,
-  PrTimelineEvent,
-  PrReaction,
-  WorkflowRun,
-  WorkflowJob,
-  WorkflowStep,
-  CheckAnnotation,
-  TestCompareStat,
-  ApiCompareStat,
-  ApiComparePrivatesStat,
-  ApiCallsStat,
-  ApiCallArgsStat,
-  CompareLog,
-  RawJobLog,
-  ExpiredJobLog,
-  SyncLog,
-} from "../../app/models/stats-sync/index.ts";
+import { StatsSyncRecord } from "../../app/models/stats-sync/stats-sync-record.ts";
+import { PullRequest } from "../../app/models/stats-sync/pull-request.ts";
+import { PrFile } from "../../app/models/stats-sync/pr-file.ts";
+import { PrCommit } from "../../app/models/stats-sync/pr-commit.ts";
+import { PrComment } from "../../app/models/stats-sync/pr-comment.ts";
+import { PrReview } from "../../app/models/stats-sync/pr-review.ts";
+import { PrRequestedReviewer } from "../../app/models/stats-sync/pr-requested-reviewer.ts";
+import { PrLinkedIssue } from "../../app/models/stats-sync/pr-linked-issue.ts";
+import { PrTimelineEvent } from "../../app/models/stats-sync/pr-timeline-event.ts";
+import { PrReaction } from "../../app/models/stats-sync/pr-reaction.ts";
+import { WorkflowRun } from "../../app/models/stats-sync/workflow-run.ts";
+import { WorkflowJob } from "../../app/models/stats-sync/workflow-job.ts";
+import { WorkflowStep } from "../../app/models/stats-sync/workflow-step.ts";
+import { CheckAnnotation } from "../../app/models/stats-sync/check-annotation.ts";
+import { TestCompareStat } from "../../app/models/stats-sync/test-compare-stat.ts";
+import { ApiCompareStat } from "../../app/models/stats-sync/api-compare-stat.ts";
+import { ApiComparePrivatesStat } from "../../app/models/stats-sync/api-compare-privates-stat.ts";
+import { ApiCallsStat } from "../../app/models/stats-sync/api-calls-stat.ts";
+import { ApiCallArgsStat } from "../../app/models/stats-sync/api-call-args-stat.ts";
+import { CompareLog } from "../../app/models/stats-sync/compare-log.ts";
+import { RawJobLog } from "../../app/models/stats-sync/raw-job-log.ts";
+import { ExpiredJobLog } from "../../app/models/stats-sync/expired-job-log.ts";
+import { SyncLog } from "../../app/models/stats-sync/sync-log.ts";
 import { parseTestCompareFromLogs } from "./parse-test-compare.ts";
 import { parseCallSummariesFromLogs } from "./parse-call-summaries.ts";
 import { classifyCompareStep } from "./classify-compare-step.ts";

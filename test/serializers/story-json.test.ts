@@ -3,15 +3,13 @@ import { Base } from "@blazetrails/activerecord";
 import { env, getFs } from "@blazetrails/ruby-compat";
 import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.ts";
 import { migrateScratchDatabase } from "../models/schema.ts";
-import {
-  Rfc,
-  Story,
-  StoryDep,
-  StoryPackage,
-  StoryPath,
-  StoryRfcDep,
-  loadModelSchemas,
-} from "../../app/models/index.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
+import { StoryDep } from "../../app/models/story-dep.ts";
+import { StoryPackage } from "../../app/models/story-package.ts";
+import { StoryPath } from "../../app/models/story-path.ts";
+import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { serializeStories, serializeStory } from "../../app/serializers/story-json.ts";
 
 describe("the serializer", () => {

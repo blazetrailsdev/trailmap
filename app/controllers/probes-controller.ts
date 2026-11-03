@@ -1,7 +1,7 @@
 import { env, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
 import { ApiController } from "./api-controller.ts";
 import type { MigrationContext } from "@blazetrails/activerecord";
-import { Story } from "../models/index.ts";
+import { Story } from "../models/story.ts";
 import { Hub } from "../models/hub.ts";
 import {
   HUB_MIGRATIONS_PATH,

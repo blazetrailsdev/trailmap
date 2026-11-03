@@ -1,6 +1,10 @@
 /** The display rule beside `effectiveStoryStatus`, in each of its three forms. */
 import { beforeAll, describe, expect, it } from "vitest";
-import { Rfc, Story, StoryDep, StoryRfcDep, loadModelSchemas } from "../../app/models/index.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
+import { StoryDep } from "../../app/models/story-dep.ts";
+import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { shownStoryStatus } from "../../app/models/concerns/effective-status.ts";
 import { depHeldIn, isDepHeld, type RankingIndex, type RankedStory } from "../../app/models/concerns/ranking.ts";
 import { migrateScratchDatabase } from "./schema.ts";

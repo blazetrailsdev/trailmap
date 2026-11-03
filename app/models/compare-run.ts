@@ -15,6 +15,12 @@ import type { Relation } from "@blazetrails/activerecord";
  * abstract-class inheritance — `CompareRun` has no table of its own, each
  * subclass names one, and `Stats` above it carries the connection.
  *
+ * A subclass declares only what its table has and the others do not. Which of
+ * them the page's "gaps" chart offers is NOT decided by the subclass: it
+ * belongs to the metric (app/models/parity-metric.ts), because four of the
+ * eight metrics read `test_compare_stats` and only one of them charts its
+ * counters.
+ *
  * ringo computes all of this with a table-driven struct (`parityMetric` in
  * webhook/parity.go) that hand-writes each table's column list and probes
  * `pragma_table_info` before every query to find out which columns exist,

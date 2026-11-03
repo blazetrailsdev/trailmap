@@ -5,7 +5,7 @@ import { hasTasksDatabase } from "../../config/database.ts";
 import { Trailmap } from "../../config/application.ts";
 import { connectToTasksDatabase } from "../../config/initializers/tasks-database.ts";
 import { writeProtocol } from "../../config/write-protocol.ts";
-import { Story } from "../../app/models/index.ts";
+import { Story } from "../../app/models/story.ts";
 
 /**
  * Importing the initializer registers `connectToTasksDatabase` as a `server`

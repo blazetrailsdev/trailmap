@@ -105,3 +105,12 @@ export function markTitle(mark: RfcMark): string {
   const reps = mark.reps > 1 ? ` (${mark.reps} refinements, unchanged)` : "";
   return `${n} at refinement on ${mark.at?.slice(0, 10)}${reps}`;
 }
+
+/**
+ * `RfcMarks`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const RfcMarks = {
+  collectRfcMarks,
+  markTitle,
+};

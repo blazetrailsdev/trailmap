@@ -1,6 +1,6 @@
 import { Event } from "../event.ts";
 import { Story } from "../story.ts";
-import { StoryPath } from "../joins.ts";
+import { StoryPath } from "../story-path.ts";
 
 /**
  * Which stories belong to a repository, and the one place that decides it.
@@ -271,3 +271,19 @@ export async function eventsForRepo(
   }
   return out;
 }
+
+/**
+ * `RepoScope`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const RepoScope = {
+  CONTENT_REPO,
+  eventsForRepo,
+  inChunks,
+  openCountsByRepo,
+  pathsForStories,
+  prNumber,
+  prRefsOf,
+  storiesForRepo,
+  storyForRepo,
+};

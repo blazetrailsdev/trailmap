@@ -6,7 +6,7 @@ import {
   recordTasksDatabaseIdentity,
   tasksDatabaseConfig,
 } from "../database.ts";
-import { loadModelSchemas } from "../../app/models/index.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 
 /**
  * Point the models at the CLI's live `tasks.db` when `TASKS_DATABASE` names

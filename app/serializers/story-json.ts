@@ -13,7 +13,7 @@
  * `index.json` for the full RFC set, which is the real guard.
  */
 import { effectiveStoryStatus } from "../models/concerns/effective-status.ts";
-import type { Story } from "../models/index.ts";
+import type { Story } from "../models/story.ts";
 import type { BundledStory, RankedStory, RankingIndex } from "../models/concerns/ranking.ts";
 
 export interface StoryJson {
@@ -113,3 +113,14 @@ export function serializeStory(story: SerializedStory, context: StoryJsonContext
 export function serializeStories(stories: SerializedStory[], context: StoryJsonContext): StoryJson[] {
   return stories.map((story) => serializeStory(story, context));
 }
+
+/**
+ * `StoryJson`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const StoryJson = {
+  integerOrNull,
+  isoMidnight,
+  serializeStories,
+  serializeStory,
+};

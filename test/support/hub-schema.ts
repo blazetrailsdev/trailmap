@@ -1,7 +1,7 @@
 import { env } from "@blazetrails/ruby-compat";
 import { Hub } from "../../app/models/hub.ts";
 import { HUB_MIGRATIONS_PATH } from "../../config/database.ts";
-import { loadHubSchemas } from "../../app/models/index.ts";
+import { loadHubSchemas } from "../../lib/model-schemas.ts";
 import { Setting } from "../../app/models/setting.ts";
 
 /**

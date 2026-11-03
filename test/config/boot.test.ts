@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { getFs } from "@blazetrails/ruby-compat";
-import { ALL_MODELS, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { ALL_MODELS, loadModelSchemas } from "../../lib/model-schemas.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
 import { migrateScratchDatabase } from "../models/schema.ts";
 
-describe("the model barrel", () => {
-  // Compared with the barrel's own list, not the constant registry: the boot
-  // registers a class however it was loaded, so the registry cannot see a model
-  // left out, and that model's schema is never loaded. Covers every concrete
+describe("the schema warm-up lists", () => {
+  // Compared with lib/model-schemas' own lists, not the constant registry: the
+  // autoloader seats a class however it was loaded, so the registry cannot see a
+  // model left out, and that model's schema is never warmed. Covers every concrete
   // Base subclass any file exports, at any depth of inheritance.
-  it("registers every model in app/models", async () => {
+  it("lists every model in app/models", async () => {
     const listed = new Set(ALL_MODELS.map((model) => model.name));
     const seen: string[] = [];
     const missing: string[] = [];

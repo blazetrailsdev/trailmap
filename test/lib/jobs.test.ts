@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 // lib/jobs.ts boots the application and starts the supervisor as it loads.
 vi.mock("../../config/environment.ts", () => ({}));
-vi.mock("../../app/jobs/index.ts", () => ({}));
+vi.mock("../../lib/job-classes.ts", () => ({}));
 
 describe("bin/jobs entry point", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -47,6 +47,6 @@ describe("bin/jobs entry point", () => {
   it("loads the job classes only after the application has booted", async () => {
     const source = await getFs().readFile("lib/jobs.ts", "utf8");
     expect(source).not.toMatch(/^import [^(]*app\/jobs/m);
-    expect(source).toContain('await import("../app/jobs/index.ts");');
+    expect(source).toContain('await import("./job-classes.ts");');
   });
 });

@@ -8,7 +8,12 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { migrateScratchDatabase } from "./schema.ts";
-import { Rfc, Story, StoryDep, StoryPath, StoryRfcDep, loadModelSchemas } from "../../app/models/index.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
+import { StoryDep } from "../../app/models/story-dep.ts";
+import { StoryPath } from "../../app/models/story-path.ts";
+import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import {
   bestBundle,
   claimableIn,

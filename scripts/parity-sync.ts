@@ -15,7 +15,8 @@
 import { argv, exit } from "@blazetrails/ruby-compat";
 import { Hub } from "../app/models/hub.ts";
 import { Stats } from "../app/models/stats.ts";
-import { loadHubSchemas, loadStatsSchemas, ParityDay } from "../app/models/index.ts";
+import { loadHubSchemas, loadStatsSchemas } from "../lib/model-schemas.ts";
+import { ParityDay } from "../app/models/parity-day.ts";
 import {
   hasHubDatabase,
   hasStatsDatabase,

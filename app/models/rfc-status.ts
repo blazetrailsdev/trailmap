@@ -32,7 +32,7 @@ import { tasksContentDir } from "../../config/tasks-content.ts";
 import { ApplicationRecord } from "./application-record.ts";
 import { Event } from "./event.ts";
 import { closeRfcIfComplete } from "./rfc-close.ts";
-import { RFC_STATUSES, Rfc, type RfcStatus } from "./rfc.ts";
+import { RFC_STATUSES, Rfc, type RfcStatus as RfcStatusName } from "./rfc.ts";
 import { Story } from "./story.ts";
 import { VerbExit } from "./verb-exit.ts";
 
@@ -41,7 +41,7 @@ import { VerbExit } from "./verb-exit.ts";
  * absent: it needs a `superseded-by` target, an authoring decision. Reopening
  * a closed RFC is a PR, not a button.
  */
-const ALLOWED: Record<RfcStatus, readonly RfcStatus[]> = {
+const ALLOWED: Record<RfcStatusName, readonly RfcStatusName[]> = {
   draft: ["active", "closed", "postponed"],
   active: ["draft", "closed", "postponed"],
   postponed: ["draft", "active", "closed"],
@@ -52,7 +52,7 @@ const ALLOWED: Record<RfcStatus, readonly RfcStatus[]> = {
 const TERMINAL_STORY = new Set(["done", "closed"]);
 
 export interface RfcStatusMove {
-  to: RfcStatus;
+  to: RfcStatusName;
   label: string;
   confirm: string;
 }
@@ -161,7 +161,7 @@ async function moveRfc(dir: string, id: string, to: string, rawReason: string | 
   if (!(RFC_STATUSES as readonly string[]).includes(to)) {
     throw new VerbExit(1, `unknown RFC status "${to}" (one of: ${RFC_STATUSES.join(", ")})`);
   }
-  const target = to as RfcStatus;
+  const target = to as RfcStatusName;
 
   const branch = await git(dir, "rev-parse", "--abbrev-ref", "HEAD").catch(() => null);
   if (branch !== "main") {
@@ -256,3 +256,13 @@ export async function rfcReadyDrafts(id: string): Promise<string[]> {
   if (drafts.length === 0) throw new VerbExit(2, `rfc ${id} has no draft stories`);
   return Story.statusSetAll(drafts, "ready", { from: "draft" });
 }
+
+/**
+ * `RfcStatus`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const RfcStatus = {
+  rfcReadyDrafts,
+  rfcStatusMoves,
+  rfcStatusSet,
+};

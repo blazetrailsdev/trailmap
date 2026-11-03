@@ -53,3 +53,14 @@ export async function readDeployLog(logFile: string): Promise<string> {
   // ringo's wording, naming the path asked for rather than the `.gz` guessed.
   return `(pane log unreadable: ${path}: no such file or directory)`;
 }
+
+/**
+ * `DeployLog`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const DeployLog = {
+  deployLogName,
+  deployLogsDir,
+  readDeployLog,
+  readsDeployLogLocally,
+};

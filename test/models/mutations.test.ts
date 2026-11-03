@@ -7,7 +7,10 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { migrateScratchDatabase } from "./schema.ts";
-import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { Event } from "../../app/models/event.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { VerbExit } from "../../app/models/verb-exit.ts";
 
 vi.spyOn(console, "log").mockImplementation(() => {});

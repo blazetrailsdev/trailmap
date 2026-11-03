@@ -10,7 +10,11 @@ import {
   hasHubTestDatabase,
   releaseHubTestDatabase,
 } from "../support/hub-schema.ts";
-import { Rfc, Story, Event, StoryPath, loadModelSchemas } from "../../app/models/index.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
+import { Event } from "../../app/models/event.ts";
+import { StoryPath } from "../../app/models/story-path.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { Owner } from "../../app/models/owner.ts";
 import { Repository } from "../../app/models/repository.ts";
 import { RepositorySetting } from "../../app/models/repository-setting.ts";

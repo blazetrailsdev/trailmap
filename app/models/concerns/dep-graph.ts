@@ -1,5 +1,5 @@
 import { Rfc } from "../rfc.ts";
-import { StoryDep } from "../joins.ts";
+import { StoryDep } from "../story-dep.ts";
 import { Story } from "../story.ts";
 import { shownStoryStatus } from "./effective-status.ts";
 
@@ -106,3 +106,11 @@ export async function depGraphFor(id: string): Promise<DepGraph> {
     cyclic: up.cyclic,
   };
 }
+
+/**
+ * `DepGraph`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const DepGraph = {
+  depGraphFor,
+};

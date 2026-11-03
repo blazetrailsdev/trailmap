@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { env, getFs, setEnv } from "@blazetrails/ruby-compat";
 import { tasksDatabaseConfig } from "../../config/database.ts";
 import { ringoBusyTimeoutPragma, tableOwners, tablesOwnedBy, writeProtocol } from "../../config/write-protocol.ts";
-import * as models from "../../app/models/index.ts";
+import { ALL_MODELS } from "../../lib/model-schemas.ts";
 import { Hub } from "../../app/models/hub.ts";
 import { Stats } from "../../app/models/stats.ts";
 
@@ -50,7 +50,7 @@ describe("write protocol", () => {
     //   cron owns. trailmap's connection to it is READ-ONLY at the driver, so
     //   it cannot be a second writer to anything even in principle.
     const excluded = [Hub, Stats];
-    const mapped = Object.values(models)
+    const mapped = ALL_MODELS
       .filter(
         (model) =>
           typeof model === "function" &&
