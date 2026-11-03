@@ -10,7 +10,7 @@ import { StoryPackage } from "../../app/models/story-package.ts";
 import { StoryPath } from "../../app/models/story-path.ts";
 import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
 import { loadModelSchemas } from "../../lib/model-schemas.ts";
-import { serializeStories, serializeStory } from "../../app/serializers/story-json.ts";
+import { integerOrNull, isoMidnight, serializeStories, serializeStory } from "../../app/serializers/story-json.ts";
 
 describe("the serializer", () => {
   beforeAll(async () => {
@@ -174,5 +174,24 @@ withLiveDatabase("the published index.json", () => {
       return;
     }
     ctx.skip("index.json was republished under every attempt — the backlog is busy");
+  });
+});
+
+describe("the serializer's value helpers", () => {
+  it("isoMidnight answers a date's UTC midnight, and null for nothing or nonsense", () => {
+    expect(isoMidnight("2026-11-03")).toBe("2026-11-03T00:00:00.000Z");
+    expect(isoMidnight("2026-11-03T17:45:00Z")).toBe("2026-11-03T00:00:00.000Z");
+    expect(isoMidnight(null)).toBeNull();
+    expect(isoMidnight(undefined)).toBeNull();
+    expect(isoMidnight("")).toBeNull();
+    expect(isoMidnight("not a date")).toBeNull();
+  });
+
+  it("integerOrNull passes an integer and nulls anything else", () => {
+    expect(integerOrNull(0)).toBe(0);
+    expect(integerOrNull(250)).toBe(250);
+    expect(integerOrNull(2.5)).toBeNull();
+    expect(integerOrNull("250")).toBeNull();
+    expect(integerOrNull(null)).toBeNull();
   });
 });
