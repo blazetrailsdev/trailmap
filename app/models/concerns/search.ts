@@ -231,3 +231,16 @@ function snippetOf(text: string, needle: string): string {
   const shown = text.slice(start, end).replace(/\s+/g, " ").trim();
   return `${start > 0 ? "…" : ""}${shown}${end < text.length ? "…" : ""}`;
 }
+
+/**
+ * `Search`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const Search = {
+  SEARCH_MAX_LENGTH,
+  SEARCH_MIN_LENGTH,
+  compareHits,
+  search,
+  searchPhrase,
+  withSnippets,
+};

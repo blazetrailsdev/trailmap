@@ -1,0 +1,21 @@
+import { registerConstant } from "@blazetrails/ruby-compat";
+import { ApplicationJob } from "../app/jobs/application-job.ts";
+import { StatsSyncJob } from "../app/jobs/stats-sync-job.ts";
+import { TandemProbeJob } from "../app/jobs/tandem-probe-job.ts";
+
+// Every job class, registered by name: a queued job and config/recurring.yml
+// name their class as a string, and the worker resolves it through this registry.
+//
+// Out of app/jobs because it defines no constant of its own, which the
+// autoloader requires of a file there (RFC 0213).
+//
+// Temporary: deleted by story trailmap-bump-trails-to-the-autoloader-importer,
+// the bump to a trails with `Loader#importer` (trails#9683, story
+// zeitwerk-seats-a-second-module-instance-under-vitest, done), whose
+// autoloader seats each job in the same module graph as the code that imports
+// it. That trails has no `registerConstant` either (#9681).
+registerConstant("ApplicationJob", ApplicationJob);
+registerConstant("StatsSyncJob", StatsSyncJob);
+registerConstant("TandemProbeJob", TandemProbeJob);
+
+export { ApplicationJob, StatsSyncJob, TandemProbeJob };

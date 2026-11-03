@@ -317,3 +317,19 @@ function compareBytes(a: string, b: string): number {
 export function rfcTerminal(status: string | null): boolean {
   return status === "closed" || status === "superseded";
 }
+
+/**
+ * `RfcProgress`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const RfcProgress = {
+  orderRfcsForIndex,
+  orderStoriesForRfc,
+  rfcStalled,
+  rfcStoryCounts,
+  rfcTerminal,
+  storyBarLength,
+  storyBarScale,
+  storyStatusCounts,
+  storyStatusRank,
+};

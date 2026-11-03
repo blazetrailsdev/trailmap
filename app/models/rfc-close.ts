@@ -76,3 +76,11 @@ export async function closeRfcIfComplete(rfcId: string | null | undefined): Prom
   Trails.logger?.info(`closed rfc ${rfcId} — all ${total} stories are done or closed`);
   return true;
 }
+
+/**
+ * `RfcClose`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const RfcClose = {
+  closeRfcIfComplete,
+};

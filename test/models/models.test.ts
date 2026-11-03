@@ -1,20 +1,15 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "./schema.ts";
-import {
-  Event,
-  Meta,
-  RESOLVED_DEP_STATUSES,
-  RFC_STATUSES,
-  Rfc,
-  STORY_STATUSES,
-  Story,
-  StoryDep,
-  StoryPackage,
-  StoryPath,
-  StoryRfcDep,
-  loadModelSchemas,
-} from "../../app/models/index.ts";
+import { Event } from "../../app/models/event.ts";
+import { Meta } from "../../app/models/meta.ts";
+import { RESOLVED_DEP_STATUSES, STORY_STATUSES, Story } from "../../app/models/story.ts";
+import { RFC_STATUSES, Rfc } from "../../app/models/rfc.ts";
+import { StoryDep } from "../../app/models/story-dep.ts";
+import { StoryPackage } from "../../app/models/story-package.ts";
+import { StoryPath } from "../../app/models/story-path.ts";
+import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 
 beforeAll(async () => {
   await migrateScratchDatabase();

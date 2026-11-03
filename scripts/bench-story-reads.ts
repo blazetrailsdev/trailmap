@@ -9,7 +9,7 @@
  */
 import { exit } from "@blazetrails/ruby-compat";
 import "../config.ts";
-import { Story } from "../app/models/index.ts";
+import { Story } from "../app/models/story.ts";
 import { serializeStories } from "../app/serializers/story-json.ts";
 
 const RUNS = 5;

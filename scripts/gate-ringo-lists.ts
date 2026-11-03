@@ -67,7 +67,7 @@ import {
   trailmapStoryRows,
 } from "./page-extract.ts";
 import { tasksDatabaseConfig } from "../config/database.ts";
-import { loadModelSchemas } from "../app/models/index.ts";
+import { loadModelSchemas } from "../lib/model-schemas.ts";
 import { ApplicationController } from "../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../app/controllers/rfc-pages-controller.ts";
 import { StoryPagesController } from "../app/controllers/story-pages-controller.ts";

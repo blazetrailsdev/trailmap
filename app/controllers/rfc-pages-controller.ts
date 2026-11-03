@@ -1,6 +1,8 @@
 import type { SafeBuffer } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.ts";
-import { Event, Rfc, Story } from "../models/index.ts";
+import { Event } from "../models/event.ts";
+import { Rfc } from "../models/rfc.ts";
+import { Story } from "../models/story.ts";
 import { collectRfcMarks, type MarkEvent } from "../models/concerns/rfc-marks.ts";
 import { readDocument } from "../models/concerns/document.ts";
 import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet, type RfcStatusMove } from "../models/rfc-status.ts";

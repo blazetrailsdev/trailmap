@@ -18,3 +18,11 @@ export function daysSince(stamp: string | null, now: number = Date.now()): numbe
   if (Number.isNaN(at)) return null;
   return Math.max(0, Math.trunc((now - at) / 86_400_000));
 }
+
+/**
+ * `Elapsed`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const Elapsed = {
+  daysSince,
+};

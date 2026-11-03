@@ -1,4 +1,5 @@
-import type { Rfc, Story } from "../models/index.ts";
+import type { Rfc } from "../models/rfc.ts";
+import type { Story } from "../models/story.ts";
 import { shownStoryStatus } from "../models/concerns/effective-status.ts";
 import { markTitle, type RfcMark } from "../models/concerns/rfc-marks.ts";
 import {

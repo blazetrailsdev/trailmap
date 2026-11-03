@@ -304,3 +304,25 @@ export function storiesTouchingIn<S extends RankedStory>(
   if (prefixed.length) return prefixed;
   return tier((p) => p.includes(q));
 }
+
+/**
+ * `Ranking`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const Ranking = {
+  OPEN_STORY_STATUSES,
+  bestBundle,
+  bundleScope,
+  claimableIn,
+  comparePriority,
+  depHeldIn,
+  effectivePriority,
+  emptyBundleReasonIn,
+  isDepHeld,
+  isDepResolved,
+  listFilteredIn,
+  nextBundleIn,
+  priorityContext,
+  storiesTouchingIn,
+  summarizeBundle,
+};

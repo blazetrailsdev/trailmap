@@ -28,3 +28,11 @@ export async function viewerOf(request: ViewerRequest): Promise<Owner | null> {
   const login = String(request.getHeader("HTTP_REMOTE_USER") ?? "").trim();
   return login === "" ? null : Owner.findByLogin(login);
 }
+
+/**
+ * `Viewer`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const Viewer = {
+  viewerOf,
+};

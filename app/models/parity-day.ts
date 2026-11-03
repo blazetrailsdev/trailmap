@@ -6,7 +6,7 @@ import {
   isNativeMetric,
   metricColumns,
   numeratorColumn,
-  type ParityMetric,
+  type ParityMetricDefinition,
 } from "./parity-metric.ts";
 import type { Relation } from "@blazetrails/activerecord";
 
@@ -151,7 +151,7 @@ export class ParityDay extends Hub {
  */
 export function measureRow(
   row: Record<string, unknown>,
-  metric: ParityMetric,
+  metric: ParityMetricDefinition,
 ): { matched: number; total: number; percent: number } {
   const num = Number(row[numeratorColumn(metric)] ?? 0);
   const den = Number(row[denominatorColumn(metric)] ?? 0);

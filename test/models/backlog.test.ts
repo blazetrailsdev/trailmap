@@ -6,7 +6,7 @@ import {
   matchesBacklogFilter,
   orderBacklog,
 } from "../../app/models/concerns/backlog.ts";
-import type { Story } from "../../app/models/index.ts";
+import type { Story } from "../../app/models/story.ts";
 
 /** A story is only its id, rfc and status here; nothing else is read. */
 function story(id: string, status: string, rfcId = "rfc"): Story {

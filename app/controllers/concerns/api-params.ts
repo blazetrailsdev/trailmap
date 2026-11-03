@@ -47,3 +47,15 @@ export function prRefParam(
   const m = PR_REF_RE.exec(value.trim());
   return m ? `${m[1]}#${Number(m[2])}` : INVALID_PR;
 }
+
+/**
+ * `ApiParams`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const ApiParams = {
+  INVALID_PR,
+  PR_REF_USAGE,
+  integerParam,
+  prRefParam,
+  presentParam,
+};

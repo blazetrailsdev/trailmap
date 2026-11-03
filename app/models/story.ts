@@ -2,7 +2,10 @@ import { ApplicationRecord } from "./application-record.ts";
 import { Event } from "./event.ts";
 import { Rfc } from "./rfc.ts";
 import { closeRfcIfComplete } from "./rfc-close.ts";
-import { StoryDep, StoryPackage, StoryPath, StoryRfcDep } from "./joins.ts";
+import { StoryDep } from "./story-dep.ts";
+import { StoryPackage } from "./story-package.ts";
+import { StoryPath } from "./story-path.ts";
+import { StoryRfcDep } from "./story-rfc-dep.ts";
 import { VerbExit } from "./verb-exit.ts";
 import {
   bestBundle,

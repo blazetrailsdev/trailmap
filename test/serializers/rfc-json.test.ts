@@ -5,7 +5,8 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { migrateScratchDatabase } from "../models/schema.ts";
-import { Rfc, loadModelSchemas } from "../../app/models/index.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { serializeRfc, serializeRfcs } from "../../app/serializers/rfc-json.ts";
 
 beforeAll(async () => {

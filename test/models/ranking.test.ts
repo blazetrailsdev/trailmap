@@ -8,17 +8,13 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { migrateScratchDatabase } from "./schema.ts";
-import { Rfc, Story, StoryDep, StoryPath, StoryRfcDep, loadModelSchemas } from "../../app/models/index.ts";
-import {
-  bestBundle,
-  claimableIn,
-  comparePriority,
-  effectivePriority,
-  isDepResolved,
-  listFilteredIn,
-  priorityContext,
-  summarizeBundle,
-} from "../../app/models/concerns/ranking.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
+import { StoryDep } from "../../app/models/story-dep.ts";
+import { StoryPath } from "../../app/models/story-path.ts";
+import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
+import { bestBundle, bundleScope, claimableIn, comparePriority, effectivePriority, emptyBundleReasonIn, isDepResolved, listFilteredIn, nextBundleIn, priorityContext, storiesTouchingIn, summarizeBundle } from "../../app/models/concerns/ranking.ts";
 
 import { serializeStories } from "../../app/serializers/story-json.ts";
 
@@ -365,5 +361,45 @@ describe("Story.rankingIndex", () => {
     await seed("urgent", "0136-trailmap", "ready", { priority: 1 });
     const index = await Story.rankingIndex();
     expect(index.stories.map((s) => s.id)).toEqual(["urgent", "alpha", "zebra"]);
+  });
+});
+
+describe("the ranking functions, over one index", () => {
+  it("bundleScope keeps the claimable stories in the asked cluster and RFC", async () => {
+    await seed("c1-a", "0136-trailmap", "ready", { cluster: "c1", est_loc: 100 });
+    await seed("c2-a", "0136-trailmap", "ready", { cluster: "c2", est_loc: 100 });
+    await seed("held", "0136-trailmap", "draft", { cluster: "c1", est_loc: 100 });
+    const index = await Story.rankingIndex();
+    expect(bundleScope(index, {}).map((s) => s.id).sort()).toEqual(["c1-a", "c2-a"]);
+    expect(bundleScope(index, { cluster: "c1" }).map((s) => s.id)).toEqual(["c1-a"]);
+    expect(bundleScope(index, { rfc: "0002-draft" })).toEqual([]);
+  });
+
+  it("nextBundleIn and emptyBundleReasonIn answer as Story's wrappers do", async () => {
+    await seed("x", "0136-trailmap", "ready", { cluster: "c1", est_loc: 300 });
+    await seed("y", "0136-trailmap", "ready", { cluster: "c1", est_loc: 400 });
+    await seed("big", "0136-trailmap", "ready", { cluster: "c3", est_loc: 900 });
+    const index = await Story.rankingIndex();
+    expect(nextBundleIn(index, { maxLoc: 700 }).map((s) => s.id)).toEqual(["x", "y"]);
+    expect(emptyBundleReasonIn(index, { cluster: "c3" })).toBe("none-within-budget");
+    expect(emptyBundleReasonIn(index, { cluster: "nope" })).toBe("no-matching-stories");
+    expect(nextBundleIn(index, { maxLoc: 700, cluster: "c3" })).toEqual([]);
+  });
+
+  it("storiesTouchingIn matches exact, then directory, and skips terminal stories unless asked", async () => {
+    await seed("exact", "0136-trailmap", "ready");
+    await seed("under", "0136-trailmap", "ready");
+    await seed("shipped", "0136-trailmap", "done");
+    await StoryPath.create({ story_id: "exact", path: "app/models/story.ts" });
+    await StoryPath.create({ story_id: "under", path: "app/models/rfc.ts" });
+    await StoryPath.create({ story_id: "shipped", path: "app/models/story.ts" });
+    const index = await Story.rankingIndex();
+    const ids = (stories: { id: string }[]) => stories.map((s) => s.id);
+    expect(ids(storiesTouchingIn(index, "app/models/story.ts", {}))).toEqual(["exact"]);
+    expect(ids(storiesTouchingIn(index, "app/models", {}))).toEqual(["exact", "under"]);
+    expect(ids(storiesTouchingIn(index, "app/models/story.ts", { all: true })).sort()).toEqual([
+      "exact",
+      "shipped",
+    ]);
   });
 });

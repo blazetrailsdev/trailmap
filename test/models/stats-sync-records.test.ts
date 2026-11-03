@@ -8,12 +8,20 @@ const BEYOND_32_BITS = 3_000_000_000;
 
 describe("the stats sync models, whose attributes come from the schema", () => {
   let dir: string;
-  let models: typeof import("../../app/models/stats-sync/index.ts");
+  let models: {
+    StatsSyncRecord: typeof import("../../app/models/stats-sync/stats-sync-record.ts").StatsSyncRecord;
+    PrComment: typeof import("../../app/models/stats-sync/pr-comment.ts").PrComment;
+    PrFile: typeof import("../../app/models/stats-sync/pr-file.ts").PrFile;
+  };
 
   beforeAll(async () => {
     dir = getFs().mkdtempSync!(getPath().join(getOs().tmpdir!(), "stats-sync-records-"));
     writable["STATS_SYNC_DB"] = getPath().join(dir, "stats.db");
-    models = await import("../../app/models/stats-sync/index.ts");
+    models = {
+      ...(await import("../../app/models/stats-sync/stats-sync-record.ts")),
+      ...(await import("../../app/models/stats-sync/pr-comment.ts")),
+      ...(await import("../../app/models/stats-sync/pr-file.ts")),
+    };
     await Base.establishConnection(statsSyncDatabaseConfig());
     try {
       await new MigrationContext([getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)]).migrate();

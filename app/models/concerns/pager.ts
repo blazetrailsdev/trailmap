@@ -51,3 +51,12 @@ export function pagerFor(
     nextHref: page < pages ? hrefFor(page + 1) : null,
   };
 }
+
+/**
+ * `Pager`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const Pager = {
+  pagerFor,
+  requestedPage,
+};

@@ -42,3 +42,12 @@ export function shownStoryStatus(
   const effective = effectiveStoryStatus(rfcStatus, storyStatus);
   return effective === "ready" && depHeld ? "blocked" : effective;
 }
+
+/**
+ * `EffectiveStatus`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const EffectiveStatus = {
+  effectiveStoryStatus,
+  shownStoryStatus,
+};

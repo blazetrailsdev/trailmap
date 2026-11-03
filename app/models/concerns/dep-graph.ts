@@ -1,5 +1,5 @@
 import { Rfc } from "../rfc.ts";
-import { StoryDep } from "../joins.ts";
+import { StoryDep } from "../story-dep.ts";
 import { Story } from "../story.ts";
 import { shownStoryStatus } from "./effective-status.ts";
 
@@ -15,7 +15,7 @@ export interface DepNode {
   via: string | null;
 }
 
-export interface DepGraph {
+export interface StoryDepGraph {
   /** Everything the story waits on, nearest first. */
   blockedBy: DepNode[];
   /** Everything that waits on the story, nearest first. */
@@ -79,7 +79,7 @@ async function walk(start: string, direction: Direction): Promise<{ reached: Rea
  * the parent RFCs of every story reached are read too — once, for both
  * directions.
  */
-export async function depGraphFor(id: string): Promise<DepGraph> {
+export async function depGraphFor(id: string): Promise<StoryDepGraph> {
   const [up, down] = await Promise.all([walk(id, "blockedBy"), walk(id, "blocks")]);
 
   const rfcIds = new Set<string>();
@@ -106,3 +106,11 @@ export async function depGraphFor(id: string): Promise<DepGraph> {
     cyclic: up.cyclic,
   };
 }
+
+/**
+ * `DepGraph`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const DepGraph = {
+  depGraphFor,
+};

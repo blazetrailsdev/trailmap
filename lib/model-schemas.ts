@@ -1,31 +1,34 @@
 import { registerModel } from "@blazetrails/activerecord";
-import { Rfc } from "./rfc.ts";
-import { Story } from "./story.ts";
-import { StoryDep, StoryPackage, StoryPath, StoryRfcDep } from "./joins.ts";
-import { Event } from "./event.ts";
-import { Meta } from "./meta.ts";
-import { Owner } from "./owner.ts";
-import { Repository } from "./repository.ts";
-import { RepositorySetting } from "./repository-setting.ts";
-import { RepositoryCollaborator } from "./repository-collaborator.ts";
-import { Setting } from "./setting.ts";
-import { ParityDay } from "./parity-day.ts";
-import { Hub } from "./hub.ts";
-import { PullRequest } from "./pull-request.ts";
-import {
-  ApiCallArgsStat,
-  ApiCallsStat,
-  ApiCompareStat,
-  ApiComparePrivatesStat,
-  TestCompareStat,
-} from "./compare-stats.ts";
+import { Rfc } from "../app/models/rfc.ts";
+import { Story } from "../app/models/story.ts";
+import { StoryDep } from "../app/models/story-dep.ts";
+import { StoryRfcDep } from "../app/models/story-rfc-dep.ts";
+import { StoryPath } from "../app/models/story-path.ts";
+import { StoryPackage } from "../app/models/story-package.ts";
+import { Event } from "../app/models/event.ts";
+import { Meta } from "../app/models/meta.ts";
+import { Owner } from "../app/models/owner.ts";
+import { Repository } from "../app/models/repository.ts";
+import { RepositorySetting } from "../app/models/repository-setting.ts";
+import { RepositoryCollaborator } from "../app/models/repository-collaborator.ts";
+import { Setting } from "../app/models/setting.ts";
+import { ParityDay } from "../app/models/parity-day.ts";
+import { Hub } from "../app/models/hub.ts";
+import { PullRequest } from "../app/models/pull-request.ts";
+import { ApiCompareStat } from "../app/models/api-compare-stat.ts";
+import { ApiComparePrivatesStat } from "../app/models/api-compare-privates-stat.ts";
+import { TestCompareStat } from "../app/models/test-compare-stat.ts";
+import { ApiCallsStat } from "../app/models/api-calls-stat.ts";
+import { ApiCallArgsStat } from "../app/models/api-call-args-stat.ts";
 
-// Association targets are named by STRING (`belongsTo("rfc")`,
-// `hasMany("deps", { through: "storyDeps", source: "dependsOn" })`). Rails
-// resolves those through constant autoloading; there is no autoloader here, so
-// every model must be registered or resolution throws "uninitialized constant".
-// Importing this barrel is what makes associations work — import it, not the
-// individual model files, anywhere associations are traversed.
+/**
+ * The models on each of trailmap's three connections, and the schema warm-up
+ * each connection's initializer awaits.
+ *
+ * Here and not in app/models: nothing in this file is a constant Zeitwerk could
+ * seat, and lib/ is not an autoload path.
+ */
+// The task domain, on the SQLite tasks database.
 const MODELS = [Rfc, Story, StoryDep, StoryRfcDep, StoryPath, StoryPackage, Event, Meta];
 
 /**
@@ -70,6 +73,15 @@ const STATS_MODELS = [
 ];
 
 export const ALL_MODELS = [...MODELS, ...HUB_MODELS, ...STATS_MODELS];
+
+// Association targets are named by string (`belongsTo("rfc")`), so each model
+// must be seated under its name.
+//
+// Temporary: deleted by story trailmap-bump-trails-to-the-autoloader-importer,
+// the bump to a trails with `Loader#importer` (trails#9683, story
+// zeitwerk-seats-a-second-module-instance-under-vitest, done), whose
+// autoloader seats each model in the same module graph as the code that
+// imports it. That trails has no `registerModel` either (#9656).
 registerModel(ALL_MODELS);
 
 /**
@@ -137,40 +149,3 @@ export async function missingHubTables(): Promise<string[]> {
     .filter((table): table is string => table !== null && !present.has(table))
     .sort();
 }
-
-export { Rfc, RFC_STATUSES, type RfcStatus } from "./rfc.ts";
-export { Story, STORY_STATUSES, RESOLVED_DEP_STATUSES, type StoryStatus } from "./story.ts";
-export { StoryDep, StoryRfcDep, StoryPath, StoryPackage } from "./joins.ts";
-export { Event } from "./event.ts";
-export { Meta } from "./meta.ts";
-export { Hub } from "./hub.ts";
-export { Owner, OWNER_KINDS, type OwnerKind } from "./owner.ts";
-export {
-  Repository,
-  REPOSITORY_VISIBILITIES,
-  type RepositoryVisibility,
-} from "./repository.ts";
-export {
-  RepositorySetting,
-  OPTIONAL_TABS,
-  ALL_TABS_ENABLED,
-  type OptionalTab,
-  type TabSwitches,
-} from "./repository-setting.ts";
-export {
-  RepositoryCollaborator,
-  COLLABORATOR_ROLES,
-  type CollaboratorRole,
-} from "./repository-collaborator.ts";
-export { Setting } from "./setting.ts";
-export { ParityDay, measureRow } from "./parity-day.ts";
-export { Stats } from "./stats.ts";
-export { PullRequest } from "./pull-request.ts";
-export { CompareRun } from "./compare-run.ts";
-export {
-  ApiCompareStat,
-  ApiComparePrivatesStat,
-  TestCompareStat,
-  ApiCallsStat,
-  ApiCallArgsStat,
-} from "./compare-stats.ts";

@@ -9,7 +9,7 @@ import {
   storyStatusCounts,
   storyStatusRank,
 } from "../../app/models/concerns/rfc-progress.ts";
-import type { Story } from "../../app/models/index.ts";
+import type { Story } from "../../app/models/story.ts";
 
 /** A story is its id, status and priority here; nothing else is read. */
 function story(id: string, status: string, priority: number | null = null): Story {

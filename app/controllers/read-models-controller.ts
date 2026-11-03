@@ -1,5 +1,7 @@
 import { ApiController } from "./api-controller.ts";
-import { Event, Rfc, Story } from "../models/index.ts";
+import { Event } from "../models/event.ts";
+import { Rfc } from "../models/rfc.ts";
+import { Story } from "../models/story.ts";
 import { serializeStories } from "../serializers/story-json.ts";
 import { serializeRfcs } from "../serializers/rfc-json.ts";
 

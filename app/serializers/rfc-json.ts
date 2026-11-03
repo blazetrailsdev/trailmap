@@ -8,7 +8,7 @@
  * they are parsed here rather than being handed through — a consumer reading
  * `packages` expects a list, not the string `["activerecord"]`.
  */
-import type { Rfc } from "../models/index.ts";
+import type { Rfc } from "../models/rfc.ts";
 import { isoMidnight, integerOrNull } from "./story-json.ts";
 
 export interface RfcJson {
@@ -46,3 +46,12 @@ export function serializeRfc(rfc: Rfc): RfcJson {
 export function serializeRfcs(rfcs: Rfc[]): RfcJson[] {
   return rfcs.map(serializeRfc);
 }
+
+/**
+ * `RfcJson`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const RfcJson = {
+  serializeRfc,
+  serializeRfcs,
+};

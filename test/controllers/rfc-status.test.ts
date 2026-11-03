@@ -2,7 +2,11 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { Dir, Open3, getFs, setEnv } from "@blazetrails/ruby-compat";
 import { migrateScratchDatabase } from "../models/schema.ts";
-import { Event, Rfc, Story, loadModelSchemas } from "../../app/models/index.ts";
+import { Event } from "../../app/models/event.ts";
+import { Rfc } from "../../app/models/rfc.ts";
+import { Story } from "../../app/models/story.ts";
+import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet } from "../../app/models/rfc-status.ts";
+import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
@@ -61,6 +65,10 @@ beforeAll(async () => {
   await rfc("0014-together-b", "draft");
   await rfc("0015-csrf", "draft");
   await rfc("0016-quiet", "active");
+  await rfc("0017-direct", "draft");
+  await rfc("0018-direct-drafts", "active");
+  await Story.create({ id: "dd-1", rfc_id: "0018-direct-drafts", status: "draft" });
+  await Story.create({ id: "dd-2", rfc_id: "0018-direct-drafts", status: "draft" });
   await Story.create({ id: "parked-done", rfc_id: "0008-finished-parked", status: "ready" });
   await Story.where({ id: "parked-done" }).updateAll({ status: "done" });
   await Story.create({ id: "d-1", rfc_id: "0007-drafts", status: "draft" });
@@ -265,5 +273,37 @@ describe("RfcPagesController lifecycle", () => {
     expect(status).toBe(303);
     expect(await sh(`git -C "$CHECKOUT" rev-parse --abbrev-ref HEAD`)).toBe("main");
     expect(await sh(`git -C "$CHECKOUT" status --porcelain`)).toBe("");
+  });
+});
+
+describe("RfcStatus, called directly", () => {
+  it("rfcStatusMoves offers each status its moves, and a closed RFC none", () => {
+    const moves = (status: string) => rfcStatusMoves(status).map((move) => move.to);
+    expect(moves("draft")).toEqual(["active", "postponed", "closed"]);
+    expect(moves("active")).toEqual(["draft", "postponed", "closed"]);
+    expect(moves("postponed")).toEqual(["active", "draft", "closed"]);
+    expect(moves("closed")).toEqual([]);
+    expect(moves("superseded")).toEqual([]);
+  });
+
+  it("rfcStatusSet moves the row and commits the frontmatter", async () => {
+    // The commit, not the push: an earlier test leaves origin diverged, and a
+    // push that fails is a warning on the line, not a failed move.
+    expect(await rfcStatusSet("0017-direct", "active")).toMatch(/^rfc 0017-direct: draft -> active/);
+    expect((await Rfc.find("0017-direct")).status).toBe("active");
+    expect(await sh(`git -C "$CHECKOUT" show HEAD:rfcs/0017-direct/README.md`)).toContain("status: active");
+    expect(await sh(`git -C "$CHECKOUT" log -1 --format=%s`)).toBe("rfc(0017-direct): draft -> active");
+  });
+
+  it("rfcStatusSet refuses an unknown status and an unknown RFC", async () => {
+    await expect(rfcStatusSet("0017-direct", "shipped")).rejects.toThrow('unknown RFC status "shipped"');
+    await expect(rfcStatusSet("9999-none", "active")).rejects.toThrow('no such RFC "9999-none"');
+  });
+
+  it("rfcReadyDrafts readies every draft story, then has none left to ready", async () => {
+    expect((await rfcReadyDrafts("0018-direct-drafts")).sort()).toEqual(["status ready: dd-1", "status ready: dd-2"]);
+    expect(await Story.where({ rfc_id: "0018-direct-drafts" }).pluck("status")).toEqual(["ready", "ready"]);
+    await expect(rfcReadyDrafts("0018-direct-drafts")).rejects.toThrow("rfc 0018-direct-drafts has no draft stories");
+    await expect(rfcReadyDrafts("9999-none")).rejects.toThrow('no such RFC "9999-none"');
   });
 });

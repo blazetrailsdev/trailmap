@@ -1,6 +1,10 @@
 import type { SafeBuffer } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.ts";
-import { Rfc, Story, StoryDep, StoryPackage, StoryRfcDep } from "../models/index.ts";
+import { Rfc } from "../models/rfc.ts";
+import { Story } from "../models/story.ts";
+import { StoryDep } from "../models/story-dep.ts";
+import { StoryPackage } from "../models/story-package.ts";
+import { StoryRfcDep } from "../models/story-rfc-dep.ts";
 import { readDocument } from "../models/concerns/document.ts";
 import { renderMarkdown } from "../helpers/markdown-helper.ts";
 import { shownStoryStatus } from "../models/concerns/effective-status.ts";

@@ -1,6 +1,6 @@
 import { ApplicationRecord } from "../models/application-record.ts";
 import { ApiController } from "./api-controller.ts";
-import { Story, STORY_STATUSES, type StoryStatus } from "../models/index.ts";
+import { Story, STORY_STATUSES, type StoryStatus } from "../models/story.ts";
 import { VerbExit } from "../models/verb-exit.ts";
 import { INVALID_PR, PR_REF_USAGE, presentParam, prRefParam } from "./concerns/api-params.ts";
 

@@ -133,3 +133,16 @@ export function orderBacklog<T extends BacklogStory>(
     return a.id.localeCompare(b.id);
   });
 }
+
+/**
+ * `Backlog`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const Backlog = {
+  BACKLOG_FILTERS,
+  ICEBOX_RFC_STATUSES,
+  iceboxed,
+  isBacklogFilter,
+  matchesBacklogFilter,
+  orderBacklog,
+};

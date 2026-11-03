@@ -69,3 +69,12 @@ export function stripFrontmatter(source: string): string {
   const nl = after.indexOf("\n");
   return nl < 0 ? "" : after.slice(nl).trim();
 }
+
+/**
+ * `Document`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const Document = {
+  readDocument,
+  stripFrontmatter,
+};

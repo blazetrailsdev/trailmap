@@ -1,6 +1,6 @@
 import { ApiController } from "./api-controller.ts";
 import { integerParam, presentParam } from "./concerns/api-params.ts";
-import { Story } from "../models/index.ts";
+import { Story } from "../models/story.ts";
 import { listFilteredIn, storiesTouchingIn, summarizeBundle } from "../models/concerns/ranking.ts";
 import { serializeStories, type SerializedStory, type StoryJsonContext } from "../serializers/story-json.ts";
 

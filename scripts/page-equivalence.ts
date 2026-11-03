@@ -48,7 +48,9 @@
 import { Base } from "@blazetrails/activerecord";
 import { argv, Dir, env, exit, getFs } from "@blazetrails/ruby-compat";
 import { tasksDatabaseConfig } from "../config/database.ts";
-import { Rfc, Story, loadModelSchemas } from "../app/models/index.ts";
+import { Rfc } from "../app/models/rfc.ts";
+import { Story } from "../app/models/story.ts";
+import { loadModelSchemas } from "../lib/model-schemas.ts";
 import { storyStatusCounts } from "../app/models/concerns/rfc-progress.ts";
 import {
   ROWS_FILE,

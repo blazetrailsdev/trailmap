@@ -149,3 +149,12 @@ export async function refreshProjectionIfStale(): Promise<
     }
   });
 }
+
+/**
+ * `ParityRefresh`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
+ * module of `module_function`s, bundling the named exports above.
+ */
+export const ParityRefresh = {
+  projectionIsStale,
+  refreshProjectionIfStale,
+};
