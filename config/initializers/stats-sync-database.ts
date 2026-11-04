@@ -22,7 +22,5 @@ import type { StatsSyncRecord } from "../../app/models/stats-sync/stats-sync-rec
  */
 Trails.application.config.toPrepare(() => {
   const record = constantize("StatsSync::StatsSyncRecord") as typeof StatsSyncRecord;
-  record.establishConnection(statsSyncDatabaseConfig()).catch((error: unknown) => {
-    throw error;
-  });
+  void record.establishConnection(statsSyncDatabaseConfig());
 });
