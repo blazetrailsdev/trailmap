@@ -16,8 +16,4 @@ import { rbArgv } from "@blazetrails/ruby-compat";
 import "../config/environment.ts";
 
 const { Cli } = await import("@blazetrails/solid-queue/cli");
-// Thor declares `start` on its class type, which Cli's type does not inherit.
-// Remove the cast with trails story thor-subclass-types-carry-static-start.
-await (Cli as unknown as { start(argv: string[]): Promise<unknown> }).start(
-  rbArgv(),
-);
+await Cli.start(rbArgv());
