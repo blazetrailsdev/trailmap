@@ -22,6 +22,8 @@ describe("the stats sync models, whose attributes come from the schema", () => {
       ...(await import("../../app/models/stats-sync/pr-comment.ts")),
       ...(await import("../../app/models/stats-sync/pr-file.ts")),
     };
+    // Point the writers at this test's scratch database, as the initializer does at boot.
+    await models.StatsSyncRecord.establishConnection(statsSyncDatabaseConfig());
     await Base.establishConnection(statsSyncDatabaseConfig());
     try {
       await new MigrationContext([getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)]).migrate();

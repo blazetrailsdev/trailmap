@@ -15,6 +15,16 @@ apart from the differences it lists in `INTENDED`.
 
 ## Found by the port (open)
 
+### trails: prepare callbacks are not awaited
+
+trails' reloader runs `toPrepare` blocks synchronously (`Reloader.prepareBang`),
+and the finisher's `run_prepare_callbacks` does not await them, while
+`establishConnection` is async and registers its pool only after its first
+await. Rails' `to_prepare` and `establish_connection` are both synchronous, so a
+connection made there is in place when the block returns.
+`config/initializers/stats-sync-database.ts` starts it without awaiting. Story
+to file: boot awaits prepare callbacks that return a promise.
+
 ### trails: route helpers have no generated types
 
 `ApplicationController` declares each route helper it calls by hand, as
@@ -64,6 +74,10 @@ and keeps it off the class.
 
 ## trails differs from Rails
 
+- **The health check.** trails names its framework namespace `Trails`
+  (trails#9650), so `/up` routes to `trails/health#show` as
+  `trails_health_check`, where Rails routes `rails/health#show` as
+  `rails_health_check`. Both answer 200 once the app has booted.
 - **Connections.** trails opens each database from an initializer with
   `establishConnection`, because `connectsTo` resolves against
   `Base.configurations`, which trails registers only for `trails db` commands

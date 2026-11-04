@@ -1,57 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { RouteSet, registerController } from "@blazetrails/actionpack";
+import { RouteSet } from "@blazetrails/actionpack";
 import { Trails } from "@blazetrails/trailties";
-import { AuditsController } from "../app/controllers/audits-controller.ts";
-import { DashboardController } from "../app/controllers/dashboard-controller.ts";
-import { FleetController } from "../app/controllers/fleet-controller.ts";
-import { HomeController } from "../app/controllers/home-controller.ts";
-import { MutationsController } from "../app/controllers/mutations-controller.ts";
-import { ProbesController } from "../app/controllers/probes-controller.ts";
-import { PanesController } from "../app/controllers/panes-controller.ts";
-import { ReadModelsController } from "../app/controllers/read-models-controller.ts";
-import { RfcPagesController } from "../app/controllers/rfc-pages-controller.ts";
-import { StoriesController } from "../app/controllers/stories-controller.ts";
-import { StoryPagesController } from "../app/controllers/story-pages-controller.ts";
-import { OwnersController } from "../app/controllers/owners-controller.ts";
-import { RepoActionsController } from "../app/controllers/repo-actions-controller.ts";
-import { RepoCodeController } from "../app/controllers/repo-code-controller.ts";
-import { RepoInsightsController } from "../app/controllers/repo-insights-controller.ts";
-import { RepoIssuesController } from "../app/controllers/repo-issues-controller.ts";
-import { RepoProjectsController } from "../app/controllers/repo-projects-controller.ts";
-import { RepoPullsController } from "../app/controllers/repo-pulls-controller.ts";
-import { RepoSettingsController } from "../app/controllers/repo-settings-controller.ts";
-import { RepoWikiController } from "../app/controllers/repo-wiki-controller.ts";
 import { RESERVED_OWNER_NAMES } from "../config/routes.ts";
-
-// `recognizePath` resolves a route's controller to its class and refuses a
-// route whose controller does not exist, as Rails' `recognize_path` does by
-// autoloading the constant. trails has no autoloader: the application
-// registers every class under `app/controllers` at boot (the
-// `setup_main_autoloader` initializer). This suite draws routes without
-// booting, so it does that registration itself — which also makes each case a
-// check that the route names a controller that is really there.
-registerController([
-  AuditsController,
-  DashboardController,
-  FleetController,
-  HomeController,
-  MutationsController,
-  PanesController,
-  ProbesController,
-  ReadModelsController,
-  RfcPagesController,
-  StoriesController,
-  StoryPagesController,
-  OwnersController,
-  RepoCodeController,
-  RepoIssuesController,
-  RepoPullsController,
-  RepoActionsController,
-  RepoProjectsController,
-  RepoWikiController,
-  RepoInsightsController,
-  RepoSettingsController,
-]);
 
 /** The application's route set, drawn by `config/routes.ts` when it loaded. */
 function routeSet(): RouteSet {
@@ -80,12 +30,11 @@ describe("config/routes", () => {
     expect(match?.route.action).toBe("index");
   });
 
-  // The framework's controller, which `@blazetrails/trailties` registers
-  // itself: it is deliberately absent from the list above.
-  it("routes the health endpoint to rails/health#show", () => {
+  // The framework's controller, from `@blazetrails/trailties`.
+  it("routes the health endpoint to trails/health#show", () => {
     const match = recognize(routeSet(), "GET", "/up");
 
-    expect(match?.route.controller).toBe("rails/health");
+    expect(match?.route.controller).toBe("trails/health");
     expect(match?.route.action).toBe("show");
   });
 
@@ -337,7 +286,7 @@ describe("config/routes", () => {
   it("leaves every reserved top-level path with its own controller", () => {
     const routes = routeSet();
     const pages: [string, string][] = [
-      ["/up", "rails/health"],
+      ["/up", "trails/health"],
       ["/dashboard", "dashboard"],
       ["/rfcs", "rfc_pages"],
       ["/backlog", "story_pages"],

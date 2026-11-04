@@ -6,20 +6,15 @@
 //
 // The `worker` process in the Procfile. It boots the application (so the
 // engine's initializers point SolidQueue at the `queue` database), then loads
-// the job classes and the CLI, and then runs dispatcher, worker and scheduler from
+// the CLI, and then runs dispatcher, worker and scheduler from
 // config/queue.yml and config/recurring.yml until it is signalled.
 //
-// The job classes (lib/job-classes.ts) and the CLI are imported dynamically, after the boot, as bin/jobs
-// requires solid_queue/cli after config/environment. For the job classes the ordering is load-bearing.
-// config/environment.ts awaits `Trails.initialize()` at its top level, and a
-// sibling static import does NOT wait for that: the module graph evaluates it
-// at the first await, before the initializers have run. A job's static block
-// would then call `limitsConcurrency`, which only exists once the Solid Queue
-// engine's `solid_queue.active_job.extensions` initializer has run.
+// The CLI is imported dynamically, after the boot, as bin/jobs requires
+// solid_queue/cli after config/environment. The autoloader seats the job
+// classes by name, so a queued job or config/recurring.yml resolves them.
 import { rbArgv } from "@blazetrails/ruby-compat";
 import "../config/environment.ts";
 
-await import("./job-classes.ts");
 const { Cli } = await import("@blazetrails/solid-queue/cli");
 // Thor declares `start` on its class type, which Cli's type does not inherit.
 // Remove the cast with trails story thor-subclass-types-carry-static-start.
