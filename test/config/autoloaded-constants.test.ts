@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { getFs, getPath } from "@blazetrails/ruby-compat";
-import { constantize } from "@blazetrails/activesupport";
 
 /**
  * trails' Zeitwerk (RFC 0213) requires every file under an autoload path to
@@ -144,11 +143,3 @@ describe("autoloaded files", () => {
   });
 });
 
-describe("lib/job-classes.ts", () => {
-  it("registers every job under its class name", async () => {
-    const jobs = await import("../../lib/job-classes.ts");
-    for (const name of ["ApplicationJob", "StatsSyncJob", "TandemProbeJob"] as const) {
-      expect(constantize(name)).toBe(jobs[name]);
-    }
-  });
-});

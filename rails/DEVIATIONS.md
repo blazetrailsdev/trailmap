@@ -64,6 +64,10 @@ and keeps it off the class.
 
 ## trails differs from Rails
 
+- **The health check.** trails names its framework namespace `Trails`
+  (trails#9650), so `/up` routes to `trails/health#show` as
+  `trails_health_check`, where Rails routes `rails/health#show` as
+  `rails_health_check`. Both answer 200 once the app has booted.
 - **Connections.** trails opens each database from an initializer with
   `establishConnection`, because `connectsTo` resolves against
   `Base.configurations`, which trails registers only for `trails db` commands

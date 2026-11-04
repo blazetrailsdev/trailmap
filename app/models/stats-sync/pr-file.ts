@@ -1,5 +1,6 @@
 import { StatsSyncRecord } from "./stats-sync-record.ts";
 
+// @trails-typegen skip-columns: changes
 export class PrFile extends StatsSyncRecord {
   static {
     this.tableName = "pr_files";

@@ -39,7 +39,7 @@ export const REPO_SEGMENT = /[A-Za-z0-9][A-Za-z0-9._-]*/;
 Trails.application!.routes().draw(function () {
   this.root("home#index");
   // The framework's health controller: 200 if the app booted, otherwise 500.
-  this.get("up", { to: "rails/health#show", as: "rails_health_check" });
+  this.get("up", { to: "trails/health#show", as: "trails_health_check" });
 
   // The two probes beside `/up`, which stays the only one a supervisor polls.
   // `ready` opens the database and the tasks checkout; `deep` computes a ready

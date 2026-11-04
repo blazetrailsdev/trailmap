@@ -1,6 +1,7 @@
+import { constantize } from "@blazetrails/activesupport";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { setX } from "../support/config-x.ts";
-import { env, getChildProcess, getFs, setEnv, registeredConstant, type FsAdapter } from "@blazetrails/ruby-compat";
+import { env, getChildProcess, getFs, setEnv, type FsAdapter } from "@blazetrails/ruby-compat";
 import { MigrationContext } from "@blazetrails/activerecord";
 import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
@@ -501,7 +502,7 @@ describe("GET /up/deep", () => {
 describe("GET /up", () => {
   it("still answers 200 with the database red, from any host", async () => {
     const count = vi.spyOn(Story, "count").mockRejectedValue(new Error("database is locked"));
-    const health = registeredConstant("Rails::HealthController") as unknown as typeof ProbesController;
+    const health = constantize("Trails::HealthController") as unknown as typeof ProbesController;
     const tc = await controllerTestCase(health, { Host: "trailmap.deanoftech.com" });
     await tc.get("show");
 

@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 // lib/jobs.ts boots the application and starts the supervisor as it loads.
 vi.mock("../../config/environment.ts", () => ({}));
-vi.mock("../../lib/job-classes.ts", () => ({}));
 
 describe("bin/jobs entry point", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -33,9 +32,7 @@ describe("bin/jobs entry point", () => {
     const start = vi
       .spyOn(Supervisor, "start")
       .mockResolvedValue(undefined as never);
-    await (Cli as unknown as { start(argv: string[]): Promise<unknown> }).start(
-      ["-c", "config/other.yml", "--skip-recurring"],
-    );
+    await Cli.start(["-c", "config/other.yml", "--skip-recurring"]);
     expect(start).toHaveBeenCalledWith(
       expect.objectContaining({
         configFile: "config/other.yml",
@@ -44,9 +41,4 @@ describe("bin/jobs entry point", () => {
     );
   });
 
-  it("loads the job classes only after the application has booted", async () => {
-    const source = await getFs().readFile("lib/jobs.ts", "utf8");
-    expect(source).not.toMatch(/^import [^(]*app\/jobs/m);
-    expect(source).toContain('await import("./job-classes.ts");');
-  });
 });
