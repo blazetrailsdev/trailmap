@@ -14,8 +14,15 @@ import type { StatsSyncRecord } from "../../app/models/stats-sync/stats-sync-rec
  * second instance of the class under vitest, and its subclasses would not
  * inherit this connection. `establishConnection` opens no file until
  * something queries.
+ *
+ * The block is synchronous, as Rails' `to_prepare` is: trails runs prepare
+ * callbacks without awaiting them (rails/DEVIATIONS.md, "Found by the port").
+ * The pool registers after `establishConnection`'s first await, still within
+ * boot's later async initializers, before anything serves or queries.
  */
-Trails.application.config.toPrepare(async () => {
+Trails.application.config.toPrepare(() => {
   const record = constantize("StatsSync::StatsSyncRecord") as typeof StatsSyncRecord;
-  await record.establishConnection(statsSyncDatabaseConfig());
+  record.establishConnection(statsSyncDatabaseConfig()).catch((error: unknown) => {
+    throw error;
+  });
 });

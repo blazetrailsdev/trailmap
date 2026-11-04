@@ -15,6 +15,16 @@ apart from the differences it lists in `INTENDED`.
 
 ## Found by the port (open)
 
+### trails: prepare callbacks are not awaited
+
+trails' reloader runs `toPrepare` blocks synchronously (`Reloader.prepareBang`),
+and the finisher's `run_prepare_callbacks` does not await them, while
+`establishConnection` is async and registers its pool only after its first
+await. Rails' `to_prepare` and `establish_connection` are both synchronous, so a
+connection made there is in place when the block returns.
+`config/initializers/stats-sync-database.ts` starts it without awaiting. Story
+to file: boot awaits prepare callbacks that return a promise.
+
 ### trails: route helpers have no generated types
 
 `ApplicationController` declares each route helper it calls by hand, as
