@@ -30,8 +30,7 @@ describe("config/routes", () => {
     expect(match?.route.action).toBe("index");
   });
 
-  // The framework's controller, which `@blazetrails/trailties` registers
-  // itself: it is deliberately absent from the list above.
+  // The framework's controller, from `@blazetrails/trailties`.
   it("routes the health endpoint to trails/health#show", () => {
     const match = recognize(routeSet(), "GET", "/up");
 

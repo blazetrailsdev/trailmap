@@ -22,7 +22,7 @@ describe("the stats sync models, whose attributes come from the schema", () => {
       ...(await import("../../app/models/stats-sync/pr-comment.ts")),
       ...(await import("../../app/models/stats-sync/pr-file.ts")),
     };
-    // The test boot already loaded StatsSyncRecord, connected to the default path.
+    // Point the writers at this test's scratch database, as the initializer does at boot.
     await models.StatsSyncRecord.establishConnection(statsSyncDatabaseConfig());
     await Base.establishConnection(statsSyncDatabaseConfig());
     try {

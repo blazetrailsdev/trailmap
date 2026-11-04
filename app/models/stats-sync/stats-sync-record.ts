@@ -1,4 +1,3 @@
-import { statsSyncDatabaseConfig } from "../../../config/database.ts";
 import { ApplicationRecord } from "../application-record.ts";
 
 /**
@@ -7,14 +6,10 @@ import { ApplicationRecord } from "../application-record.ts";
  * writers have their own, on STATS_SYNC_DB, which is why `pull-request.ts` here
  * and in app/models are different classes.
  *
- * Connecting here, at import, means no caller has to before using the models
- * beside it, whose attributes come from the schema. It opens no file until
- * something queries.
+ * config/initializers/stats-sync-database.ts connects it.
  */
 export class StatsSyncRecord extends ApplicationRecord {
   static {
     this.abstractClass = true;
   }
 }
-
-await StatsSyncRecord.establishConnection(statsSyncDatabaseConfig());

@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "trails-tsc --schema db/schema.ts --schema db/hub_schema.ts --schema db/statsSync_schema.ts=StatsSyncRecord",
+    "build": "trails-tsc --schema db/schema.ts --schema db/hub_schema.ts",
     "test": "vitest run",
     "gate": "tsx scripts/equivalence.ts",
     "smoke": "bash scripts/smoke-boot.sh",

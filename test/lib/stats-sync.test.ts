@@ -43,7 +43,7 @@ describe("syncLatest", () => {
     try {
       const { currentStage, syncLatest } = await import("../../lib/stats-sync/sync.ts");
       const { StatsSyncRecord } = await import("../../app/models/stats-sync/stats-sync-record.ts");
-      // The test boot already loaded StatsSyncRecord, connected to the default path.
+      // Point the writers at this test's scratch database, as the initializer does at boot.
       await StatsSyncRecord.establishConnection(statsSyncDatabaseConfig());
       // Migrations run on Base's connection, as `trails db` points it at each database.
       await Base.establishConnection(statsSyncDatabaseConfig());
