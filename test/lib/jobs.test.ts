@@ -32,9 +32,7 @@ describe("bin/jobs entry point", () => {
     const start = vi
       .spyOn(Supervisor, "start")
       .mockResolvedValue(undefined as never);
-    await (Cli as unknown as { start(argv: string[]): Promise<unknown> }).start(
-      ["-c", "config/other.yml", "--skip-recurring"],
-    );
+    await Cli.start(["-c", "config/other.yml", "--skip-recurring"]);
     expect(start).toHaveBeenCalledWith(
       expect.objectContaining({
         configFile: "config/other.yml",
