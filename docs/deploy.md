@@ -613,9 +613,11 @@ dokku config:set --no-restart trailmap \
 
 # Deploy before scaling. On 2026-11-02 `ps:scale` left the queue file with no
 # tables: the release task did not run, the worker crashed at boot, and the old
-# `web` stayed up without the new mount. UNTESTED: `ps:rebuild` has not been run
-# here yet. It deliberately rebuilds the last pushed source; a normal `git push`
-# deploy does the same job when there are new commits.
+# `web` stayed up without the new mount. On 2026-11-04 `ps:rebuild` ran the
+# release task, created every solid_queue_* table, replaced `web` with a
+# container that has the mount, and started the worker with `stats_sync`
+# registered. It rebuilds the last pushed source; a normal `git push` deploy
+# does the same job when there are new commits.
 dokku ps:rebuild trailmap
 
 # Must list solid_queue_jobs and the other solid_queue_* tables. Empty output
