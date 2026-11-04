@@ -611,13 +611,13 @@ dokku config:set --no-restart trailmap \
   STATS_SYNC_DB=/home/dean/github/blazetrailsdev/stats-job.db \
   STATS_SYNC_LOG=/home/dean/github/blazetrailsdev/stats-sync-job.log
 
-# Deploy before scaling. On 2026-11-02 `ps:scale` left the queue file with no
-# tables: the release task did not run, the worker crashed at boot, and the old
-# `web` stayed up without the new mount. On 2026-11-04 `ps:rebuild` ran the
-# release task, created every solid_queue_* table, replaced `web` with a
-# container that has the mount, and started the worker with `stats_sync`
-# registered. It rebuilds the last pushed source; a normal `git push` deploy
-# does the same job when there are new commits.
+# Deploy before scaling. `ps:scale` alone does not run the release task, so the
+# queue file gets no tables and the worker crashes at boot (2026-11-02).
+# `ps:rebuild` does run it: it creates the solid_queue_* tables and replaces
+# `web` with a container that has the mount (verified 2026-11-04). It starts a
+# worker only if a scale is already recorded; on a new host the worker starts at
+# the `ps:scale` below. It rebuilds the last pushed source; a normal `git push`
+# deploy does the same job when there are new commits.
 dokku ps:rebuild trailmap
 
 # Must list solid_queue_jobs and the other solid_queue_* tables. Empty output
