@@ -1,4 +1,4 @@
-import { getFs, rbArgv } from "@blazetrails/ruby-compat";
+import { rbArgv } from "@blazetrails/ruby-compat";
 import { Cli } from "@blazetrails/solid-queue/cli";
 import { Supervisor } from "@blazetrails/solid-queue";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -42,5 +42,4 @@ describe("bin/jobs entry point", () => {
       }),
     );
   });
-
 });
