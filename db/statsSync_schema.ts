@@ -13,7 +13,7 @@
 import { Schema } from "@blazetrails/activerecord";
 import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapters/sqlite3-adapter.js";
 
-await Schema.get(8).define<SQLite3Adapter>({ version: 2026_10_31_000001 }, async (ctx) => {
+await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_05_000001 }, async (ctx) => {
   await ctx.createTable("api_call_args_stats", { force: "cascade" }, (t) => {
     t.string("merge_commit_sha");
     t.integer("pr_number");
@@ -72,6 +72,15 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_10_31_000001 }, async
     t.index(["run_id"], { name: "index_check_annotations_on_run_id" });
   });
 
+  await ctx.createTable("claude_md_sections", { force: "cascade" }, (t) => {
+    t.string("merge_commit_sha");
+    t.integer("pr_number");
+    t.string("file");
+    t.string("heading");
+    t.string("anchor");
+    t.text("lede");
+  });
+
   await ctx.createTable("compare_logs", { force: "cascade" }, (t) => {
     t.string("merge_commit_sha");
     t.integer("pr_number");
@@ -84,6 +93,71 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_10_31_000001 }, async
     t.string("job_name");
     t.integer("pr_number");
     t.string("checked_at");
+  });
+
+  await ctx.createTable("package_file_stats", { force: "cascade" }, (t) => {
+    t.string("merge_commit_sha");
+    t.integer("pr_number");
+    t.string("package");
+    t.string("rails_file");
+    t.string("ts_file");
+    t.integer("methods_matched");
+    t.integer("methods_missing");
+    t.integer("tests_matched");
+    t.integer("tests_total");
+    t.index(["merge_commit_sha", "package", "rails_file"], { name: "idx_on_merge_commit_sha_package_rails_file_25cf215e57", unique: true });
+  });
+
+  await ctx.createTable("package_mark_stats", { force: "cascade" }, (t) => {
+    t.string("merge_commit_sha");
+    t.integer("pr_number");
+    t.string("package");
+    t.string("mark");
+    t.integer("value");
+    t.integer("matched");
+    t.integer("total");
+    t.index(["merge_commit_sha", "package", "mark"], { name: "idx_on_merge_commit_sha_package_mark_03723efcc0", unique: true });
+  });
+
+  await ctx.createTable("package_meta", { force: "cascade" }, (t) => {
+    t.string("merge_commit_sha");
+    t.integer("pr_number");
+    t.string("package");
+    t.string("rails_counterpart");
+    t.text("description");
+    t.string("claude_md");
+    t.index(["merge_commit_sha", "package"], { name: "index_package_meta_on_merge_commit_sha_and_package", unique: true });
+  });
+
+  await ctx.createTable("package_skip_tests", { force: "cascade" }, (t) => {
+    t.string("merge_commit_sha");
+    t.integer("pr_number");
+    t.string("package");
+    t.string("file");
+    t.string("test_name");
+    t.string("cited_anchor");
+  });
+
+  await ctx.createTable("package_tag_sites", { force: "cascade" }, (t) => {
+    t.string("merge_commit_sha");
+    t.integer("pr_number");
+    t.string("package");
+    t.string("tag");
+    t.string("receipt");
+    t.string("file");
+    t.integer("line");
+    t.string("declaration");
+    t.string("cited_anchor");
+  });
+
+  await ctx.createTable("package_tag_stats", { force: "cascade" }, (t) => {
+    t.string("merge_commit_sha");
+    t.integer("pr_number");
+    t.string("package");
+    t.string("tag");
+    t.string("receipt");
+    t.integer("count");
+    t.index(["merge_commit_sha", "package", "tag", "receipt"], { name: "idx_on_merge_commit_sha_package_tag_receipt_b6f2630c7a", unique: true });
   });
 
   await ctx.createTable("pr_comments", { force: "cascade" }, (t) => {
@@ -207,6 +281,7 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_10_31_000001 }, async
     t.integer("prs_synced", { default: 0 });
     t.integer("runs_synced", { default: 0 });
     t.integer("logs_parsed", { default: 0 });
+    t.string("missing_artifact");
   });
 
   await ctx.createTable("test_compare_stats", { force: "cascade" }, (t) => {
