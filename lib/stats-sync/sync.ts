@@ -1369,10 +1369,7 @@ async function syncCompareStats(
 const MISSING_ARTIFACT_ERROR_RE =
   /no valid artifacts found to download|no artifact matches any of the names or patterns provided/;
 
-/**
- * A `sync_log` row for a commit with no package summary to download. Its run
- * counters stay 0; nothing reads `sync_log` as "the last sync".
- */
+// Run counters stay 0; nothing reads `sync_log` as "the last sync".
 async function recordMissingArtifact(sha: string): Promise<void> {
   await SyncLog.create({ synced_at: new Date().toISOString(), missing_artifact: sha });
 }
