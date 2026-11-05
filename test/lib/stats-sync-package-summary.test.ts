@@ -140,7 +140,6 @@ describe("syncPackageSummaries", () => {
         { merge_commit_sha: "abc" },
       ]);
 
-      // No commit is tried again.
       expect(await syncPackageSummaries("latest")).toBe(0);
 
       // A newer PR replaces all three, even with no tag sites, ratios or skips; an
