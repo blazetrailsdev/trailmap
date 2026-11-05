@@ -127,6 +127,16 @@ class Story < ApplicationRecord
       Ranking.stories_touching_in(index || ranking_index, query, all: all)
     end
 
+    # The stories Ranking.package_attribution attributes to package `name` (RFC 0222).
+    def touching_package(name)
+      records_for(Ranking.stories_touching_package_in(ranking_outline, rfc_packages, name))
+    end
+
+    # The stories Ranking.package_attribution attributes to no package.
+    def unattributed
+      records_for(Ranking.unattributed_in(ranking_outline, rfc_packages))
+    end
+
     # Which of `ids` (every story, when nil) wait on an unfinished dep, for a
     # page with no ranking index in hand: the edges, then what they point at.
     def dep_held_ids(ids = nil)
@@ -152,6 +162,10 @@ class Story < ApplicationRecord
     end
 
     private
+
+    def rfc_packages
+      Rfc.all.to_a.to_h { |rfc| [ rfc.id, rfc.packages || [] ] }
+    end
 
     # Records for ranked rows, in their order; a row whose status moved
     # between the two reads is dropped rather than served stale.

@@ -306,6 +306,43 @@ export function storiesTouchingIn<S extends RankedStory>(
 }
 
 /**
+ * A story's packages (RFC 0222, "Story → package attribution"), by the first
+ * rule that names any: its own `story_packages`, else the `<pkg>` of each
+ * `packages/<pkg>/…` path, else its RFC's `packages` when that lists exactly one.
+ */
+export function packageAttribution(
+  index: RankingIndex<RankedStory>,
+  rfcPackages: ReadonlyMap<string, string[]>,
+  story: RankedStory,
+): string[] {
+  const own = index.packages.get(story.id) ?? [];
+  if (own.length > 0) return own;
+  const fromPaths = new Set<string>();
+  for (const storyPath of index.paths.get(story.id) ?? []) {
+    const pkg = /^packages\/([^/]+)\//.exec(storyPath)?.[1];
+    if (pkg !== undefined) fromPaths.add(pkg);
+  }
+  if (fromPaths.size > 0) return [...fromPaths];
+  const rfcList = rfcPackages.get(story.rfc_id) ?? [];
+  return rfcList.length === 1 ? rfcList : [];
+}
+
+export function storiesTouchingPackageIn<S extends RankedStory>(
+  index: RankingIndex<S>,
+  rfcPackages: ReadonlyMap<string, string[]>,
+  name: string,
+): S[] {
+  return index.stories.filter((s) => packageAttribution(index, rfcPackages, s).includes(name));
+}
+
+export function unattributedIn<S extends RankedStory>(
+  index: RankingIndex<S>,
+  rfcPackages: ReadonlyMap<string, string[]>,
+): S[] {
+  return index.stories.filter((s) => packageAttribution(index, rfcPackages, s).length === 0);
+}
+
+/**
  * `Ranking`, the constant Zeitwerk requires this file to define (RFC 0213): a Ruby
  * module of `module_function`s, bundling the named exports above.
  */
@@ -323,6 +360,9 @@ export const Ranking = {
   listFilteredIn,
   nextBundleIn,
   priorityContext,
+  packageAttribution,
   storiesTouchingIn,
+  storiesTouchingPackageIn,
+  unattributedIn,
   summarizeBundle,
 };

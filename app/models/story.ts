@@ -17,6 +17,8 @@ import {
   nextBundleIn,
   priorityContext,
   storiesTouchingIn,
+  storiesTouchingPackageIn,
+  unattributedIn,
   summarizeBundle,
   type BundledStory,
   type EmptyBundleReason,
@@ -102,10 +104,7 @@ export class Story extends ApplicationRecord {
     // made to re-prove — and get stuck behind — a row they did not author.
     this.validate<Story>(
       (story) => {
-        for (const message of [
-          ...lifecycleErrors(story),
-          ...estLocErrors(story),
-        ]) {
+        for (const message of [...lifecycleErrors(story), ...estLocErrors(story)]) {
           story.errors.add("base", message);
         }
       },
@@ -153,11 +152,7 @@ export class Story extends ApplicationRecord {
     ]);
     const edges = new Map<string, string[]>();
     const rfcEdges = new Map<string, string[]>();
-    for (const d of deps)
-      edges.set(d.story_id, [
-        ...(edges.get(d.story_id) ?? []),
-        d.depends_on_id,
-      ]);
+    for (const d of deps) edges.set(d.story_id, [...(edges.get(d.story_id) ?? []), d.depends_on_id]);
     for (const d of rfcDeps) {
       rfcEdges.set(d.story_id, [...(rfcEdges.get(d.story_id) ?? []), d.rfc_id]);
     }
@@ -168,10 +163,7 @@ export class Story extends ApplicationRecord {
     // `full_messages` can hold. A message with nothing in it reports nothing.
     const messages: string[] = [];
     for (const story of stories) {
-      if (!(await story.validate("ingest")))
-        messages.push(
-          ...story.errors.fullMessages.filter((message) => message !== null),
-        );
+      if (!(await story.validate("ingest"))) messages.push(...story.errors.fullMessages.filter((message) => message !== null));
     }
     messages.push(
       ...depGraphMessages(
@@ -185,10 +177,7 @@ export class Story extends ApplicationRecord {
       ),
     );
     for (const rfc of rfcs) {
-      if (!(await rfc.validate("ingest")))
-        messages.push(
-          ...rfc.errors.fullMessages.filter((message) => message !== null),
-        );
+      if (!(await rfc.validate("ingest"))) messages.push(...rfc.errors.fullMessages.filter((message) => message !== null));
     }
     return messages;
   }
@@ -216,41 +205,15 @@ export class Story extends ApplicationRecord {
     };
     const storyEdges = group(deps);
     const rfcEdges = group(rfcDeps);
-    const statusOf = async (
-      model: typeof Story | typeof Rfc,
-      targets: Map<string, string[]>,
-    ) => {
+    const statusOf = async (model: typeof Story | typeof Rfc, targets: Map<string, string[]>) => {
       const wanted = [...new Set([...targets.values()].flat())];
-      const rows =
-        wanted.length === 0
-          ? []
-          : await model.where({ id: wanted }).pluck("id", "status");
-      return new Map(
-        rows.map(
-          (row) =>
-            (row as unknown[]).map((v) => (v == null ? null : String(v))) as [
-              string,
-              string | null,
-            ],
-        ),
-      );
+      const rows = wanted.length === 0 ? [] : await model.where({ id: wanted }).pluck("id", "status");
+      return new Map(rows.map((row) => (row as unknown[]).map((v) => (v == null ? null : String(v))) as [string, string | null]));
     };
-    const [storyStatus, rfcStatus] = await Promise.all([
-      statusOf(Story, storyEdges),
-      statusOf(Rfc, rfcEdges),
-    ]);
+    const [storyStatus, rfcStatus] = await Promise.all([statusOf(Story, storyEdges), statusOf(Rfc, rfcEdges)]);
     const held = new Set<string>();
     for (const id of new Set([...storyEdges.keys(), ...rfcEdges.keys()])) {
-      if (
-        isDepHeld(
-          id,
-          storyEdges,
-          rfcEdges,
-          (d) => storyStatus.get(d),
-          (d) => rfcStatus.get(d),
-        )
-      )
-        held.add(id);
+      if (isDepHeld(id, storyEdges, rfcEdges, (d) => storyStatus.get(d), (d) => rfcStatus.get(d))) held.add(id);
     }
     return held;
   }
@@ -293,9 +256,7 @@ export class Story extends ApplicationRecord {
    * `GET /stories/ready` (and `/up/deep`, which times it): ranked over plucked
    * columns, with records loaded for the rows it answers with and no others.
    */
-  static async readyQueue(
-    opts: { rfc?: string } = {},
-  ): Promise<{ stories: Story[]; index: RankingIndex<BundledStory> }> {
+  static async readyQueue(opts: { rfc?: string } = {}): Promise<{ stories: Story[]; index: RankingIndex<BundledStory> }> {
     const index = await Story.bundleOutline();
     return { stories: await Story.recordsFor(claimableIn(index, opts)), index };
   }
@@ -304,11 +265,7 @@ export class Story extends ApplicationRecord {
    * `next-bundle`, the same way: packed over plucked columns, which carry the
    * `est_loc` and `cluster` the packing compares, then records for the bundle.
    */
-  static async bundle(opts: {
-    maxLoc: number;
-    cluster?: string;
-    rfc?: string;
-  }): Promise<{
+  static async bundle(opts: { maxLoc: number; cluster?: string; rfc?: string }): Promise<{
     stories: Story[];
     index: RankingIndex<BundledStory>;
     emptyReason: EmptyBundleReason | null;
@@ -318,8 +275,7 @@ export class Story extends ApplicationRecord {
     return {
       stories: await Story.recordsFor(chosen),
       index,
-      emptyReason:
-        chosen.length === 0 ? emptyBundleReasonIn(index, opts) : null,
+      emptyReason: chosen.length === 0 ? emptyBundleReasonIn(index, opts) : null,
     };
   }
 
@@ -329,14 +285,7 @@ export class Story extends ApplicationRecord {
    * says so; `recordsFor` turns the rows a page serves into records.
    */
   static async bundleOutline(): Promise<RankingIndex<BundledStory>> {
-    const rows = await Story.pluck(
-      "id",
-      "rfc_id",
-      "status",
-      "priority",
-      "est_loc",
-      "cluster",
-    );
+    const rows = await Story.pluck("id", "rfc_id", "status", "priority", "est_loc", "cluster");
     const stories: BundledStory[] = [];
     for (const row of rows) {
       const [id, rfcId, status, priority, estLoc, cluster] = pluckedRow(row);
@@ -357,12 +306,7 @@ export class Story extends ApplicationRecord {
    * moved, between the two reads is dropped rather than served stale.
    */
   private static async recordsFor(rows: RankedStory[]): Promise<Story[]> {
-    const records = new Map(
-      (await Story.where({ id: rows.map((r) => r.id) }).toArray()).map((s) => [
-        s.id,
-        s,
-      ]),
-    );
+    const records = new Map((await Story.where({ id: rows.map((r) => r.id) }).toArray()).map((s) => [s.id, s]));
     return rows.flatMap((row) => {
       const record = records.get(row.id);
       return record && record.status === row.status ? [record] : [];
@@ -376,28 +320,12 @@ export class Story extends ApplicationRecord {
    */
   static async rankingRows(): Promise<RankingIndex<SerializedStory>> {
     const rows = await Story.pluck(...SERIALIZED_COLUMNS);
-    const text = (value: unknown): string | null =>
-      value === null || value === undefined ? null : String(value);
-    const integer = (value: unknown): number | null =>
-      typeof value === "number" ? value : null;
+    const text = (value: unknown): string | null => (value === null || value === undefined ? null : String(value));
+    const integer = (value: unknown): number | null => (typeof value === "number" ? value : null);
     const stories: SerializedStory[] = [];
     for (const row of rows) {
-      const [
-        id,
-        rfcId,
-        title,
-        status,
-        cluster,
-        priority,
-        updatedOn,
-        estLoc,
-        pr,
-        claimAt,
-        assignee,
-        blockedBy,
-        closedReason,
-        filePath,
-      ] = pluckedRow(row);
+      const [id, rfcId, title, status, cluster, priority, updatedOn, estLoc, pr, claimAt, assignee, blockedBy,
+        closedReason, filePath] = pluckedRow(row);
       stories.push({
         id: String(id),
         rfc_id: String(rfcId),
@@ -424,9 +352,7 @@ export class Story extends ApplicationRecord {
    * enum-generated and means only `status = 'ready'`, a much weaker condition;
    * conflating the two would hand agents unclaimable stories.
    */
-  static async claimable(
-    opts: ScopedOpts & { rfc?: string } = {},
-  ): Promise<Story[]> {
+  static async claimable(opts: ScopedOpts & { rfc?: string } = {}): Promise<Story[]> {
     return claimableIn(await indexFor(opts), opts);
   }
 
@@ -458,25 +384,16 @@ export class Story extends ApplicationRecord {
     return storiesTouchingIn(await indexFor(opts), query, opts);
   }
 
-  /**
-   * The stories attributed to package `name` (RFC 0222, "Story → package
-   * attribution"), by the first rule that names any package for a story: its
-   * own `story_packages`, else a `story_paths` row under `packages/<pkg>/`,
-   * else its RFC's `packages` when that lists exactly one.
-   */
+  /** The stories `packageAttribution` attributes to package `name` (RFC 0222). */
   static async touchingPackage(name: string): Promise<Story[]> {
-    const attribution = await packagesByStory();
-    return (await Story.order("id").toArray()).filter((s) =>
-      (attribution.get(s.id) ?? []).includes(name),
-    );
+    const [index, rfcPackages] = await attributionInputs();
+    return Story.recordsFor(storiesTouchingPackageIn(index, rfcPackages, name));
   }
 
-  /** The stories none of `touchingPackage`'s three rules attributes to a package. */
+  /** The stories `packageAttribution` attributes to no package. */
   static async unattributed(): Promise<Story[]> {
-    const attribution = await packagesByStory();
-    return (await Story.order("id").toArray()).filter(
-      (s) => !attribution.has(s.id),
-    );
+    const [index, rfcPackages] = await attributionInputs();
+    return Story.recordsFor(unattributedIn(index, rfcPackages));
   }
 
   // ──────────────────── mutations (ported from src/verbs.ts) ────────────────────
@@ -493,40 +410,27 @@ export class Story extends ApplicationRecord {
     await Story.transaction(async () => {
       const found = await Story.findAllOrThrow(ids);
 
-      const taken = found.filter(
-        (s) => s.assignee !== null && s.assignee !== assignee,
-      );
+      const taken = found.filter((s) => s.assignee !== null && s.assignee !== assignee);
       if (taken.length) {
         const verb = taken.length > 1 ? "are" : "is";
-        throw new VerbExit(
-          2,
-          `${taken.map((s) => s.id).join(", ")} ${verb} already claimed`,
-        );
+        throw new VerbExit(2, `${taken.map((s) => s.id).join(", ")} ${verb} already claimed`);
       }
 
-      const available = found.filter(
-        (s) => s.status === "ready" && s.assignee === null,
-      );
+      const available = found.filter((s) => s.status === "ready" && s.assignee === null);
       const at = nowIso();
       for (const s of available) {
         // The race resolution, and the one deliberate `updateAll`: the
         // affected-row count IS the answer. Zero rows means another agent got
         // there between our read and this write; nothing was written, so
         // there is nothing to roll back — we just report the loss.
-        const affected = await Story.where({
-          id: s.id,
-          status: "ready",
-        }).updateAll({
+        const affected = await Story.where({ id: s.id, status: "ready" }).updateAll({
           status: "claimed",
           assignee,
           claim_at: at,
           updated_on: today(),
         });
         if (affected === 0) {
-          throw new VerbExit(
-            3,
-            `lost claim race on ${s.id} — pick another story`,
-          );
+          throw new VerbExit(3, `lost claim race on ${s.id} — pick another story`);
         }
         await s.recordEvent("claim", { actor: assignee });
       }
@@ -542,10 +446,7 @@ export class Story extends ApplicationRecord {
       const found = await Story.findAllOrThrow(ids);
       for (const s of found) {
         if (s.status !== "claimed") {
-          throw new VerbExit(
-            2,
-            `${s.id} is ${s.status}, not claimed — nothing to release`,
-          );
+          throw new VerbExit(2, `${s.id} is ${s.status}, not claimed — nothing to release`);
         }
       }
       for (const s of found) lines.push(await s.release());
@@ -581,17 +482,9 @@ export class Story extends ApplicationRecord {
   static async recordSpawn(
     ids: string[],
     source: string,
-    opts: {
-      branch?: string | null;
-      pane?: string | null;
-      rfc?: string | null;
-    } = {},
+    opts: { branch?: string | null; pane?: string | null; rfc?: string | null } = {},
   ): Promise<string> {
-    const detail = {
-      source,
-      branch: opts.branch ?? null,
-      pane: opts.pane ?? null,
-    };
+    const detail = { source, branch: opts.branch ?? null, pane: opts.pane ?? null };
     if (opts.rfc && ids.length === 0) {
       await Event.create({
         at: nowIso(),
@@ -604,8 +497,7 @@ export class Story extends ApplicationRecord {
     }
     await Story.transaction(async () => {
       const found = await Story.findAllOrThrow(ids);
-      for (const s of found)
-        await s.recordEvent("spawn", { actor: source, detail });
+      for (const s of found) await s.recordEvent("spawn", { actor: source, detail });
     });
     return `recorded spawn (${source}) for ${ids.length} stor${ids.length === 1 ? "y" : "ies"}`;
   }
@@ -614,18 +506,13 @@ export class Story extends ApplicationRecord {
     const found = await Story.where({ id: ids }).toArray();
     const have = new Set(found.map((s) => s.id));
     const missing = ids.filter((id) => !have.has(id));
-    if (missing.length)
-      throw new VerbExit(1, `story not found: ${missing.join(", ")}`);
+    if (missing.length) throw new VerbExit(1, `story not found: ${missing.join(", ")}`);
     return found;
   }
 
   /** Inverse of claim: claimed → ready, clearing the holder. */
   async release(): Promise<string> {
-    await this.update({
-      status: "ready",
-      ...clearedBy("ready"),
-      updated_on: today(),
-    });
+    await this.update({ status: "ready", ...clearedBy("ready"), updated_on: today() });
     await this.recordEvent("release");
     return `released ${this.id}`;
   }
@@ -641,24 +528,14 @@ export class Story extends ApplicationRecord {
     status: Extract<StoryStatus, "in-progress" | "done">,
     pr: string | null,
   ): Promise<string> {
-    if (
-      this.status === status &&
-      this.pr === pr &&
-      (status !== "in-progress" || this.claim_at !== null)
-    ) {
+    if (this.status === status && this.pr === pr && (status !== "in-progress" || this.claim_at !== null)) {
       return `${status} ${this.id} (already, skipped)`;
     }
     const selfClaim =
       status === "in-progress" && this.claim_at === null
         ? { claim_at: nowIso(), assignee: this.assignee ?? this.id }
         : {};
-    await this.update({
-      status,
-      pr,
-      ...clearedBy(status),
-      ...selfClaim,
-      updated_on: today(),
-    });
+    await this.update({ status, pr, ...clearedBy(status), ...selfClaim, updated_on: today() });
     await this.recordEvent(status, { pr });
     return `${status} ${this.id}${pr === null ? "" : ` ${pr}`}`;
   }
@@ -703,20 +580,13 @@ export class Story extends ApplicationRecord {
    * transaction. `from` refuses the whole batch, with the CLI's message,
    * unless every story is in it (verbs.ts `statusSet`).
    */
-  static async statusSetAll(
-    ids: string[],
-    status: StoryStatus,
-    opts: { from?: StoryStatus | null } = {},
-  ): Promise<string[]> {
+  static async statusSetAll(ids: string[], status: StoryStatus, opts: { from?: StoryStatus | null } = {}): Promise<string[]> {
     const lines: string[] = [];
     await Story.transaction(async () => {
       const found = await Story.findAllOrThrow(ids);
       const off = opts.from ? found.filter((s) => s.status !== opts.from) : [];
       if (off.length) {
-        throw new VerbExit(
-          1,
-          `not ${opts.from}, nothing changed: ${off.map((s) => `${s.id} (${s.status})`).join(", ")}`,
-        );
+        throw new VerbExit(1, `not ${opts.from}, nothing changed: ${off.map((s) => `${s.id} (${s.status})`).join(", ")}`);
       }
       const byId = new Map(found.map((s) => [s.id, s]));
       for (const id of ids) lines.push(await byId.get(id)!.statusSet(status));
@@ -768,20 +638,8 @@ export class Story extends ApplicationRecord {
 
 /** The story columns `serializeStory` (app/serializers/story-json.ts) reads. */
 const SERIALIZED_COLUMNS = [
-  "id",
-  "rfc_id",
-  "title",
-  "status",
-  "cluster",
-  "priority",
-  "updated_on",
-  "est_loc",
-  "pr",
-  "claim_at",
-  "assignee",
-  "blocked_by",
-  "closed_reason",
-  "file_path",
+  "id", "rfc_id", "title", "status", "cluster", "priority", "updated_on", "est_loc", "pr",
+  "claim_at", "assignee", "blocked_by", "closed_reason", "file_path",
 ] as const;
 
 /**
@@ -795,9 +653,7 @@ const SERIALIZED_COLUMNS = [
  * unique index over exactly the plucked pair, which SQLite is free to answer
  * from instead, in index order.
  */
-async function rankingIndexOver<S extends RankedStory>(
-  stories: S[],
-): Promise<RankingIndex<S>> {
+async function rankingIndexOver<S extends RankedStory>(stories: S[]): Promise<RankingIndex<S>> {
   const [rfcs, deps, rfcDeps, paths, packages] = await Promise.all([
     Rfc.all().toArray(),
     StoryDep.order("rowid").pluck("story_id", "depends_on_id"),
@@ -816,8 +672,7 @@ async function rankingIndexOver<S extends RankedStory>(
     return m;
   };
   const rfcPriority = new Map<string, number>();
-  for (const r of rfcs)
-    if (typeof r.priority === "number") rfcPriority.set(r.id, r.priority);
+  for (const r of rfcs) if (typeof r.priority === "number") rfcPriority.set(r.id, r.priority);
   // Sorting here is NOT cosmetic. The CLI's index.json is sorted by
   // (priority, id) before ranking ever sees it, and every downstream tie —
   // `claimable()`'s stable sort, `list`'s output, the bundle knapsack's pick
@@ -826,8 +681,7 @@ async function rankingIndexOver<S extends RankedStory>(
   // its membership, which is exactly the silent reordering the equivalence
   // gate exists to catch (and did).
   stories.sort(
-    (a, b) =>
-      (a.priority ?? PRIORITY_UNSET) - (b.priority ?? PRIORITY_UNSET) ||
+    (a, b) => (a.priority ?? PRIORITY_UNSET) - (b.priority ?? PRIORITY_UNSET) ||
       a.id.localeCompare(b.id),
   );
   return {
@@ -847,8 +701,7 @@ async function rankingIndexOver<S extends RankedStory>(
  * here is a story missing from the queue with nothing to say why.
  */
 function pluckedRow(row: unknown): unknown[] {
-  if (!Array.isArray(row))
-    throw new TypeError(`pluck returned a non-row: ${String(row)}`);
+  if (!Array.isArray(row)) throw new TypeError(`pluck returned a non-row: ${String(row)}`);
   return row;
 }
 
@@ -865,6 +718,14 @@ interface ScopedOpts {
 
 async function indexFor(opts: ScopedOpts): Promise<RankingIndex> {
   return opts.index ?? (await Story.rankingIndex());
+}
+
+/** The plucked ranking outline, and each RFC's `packages`, for package attribution. */
+async function attributionInputs(): Promise<
+  [RankingIndex<RankedStory>, Map<string, string[]>]
+> {
+  const [index, rfcs] = await Promise.all([Story.rankingOutline(), Rfc.all().toArray()]);
+  return [index, new Map(rfcs.map((r) => [r.id, r.packages ?? []]))];
 }
 
 /** ISO seconds, matching the `claim:` format the CLI writes. */
@@ -904,34 +765,3 @@ const PRIORITY_UNSET = 1_000_000;
 
 export { bestBundle, comparePriority, priorityContext, summarizeBundle };
 export type { EmptyBundleReason, RankingIndex };
-
-async function packagesByStory(): Promise<Map<string, string[]>> {
-  const out = new Map<string, string[]>();
-  const add = (id: string, pkg: string) => {
-    const list = out.get(id) ?? [];
-    if (!list.includes(pkg)) list.push(pkg);
-    out.set(id, list);
-  };
-  for (const [id, pkg] of (await StoryPackage.pluck("story_id", "package")) as [
-    string,
-    string,
-  ][])
-    add(id, pkg);
-  const own = new Set(out.keys());
-  for (const [id, p] of (await StoryPath.pluck("story_id", "path")) as [
-    string,
-    string,
-  ][]) {
-    const m = /^packages\/([^/]+)\//.exec(p);
-    if (m !== null && !own.has(id)) add(id, m[1]);
-  }
-  const single = new Map<string, string>();
-  for (const rfc of await Rfc.all().toArray()) {
-    if (rfc.packages?.length === 1) single.set(rfc.id, rfc.packages[0]);
-  }
-  for (const s of (await Story.pluck("id", "rfc_id")) as [string, string][]) {
-    const pkg = single.get(s[1]);
-    if (pkg !== undefined && !out.has(s[0])) add(s[0], pkg);
-  }
-  return out;
-}
