@@ -300,4 +300,25 @@ class ModelMethodsTest < ActiveSupport::TestCase
     error = SessionArchive::Unavailable.new("down", 502)
     assert_equal [ "down", 502 ], [ error.message, error.status ]
   end
+
+  # ── Story package attribution (RFC 0222) ──
+
+  test "Story.touching_package and Story.unattributed follow own list, then paths, then a one-package RFC" do
+    Rfc.create!(id: "0901-wide", status: "active", packages: %w[activerecord actionpack])
+    Rfc.create!(id: "0902-narrow", status: "active", packages: %w[activerecord])
+    story!("own", rfc_id: "0901-wide", paths: [ "packages/activerecord/src/base.ts" ], packages: %w[activesupport])
+    story!("pathed", rfc_id: "0901-wide", paths: %w[packages/actionpack/src/x.ts packages/actionpack/src/y.ts])
+    story!("inherited", rfc_id: "0902-narrow")
+    story!("non-package-path", rfc_id: "0902-narrow", paths: %w[scripts/y.ts])
+    story!("bare-dir", rfc_id: "0901-wide", paths: %w[packages/actionview])
+    story!("orphan", rfc_id: "0901-wide")
+    story!("scripts-only", rfc_id: "0901-wide", paths: %w[scripts/z.ts])
+
+    ids = ->(stories) { stories.map(&:id).sort }
+    assert_equal %w[own], ids.(Story.touching_package("activesupport"))
+    assert_equal %w[pathed], ids.(Story.touching_package("actionpack"))
+    assert_empty Story.touching_package("actionview")
+    assert_equal %w[inherited non-package-path], ids.(Story.touching_package("activerecord"))
+    assert_equal %w[bare-dir orphan scripts-only], ids.(Story.unattributed)
+  end
 end

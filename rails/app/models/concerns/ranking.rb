@@ -151,4 +151,24 @@ module Ranking
     return prefixed if prefixed.any?
     tier.call(->(p) { p.include?(q) })
   end
+
+  # A story's packages (RFC 0222, "Story → package attribution"), by the first
+  # rule that names any: its own story_packages, else the <pkg> of each
+  # packages/<pkg>/… path, else its RFC's packages when that lists exactly one.
+  def package_attribution(index, rfc_packages, story)
+    own = index.packages.fetch(story.id, [])
+    return own if own.any?
+    from_paths = index.paths.fetch(story.id, []).filter_map { |story_path| story_path[%r{\Apackages/([^/]+)/}, 1] }.uniq
+    return from_paths if from_paths.any?
+    rfc_list = rfc_packages.fetch(story.rfc_id, [])
+    rfc_list.size == 1 ? rfc_list : []
+  end
+
+  def stories_touching_package_in(index, rfc_packages, name)
+    index.stories.select { |s| package_attribution(index, rfc_packages, s).include?(name) }
+  end
+
+  def unattributed_in(index, rfc_packages)
+    index.stories.select { |s| package_attribution(index, rfc_packages, s).empty? }
+  end
 end

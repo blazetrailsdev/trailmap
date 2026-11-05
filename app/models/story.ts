@@ -17,6 +17,8 @@ import {
   nextBundleIn,
   priorityContext,
   storiesTouchingIn,
+  storiesTouchingPackageIn,
+  unattributedIn,
   summarizeBundle,
   type BundledStory,
   type EmptyBundleReason,
@@ -382,6 +384,18 @@ export class Story extends ApplicationRecord {
     return storiesTouchingIn(await indexFor(opts), query, opts);
   }
 
+  /** The stories `packageAttribution` attributes to package `name` (RFC 0222). */
+  static async touchingPackage(name: string): Promise<Story[]> {
+    const [index, rfcPackages] = await attributionInputs();
+    return Story.recordsFor(storiesTouchingPackageIn(index, rfcPackages, name));
+  }
+
+  /** The stories `packageAttribution` attributes to no package. */
+  static async unattributed(): Promise<Story[]> {
+    const [index, rfcPackages] = await attributionInputs();
+    return Story.recordsFor(unattributedIn(index, rfcPackages));
+  }
+
   // ──────────────────── mutations (ported from src/verbs.ts) ────────────────────
 
   /**
@@ -704,6 +718,14 @@ interface ScopedOpts {
 
 async function indexFor(opts: ScopedOpts): Promise<RankingIndex> {
   return opts.index ?? (await Story.rankingIndex());
+}
+
+/** The plucked ranking outline, and each RFC's `packages`, for package attribution. */
+async function attributionInputs(): Promise<
+  [RankingIndex<RankedStory>, Map<string, string[]>]
+> {
+  const [index, rfcs] = await Promise.all([Story.rankingOutline(), Rfc.all().toArray()]);
+  return [index, new Map(rfcs.map((r) => [r.id, r.packages ?? []]))];
 }
 
 /** ISO seconds, matching the `claim:` format the CLI writes. */
