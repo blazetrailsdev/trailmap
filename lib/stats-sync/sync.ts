@@ -1364,9 +1364,18 @@ async function syncCompareStats(
 // Summary
 // ---------------------------------------------------------------------------
 
-// `gh run download` answers this when the run has no artifact by that name,
-// or GitHub has aged it out of its 90-day retention.
-const MISSING_ARTIFACT_ERROR_RE = /no (valid )?artifacts? (found|matches)|expired/i;
+// What `gh run download --name` prints when the run has no artifact by that
+// name; gh lists only unexpired artifacts, so an aged-out one answers the same.
+const MISSING_ARTIFACT_ERROR_RE =
+  /no valid artifacts found to download|no artifact matches any of the names or patterns provided/;
+
+/**
+ * A `sync_log` row for a commit with no package summary to download. Its run
+ * counters stay 0; nothing reads `sync_log` as "the last sync".
+ */
+async function recordMissingArtifact(sha: string): Promise<void> {
+  await SyncLog.create({ synced_at: new Date().toISOString(), missing_artifact: sha });
+}
 
 /**
  * Download each merged commit's `parity-outputs-<sha>` artifact and store its
@@ -1397,7 +1406,7 @@ export async function syncPackageSummaries(
   }
 
   const newest = (
-    await connection.selectAll("SELECT MAX(pr_number) AS n FROM package_tag_sites")
+    await connection.selectAll("SELECT MAX(pr_number) AS n FROM package_meta")
   ).toArray()[0] as { n: number | null } | undefined;
   let latestPr = newest?.n ?? -1;
   const fs = getFs();
@@ -1413,20 +1422,25 @@ export async function syncPackageSummaries(
       await gh(
         `run download ${commit.run_id} --repo ${REPO} --name parity-outputs-${sha} --dir ${dir}`,
       );
-      const summary = JSON.parse(
-        await fs.readFile(path.join(dir, "scripts/parity/output/package-summary.json"), "utf-8"),
-      ) as PackageSummaryJson;
-      await storePackageSummary(summary, sha, prNumber, prNumber >= latestPr);
-      if (prNumber >= latestPr) latestPr = prNumber;
+      let text: string;
+      try {
+        text = await fs.readFile(path.join(dir, "scripts/parity/output/package-summary.json"), "utf-8");
+      } catch (err) {
+        // An artifact from before trails#9743 carries no package summary.
+        if ((err as { code?: string }).code !== "ENOENT") throw err;
+        await recordMissingArtifact(sha);
+        missing++;
+        continue;
+      }
+      const isLatest = prNumber != null && prNumber >= latestPr;
+      await storePackageSummary(JSON.parse(text) as PackageSummaryJson, sha, prNumber, isLatest);
+      if (isLatest) latestPr = prNumber;
       stored++;
     } catch (err) {
       if (err instanceof RateLimitExhaustedError) throw err;
       const message = err instanceof Error ? err.message : String(err);
-      if (MISSING_ARTIFACT_ERROR_RE.test(message) || /ENOENT/.test(message)) {
-        await SyncLog.create({
-          synced_at: new Date().toISOString(),
-          missing_artifact: sha,
-        });
+      if (MISSING_ARTIFACT_ERROR_RE.test(message)) {
+        await recordMissingArtifact(sha);
         missing++;
         continue;
       }

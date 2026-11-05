@@ -59,10 +59,10 @@ export async function storePackageSummary(
   latest: boolean,
 ): Promise<void> {
   const key = { merge_commit_sha: mergeCommitSha, pr_number: prNumber };
-  const meta = [];
-  const tags = [];
-  const marks = [];
-  const skips = [];
+  const meta: Record<string, unknown>[] = [];
+  const tags: Record<string, unknown>[] = [];
+  const marks: Record<string, unknown>[] = [];
+  const skips: Record<string, unknown>[] = [];
   for (const pkg of summary.packages) {
     meta.push({
       ...key,

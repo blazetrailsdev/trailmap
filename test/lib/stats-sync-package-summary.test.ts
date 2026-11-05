@@ -4,14 +4,21 @@ import { describe, expect, it } from "vitest";
 import { STATS_SYNC_MIGRATIONS_PATH, statsSyncDatabaseConfig } from "../../config/database.ts";
 
 const FIXTURE = getPath().resolve("test/fixtures/stats-sync/package-summary.json");
+const BARE = getPath().resolve("test/fixtures/stats-sync/package-summary-bare.json");
 // `run download <run> ... --name parity-outputs-<sha> --dir <dir>`: run 1 has
-// the artifact, run 2's has expired.
+// the artifact, run 2's has expired, runs 3 and 5 carry FIXTURE, run 4 BARE
+// (no tag sites, no ratios, no skips) and run 6 an artifact with no summary.
 const FAKE_GH = `#!/bin/sh
 case "$*" in
-  "run download 1 "*)
+  "run download 1 "*|"run download 3 "*|"run download 5 "*)
     for last; do :; done
     mkdir -p "$last/scripts/parity/output"
     cp "${FIXTURE}" "$last/scripts/parity/output/package-summary.json" ;;
+  "run download 4 "*)
+    for last; do :; done
+    mkdir -p "$last/scripts/parity/output"
+    cp "${BARE}" "$last/scripts/parity/output/package-summary.json" ;;
+  "run download 6 "*) ;;
   "run download 2 "*) echo "no valid artifacts found to download" >&2; exit 1 ;;
   *) echo '[]' ;;
 esac
@@ -39,14 +46,15 @@ describe("syncPackageSummaries", () => {
       }
       const adapter = await StatsSyncRecord.leaseConnection();
       await adapter.execute(`INSERT INTO workflow_runs (id, head_sha, pr_number, event, conclusion, workflow_name)
-        VALUES (1, 'abc', 7, 'push', 'success', 'CI'), (2, 'def', 6, 'push', 'success', 'CI')`);
+        VALUES (1, 'abc', 7, 'push', 'success', 'CI'), (2, 'def', 6, 'push', 'success', 'CI'),
+        (3, 'old', 5, 'push', 'success', 'CI')`);
 
-      expect(await syncPackageSummaries("latest")).toBe(1);
+      expect(await syncPackageSummaries("latest")).toBe(2);
       const q = async (sql: string) => (await adapter.selectAll(sql)).toArray();
 
       expect(
         await q(
-          "SELECT merge_commit_sha, pr_number, package, rails_counterpart, claude_md FROM package_meta",
+          "SELECT merge_commit_sha, pr_number, package, rails_counterpart, claude_md FROM package_meta WHERE merge_commit_sha = 'abc'",
         ),
       ).toEqual([
         {
@@ -57,15 +65,19 @@ describe("syncPackageSummaries", () => {
           claude_md: "packages/arel/CLAUDE.md",
         },
       ]);
-      expect(await q("SELECT tag, receipt, count FROM package_tag_stats ORDER BY receipt")).toEqual(
-        [
-          { tag: "@noRailsEquivalent", receipt: "CONVERGEABLE", count: 1 },
-          { tag: "@noRailsEquivalent", receipt: "PERMANENT", count: 2 },
-          { tag: "@noRailsEquivalent", receipt: "none", count: 0 },
-        ],
-      );
       expect(
-        await q("SELECT mark, value, matched, total FROM package_mark_stats ORDER BY mark"),
+        await q(
+          "SELECT tag, receipt, count FROM package_tag_stats WHERE merge_commit_sha = 'abc' ORDER BY receipt",
+        ),
+      ).toEqual([
+        { tag: "@noRailsEquivalent", receipt: "CONVERGEABLE", count: 1 },
+        { tag: "@noRailsEquivalent", receipt: "PERMANENT", count: 2 },
+        { tag: "@noRailsEquivalent", receipt: "none", count: 0 },
+      ]);
+      expect(
+        await q(
+          "SELECT mark, value, matched, total FROM package_mark_stats WHERE merge_commit_sha = 'abc' ORDER BY mark",
+        ),
       ).toEqual([
         { mark: "callMismatchesExclude", value: 4, matched: null, total: null },
         { mark: "extraSurfaceNovel", value: null, matched: null, total: null },
@@ -76,7 +88,7 @@ describe("syncPackageSummaries", () => {
       ]);
       expect(
         await q(
-          "SELECT rails_file, ts_file, methods_matched, methods_missing, tests_matched, tests_total FROM package_file_stats",
+          "SELECT rails_file, ts_file, methods_matched, methods_missing, tests_matched, tests_total FROM package_file_stats WHERE merge_commit_sha = 'abc'",
         ),
       ).toEqual([
         {
@@ -120,8 +132,35 @@ describe("syncPackageSummaries", () => {
         { missing_artifact: "def" },
       ]);
 
-      // Neither commit is tried again.
+      // The older PR 5 kept its per-commit rows but did not replace the latest-only tables.
+      expect(
+        await q("SELECT COUNT(*) AS n FROM package_meta WHERE merge_commit_sha = 'old'"),
+      ).toEqual([{ n: 1 }]);
+      expect(await q("SELECT DISTINCT merge_commit_sha FROM package_tag_sites")).toEqual([
+        { merge_commit_sha: "abc" },
+      ]);
+
+      // No commit is tried again.
       expect(await syncPackageSummaries("latest")).toBe(0);
+
+      // A newer PR replaces all three, even with no tag sites, ratios or skips; an
+      // older one after it does not; an artifact with no summary is recorded.
+      await adapter.execute(`INSERT INTO workflow_runs (id, head_sha, pr_number, event, conclusion, workflow_name)
+        VALUES (4, 'new', 9, 'push', 'success', 'CI'), (5, 'mid', 8, 'push', 'success', 'CI'),
+        (6, 'bare', 4, 'push', 'success', 'CI')`);
+      expect(await syncPackageSummaries("latest")).toBe(2);
+      expect(await q("SELECT COUNT(*) AS n FROM package_tag_sites")).toEqual([{ n: 0 }]);
+      expect(await q("SELECT COUNT(*) AS n FROM package_skip_tests")).toEqual([{ n: 0 }]);
+      expect(await q("SELECT merge_commit_sha, anchor FROM claude_md_sections")).toEqual([
+        { merge_commit_sha: "new", anchor: "conventions" },
+      ]);
+      expect(
+        await q("SELECT mark, value FROM package_mark_stats WHERE merge_commit_sha = 'new'"),
+      ).toEqual([{ mark: "sends", value: 2 }]);
+      expect(await q("SELECT missing_artifact FROM sync_log ORDER BY id")).toEqual([
+        { missing_artifact: "def" },
+        { missing_artifact: "bare" },
+      ]);
       await StatsSyncRecord.removeConnection();
     } finally {
       writable["PATH"] = path;
