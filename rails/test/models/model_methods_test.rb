@@ -312,12 +312,13 @@ class ModelMethodsTest < ActiveSupport::TestCase
     story!("non-package-path", rfc_id: "0902-narrow", paths: %w[scripts/y.ts])
     story!("bare-dir", rfc_id: "0901-wide", paths: %w[packages/actionview])
     story!("orphan", rfc_id: "0901-wide")
+    story!("scripts-only", rfc_id: "0901-wide", paths: %w[scripts/z.ts])
 
     ids = ->(stories) { stories.map(&:id).sort }
     assert_equal %w[own], ids.(Story.touching_package("activesupport"))
     assert_equal %w[pathed], ids.(Story.touching_package("actionpack"))
     assert_empty Story.touching_package("actionview")
     assert_equal %w[inherited non-package-path], ids.(Story.touching_package("activerecord"))
-    assert_equal %w[bare-dir orphan], ids.(Story.unattributed)
+    assert_equal %w[bare-dir orphan scripts-only], ids.(Story.unattributed)
   end
 end
