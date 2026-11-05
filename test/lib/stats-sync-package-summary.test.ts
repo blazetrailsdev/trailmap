@@ -1,6 +1,6 @@
 import { env, getFs, getOs, getPath } from "@blazetrails/ruby-compat";
 import { Base, MigrationContext } from "@blazetrails/activerecord";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { STATS_SYNC_MIGRATIONS_PATH, statsSyncDatabaseConfig } from "../../config/database.ts";
 
 const FIXTURE = getPath().resolve("test/fixtures/stats-sync/package-summary.json");
@@ -160,6 +160,22 @@ describe("syncPackageSummaries", () => {
       expect(await q("SELECT missing_artifact FROM sync_log ORDER BY id")).toEqual([
         { missing_artifact: "def" },
         { missing_artifact: "bare" },
+      ]);
+      // A failure mid-store rolls the whole commit back, so it is retried.
+      const { storePackageSummary } = await import("../../lib/stats-sync/package-summary.ts");
+      const { PackageTagSite } = await import("../../app/models/stats-sync/package-tag-site.ts");
+      const summary = JSON.parse(getFs().readFileSync(FIXTURE, "utf-8"));
+      const insertAll = vi.spyOn(PackageTagSite, "insertAll").mockRejectedValue(new Error("boom"));
+      try {
+        await expect(storePackageSummary(summary, "boom", 10, true)).rejects.toThrow("boom");
+      } finally {
+        insertAll.mockRestore();
+      }
+      expect(
+        await q("SELECT COUNT(*) AS n FROM package_meta WHERE merge_commit_sha = 'boom'"),
+      ).toEqual([{ n: 0 }]);
+      expect(await q("SELECT DISTINCT merge_commit_sha FROM claude_md_sections")).toEqual([
+        { merge_commit_sha: "new" },
       ]);
       await StatsSyncRecord.removeConnection();
     } finally {

@@ -134,48 +134,51 @@ export async function storePackageSummary(
     tests_total: f.testsTotal,
   }));
 
-  if (meta.length > 0)
-    await PackageMeta.upsertAll(meta, {
-      uniqueBy: ["merge_commit_sha", "package"],
-    });
-  if (tags.length > 0) {
-    await PackageTagStat.upsertAll(tags, {
-      uniqueBy: ["merge_commit_sha", "package", "tag", "receipt"],
-    });
-  }
-  if (marks.length > 0) {
-    await PackageMarkStat.upsertAll(marks, {
-      uniqueBy: ["merge_commit_sha", "package", "mark"],
-    });
-  }
-  if (files.length > 0) {
-    await PackageFileStat.upsertAll(files, {
-      uniqueBy: ["merge_commit_sha", "package", "rails_file"],
-    });
-  }
-  if (!latest) return;
+  // One transaction, so a failure leaves no `package_meta` row marking the commit synced.
+  await PackageMeta.transaction(async () => {
+    if (meta.length > 0)
+      await PackageMeta.upsertAll(meta, {
+        uniqueBy: ["merge_commit_sha", "package"],
+      });
+    if (tags.length > 0) {
+      await PackageTagStat.upsertAll(tags, {
+        uniqueBy: ["merge_commit_sha", "package", "tag", "receipt"],
+      });
+    }
+    if (marks.length > 0) {
+      await PackageMarkStat.upsertAll(marks, {
+        uniqueBy: ["merge_commit_sha", "package", "mark"],
+      });
+    }
+    if (files.length > 0) {
+      await PackageFileStat.upsertAll(files, {
+        uniqueBy: ["merge_commit_sha", "package", "rails_file"],
+      });
+    }
+    if (!latest) return;
 
-  await PackageTagSite.deleteAll();
-  await PackageSkipTest.deleteAll();
-  await ClaudeMdSection.deleteAll();
-  const sites = summary.tagSites.map((s) => ({
-    ...key,
-    package: s.package,
-    tag: s.tag,
-    receipt: s.receipt,
-    file: s.file,
-    line: s.line,
-    declaration: s.declaration,
-    cited_anchor: s.citedSection,
-  }));
-  const sections = summary.claudeSections.map((s) => ({
-    ...key,
-    file: s.file,
-    heading: s.heading,
-    anchor: s.anchor,
-    lede: s.lede,
-  }));
-  if (sites.length > 0) await PackageTagSite.insertAll(sites);
-  if (skips.length > 0) await PackageSkipTest.insertAll(skips);
-  if (sections.length > 0) await ClaudeMdSection.insertAll(sections);
+    await PackageTagSite.deleteAll();
+    await PackageSkipTest.deleteAll();
+    await ClaudeMdSection.deleteAll();
+    const sites = summary.tagSites.map((s) => ({
+      ...key,
+      package: s.package,
+      tag: s.tag,
+      receipt: s.receipt,
+      file: s.file,
+      line: s.line,
+      declaration: s.declaration,
+      cited_anchor: s.citedSection,
+    }));
+    const sections = summary.claudeSections.map((s) => ({
+      ...key,
+      file: s.file,
+      heading: s.heading,
+      anchor: s.anchor,
+      lede: s.lede,
+    }));
+    if (sites.length > 0) await PackageTagSite.insertAll(sites);
+    if (skips.length > 0) await PackageSkipTest.insertAll(skips);
+    if (sections.length > 0) await ClaudeMdSection.insertAll(sections);
+  });
 }
