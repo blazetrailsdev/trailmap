@@ -5,7 +5,7 @@
 #
 # `.backup` is consistent while the source is in WAL and being written. The
 # stamp comes from db/stats-sync-migrate, so a later migration cannot leave a
-# stale literal here: an unstamped file is one `db prepare` treats as
+# stale literal here: an unstamped file is one `db:prepare` treats as
 # uninitialized, and it loads db/statsSync_schema.ts with force: cascade, which
 # DROPS every table in the copy.
 #
@@ -41,7 +41,7 @@ if [ -z "$values" ]; then
 fi
 
 # Build beside the target and rename, so a failed stamp never leaves an
-# unstamped file for `db prepare` to wipe.
+# unstamped file for `db:prepare` to wipe.
 partial="$target_db.partial"
 trap 'rm -f "$partial"' EXIT
 sqlite3 -readonly "$source_db" ".backup '$partial'"

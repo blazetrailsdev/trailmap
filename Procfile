@@ -13,7 +13,7 @@
 # alone, which is the property that makes this worth having: a hub that cannot
 # be migrated never gets a container serving pages against it.
 #
-# `db prepare`, not `db migrate`: it also creates the `queue` database and loads
+# `db:prepare`, not `db:migrate`: it also creates the `queue` database and loads
 # db/queue_schema.ts the first time, which `migrate` cannot do because the
 # queue has no migrations.
 #

@@ -25,7 +25,7 @@ import { hasStatsDatabase } from "../../config/database.ts";
  * It cannot collide with the MIGRATOR's lock, which Rails derives from a hash
  * of the database name (`generate_migrator_advisory_lock_id`) into the same
  * space — not because a hash cannot land here, but because the migrator holds
- * its lock only for the length of `db migrate` and this one only inside a
+ * its lock only for the length of `db:migrate` and this one only inside a
  * refresh, and a collision would cost at worst one skipped refresh, never
  * corruption. Both are advisory: nothing but these two call sites consults
  * them.
