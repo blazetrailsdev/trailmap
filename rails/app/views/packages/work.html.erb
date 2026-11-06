@@ -1,0 +1,34 @@
+<div class="page-header">
+  <h1 class="page-title"><a href="<%= package_path(@name) %>"><%= @name %></a> &middot; work</h1>
+</div>
+
+<h2 class="section-title">Done per week</h2>
+<% if @burndown.empty? %><div class="empty">Nothing done yet.</div><% end %>
+<div class="pkg-table-wrap"><table class="pkg-table">
+  <% @burndown.each do |week, count| %>
+    <tr><td><code><%= week %></code></td><td><strong><%= count %></strong></td><td><svg width="80" height="8" viewBox="0 0 80 8"><rect fill="currentColor" height="8" width="<%= (count * 80.0 / @max).round %>"/></svg></td></tr>
+  <% end %>
+</table></div>
+
+<% if @groups.empty? %><div class="empty">No stories attributed to this package.</div><% end %>
+<% @groups.each do |rfc, (open, done)| %>
+  <h2 class="section-title"><a href="/rfc/<%= rfc %>"><%= rfc %></a> <span class="muted"><%= open.size + done.size %></span></h2>
+  <div class="box">
+    <% open.each do |story| %>
+      <div class="item-row">
+        <%= render "shared/status_badge", status: @statuses[story.id] %>
+        <span class="row-main"><a class="row-title" href="/story/<%= story.id %>"><%= story.title %></a> <code><%= story.id %></code></span>
+      </div>
+    <% end %>
+    <% if done.any? %>
+      <details><summary><%= done.size %> done or closed</summary>
+        <% done.each do |story| %>
+          <div class="item-row">
+            <%= render "shared/status_badge", status: @statuses[story.id] %>
+            <span class="row-main"><a class="row-title" href="/story/<%= story.id %>"><%= story.title %></a> <code><%= story.id %></code></span>
+          </div>
+        <% end %>
+      </details>
+    <% end %>
+  </div>
+<% end %>

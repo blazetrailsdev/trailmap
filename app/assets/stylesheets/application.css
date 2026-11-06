@@ -923,3 +923,4 @@ ul { margin: 0 0 10px 20px; }
 .pkg-tag summary { cursor: pointer; }
 .sparkline { vertical-align: middle; }
 .pkg-table-wrap { overflow-x: auto; max-width: 100%; }
+.pkg-tile { padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }

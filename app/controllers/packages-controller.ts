@@ -4,6 +4,10 @@ import { PackageMeta } from "../models/package-meta.ts";
 import { ApiCompareStat } from "../models/api-compare-stat.ts";
 import { TestCompareStat } from "../models/test-compare-stat.ts";
 import { CompareRun } from "../models/compare-run.ts";
+import { ApiCallsStat } from "../models/api-calls-stat.ts";
+import { ApiCallArgsStat } from "../models/api-call-args-stat.ts";
+import { ApiComparePrivatesStat } from "../models/api-compare-privates-stat.ts";
+import { Event } from "../models/event.ts";
 import { Story } from "../models/story.ts";
 import { Rfc } from "../models/rfc.ts";
 import { StoryPath } from "../models/story-path.ts";
@@ -13,6 +17,7 @@ import { PackageMarkStat } from "../models/package-mark-stat.ts";
 import { PackageSkipTest } from "../models/package-skip-test.ts";
 import { PackageFileStat } from "../models/package-file-stat.ts";
 import { ClaudeMdSection } from "../models/claude-md-section.ts";
+import { effectiveStoryStatus } from "../models/concerns/effective-status.ts";
 import { OPEN_STORY_STATUSES } from "../models/concerns/ranking.ts";
 import { RecordNotFound } from "@blazetrails/activerecord";
 
@@ -53,6 +58,45 @@ export interface FileRow {
   missing: number;
   testPercent: number | null;
   stories: string[];
+}
+
+/** A gate's tile: its latest ratio and trend, or `latest: null` for no data. */
+export interface Tile {
+  label: string;
+  latest: Ratio | null;
+  points: string;
+}
+
+/** The overview's tiles, in order; `mark` gates read `package_mark_stats`. */
+const GATES: { label: string; model?: typeof CompareRun; mark?: string; assertions?: boolean }[] = [
+  { label: "api", model: ApiCompareStat },
+  { label: "calls", model: ApiCallsStat },
+  { label: "call args", model: ApiCallArgsStat },
+  { label: "params", mark: "params" },
+  { label: "predicates", mark: "predicates" },
+  { label: "tests", model: TestCompareStat },
+  { label: "assertions", model: TestCompareStat, assertions: true },
+  { label: "privates", model: ApiComparePrivatesStat },
+];
+
+/** The statuses the overview counts, and the work page's group order. */
+const COUNTED_STATUSES = ["ready", "in-progress", "blocked", "done"];
+const WORK_ORDER = ["ready", "in-progress", "blocked", "draft"];
+
+/** Each story's effective status (`shared/_status-badge`'s rule), by id. */
+async function effectiveStatuses(stories: Story[]): Promise<Map<string, string>> {
+  const rfcStatus = new Map<string, string>();
+  for (const rfc of await Rfc.where({ id: [...new Set(stories.map((s) => s.rfc_id))] }).toArray()) {
+    rfcStatus.set(rfc.id, rfc.status);
+  }
+  return new Map(stories.map((s) => [s.id, effectiveStoryStatus(rfcStatus.get(s.rfc_id), s.status) ?? s.status]));
+}
+
+/** The Monday (UTC) of `at`'s week, as `YYYY-MM-DD`. */
+function weekOf(at: string): string {
+  const day = new Date(at);
+  day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
+  return day.toISOString().slice(0, 10);
 }
 
 /** An SVG polyline's `points` for `values` in an 80×16 box. */
@@ -144,24 +188,107 @@ export class PackagesController extends ApplicationController {
   }
 
   /**
-   * `/packages/:name` — the package's counterpart, its latest api and tests
-   * ratios and open story count, and the links to its tabs. RFC 0222's
-   * overview (`package-overview-page`) grows this into gate tiles and the
-   * start-here box.
+   * `/packages/:name` — counterpart and purpose, a tile per gate, story
+   * counts by status and the RFCs touching the package, and "Start here":
+   * the top ready stories in queue order, the package `CLAUDE.md`, and the
+   * Rails file with most missing methods.
    */
   async show(): Promise<void> {
     const name = String(this.params.get("name") ?? "");
     const meta = await latestMeta(name);
-    const { byPackage } = await Story.openCountsByPackage();
+    const sha = meta.merge_commit_sha;
+    const tiles: Tile[] = [];
+    for (const gate of GATES) {
+      let ratios: Ratio[];
+      if (gate.mark) {
+        ratios = (await PackageMarkStat.where({ package: name, mark: gate.mark }).order("pr_number").toArray())
+          .filter((row) => row.total != null)
+          .map((row) => ({
+            matched: row.matched ?? 0,
+            total: row.total!,
+            percent: row.total! > 0 ? Math.round((row.matched! * 1000) / row.total!) / 10 : 0,
+          }));
+      } else {
+        const rows = await gate.model!.where({ package: name }).order("pr_number").toArray();
+        ratios = rows.map((row) => {
+          if (!gate.assertions) return { matched: row.matched, total: row.total, percent: row.percent };
+          const matched = row.matched - ((row as TestCompareStat).assertion_count_mismatch ?? 0);
+          return {
+            matched,
+            total: row.matched,
+            percent: row.matched > 0 ? Math.round((matched * 1000) / row.matched) / 10 : 0,
+          };
+        });
+      }
+      tiles.push({
+        label: gate.label,
+        latest: ratios.at(-1) ?? null,
+        points: ratios.length > 0 ? sparkline(ratios.map((r) => r.percent)) : "",
+      });
+    }
+
+    const stories = await Story.touchingPackage(name);
+    const statuses = await effectiveStatuses(stories);
+    const counts = COUNTED_STATUSES.map((status) => ({
+      status,
+      count: stories.filter((story) => statuses.get(story.id) === status).length,
+    }));
+    const rfcs = [
+      ...new Set(stories.filter((story) => OPEN_STORY_STATUSES.includes(statuses.get(story.id)!)).map((story) => story.rfc_id)),
+    ].sort();
+    const ids = new Set(stories.map((story) => story.id));
+    const ready = (await Story.claimable()).filter((story) => ids.has(story.id)).slice(0, 3);
+    const topFile = await PackageFileStat.where({ merge_commit_sha: sha, package: name })
+      .where("methods_missing > 0")
+      .order({ methods_missing: "desc" }, "rails_file")
+      .first();
+
     await this.render({
       locals: {
         name,
-        railsCounterpart: meta.rails_counterpart ?? null,
-        api: (await latestRatios(ApiCompareStat)).get(name) ?? null,
-        tests: (await latestRatios(TestCompareStat)).get(name) ?? null,
-        openStories: byPackage.get(name) ?? 0,
+        meta,
+        blob: `${TRAILS_BLOB}/${sha}`,
+        tiles,
+        counts,
+        rfcs,
+        ready,
+        topFile,
       },
     });
+  }
+
+  /**
+   * `/packages/:name/work` — the stories attributed to the package, grouped
+   * by RFC, ready first, then in-progress, blocked and draft, done collapsed;
+   * and a weekly count of their `done` events.
+   */
+  async work(): Promise<void> {
+    const name = String(this.params.get("name") ?? "");
+    await latestMeta(name);
+    const stories = await Story.touchingPackage(name);
+    const statuses = await effectiveStatuses(stories);
+    const rank = (story: Story): number => {
+      const i = WORK_ORDER.indexOf(statuses.get(story.id)!);
+      return i === -1 ? WORK_ORDER.length : i;
+    };
+    const groups = new Map<string, { open: Story[]; done: Story[] }>();
+    for (const story of [...stories].sort((a, b) => rank(a) - rank(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
+      const group = groups.get(story.rfc_id) ?? { open: [], done: [] };
+      (["done", "closed"].includes(statuses.get(story.id)!) ? group.done : group.open).push(story);
+      groups.set(story.rfc_id, group);
+    }
+    const sorted = new Map([...groups].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+
+    const weeks = new Map<string, number>();
+    const events = await Event.where({ verb: "done", story_id: stories.map((story) => story.id) }).order("at").toArray();
+    for (const event of events) {
+      const week = weekOf(String(event.at));
+      weeks.set(week, (weeks.get(week) ?? 0) + 1);
+    }
+    const burndown = [...weeks].map(([week, count]) => ({ week, count }));
+    const max = Math.max(1, ...burndown.map((row) => row.count));
+
+    await this.render({ locals: { name, groups: sorted, statuses, burndown, max } });
   }
 
   /**

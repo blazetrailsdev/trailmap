@@ -1,27 +1,39 @@
 <div class="page-header">
-  <h1 class="page-title"><a href="<%= packages_path %>">Packages</a> &middot; <%= @name %></h1>
-  <div class="page-subhead">
-    <span class="muted"><% if @rails_counterpart %>ports <span class="tag"><%= @rails_counterpart %></span><% else %>trails-only<% end %>
-      &middot; <%= @open_stories %> open <%= @open_stories == 1 ? "story" : "stories" %>
-      &middot; <a href="<%= package_files_path(@name) %>">files</a>
-      &middot; <a href="<%= package_deviations_path(@name) %>">deviations</a></span>
-  </div>
+  <h1 class="page-title"><a href="<%= packages_path %>">packages</a> &middot; <%= @name %></h1>
+  <div class="page-subhead"><span class="muted"><% if @meta.rails_counterpart %>port of <code><%= @meta.rails_counterpart %></code><% else %>trails-only<% end %> &middot; <a href="<%= package_files_path(@name) %>">files</a> &middot; <a href="<%= package_deviations_path(@name) %>">deviations</a> &middot; <a href="<%= package_work_path(@name) %>">work</a></span></div>
+  <% if @meta.description %><div class="field-note"><%= @meta.description %></div><% end %>
 </div>
 
+<h2 class="section-title">Parity</h2>
+<div class="pkg-grid">
+  <% @tiles.each do |tile| %>
+    <div class="pkg-tile">
+      <div class="card-head"><span class="card-title"><%= tile.label %></span></div>
+      <% if tile.latest.nil? %>
+        <div class="muted">no data</div>
+      <% else %>
+        <div><strong><%= format("%.1f", tile.latest.percent) %>%</strong> <span class="muted"><%= tile.latest.matched %> / <%= tile.latest.total %></span></div>
+        <svg class="sparkline" width="80" height="16" viewBox="0 0 80 16"><polyline fill="none" stroke="currentColor" points="<%= tile.points %>"/></svg>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<h2 class="section-title">Stories</h2>
+<div class="pkg-counts">
+  <% @counts.each do |status, count| %><span class="tag"><%= status %> <strong><%= count %></strong></span> <% end %>
+</div>
+<% if @rfcs.empty? %><div class="empty">No open RFCs touch this package.</div><% end %>
+<ul>
+  <% @rfcs.each do |rfc| %><li><a href="/rfc/<%= rfc %>"><%= rfc %></a></li><% end %>
+</ul>
+
+<h2 class="section-title">Start here</h2>
 <div class="card">
-  <div class="pkg-stats">
-    <% [ [ "api", @api ], [ "tests", @tests ] ].each do |label, ratio| %>
-      <div class="pkg-meter">
-        <div class="pkg-meter-line">
-          <span class="pkg-meter-label"><%= label %></span>
-          <% if ratio.nil? %>
-            <span class="muted">no data</span>
-          <% else %>
-            <span><strong><%= ratio[:percent].to_s.delete_suffix(".0") %>%</strong> <span class="muted"><%= number_with_delimiter(ratio[:matched]) %> / <%= number_with_delimiter(ratio[:total]) %></span></span>
-          <% end %>
-        </div>
-        <div class="pkg-track"><% if ratio %><span class="pkg-fill <%= ratio[:percent] >= 95 ? "good" : ratio[:percent] >= 75 ? "fair" : "poor" %>" style="width:<%= ratio[:percent].clamp(0, 100).to_s.delete_suffix(".0") %>%"></span><% end %></div>
-      </div>
-    <% end %>
-  </div>
+  <% if @ready.empty? %><div class="empty">No ready stories.</div><% end %>
+  <ol>
+    <% @ready.each do |story| %><li><a href="/story/<%= story.id %>"><%= story.id %></a> <span class="muted"><%= story.title %></span></li><% end %>
+  </ol>
+  <% if @meta.claude_md %><div>Read <a href="<%= @blob %>/<%= @meta.claude_md %>"><code><%= @meta.claude_md %></code></a> first.</div><% end %>
+  <% if @top_file %><div>Most missing methods: <code><%= @top_file.rails_file %></code> <span class="muted"><%= @top_file.methods_missing %> missing</span></div><% end %>
 </div>

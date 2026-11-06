@@ -28,14 +28,14 @@ class PackagesRequestsTest < ActionDispatch::IntegrationTest
   end
 
   test "answers each tab" do
-    %w[/packages/arel/files /packages/arel/deviations].each do |path|
+    %w[/packages/arel/files /packages/arel/deviations /packages/arel/work].each do |path|
       get path
       assert_response :success, path
     end
   end
 
   test "answers an unknown package with a 404" do
-    %w[/packages/nope /packages/nope/files /packages/nope/deviations].each do |path|
+    %w[/packages/nope /packages/nope/files /packages/nope/deviations /packages/nope/work].each do |path|
       get path
       assert_response :not_found, path
     end
@@ -52,7 +52,7 @@ class PackagesRequestsTest < ActionDispatch::IntegrationTest
     get "/packages"
     assert_response :success
     assert_includes response.body, "No package data"
-    %w[/packages/arel /packages/arel/files /packages/arel/deviations].each do |path|
+    %w[/packages/arel /packages/arel/files /packages/arel/deviations /packages/arel/work].each do |path|
       get path
       assert_response :not_found, path
     end

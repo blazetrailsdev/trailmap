@@ -7,6 +7,7 @@ import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { StoryPackage } from "../../app/models/story-package.ts";
 import { StoryPath } from "../../app/models/story-path.ts";
+import { Event } from "../../app/models/event.ts";
 import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { PackagesController } from "../../app/controllers/packages-controller.ts";
@@ -56,6 +57,11 @@ beforeAll(async () => {
        ('sha2', 2, 'arel', 'arel/nodes/node.rb', 'packages/arel/src/nodes/node.ts', 5, 1, 7, 40),
        ('sha2', 2, 'arel', 'arel/nodes/binary.rb', NULL, 0, 7, 0, 0),
        ('sha2', 2, 'arel', 'arel/table.rb', 'packages/arel/src/table.ts', 9, 0, 3, 3)`,
+    `UPDATE package_meta SET rails_counterpart = 'arel', description = 'SQL AST', claude_md = 'packages/arel/CLAUDE.md' WHERE merge_commit_sha = 'sha2' AND package = 'arel'`,
+    `INSERT INTO api_compare_stats (merge_commit_sha, pr_number, package, matched, total, percent) VALUES
+       ('sha1', 1, 'arel', 40, 100, 40.0), ('sha2', 2, 'arel', 50, 100, 50.0)`,
+    `INSERT INTO test_compare_stats (merge_commit_sha, pr_number, package, matched, total, percent, assertion_count_mismatch) VALUES
+       ('sha2', 2, 'arel', 20, 80, 25.0, 5)`,
   ]) {
     await stats(sql);
   }
@@ -76,6 +82,13 @@ beforeAll(async () => {
   }
   await StoryPath.create({ story_id: "open-arel", path: "packages/arel/src/nodes/node.ts" });
   await StoryPath.create({ story_id: "done-arel", path: "packages/arel/src/nodes/node.ts" });
+  await Rfc.create({ id: "0002-arel-only", status: "active", packages: ["arel"] });
+  for (const [id, status] of [["arel-ready-b", "ready"], ["arel-ready-a", "ready"], ["arel-blocked", "blocked"], ["arel-wip", "in-progress"], ["arel-shipped", "done"]]) {
+    await Story.create({ id, rfc_id: "0002-arel-only", status, title: id });
+  }
+  await Event.create({ at: "2026-11-03T10:00:00Z", verb: "done", story_id: "arel-shipped" });
+  await Event.create({ at: "2026-11-08T10:00:00Z", verb: "done", story_id: "done-arel" });
+  await Event.create({ at: "2026-11-10T10:00:00Z", verb: "done", story_id: "catch-all-ar" });
 });
 
 describe("PackagesController#deviations", () => {
@@ -157,5 +170,64 @@ describe("PackagesController#files", () => {
     const byTests = await page("files", { name: "arel", sort: "tests" });
     expect(byTests.indexOf("table.rb")).toBeGreaterThan(byTests.indexOf("node.rb"));
     expect(byTests.indexOf("<h2", byTests.indexOf("node.rb"))).toBeGreaterThan(byTests.indexOf("binary.rb"));
+  });
+});
+
+describe("PackagesController#show", () => {
+  it("shows counterpart, description and a tile per gate, no data where a gate has none", async () => {
+    const body = await page("show", { name: "arel" });
+    expect(body).toContain("port of <code>arel</code>");
+    expect(body).toContain("SQL AST");
+    expect(body).toMatch(/<span class="card-title">api<\/span><\/div>\s*<div><strong>50\.0%<\/strong> <span class="muted">50 \/ 100<\/span>/);
+    expect(body).toContain('points="0,16 80,0"');
+    expect(body).toContain("<strong>90.0%</strong> <span class=\"muted\">9 / 10</span>");
+    expect(body).toContain("<strong>75.0%</strong> <span class=\"muted\">15 / 20</span>");
+    expect(body.split("no data")).toHaveLength(5);
+  });
+
+  it("counts stories by status and lists the RFCs touching the package", async () => {
+    const body = await page("show", { name: "arel" });
+    expect(body).toContain("ready <strong>4</strong>");
+    expect(body).toContain("in-progress <strong>1</strong>");
+    expect(body).toContain("blocked <strong>1</strong>");
+    expect(body).toContain("done <strong>2</strong>");
+    expect(body).toContain('href="/rfc/0002-arel-only"');
+    expect(body).toContain('href="/rfc/0023-surfaced-deviations"');
+    expect(body).not.toContain('href="/rfc/0124-arel-surfaced-deviations"');
+  });
+
+  it("starts with three ready stories, the CLAUDE.md and the file missing most", async () => {
+    const body = await page("show", { name: "arel" });
+    const start = body.slice(body.indexOf("Start here"));
+    expect(start.split('<li><a href="/story/')).toHaveLength(4);
+    expect(start).toContain('href="https://github.com/blazetrailsdev/trails/blob/sha2/packages/arel/CLAUDE.md"');
+    expect(start).toContain("<code>arel/nodes/binary.rb</code> <span class=\"muted\">7 missing</span>");
+  });
+
+  it("answers 404 for an unknown package", async () => {
+    const tc = await controllerTestCase(PackagesController);
+    await expect(tc.get("show", { params: { name: "nope" } })).rejects.toThrow("No package nope");
+  });
+});
+
+describe("PackagesController#work", () => {
+  it("groups stories by RFC, ready first, done collapsed", async () => {
+    const body = await page("work", { name: "arel" });
+    const group = body.slice(body.indexOf('href="/rfc/0002-arel-only"'), body.indexOf('href="/rfc/0023'));
+    const order = ["arel-ready-a", "arel-ready-b", "arel-wip", "arel-blocked", "1 done or closed", "arel-shipped"];
+    const positions = order.map((id) => group.indexOf(id));
+    expect(positions.every((p) => p > -1)).toBe(true);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+
+  it("counts done events per week", async () => {
+    const body = await page("work", { name: "arel" });
+    expect(body).toContain("<code>2026-11-02</code></td><td><strong>2</strong>");
+    expect(body).not.toContain("2026-11-09");
+  });
+
+  it("answers 404 for an unknown package", async () => {
+    const tc = await controllerTestCase(PackagesController);
+    await expect(tc.get("work", { params: { name: "nope" } })).rejects.toThrow("No package nope");
   });
 });
