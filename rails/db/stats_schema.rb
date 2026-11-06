@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_11_05_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_05_000002) do
   create_table "api_call_args_stats", force: :cascade do |t|
     t.string "merge_commit_sha"
     t.integer "pr_number"
@@ -52,6 +52,37 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_05_000001) do
     t.integer "missing"
   end
 
+  create_table "claude_md_sections", force: :cascade do |t|
+    t.string "merge_commit_sha"
+    t.integer "pr_number"
+    t.string "file"
+    t.string "heading"
+    t.string "anchor"
+    t.text "lede"
+  end
+
+  create_table "package_file_stats", force: :cascade do |t|
+    t.string "merge_commit_sha"
+    t.integer "pr_number"
+    t.string "package"
+    t.string "rails_file"
+    t.string "ts_file"
+    t.integer "methods_matched"
+    t.integer "methods_missing"
+    t.integer "tests_matched"
+    t.integer "tests_total"
+  end
+
+  create_table "package_mark_stats", force: :cascade do |t|
+    t.string "merge_commit_sha"
+    t.integer "pr_number"
+    t.string "package"
+    t.string "mark"
+    t.integer "value"
+    t.integer "matched"
+    t.integer "total"
+  end
+
   create_table "package_meta", force: :cascade do |t|
     t.string "merge_commit_sha"
     t.integer "pr_number"
@@ -59,6 +90,36 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_05_000001) do
     t.string "rails_counterpart"
     t.text "description"
     t.string "claude_md"
+  end
+
+  create_table "package_skip_tests", force: :cascade do |t|
+    t.string "merge_commit_sha"
+    t.integer "pr_number"
+    t.string "package"
+    t.string "file"
+    t.string "test_name"
+    t.string "cited_anchor"
+  end
+
+  create_table "package_tag_sites", force: :cascade do |t|
+    t.string "merge_commit_sha"
+    t.integer "pr_number"
+    t.string "package"
+    t.string "tag"
+    t.string "receipt"
+    t.string "file"
+    t.integer "line"
+    t.string "declaration"
+    t.string "cited_anchor"
+  end
+
+  create_table "package_tag_stats", force: :cascade do |t|
+    t.string "merge_commit_sha"
+    t.integer "pr_number"
+    t.string "package"
+    t.string "tag"
+    t.string "receipt"
+    t.integer "count"
   end
 
   create_table "pull_requests", primary_key: "number", force: :cascade do |t|

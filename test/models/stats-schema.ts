@@ -55,6 +55,23 @@ export async function createScratchStatsDatabase(database = ":memory:"): Promise
       id INTEGER PRIMARY KEY, merge_commit_sha varchar, pr_number INTEGER,
       package varchar, rails_counterpart varchar, description TEXT, claude_md varchar
     )`);
+  for (const [table, columns] of [
+    ["package_tag_stats", "tag varchar, receipt varchar, count INTEGER"],
+    ["package_mark_stats", "mark varchar, value INTEGER, matched INTEGER, total INTEGER"],
+    ["package_tag_sites", "tag varchar, receipt varchar, file varchar, line INTEGER, declaration varchar, cited_anchor varchar"],
+    ["package_skip_tests", "file varchar, test_name varchar, cited_anchor varchar"],
+    ["package_file_stats", "rails_file varchar, ts_file varchar, methods_matched INTEGER, methods_missing INTEGER, tests_matched INTEGER, tests_total INTEGER"],
+  ]) {
+    await adapter.execute(`
+      CREATE TABLE ${table} (
+        id INTEGER PRIMARY KEY, merge_commit_sha varchar, pr_number INTEGER, package varchar, ${columns}
+      )`);
+  }
+  await adapter.execute(`
+    CREATE TABLE claude_md_sections (
+      id INTEGER PRIMARY KEY, merge_commit_sha varchar, pr_number INTEGER,
+      file varchar, heading varchar, anchor varchar, lede TEXT
+    )`);
   for (const table of ["api_calls_stats", "api_call_args_stats"]) {
     await adapter.execute(`
       CREATE TABLE ${table} (

@@ -10,4 +10,12 @@ export class PackageSkipTest extends Stats {
   static {
     this.tableName = "package_skip_tests";
   }
+
+  // The stats-sync cron owns this schema, so trails-tsc has none to read.
+  declare merge_commit_sha: string;
+  declare pr_number: number;
+  declare package: string;
+  declare file: string;
+  declare test_name: string;
+  declare cited_anchor: string | null;
 }

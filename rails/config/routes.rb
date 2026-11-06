@@ -60,6 +60,8 @@ Rails.application.routes.draw do
   get "graphs/parity/data", to: "parity_graphs#data", as: :parity_graph_data
   get "graphs/parity", to: "parity_graphs#show", as: :parity_graph
   get "packages", to: "packages#index", as: :packages
+  get "packages/:name/deviations", to: "packages#deviations", as: :package_deviations
+  get "packages/:name/files", to: "packages#files", as: :package_files
 
   resources :audits, only: %i[index show], constraints: { id: Audit::SEGMENT }, format: false do
     get :raw, on: :member

@@ -1,0 +1,28 @@
+<div class="page-header">
+  <h1 class="page-title"><a href="/packages"><%= @name %></a> &middot; files</h1>
+  <div class="page-subhead">
+    <span class="muted"><%= @count %> Rails <%= @count == 1 ? "file" : "files" %> &middot; sort:
+      <a href="?"<% if @sort.empty? %> class="active"<% end %>>path</a>
+      <a href="?sort=missing"<% if @sort == "missing" %> class="active"<% end %>>missing methods</a>
+      <a href="?sort=tests"<% if @sort == "tests" %> class="active"<% end %>>test match</a>
+      &middot; <a href="/packages/<%= @name %>/deviations">deviations</a></span>
+  </div>
+</div>
+
+<% if @count.zero? %><div class="empty">None.</div><% end %>
+<% @groups.each do |dir, rows| %>
+  <h2 class="section-title"><%= dir %> <span class="muted"><%= rows.size %></span></h2>
+  <div class="pkg-table-wrap"><table class="pkg-table">
+    <tr><th>Rails file</th><th>TS port</th><th>matched</th><th>missing</th><th>tests</th><th>open stories</th></tr>
+    <% rows.each do |row| %>
+      <tr>
+        <td><code><%= row.rails_file %></code></td>
+        <td><% if row.ts_file.nil? %><span class="muted">unported</span><% else %><code><%= row.ts_file %></code><% end %></td>
+        <td><%= row.matched %></td>
+        <td><%= row.missing %></td>
+        <td><%= row.test_percent.nil? ? "—" : "#{row.test_percent}%" %></td>
+        <td><% if row.stories.any? %><details><summary><%= row.stories.size %></summary><% row.stories.each do |id| %><a href="/story/<%= id %>"><%= id %></a> <% end %></details><% else %>0<% end %></td>
+      </tr>
+    <% end %>
+  </table></div>
+<% end %>

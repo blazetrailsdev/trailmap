@@ -125,6 +125,8 @@ Trails.application!.routes().draw(function () {
   // The package index (RFC 0222): every package in the latest `package_meta`
   // commit, grouped by Rails counterpart.
   this.get("packages", { to: "packages#index", as: "packages" });
+  this.get("packages/:name/deviations", { to: "packages#deviations", as: "package_deviations" });
+  this.get("packages/:name/files", { to: "packages#files", as: "package_files" });
 
   // The audits, ported from ringo's `/audits`. A resource: `index` is the
   // list, `show` an audit's page, and the member `raw` the file on its own,
