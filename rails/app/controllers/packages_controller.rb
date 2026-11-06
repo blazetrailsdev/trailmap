@@ -60,7 +60,7 @@ class PackagesController < ApplicationController
       ratios =
         if gate[:mark]
           PackageMarkStat.where(package: @name, mark: gate[:mark]).where.not(total: nil).order(:pr_number).map do |row|
-            Ratio.new(matched: row.matched || 0, total: row.total, percent: row.total.positive? ? (row.matched * 1000.0 / row.total).round / 10.0 : 0)
+            Ratio.new(matched: row.matched || 0, total: row.total, percent: row.total.positive? ? ((row.matched || 0) * 1000.0 / row.total).round / 10.0 : 0)
           end
         else
           gate[:model].where(package: @name).order(:pr_number).map do |row|
@@ -95,7 +95,7 @@ class PackagesController < ApplicationController
                      .transform_values { |group| group.partition { |story| %w[done closed].exclude?(@statuses[story.id]) } }
     @burndown = Event.where(verb: "done", story_id: stories.map(&:id)).order(:at)
                      .group_by { |event| Time.parse(event.at).utc.to_date.beginning_of_week.iso8601 }
-                     .map { |week, events| [ week, events.size ] }
+                     .map { |week, events| [ week, events.map(&:story_id).uniq.size ] }
     @max = [ 1, *@burndown.map(&:last) ].max
   end
 

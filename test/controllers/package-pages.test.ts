@@ -40,7 +40,7 @@ beforeAll(async () => {
        ('sha2', 2, 'arel', '@noRailsEquivalent', 'PERMANENT', 'packages/arel/src/a.ts', 12, 'visit', 'fidelity-is-the-job')`,
     `INSERT INTO package_mark_stats (merge_commit_sha, pr_number, package, mark, value, matched, total) VALUES
        ('sha1', 1, 'arel', 'sends', 5, NULL, NULL), ('sha2', 2, 'arel', 'sends', 3, NULL, NULL),
-       ('sha2', 2, 'arel', 'params', NULL, 9, 10),
+       ('sha2', 2, 'arel', 'params', NULL, 9, 10), ('sha2', 2, 'arel', 'predicates', NULL, 0, 0),
        ('sha1', 1, 'arel', 'boundary', 0, NULL, NULL), ('sha2', 2, 'arel', 'boundary', 1, NULL, NULL),
        ('sha3', 3, 'arel', 'boundary', 32, NULL, NULL)`,
     `INSERT INTO package_tag_sites (merge_commit_sha, pr_number, package, tag, receipt, file, line, declaration, cited_anchor) VALUES
@@ -87,6 +87,7 @@ beforeAll(async () => {
     await Story.create({ id, rfc_id: "0002-arel-only", status, title: id });
   }
   await Event.create({ at: "2026-11-03T10:00:00Z", verb: "done", story_id: "arel-shipped" });
+  await Event.create({ at: "2026-11-04T10:00:00Z", verb: "done", story_id: "arel-shipped" });
   await Event.create({ at: "2026-11-08T10:00:00Z", verb: "done", story_id: "done-arel" });
   await Event.create({ at: "2026-11-10T10:00:00Z", verb: "done", story_id: "catch-all-ar" });
 });
@@ -182,7 +183,8 @@ describe("PackagesController#show", () => {
     expect(body).toContain('points="0,16 80,0"');
     expect(body).toContain("<strong>90.0%</strong> <span class=\"muted\">9 / 10</span>");
     expect(body).toContain("<strong>75.0%</strong> <span class=\"muted\">15 / 20</span>");
-    expect(body.split("no data")).toHaveLength(5);
+    expect(body).toContain("<strong>0.0%</strong> <span class=\"muted\">0 / 0</span>");
+    expect(body.split("no data")).toHaveLength(4);
   });
 
   it("counts stories by status and lists the RFCs touching the package", async () => {

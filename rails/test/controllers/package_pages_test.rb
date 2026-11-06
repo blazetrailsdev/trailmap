@@ -12,6 +12,7 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     PackageMarkStat.create!(merge_commit_sha: "sha1", pr_number: 1, package: "arel", mark: "sends", value: 5)
     PackageMarkStat.create!(**key, mark: "sends", value: 3)
     PackageMarkStat.create!(**key, mark: "params", matched: 9, total: 10)
+    PackageMarkStat.create!(**key, mark: "predicates", matched: 0, total: 0)
     [ [ 1, 0 ], [ 2, 1 ], [ 3, 32 ] ].each { |pr, value| PackageMarkStat.create!(merge_commit_sha: "sha#{pr}", pr_number: pr, package: "arel", mark: "boundary", value: value) }
     PackageTagSite.create!(**key, tag: "@noRailsEquivalent", receipt: "PERMANENT", file: "packages/arel/src/b.ts", line: 5, cited_anchor: "runtime-facts")
     PackageMeta.create!(merge_commit_sha: "sha2", pr_number: 2, package: "a_el")
@@ -44,7 +45,7 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     [ %w[arel-ready-b ready], %w[arel-ready-a ready], %w[arel-blocked blocked], %w[arel-wip in-progress], %w[arel-shipped done] ].each do |id, status|
       story!(id, rfc_id: "0002-arel-only", status: status)
     end
-    [ [ "2026-11-03T10:00:00Z", "arel-shipped" ], [ "2026-11-08T10:00:00Z", "done-arel" ], [ "2026-11-10T10:00:00Z", "catch-all-ar" ] ].each do |at, id|
+    [ [ "2026-11-03T10:00:00Z", "arel-shipped" ], [ "2026-11-04T10:00:00Z", "arel-shipped" ], [ "2026-11-08T10:00:00Z", "done-arel" ], [ "2026-11-10T10:00:00Z", "catch-all-ar" ] ].each do |at, id|
       Event.create!(at: at, verb: "done", story_id: id)
     end
   end
@@ -143,7 +144,8 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     assert_includes body, 'points="0,16 80,0"'
     assert_includes body, '<strong>90.0%</strong> <span class="muted">9 / 10</span>'
     assert_includes body, '<strong>75.0%</strong> <span class="muted">15 / 20</span>'
-    assert_equal 4, body.scan("no data").size
+    assert_includes body, '<strong>0.0%</strong> <span class="muted">0 / 0</span>'
+    assert_equal 3, body.scan("no data").size
   end
 
   test "counts stories by status and lists the RFCs touching the package" do

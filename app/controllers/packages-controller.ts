@@ -203,11 +203,10 @@ export class PackagesController extends ApplicationController {
       if (gate.mark) {
         ratios = (await PackageMarkStat.where({ package: name, mark: gate.mark }).order("pr_number").toArray())
           .filter((row) => row.total != null)
-          .map((row) => ({
-            matched: row.matched ?? 0,
-            total: row.total!,
-            percent: row.total! > 0 ? Math.round((row.matched! * 1000) / row.total!) / 10 : 0,
-          }));
+          .map((row) => {
+            const matched = row.matched ?? 0;
+            return { matched, total: row.total!, percent: row.total! > 0 ? Math.round((matched * 1000) / row.total!) / 10 : 0 };
+          });
       } else {
         const rows = await gate.model!.where({ package: name }).order("pr_number").toArray();
         ratios = rows.map((row) => {
@@ -281,8 +280,11 @@ export class PackagesController extends ApplicationController {
 
     const weeks = new Map<string, number>();
     const events = await Event.where({ verb: "done", story_id: stories.map((story) => story.id) }).order("at").toArray();
+    const seen = new Set<string>();
     for (const event of events) {
       const week = weekOf(String(event.at));
+      if (seen.has(`${week} ${event.story_id}`)) continue;
+      seen.add(`${week} ${event.story_id}`);
       weeks.set(week, (weeks.get(week) ?? 0) + 1);
     }
     const burndown = [...weeks].map(([week, count]) => ({ week, count }));
