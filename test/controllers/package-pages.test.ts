@@ -47,7 +47,7 @@ beforeAll(async () => {
        ('sha2', 2, 'CLAUDE.md', 'Runtime facts', 'runtime-facts', 'Node has no fork'),
        ('sha2', 2, 'CLAUDE.md', 'Uncited', 'uncited', 'nobody cites this')`,
     `INSERT INTO package_file_stats (merge_commit_sha, pr_number, package, rails_file, ts_file, methods_matched, methods_missing, tests_matched, tests_total) VALUES
-       ('sha2', 2, 'arel', 'arel/nodes/node.rb', 'packages/arel/src/nodes/node.ts', 5, 1, 2, 4),
+       ('sha2', 2, 'arel', 'arel/nodes/node.rb', 'packages/arel/src/nodes/node.ts', 5, 1, 7, 40),
        ('sha2', 2, 'arel', 'arel/nodes/binary.rb', NULL, 0, 7, 0, 0),
        ('sha2', 2, 'arel', 'arel/table.rb', 'packages/arel/src/table.ts', 9, 0, 3, 3)`,
   ]) {
@@ -117,7 +117,7 @@ describe("PackagesController#files", () => {
     const body = await page("files", { name: "arel" });
     expect(body).toContain('<h2 class="section-title">arel/nodes <span class="muted">2</span>');
     expect(body).toContain('<span class="muted">unported</span>');
-    expect(body).toContain("<td>5</td>\n        <td>1</td>\n        <td>50%</td>");
+    expect(body).toContain("<td>5</td>\n        <td>1</td>\n        <td>18%</td>");
     expect(body).toContain("<td>—</td>");
     expect(body).toContain('<summary>1</summary><a href="/story/open-arel">open-arel</a>');
     expect(body).not.toContain("done-arel");

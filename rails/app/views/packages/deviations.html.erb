@@ -18,11 +18,11 @@
 
 <h2 class="section-title">Marks and baselines</h2>
 <% if @marks.empty? %><div class="empty">None.</div><% end %>
-<table class="pkg-table">
+<div class="pkg-table-wrap"><table class="pkg-table">
   <% @marks.each do |mark| %>
     <tr><td><code><%= mark.mark %></code></td><td><strong><%= mark.latest %></strong></td><td><svg class="sparkline" width="80" height="16" viewBox="0 0 80 16"><polyline fill="none" stroke="currentColor" points="<%= mark.points %>"/></svg></td></tr>
   <% end %>
-</table>
+</table></div>
 
 <h2 class="section-title">Permanently skipped tests</h2>
 <% if @skips.empty? %><div class="empty">None.</div><% end %>
@@ -41,8 +41,9 @@
 
 <h2 class="section-title">Works differently than you'd expect</h2>
 <% if @sections.empty? %><div class="empty">None.</div><% end %>
+<% seen = Set.new %>
 <% @sections.each do |section| %>
-  <div class="card" id="<%= section.anchor %>">
+  <div class="card"<% if seen.add?(section.anchor) %> id="<%= section.anchor %>"<% end %>>
     <div class="card-head"><a class="card-title" href="<%= @blob %>/<%= section.file %>#<%= section.anchor %>"><%= section.heading %></a> <span class="muted"><%= section.file %></span></div>
     <div class="field-note"><%= section.lede %></div>
   </div>

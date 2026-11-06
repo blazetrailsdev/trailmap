@@ -17,7 +17,7 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
       [ "Uncited", "uncited", "nobody cites this" ] ].each do |heading, anchor, lede|
       ClaudeMdSection.create!(merge_commit_sha: "sha2", pr_number: 2, file: "CLAUDE.md", heading: heading, anchor: anchor, lede: lede)
     end
-    [ [ "arel/nodes/node.rb", "packages/arel/src/nodes/node.ts", 5, 1, 2, 4 ], [ "arel/nodes/binary.rb", nil, 0, 7, 0, 0 ],
+    [ [ "arel/nodes/node.rb", "packages/arel/src/nodes/node.ts", 5, 1, 7, 40 ], [ "arel/nodes/binary.rb", nil, 0, 7, 0, 0 ],
       [ "arel/table.rb", "packages/arel/src/table.ts", 9, 0, 3, 3 ] ].each do |rails_file, ts_file, matched, missing, tests_matched, tests_total|
       PackageFileStat.create!(**key, rails_file: rails_file, ts_file: ts_file, methods_matched: matched, methods_missing: missing,
                               tests_matched: tests_matched, tests_total: tests_total)
@@ -83,7 +83,7 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     body = page("/packages/arel/files")
     assert_includes body, '<h2 class="section-title">arel/nodes <span class="muted">2</span>'
     assert_includes body, '<span class="muted">unported</span>'
-    assert_includes body, "<td>5</td>\n        <td>1</td>\n        <td>50%</td>"
+    assert_includes body, "<td>5</td>\n        <td>1</td>\n        <td>18%</td>"
     assert_includes body, "<td>—</td>"
     assert_includes body, '<summary>1</summary><a href="/story/open-arel">open-arel</a>'
     assert_not_includes body, "done-arel"

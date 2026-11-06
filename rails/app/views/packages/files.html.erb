@@ -12,7 +12,7 @@
 <% if @count.zero? %><div class="empty">None.</div><% end %>
 <% @groups.each do |dir, rows| %>
   <h2 class="section-title"><%= dir %> <span class="muted"><%= rows.size %></span></h2>
-  <table class="pkg-table">
+  <div class="pkg-table-wrap"><table class="pkg-table">
     <tr><th>Rails file</th><th>TS port</th><th>matched</th><th>missing</th><th>tests</th><th>open stories</th></tr>
     <% rows.each do |row| %>
       <tr>
@@ -24,5 +24,5 @@
         <td><% if row.stories.any? %><details><summary><%= row.stories.size %></summary><% row.stories.each do |id| %><a href="/story/<%= id %>"><%= id %></a> <% end %></details><% else %>0<% end %></td>
       </tr>
     <% end %>
-  </table>
+  </table></div>
 <% end %>

@@ -61,7 +61,7 @@ function sparkline(values: number[]): string {
   const span = Math.max(...values) - min || 1;
   const step = values.length > 1 ? 80 / (values.length - 1) : 0;
   return values
-    .map((v, i) => `${Math.round(i * step)},${Math.round(16 - ((v - min) / span) * 16)}`)
+    .map((v, i) => `${Math.round(i * step)},${Math.round(16 - ((v - min) * 16) / span)}`)
     .join(" ");
 }
 
@@ -155,7 +155,7 @@ export class PackagesController extends ApplicationController {
     for (const row of await PackageMarkStat.where({ package: name }).order("pr_number").toArray()) {
       history.set(row.mark, [...(history.get(row.mark) ?? []), row]);
     }
-    const marks: MarkRow[] = [...history].sort(([a], [b]) => a.localeCompare(b)).map(([mark, rows]) => {
+    const marks: MarkRow[] = [...history].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([mark, rows]) => {
       const last = rows.at(-1)!;
       const values = rows.map((r) => r.value ?? r.matched ?? 0);
       return {
@@ -177,9 +177,10 @@ export class PackagesController extends ApplicationController {
       .order("file", "heading")
       .toArray();
 
-    const buckets = (await Rfc.where("id LIKE ?", `____-${name}-surfaced-deviations`).toArray()).map(
-      (rfc) => rfc.id,
-    );
+    const bucket = `${name}-surfaced-deviations`;
+    const buckets = (await Rfc.where("id LIKE ?", "%-surfaced-deviations").pluck("id"))
+      .map(String)
+      .filter((id) => /^\d{4}-/.test(id) && id.slice(5) === bucket);
     const bucketStories = await Story.where({ rfc_id: buckets, status: OPEN_STORY_STATUSES }).order("id").toArray();
     const catchAll = (await Story.touchingPackage(name)).filter(
       (story) => story.rfc_id === CATCH_ALL_BUCKET && OPEN_STORY_STATUSES.includes(story.status),
@@ -227,7 +228,7 @@ export class PackagesController extends ApplicationController {
       tsFile: row.ts_file,
       matched: row.methods_matched,
       missing: row.methods_missing,
-      testPercent: row.tests_total > 0 ? Math.round((row.tests_matched / row.tests_total) * 100) : null,
+      testPercent: row.tests_total > 0 ? Math.round((row.tests_matched * 100) / row.tests_total) : null,
       stories: (row.ts_file != null ? storiesByPath.get(row.ts_file) : undefined)?.sort() ?? [],
     }));
     const sort = String(this.params.get("sort") ?? "");

@@ -50,7 +50,8 @@ class PackagesController < ApplicationController
     anchors = (sites.map(&:cited_anchor) + @skips.keys).compact_blank.uniq
     @sections = ClaudeMdSection.where(merge_commit_sha: @sha, anchor: anchors).order(:file, :heading).to_a
 
-    buckets = Rfc.where("id LIKE ?", "____-#{@name}-surfaced-deviations").pluck(:id)
+    buckets = Rfc.where("id LIKE ?", "%-surfaced-deviations").pluck(:id)
+                 .select { |id| id.match?(/\A\d{4}-/) && id[5..] == "#{@name}-surfaced-deviations" }
     @surfaced = Story.where(rfc_id: buckets, status: Ranking::OPEN_STORY_STATUSES).order(:id).to_a +
       Story.touching_package(@name).select { |story| story.rfc_id == CATCH_ALL_BUCKET && Ranking::OPEN_STORY_STATUSES.include?(story.status) }
   end

@@ -921,3 +921,4 @@ ul { margin: 0 0 10px 20px; }
 .pkg-table th, .pkg-table td { padding: 2px 8px; text-align: left; vertical-align: top; }
 .pkg-tag summary { cursor: pointer; }
 .sparkline { vertical-align: middle; }
+.pkg-table-wrap { overflow-x: auto; max-width: 100%; }

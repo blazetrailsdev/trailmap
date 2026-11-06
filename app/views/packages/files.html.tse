@@ -12,7 +12,7 @@
 <% if (count === 0) { %><div class="empty">None.</div><% } %>
 <% for (const [dir, rows] of groups) { %>
   <h2 class="section-title"><%= dir %> <span class="muted"><%= rows.length %></span></h2>
-  <table class="pkg-table">
+  <div class="pkg-table-wrap"><table class="pkg-table">
     <tr><th>Rails file</th><th>TS port</th><th>matched</th><th>missing</th><th>tests</th><th>open stories</th></tr>
     <% for (const row of rows) { %>
       <tr>
@@ -24,5 +24,5 @@
         <td><% if (row.stories.length > 0) { %><details><summary><%= row.stories.length %></summary><% for (const id of row.stories) { %><a href="/story/<%= id %>"><%= id %></a> <% } %></details><% } else { %>0<% } %></td>
       </tr>
     <% } %>
-  </table>
+  </table></div>
 <% } %>
