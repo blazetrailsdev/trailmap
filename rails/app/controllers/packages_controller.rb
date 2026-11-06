@@ -14,7 +14,8 @@ class PackagesController < ApplicationController
     @configured = Stats.configured?
     rows = []
     by_package, @unattributed = Story.open_counts_by_package
-    if @configured
+    @package_data = package_data?
+    if @package_data
       latest = PackageMeta.order(pr_number: :desc).first
       metas = latest ? PackageMeta.where(merge_commit_sha: latest.merge_commit_sha).order(:package) : []
       api = latest_ratios(ApiCompareStat)
@@ -26,6 +27,17 @@ class PackagesController < ApplicationController
       end
     end
     @counterparts, @trails_only = rows.partition(&:rails_counterpart)
+  end
+
+  # `/packages/:name` — the counterpart, latest api and tests ratios, open
+  # story count and the links to the tabs. RFC 0222's package-overview-page
+  # grows this into gate tiles and the start-here box.
+  def show
+    @name = params[:name].to_s
+    @rails_counterpart = latest_meta(@name).rails_counterpart
+    @api = latest_ratios(ApiCompareStat)[@name]
+    @tests = latest_ratios(TestCompareStat)[@name]
+    @open_stories = Story.open_counts_by_package.first[@name]
   end
 
   # `/packages/:name/deviations` — receipt counts drillable to their sites,
@@ -79,9 +91,16 @@ class PackagesController < ApplicationController
   end
 
   private
+    # Whether STATS_DB holds the package summaries. trailmap's stats-sync job
+    # (STATS_SYNC_DB) writes them, so a STATS_DB the trails cron fills has the
+    # compare tables and not these.
+    def package_data?
+      Stats.configured? && PackageMeta.table_exists?
+    end
+
     # The latest `package_meta` row naming `name`, or a 404.
     def latest_meta(name)
-      meta = PackageMeta.where(package: name).order(pr_number: :desc).first if Stats.configured?
+      meta = PackageMeta.where(package: name).order(pr_number: :desc).first if package_data?
       meta or raise ActiveRecord::RecordNotFound, "No package #{name}"
     end
 

@@ -1,0 +1,27 @@
+<div class="page-header">
+  <h1 class="page-title"><a href="<%= packages_path %>">Packages</a> &middot; <%= @name %></h1>
+  <div class="page-subhead">
+    <span class="muted"><% if @rails_counterpart %>ports <span class="tag"><%= @rails_counterpart %></span><% else %>trails-only<% end %>
+      &middot; <%= @open_stories %> open <%= @open_stories == 1 ? "story" : "stories" %>
+      &middot; <a href="<%= package_files_path(@name) %>">files</a>
+      &middot; <a href="<%= package_deviations_path(@name) %>">deviations</a></span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="pkg-stats">
+    <% [ [ "api", @api ], [ "tests", @tests ] ].each do |label, ratio| %>
+      <div class="pkg-meter">
+        <div class="pkg-meter-line">
+          <span class="pkg-meter-label"><%= label %></span>
+          <% if ratio.nil? %>
+            <span class="muted">no data</span>
+          <% else %>
+            <span><strong><%= ratio[:percent].to_s.delete_suffix(".0") %>%</strong> <span class="muted"><%= number_with_delimiter(ratio[:matched]) %> / <%= number_with_delimiter(ratio[:total]) %></span></span>
+          <% end %>
+        </div>
+        <div class="pkg-track"><% if ratio %><span class="pkg-fill <%= ratio[:percent] >= 95 ? "good" : ratio[:percent] >= 75 ? "fair" : "poor" %>" style="width:<%= ratio[:percent].clamp(0, 100).to_s.delete_suffix(".0") %>%"></span><% end %></div>
+      </div>
+    <% end %>
+  </div>
+</div>

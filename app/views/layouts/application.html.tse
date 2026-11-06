@@ -22,6 +22,7 @@
       <a href="<%= backlogPath() %>">Backlog</a>
       <a href="<%= dashboardPath() %>">Fleet</a>
       <a href="<%= parityGraphPath() %>">Parity</a>
+      <a href="<%= packagesPath() %>">Packages</a>
       <a href="<%= auditsPath() %>">Audits</a>
       <a href="<%= deploysPath() %>">Deploys</a>
       <a href="<%= sessionsPath() %>">Sessions</a>

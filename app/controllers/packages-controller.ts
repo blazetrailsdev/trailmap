@@ -65,9 +65,18 @@ function sparkline(values: number[]): string {
     .join(" ");
 }
 
+/**
+ * Whether `STATS_DB` holds the package summaries. The tables are written by
+ * trailmap's own stats-sync job (STATS_SYNC_DB, `db/stats-sync-migrate`), so a
+ * `STATS_DB` filled by the trails cron has the compare tables and not these.
+ */
+async function hasPackageData(): Promise<boolean> {
+  return hasStatsDatabase() && (await PackageMeta.tableExists());
+}
+
 /** The latest `package_meta` row naming `name`, or a 404. */
 async function latestMeta(name: string): Promise<PackageMeta> {
-  const meta = hasStatsDatabase()
+  const meta = (await hasPackageData())
     ? await PackageMeta.where({ package: name }).order({ pr_number: "desc" }).first()
     : null;
   if (meta == null) throw new RecordNotFound(`No package ${name}`);
@@ -102,7 +111,8 @@ export class PackagesController extends ApplicationController {
   async index(): Promise<void> {
     const rows: PackageRow[] = [];
     const { byPackage, unattributed } = await Story.openCountsByPackage();
-    if (hasStatsDatabase()) {
+    const packageData = await hasPackageData();
+    if (packageData) {
       const latest = await PackageMeta.order({ pr_number: "desc" }).first();
       const metas = latest
         ? await PackageMeta.where({ merge_commit_sha: latest.merge_commit_sha })
@@ -125,9 +135,31 @@ export class PackagesController extends ApplicationController {
     await this.render({
       locals: {
         configured: hasStatsDatabase(),
+        packageData,
         counterparts: rows.filter((row) => row.railsCounterpart !== null),
         trailsOnly: rows.filter((row) => row.railsCounterpart === null),
         unattributed,
+      },
+    });
+  }
+
+  /**
+   * `/packages/:name` — the package's counterpart, its latest api and tests
+   * ratios and open story count, and the links to its tabs. RFC 0222's
+   * overview (`package-overview-page`) grows this into gate tiles and the
+   * start-here box.
+   */
+  async show(): Promise<void> {
+    const name = String(this.params.get("name") ?? "");
+    const meta = await latestMeta(name);
+    const { byPackage } = await Story.openCountsByPackage();
+    await this.render({
+      locals: {
+        name,
+        railsCounterpart: meta.rails_counterpart ?? null,
+        api: (await latestRatios(ApiCompareStat)).get(name) ?? null,
+        tests: (await latestRatios(TestCompareStat)).get(name) ?? null,
+        openStories: byPackage.get(name) ?? 0,
       },
     });
   }

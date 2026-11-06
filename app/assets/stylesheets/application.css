@@ -916,6 +916,7 @@ ul { margin: 0 0 10px 20px; }
 .pkg-fill.poor { background: var(--red); }
 .pkg-foot { margin-top: auto; font-size: 12px; }
 @media (max-width: 600px) { .pkg-card { aspect-ratio: auto; } }
+.pkg-stats { display: flex; flex-direction: column; gap: 10px; max-width: 480px; }
 
 .pkg-table { border-collapse: collapse; width: 100%; }
 .pkg-table th, .pkg-table td { padding: 2px 8px; text-align: left; vertical-align: top; }

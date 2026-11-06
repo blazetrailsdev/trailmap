@@ -29,6 +29,7 @@ export const RESERVED_OWNER_NAMES = [
   "events",
   "fleet",
   "index",
+  "packages",
   "panes",
   "rfc",
   "rfcs",

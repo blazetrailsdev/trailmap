@@ -5,10 +5,15 @@
   </div>
 </div>
 
-<% unless @configured %>
+<% if !@configured %>
   <div class="card">
     <div class="card-head"><span class="card-title">No stats database</span></div>
     <div class="field-note">This deployment has no <code>STATS_DB</code>, so there is no package list to read.</div>
+  </div>
+<% elsif !@package_data %>
+  <div class="card">
+    <div class="card-head"><span class="card-title">No package data</span></div>
+    <div class="field-note"><code>STATS_DB</code> has no <code>package_meta</code> table. The package summaries are written by trailmap's stats-sync job, so they appear here once <code>STATS_DB</code> names the database that job writes.</div>
   </div>
 <% end %>
 
@@ -17,7 +22,7 @@
   <% if rows.empty? %><div class="empty">None.</div><% end %>
   <div class="pkg-grid">
     <% rows.each do |row| %>
-      <a class="pkg-card" href="/packages/<%= row.name %>">
+      <a class="pkg-card" href="<%= package_path(row.name) %>">
         <div class="pkg-head">
           <span class="pkg-name"><%= row.name %></span>
           <% if row.rails_counterpart %><span class="tag"><%= row.rails_counterpart %></span><% end %>

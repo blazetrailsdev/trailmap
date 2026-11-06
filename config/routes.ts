@@ -125,6 +125,7 @@ Trails.application!.routes().draw(function () {
   // The package index (RFC 0222): every package in the latest `package_meta`
   // commit, grouped by Rails counterpart.
   this.get("packages", { to: "packages#index", as: "packages" });
+  this.get("packages/:name", { to: "packages#show", as: "package" });
   this.get("packages/:name/deviations", { to: "packages#deviations", as: "package_deviations" });
   this.get("packages/:name/files", { to: "packages#files", as: "package_files" });
 
