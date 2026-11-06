@@ -122,6 +122,10 @@ Trails.application!.routes().draw(function () {
   this.get("graphs/parity/data", { to: "parity_graphs#data", as: "parity_graph_data" });
   this.get("graphs/parity", { to: "parity_graphs#show", as: "parity_graph" });
 
+  // The package index (RFC 0222): every package in the latest `package_meta`
+  // commit, grouped by Rails counterpart.
+  this.get("packages", { to: "packages#index", as: "packages" });
+
   // The audits, ported from ringo's `/audits`. A resource: `index` is the
   // list, `show` an audit's page, and the member `raw` the file on its own,
   // sandboxed. `:id` is the filename, constrained by ringo's `auditFileRe`

@@ -320,5 +320,22 @@ class ModelMethodsTest < ActiveSupport::TestCase
     assert_empty Story.touching_package("actionview")
     assert_equal %w[inherited non-package-path], ids.(Story.touching_package("activerecord"))
     assert_equal %w[bare-dir orphan scripts-only], ids.(Story.unattributed)
+    by_package, unattributed = Story.open_counts_by_package
+    assert_equal [ 1, 1, 2, 3 ], [ *by_package.values_at("activesupport", "actionpack", "activerecord"), unattributed ]
+  end
+
+  test "Story.open_counts_by_package agrees with the open subset of touching_package and unattributed" do
+    Rfc.create!(id: "0901-wide", status: "active", packages: %w[activerecord actionpack])
+    Rfc.create!(id: "0903-shipped", status: "closed", packages: %w[railties])
+    story!("own", rfc_id: "0901-wide", packages: %w[activesupport])
+    story!("orphan", rfc_id: "0901-wide")
+    story!("in-closed-rfc", rfc_id: "0903-shipped")
+    story!("finished", rfc_id: "0903-shipped", status: "done")
+    rfc_status = Rfc.pluck(:id, :status).to_h
+    open = ->(stories) { stories.count { |s| Ranking::OPEN_STORY_STATUSES.include?(EffectiveStatus.of(rfc_status[s.rfc_id], s.status)) } }
+    by_package, unattributed = Story.open_counts_by_package
+    assert_equal 1, by_package["railties"]
+    %w[activesupport railties actionpack].each { |pkg| assert_equal open.(Story.touching_package(pkg)), by_package[pkg] }
+    assert_equal open.(Story.unattributed), unattributed
   end
 end

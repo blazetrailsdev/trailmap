@@ -900,3 +900,19 @@ ul { margin: 0 0 10px 20px; }
   font-variant-numeric: tabular-nums; }
 .tl-totals .t .n.wait { color: var(--yellow); }
 .tl-totals .t .l { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* /packages: one card per package, a matched/total meter per comparison. */
+.pkg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.pkg-card { display: flex; flex-direction: column; gap: 10px; aspect-ratio: 16 / 10; padding: 14px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--fg); }
+.pkg-card:hover { border-color: var(--accent); text-decoration: none; }
+.pkg-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pkg-name { font-weight: 600; font-size: 15px; }
+.pkg-meter-line { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+.pkg-meter-label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.pkg-track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.pkg-fill { display: block; height: 100%; border-radius: 3px; }
+.pkg-fill.good { background: var(--green); }
+.pkg-fill.fair { background: var(--yellow); }
+.pkg-fill.poor { background: var(--red); }
+.pkg-foot { margin-top: auto; font-size: 12px; }
+@media (max-width: 600px) { .pkg-card { aspect-ratio: auto; } }

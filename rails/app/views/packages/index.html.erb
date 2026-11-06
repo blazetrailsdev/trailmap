@@ -1,0 +1,42 @@
+<div class="page-header">
+  <h1 class="page-title">Packages</h1>
+  <div class="page-subhead">
+    <span class="muted"><%= @counterparts.size + @trails_only.size %> packages &middot; <%= @unattributed %> open <%= @unattributed == 1 ? "story" : "stories" %> attributed to no package</span>
+  </div>
+</div>
+
+<% unless @configured %>
+  <div class="card">
+    <div class="card-head"><span class="card-title">No stats database</span></div>
+    <div class="field-note">This deployment has no <code>STATS_DB</code>, so there is no package list to read.</div>
+  </div>
+<% end %>
+
+<% [ [ "Rails counterparts", @counterparts ], [ "trails-only", @trails_only ] ].each do |title, rows| %>
+  <h2 class="section-title"><%= title %> <span class="muted"><%= rows.size %></span></h2>
+  <% if rows.empty? %><div class="empty">None.</div><% end %>
+  <div class="pkg-grid">
+    <% rows.each do |row| %>
+      <a class="pkg-card" href="/packages/<%= row.name %>">
+        <div class="pkg-head">
+          <span class="pkg-name"><%= row.name %></span>
+          <% if row.rails_counterpart %><span class="tag"><%= row.rails_counterpart %></span><% end %>
+        </div>
+        <% [ [ "api", row.api ], [ "tests", row.tests ] ].each do |label, ratio| %>
+          <div class="pkg-meter">
+            <div class="pkg-meter-line">
+              <span class="pkg-meter-label"><%= label %></span>
+              <% if ratio.nil? %>
+                <span class="muted">no data</span>
+              <% else %>
+                <span><strong><%= ratio[:percent].to_s.delete_suffix(".0") %>%</strong> <span class="muted"><%= number_with_delimiter(ratio[:matched]) %> / <%= number_with_delimiter(ratio[:total]) %></span></span>
+              <% end %>
+            </div>
+            <div class="pkg-track"><% if ratio %><span class="pkg-fill <%= ratio[:percent] >= 95 ? "good" : ratio[:percent] >= 75 ? "fair" : "poor" %>" style="width:<%= ratio[:percent].clamp(0, 100).to_s.delete_suffix(".0") %>%"></span><% end %></div>
+          </div>
+        <% end %>
+        <div class="pkg-foot muted"><%= row.open_stories %> open <%= row.open_stories == 1 ? "story" : "stories" %></div>
+      </a>
+    <% end %>
+  </div>
+<% end %>

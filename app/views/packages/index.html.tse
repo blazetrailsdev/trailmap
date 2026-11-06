@@ -1,0 +1,42 @@
+<div class="page-header">
+  <h1 class="page-title">Packages</h1>
+  <div class="page-subhead">
+    <span class="muted"><%= counterparts.length + trailsOnly.length %> packages &middot; <%= unattributed %> open <%= unattributed === 1 ? "story" : "stories" %> attributed to no package</span>
+  </div>
+</div>
+
+<% if (!configured) { %>
+  <div class="card">
+    <div class="card-head"><span class="card-title">No stats database</span></div>
+    <div class="field-note">This deployment has no <code>STATS_DB</code>, so there is no package list to read.</div>
+  </div>
+<% } %>
+
+<% for (const group of [{ title: "Rails counterparts", rows: counterparts }, { title: "trails-only", rows: trailsOnly }]) { %>
+  <h2 class="section-title"><%= group.title %> <span class="muted"><%= group.rows.length %></span></h2>
+  <% if (group.rows.length === 0) { %><div class="empty">None.</div><% } %>
+  <div class="pkg-grid">
+    <% for (const row of group.rows) { %>
+      <a class="pkg-card" href="/packages/<%= row.name %>">
+        <div class="pkg-head">
+          <span class="pkg-name"><%= row.name %></span>
+          <% if (row.railsCounterpart !== null) { %><span class="tag"><%= row.railsCounterpart %></span><% } %>
+        </div>
+        <% for (const [label, ratio] of [["api", row.api], ["tests", row.tests]] as const) { %>
+          <div class="pkg-meter">
+            <div class="pkg-meter-line">
+              <span class="pkg-meter-label"><%= label %></span>
+              <% if (ratio === null) { %>
+                <span class="muted">no data</span>
+              <% } else { %>
+                <span><strong><%= ratio.percent %>%</strong> <span class="muted"><%= ratio.matched.toLocaleString("en-US") %> / <%= ratio.total.toLocaleString("en-US") %></span></span>
+              <% } %>
+            </div>
+            <div class="pkg-track"><% if (ratio !== null) { %><span class="pkg-fill <%= ratio.percent >= 95 ? "good" : ratio.percent >= 75 ? "fair" : "poor" %>" style="width:<%= Math.min(100, Math.max(0, ratio.percent)) %>%"></span><% } %></div>
+          </div>
+        <% } %>
+        <div class="pkg-foot muted"><%= row.openStories %> open <%= row.openStories === 1 ? "story" : "stories" %></div>
+      </a>
+    <% } %>
+  </div>
+<% } %>
