@@ -1,5 +1,5 @@
 # The base class of the trails comparison stats: the read-only database the
-# nightly stats-sync cron fills. Optional — without STATS_DB the parity page
+# StatsSyncJob fills (stats-job.db). Optional — without STATS_DB the parity page
 # says so.
 class Stats < ApplicationRecord
   self.abstract_class = true
