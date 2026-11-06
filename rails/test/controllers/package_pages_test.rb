@@ -12,6 +12,10 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     PackageMarkStat.create!(merge_commit_sha: "sha1", pr_number: 1, package: "arel", mark: "sends", value: 5)
     PackageMarkStat.create!(**key, mark: "sends", value: 3)
     PackageMarkStat.create!(**key, mark: "params", matched: 9, total: 10)
+    [ [ 1, 0 ], [ 2, 1 ], [ 3, 32 ] ].each { |pr, value| PackageMarkStat.create!(merge_commit_sha: "sha#{pr}", pr_number: pr, package: "arel", mark: "boundary", value: value) }
+    PackageTagSite.create!(**key, tag: "@noRailsEquivalent", receipt: "PERMANENT", file: "packages/arel/src/b.ts", line: 5, cited_anchor: "runtime-facts")
+    PackageMeta.create!(merge_commit_sha: "sha2", pr_number: 2, package: "a_el")
+    ClaudeMdSection.create!(merge_commit_sha: "sha2", pr_number: 2, file: "packages/arel/CLAUDE.md", heading: "Runtime facts in arel", anchor: "runtime-facts")
     PackageSkipTest.create!(**key, file: "packages/arel/src/a.test.ts", test_name: "forks", cited_anchor: "runtime-facts")
     [ [ "Fidelity is the job", "fidelity-is-the-job", "trails is a re-implementation" ], [ "Runtime facts", "runtime-facts", "Node has no fork" ],
       [ "Uncited", "uncited", "nobody cites this" ] ].each do |heading, anchor, lede|
@@ -72,6 +76,27 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     assert_includes body, 'href="/story/catch-all-arel"'
     assert_not_includes body, "arel-bucket-done"
     assert_not_includes body, 'catch-all-ar"'
+  end
+
+  test "rounds a sparkline's half-pixel boundary the same way" do
+    assert_includes page("/packages/arel/deviations"), 'points="0,16 40,16 80,0"'
+  end
+
+  test "renders a NULL declaration and lede as nothing" do
+    body = page("/packages/arel/deviations")
+    assert_includes body, "<code>packages/arel/src/b.ts:5</code></a></li>"
+    assert_includes body, '<div class="field-note"></div>'
+    assert_not_includes body, "null"
+  end
+
+  test "gives a shared anchor's id to its first section only" do
+    body = page("/packages/arel/deviations")
+    assert_equal 1, body.scan('id="runtime-facts"').size
+    assert_includes body, "Runtime facts in arel"
+  end
+
+  test "treats _ in a package name literally when matching its bucket" do
+    assert_not_includes page("/packages/a_el/deviations"), "arel-bucket-open"
   end
 
   test "answers 404 for an unknown package" do

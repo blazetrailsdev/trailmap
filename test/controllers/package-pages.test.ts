@@ -39,13 +39,19 @@ beforeAll(async () => {
        ('sha2', 2, 'arel', '@noRailsEquivalent', 'PERMANENT', 'packages/arel/src/a.ts', 12, 'visit', 'fidelity-is-the-job')`,
     `INSERT INTO package_mark_stats (merge_commit_sha, pr_number, package, mark, value, matched, total) VALUES
        ('sha1', 1, 'arel', 'sends', 5, NULL, NULL), ('sha2', 2, 'arel', 'sends', 3, NULL, NULL),
-       ('sha2', 2, 'arel', 'params', NULL, 9, 10)`,
+       ('sha2', 2, 'arel', 'params', NULL, 9, 10),
+       ('sha1', 1, 'arel', 'boundary', 0, NULL, NULL), ('sha2', 2, 'arel', 'boundary', 1, NULL, NULL),
+       ('sha3', 3, 'arel', 'boundary', 32, NULL, NULL)`,
+    `INSERT INTO package_tag_sites (merge_commit_sha, pr_number, package, tag, receipt, file, line, declaration, cited_anchor) VALUES
+       ('sha2', 2, 'arel', '@noRailsEquivalent', 'PERMANENT', 'packages/arel/src/b.ts', 5, NULL, 'runtime-facts')`,
+    `INSERT INTO package_meta (merge_commit_sha, pr_number, package) VALUES ('sha2', 2, 'a_el')`,
     `INSERT INTO package_skip_tests (merge_commit_sha, pr_number, package, file, test_name, cited_anchor) VALUES
        ('sha2', 2, 'arel', 'packages/arel/src/a.test.ts', 'forks', 'runtime-facts')`,
     `INSERT INTO claude_md_sections (merge_commit_sha, pr_number, file, heading, anchor, lede) VALUES
        ('sha2', 2, 'CLAUDE.md', 'Fidelity is the job', 'fidelity-is-the-job', 'trails is a re-implementation'),
        ('sha2', 2, 'CLAUDE.md', 'Runtime facts', 'runtime-facts', 'Node has no fork'),
-       ('sha2', 2, 'CLAUDE.md', 'Uncited', 'uncited', 'nobody cites this')`,
+       ('sha2', 2, 'CLAUDE.md', 'Uncited', 'uncited', 'nobody cites this'),
+       ('sha2', 2, 'packages/arel/CLAUDE.md', 'Runtime facts in arel', 'runtime-facts', NULL)`,
     `INSERT INTO package_file_stats (merge_commit_sha, pr_number, package, rails_file, ts_file, methods_matched, methods_missing, tests_matched, tests_total) VALUES
        ('sha2', 2, 'arel', 'arel/nodes/node.rb', 'packages/arel/src/nodes/node.ts', 5, 1, 7, 40),
        ('sha2', 2, 'arel', 'arel/nodes/binary.rb', NULL, 0, 7, 0, 0),
@@ -104,6 +110,27 @@ describe("PackagesController#deviations", () => {
     expect(body).toContain('href="/story/catch-all-arel"');
     expect(body).not.toContain("arel-bucket-done");
     expect(body).not.toContain("catch-all-ar\"");
+  });
+
+  it("rounds a sparkline's half-pixel boundary the same way", async () => {
+    expect(await page("deviations", { name: "arel" })).toContain('points="0,16 40,16 80,0"');
+  });
+
+  it("renders a NULL declaration and lede as nothing", async () => {
+    const body = await page("deviations", { name: "arel" });
+    expect(body).toContain('<code>packages/arel/src/b.ts:5</code></a></li>');
+    expect(body).toContain('<div class="field-note"></div>');
+    expect(body).not.toContain("null");
+  });
+
+  it("gives a shared anchor's id to its first section only", async () => {
+    const body = await page("deviations", { name: "arel" });
+    expect(body.split('id="runtime-facts"')).toHaveLength(2);
+    expect(body).toContain("Runtime facts in arel");
+  });
+
+  it("treats _ in a package name literally when matching its bucket", async () => {
+    expect(await page("deviations", { name: "a_el" })).not.toContain("arel-bucket-open");
   });
 
   it("answers 404 for an unknown package", async () => {
