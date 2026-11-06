@@ -1,0 +1,60 @@
+{
+  "packages": [
+    {
+      "name": "arel",
+      "railsCounterpart": "activerecord/lib/arel",
+      "description": "SQL AST",
+      "claudeMd": "packages/arel/CLAUDE.md",
+      "tags": {
+        "@noRailsEquivalent": { "PERMANENT": 2, "CONVERGEABLE": 1, "none": 0 }
+      },
+      "marks": {
+        "callMismatchesExclude": 4,
+        "extraSurfaceNovel": null,
+        "modules": { "newModule": 1, "superMethod": 0 },
+        "sends": 3
+      },
+      "params": { "matched": 9, "total": 10 },
+      "predicates": null,
+      "permanentSkips": {
+        "runtime-facts-node-does-not-expose": [
+          {
+            "file": "packages/arel/src/a.test.ts",
+            "line": 3,
+            "testName": "forks"
+          }
+        ]
+      }
+    }
+  ],
+  "tagSites": [
+    {
+      "package": "arel",
+      "tag": "@noRailsEquivalent",
+      "receipt": "PERMANENT",
+      "file": "packages/arel/src/a.ts",
+      "line": 12,
+      "declaration": "visit",
+      "citedSection": null
+    }
+  ],
+  "files": [
+    {
+      "package": "arel",
+      "rubyFile": "arel/nodes/node.rb",
+      "tsFile": "packages/arel/src/nodes/node.ts",
+      "methodsMatched": 5,
+      "methodsMissing": 1,
+      "testsMatched": 2,
+      "testsTotal": 3
+    }
+  ],
+  "claudeSections": [
+    {
+      "file": "CLAUDE.md",
+      "heading": "Fidelity is the job",
+      "anchor": "fidelity-is-the-job",
+      "lede": "trails is..."
+    }
+  ]
+}

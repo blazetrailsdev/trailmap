@@ -1,4 +1,4 @@
-import { env, getChildProcessAsync } from "@blazetrails/ruby-compat";
+import { env, getChildProcessAsync, getFs, getOsAsync, getPath } from "@blazetrails/ruby-compat";
 import { StatsSyncRecord } from "../../app/models/stats-sync/stats-sync-record.ts";
 import { PullRequest } from "../../app/models/stats-sync/pull-request.ts";
 import { PrFile } from "../../app/models/stats-sync/pr-file.ts";
@@ -27,6 +27,7 @@ import { parseCallSummariesFromLogs } from "./parse-call-summaries.ts";
 import { classifyCompareStep } from "./classify-compare-step.ts";
 import { isTransientGhError } from "./gh-transient-error.ts";
 import { isExpiredJobLogError } from "./expired-job-log.ts";
+import { storePackageSummary, type PackageSummaryJson } from "./package-summary.ts";
 
 const REPO = "blazetrailsdev/trails";
 const [REPO_OWNER, REPO_NAME] = REPO.split("/");
@@ -1363,6 +1364,95 @@ async function syncCompareStats(
 // Summary
 // ---------------------------------------------------------------------------
 
+// What `gh run download --name` prints when the run has no artifact by that
+// name; gh lists only unexpired artifacts, so an aged-out one answers the same.
+const MISSING_ARTIFACT_ERROR_RE =
+  /no valid artifacts found to download|no artifact matches any of the names or patterns provided/;
+
+// Run counters stay 0; nothing reads `sync_log` as "the last sync".
+async function recordMissingArtifact(sha: string): Promise<void> {
+  await SyncLog.create({ synced_at: new Date().toISOString(), missing_artifact: sha });
+}
+
+/**
+ * Download each merged commit's `parity-outputs-<sha>` artifact and store its
+ * package summary (RFC 0222). A commit whose artifact is missing or expired is
+ * recorded in `sync_log` and never retried; nothing is recomputed.
+ */
+export async function syncPackageSummaries(
+  mode: "latest" | "refresh" | "backfill",
+): Promise<number> {
+  const limitClause = mode === "latest" ? "LIMIT 50" : "";
+  const connection = await StatsSyncRecord.leaseConnection();
+  const commits = (
+    await connection.selectAll(`
+    SELECT wr.head_sha AS merge_commit_sha, wr.pr_number, MAX(wr.id) AS run_id
+    FROM workflow_runs wr
+    WHERE wr.event = 'push' AND wr.workflow_name = 'CI' AND wr.conclusion IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM package_meta pm WHERE pm.merge_commit_sha = wr.head_sha)
+    AND NOT EXISTS (SELECT 1 FROM sync_log sl WHERE sl.missing_artifact = wr.head_sha)
+    GROUP BY wr.head_sha, wr.pr_number
+    ORDER BY wr.pr_number DESC
+    ${limitClause}
+  `)
+  ).toArray();
+
+  if (commits.length === 0) {
+    console.log("All package summaries already synced");
+    return 0;
+  }
+
+  const newest = (
+    await connection.selectAll("SELECT MAX(pr_number) AS n FROM package_meta")
+  ).toArray()[0] as { n: number | null } | undefined;
+  let latestPr = newest?.n ?? -1;
+  const fs = getFs();
+  const path = getPath();
+  let stored = 0;
+  let missing = 0;
+
+  for (const commit of commits) {
+    const sha = commit.merge_commit_sha as string;
+    const prNumber = commit.pr_number as number;
+    const dir = await fs.mkdtemp!(path.join((await getOsAsync()).tmpdir(), "parity-outputs-"));
+    try {
+      await gh(
+        `run download ${commit.run_id} --repo ${REPO} --name parity-outputs-${sha} --dir ${dir}`,
+      );
+      let text: string;
+      try {
+        text = await fs.readFile(path.join(dir, "scripts/parity/output/package-summary.json"), "utf-8");
+      } catch (err) {
+        // An artifact from before trails#9743 carries no package summary.
+        if ((err as { code?: string }).code !== "ENOENT") throw err;
+        await recordMissingArtifact(sha);
+        missing++;
+        continue;
+      }
+      const isLatest = prNumber != null && prNumber >= latestPr;
+      await storePackageSummary(JSON.parse(text) as PackageSummaryJson, sha, prNumber, isLatest);
+      if (isLatest) latestPr = prNumber;
+      stored++;
+    } catch (err) {
+      if (err instanceof RateLimitExhaustedError) throw err;
+      const message = err instanceof Error ? err.message : String(err);
+      if (MISSING_ARTIFACT_ERROR_RE.test(message)) {
+        await recordMissingArtifact(sha);
+        missing++;
+        continue;
+      }
+      console.warn(`  Failed to sync package summary for ${sha} (PR #${prNumber}): ${message}`);
+    } finally {
+      await fs.rm!(dir, { recursive: true, force: true });
+    }
+  }
+
+  console.log(`  Stored ${stored} package summaries`);
+  if (missing > 0)
+    console.log(`  ${missing} commit(s) had no parity-outputs artifact — will not be retried`);
+  return stored;
+}
+
 async function printSummary() {
   const count = async (table: string) => {
     const rows = (
@@ -1552,6 +1642,8 @@ export async function syncLatest(): Promise<void> {
     const logsParsed = await syncCompareStats("latest");
     banner("Syncing check annotations");
     await syncCheckAnnotations("latest");
+    banner("Syncing package summaries");
+    await syncPackageSummaries("latest");
 
     await SyncLog.create({
       synced_at: new Date().toISOString(),

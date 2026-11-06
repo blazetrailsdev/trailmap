@@ -19,6 +19,13 @@ import { ApiComparePrivatesStat } from "../app/models/api-compare-privates-stat.
 import { TestCompareStat } from "../app/models/test-compare-stat.ts";
 import { ApiCallsStat } from "../app/models/api-calls-stat.ts";
 import { ApiCallArgsStat } from "../app/models/api-call-args-stat.ts";
+import { PackageMeta } from "../app/models/package-meta.ts";
+import { PackageTagStat } from "../app/models/package-tag-stat.ts";
+import { PackageMarkStat } from "../app/models/package-mark-stat.ts";
+import { PackageFileStat } from "../app/models/package-file-stat.ts";
+import { PackageTagSite } from "../app/models/package-tag-site.ts";
+import { PackageSkipTest } from "../app/models/package-skip-test.ts";
+import { ClaudeMdSection } from "../app/models/claude-md-section.ts";
 
 /**
  * The models on each of trailmap's three connections, and the schema warm-up
@@ -69,6 +76,13 @@ const STATS_MODELS = [
   TestCompareStat,
   ApiCallsStat,
   ApiCallArgsStat,
+  PackageMeta,
+  PackageTagStat,
+  PackageMarkStat,
+  PackageFileStat,
+  PackageTagSite,
+  PackageSkipTest,
+  ClaudeMdSection,
 ];
 
 export const ALL_MODELS = [...MODELS, ...HUB_MODELS, ...STATS_MODELS];
