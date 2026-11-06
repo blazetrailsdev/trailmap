@@ -137,6 +137,21 @@ class Story < ApplicationRecord
       records_for(Ranking.unattributed_in(ranking_outline, rfc_packages))
     end
 
+    # Open-story counts per package, and the open stories attributed to none,
+    # by the same Ranking.package_attribution, in one pass over the outline.
+    def open_counts_by_package
+      index, packages = ranking_outline, rfc_packages
+      by_package = Hash.new(0)
+      unattributed = 0
+      index.stories.each do |story|
+        next unless Ranking::OPEN_STORY_STATUSES.include?(story.status)
+        attributed = Ranking.package_attribution(index, packages, story)
+        unattributed += 1 if attributed.empty?
+        attributed.each { |pkg| by_package[pkg] += 1 }
+      end
+      [ by_package, unattributed ]
+    end
+
     # Which of `ids` (every story, when nil) wait on an unfinished dep, for a
     # page with no ranking index in hand: the edges, then what they point at.
     def dep_held_ids(ids = nil)

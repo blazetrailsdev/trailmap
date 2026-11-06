@@ -1,0 +1,35 @@
+<div class="page-header">
+  <h1 class="page-title">Packages</h1>
+  <div class="page-subhead">
+    <span class="muted"><%= counterparts.length + trailsOnly.length %> packages &middot; <%= unattributed %> open <%= unattributed === 1 ? "story" : "stories" %> attributed to no package</span>
+  </div>
+</div>
+
+<% if (!configured) { %>
+  <div class="card">
+    <div class="card-head"><span class="card-title">No stats database</span></div>
+    <div class="field-note">This deployment has no <code>STATS_DB</code>, so there is no package list to read.</div>
+  </div>
+<% } %>
+
+<% for (const group of [{ title: "Rails counterparts", rows: counterparts }, { title: "trails-only", rows: trailsOnly }]) { %>
+  <h2 class="section-title"><%= group.title %> <span class="muted"><%= group.rows.length %></span></h2>
+  <div class="box">
+    <% if (group.rows.length === 0) { %><div class="empty">None.</div><% } %>
+    <% for (const row of group.rows) { %>
+      <div class="item-row">
+        <span class="row-main">
+          <span class="titleline">
+            <a class="row-title" href="/packages/<%= row.name %>"><%= row.name %></a>
+            <% if (row.railsCounterpart !== null) { %><span class="tag"><%= row.railsCounterpart %></span><% } %>
+          </span>
+          <div class="row-meta">
+            api <%= row.api === null ? "no data" : `${row.api}%` %>
+            &middot; tests <%= row.tests === null ? "no data" : `${row.tests}%` %>
+            &middot; <%= row.openStories %> open <%= row.openStories === 1 ? "story" : "stories" %>
+          </div>
+        </span>
+      </div>
+    <% } %>
+  </div>
+<% } %>

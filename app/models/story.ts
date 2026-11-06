@@ -15,6 +15,8 @@ import {
   isDepHeld,
   listFilteredIn,
   nextBundleIn,
+  OPEN_STORY_STATUSES,
+  packageAttribution,
   priorityContext,
   storiesTouchingIn,
   storiesTouchingPackageIn,
@@ -394,6 +396,28 @@ export class Story extends ApplicationRecord {
   static async unattributed(): Promise<Story[]> {
     const [index, rfcPackages] = await attributionInputs();
     return Story.recordsFor(unattributedIn(index, rfcPackages));
+  }
+
+  /**
+   * Open-story counts per package, and the open stories attributed to none,
+   * by the same `packageAttribution` as `touchingPackage` but in ONE pass, for
+   * a page that lists every package: `touchingPackage` per package re-plucks
+   * the outline each time (6s over 46 packages on the live database).
+   */
+  static async openCountsByPackage(): Promise<{
+    byPackage: Map<string, number>;
+    unattributed: number;
+  }> {
+    const [index, rfcPackages] = await attributionInputs();
+    const byPackage = new Map<string, number>();
+    let unattributed = 0;
+    for (const story of index.stories) {
+      if (story.status === null || !OPEN_STORY_STATUSES.includes(story.status)) continue;
+      const packages = packageAttribution(index, rfcPackages, story);
+      if (packages.length === 0) unattributed += 1;
+      for (const pkg of packages) byPackage.set(pkg, (byPackage.get(pkg) ?? 0) + 1);
+    }
+    return { byPackage, unattributed };
   }
 
   // ──────────────────── mutations (ported from src/verbs.ts) ────────────────────

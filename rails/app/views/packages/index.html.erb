@@ -1,0 +1,35 @@
+<div class="page-header">
+  <h1 class="page-title">Packages</h1>
+  <div class="page-subhead">
+    <span class="muted"><%= @counterparts.size + @trails_only.size %> packages &middot; <%= @unattributed %> open <%= @unattributed == 1 ? "story" : "stories" %> attributed to no package</span>
+  </div>
+</div>
+
+<% unless @configured %>
+  <div class="card">
+    <div class="card-head"><span class="card-title">No stats database</span></div>
+    <div class="field-note">This deployment has no <code>STATS_DB</code>, so there is no package list to read.</div>
+  </div>
+<% end %>
+
+<% [ [ "Rails counterparts", @counterparts ], [ "trails-only", @trails_only ] ].each do |title, rows| %>
+  <h2 class="section-title"><%= title %> <span class="muted"><%= rows.size %></span></h2>
+  <div class="box">
+    <% if rows.empty? %><div class="empty">None.</div><% end %>
+    <% rows.each do |row| %>
+      <div class="item-row">
+        <span class="row-main">
+          <span class="titleline">
+            <a class="row-title" href="/packages/<%= row.name %>"><%= row.name %></a>
+            <% if row.rails_counterpart %><span class="tag"><%= row.rails_counterpart %></span><% end %>
+          </span>
+          <div class="row-meta">
+            api <%= row.api.nil? ? "no data" : "#{row.api.to_s.delete_suffix(".0")}%" %>
+            &middot; tests <%= row.tests.nil? ? "no data" : "#{row.tests.to_s.delete_suffix(".0")}%" %>
+            &middot; <%= row.open_stories %> open <%= row.open_stories == 1 ? "story" : "stories" %>
+          </div>
+        </span>
+      </div>
+    <% end %>
+  </div>
+<% end %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_10_11_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_05_000001) do
   create_table "api_call_args_stats", force: :cascade do |t|
     t.string "merge_commit_sha"
     t.integer "pr_number"
@@ -50,6 +50,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_11_000001) do
     t.float "percent"
     t.integer "misplaced"
     t.integer "missing"
+  end
+
+  create_table "package_meta", force: :cascade do |t|
+    t.string "merge_commit_sha"
+    t.integer "pr_number"
+    t.string "package"
+    t.string "rails_counterpart"
+    t.text "description"
+    t.string "claude_md"
   end
 
   create_table "pull_requests", primary_key: "number", force: :cascade do |t|

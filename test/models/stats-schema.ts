@@ -50,6 +50,11 @@ export async function createScratchStatsDatabase(database = ":memory:"): Promise
       skipped INTEGER, files_mapped INTEGER, files_total INTEGER, misplaced INTEGER,
       assertion_count_mismatch INTEGER, assertion_kind_mismatch INTEGER
     )`);
+  await adapter.execute(`
+    CREATE TABLE package_meta (
+      id INTEGER PRIMARY KEY, merge_commit_sha varchar, pr_number INTEGER,
+      package varchar, rails_counterpart varchar, description TEXT, claude_md varchar
+    )`);
   for (const table of ["api_calls_stats", "api_call_args_stats"]) {
     await adapter.execute(`
       CREATE TABLE ${table} (
