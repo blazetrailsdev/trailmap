@@ -7,7 +7,7 @@
 # against `git archive` output, never the working tree's node_modules.
 set -euo pipefail
 
-# Required by name, first. Without it `bin/trails db create` below fails much
+# Required by name, first. Without it `bin/trails db:create` below fails much
 # later, in Postgres's quoting of a nil name ("no implicit conversion of nil
 # into String", "Couldn't create 'undefined' database"), because the `hub` entry
 # of config/database.ts holds an undefined `url`.
@@ -55,8 +55,8 @@ pnpm exec trails-tsc-views build --views app/views
 # also why there is no `--database` flag here — see the note on the CI step
 # that prepares the hub schema.
 trails="bin/trails"
-NODE_ENV=test "$trails" db create
-NODE_ENV=test "$trails" db migrate
+NODE_ENV=test "$trails" db:create
+NODE_ENV=test "$trails" db:migrate
 export TASKS_DATABASE="$work/storage/test.sqlite3"
 export TASKS_DIR="$work"
 

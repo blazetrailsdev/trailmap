@@ -28,7 +28,7 @@ export const STATS_SYNC_MIGRATIONS_PATH = "db/stats-sync-migrate";
  *
  * `hub` carries `migrationsPaths` because its migrations are NOT `db/migrate`:
  * that directory is the task domain's history, shared with the tasks CLI, and
- * `trails db migrate` would otherwise try to run it against Postgres.
+ * `trails db:migrate` would otherwise try to run it against Postgres.
  * `pnpm db:migrate` — with NO `--database` flag — migrates both. That flag
  * loads `db/schema.ts` into whichever database it targets; docs/deploy.md and
  * CLAUDE.md both say never to pass it.
@@ -69,7 +69,7 @@ export default {
  * here or in `docs/deploy.md` holds one.
  *
  * Unset is left as `undefined` rather than throwing. These entries are built
- * at IMPORT time for every environment at once, and `trails db migrate`
+ * at IMPORT time for every environment at once, and `trails db:migrate`
  * (primary) must keep working on a machine that has no hub database — the
  * failure belongs where the hub connection is actually opened, which is
  * `hubDatabaseConfig()` below.
@@ -85,7 +85,7 @@ function hubEntry(): Record<string, unknown> {
 /**
  * Solid Queue's database, in the shape Rails 8 generates: its own SQLite file
  * under `storage/`, its own `db/queue_migrate`, and its schema in
- * `db/queue_schema.ts`, which `trails db prepare` loads into an empty file.
+ * `db/queue_schema.ts`, which `trails db:prepare` loads into an empty file.
  * Production only, as in Rails: development and test run jobs inline or on the
  * test adapter, and only the `worker` process (Procfile) runs the supervisor.
  *
@@ -151,7 +151,7 @@ export function hasHubDatabase(): boolean {
  * The live CLI database, read-write.
  *
  * This is deliberately NOT one of the environment keys above: those are the
- * databases `trails db migrate` fans out over, and migrating or dropping the
+ * databases `trails db:migrate` fans out over, and migrating or dropping the
  * CLI's live file is exactly what must not happen. It is a connection you opt
  * into by pointing `TASKS_DATABASE` at the file (`<tasks checkout>/.git/tasks.db`).
  *

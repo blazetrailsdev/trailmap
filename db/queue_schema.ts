@@ -3,7 +3,7 @@
 // templates/db/queue_schema.rb). trails has not ported the install generator
 // (story `port-solid-queue-tasks`), so this is transcribed from that template —
 // the same transcription trails' own suite loads (packages/solid-queue/src/
-// test-helpers/queue-schema.ts). `trails db prepare` loads it into an empty
+// test-helpers/queue-schema.ts). `trails db:prepare` loads it into an empty
 // `queue` database; see config/database.ts.
 
 import { Schema } from "@blazetrails/activerecord";

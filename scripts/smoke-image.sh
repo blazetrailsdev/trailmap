@@ -49,7 +49,7 @@ run=(docker run --network "$name" -v "$data":/data
 # smoke-boot.sh does.
 echo "smoke-image: the release command migrates both databases"
 "${run[@]}" --rm "$image" sh -c \
-  'bin/trails db migrate && rm -f /data/tasks.db* && cp storage/production.sqlite3 /data/tasks.db'
+  'bin/trails db:migrate && rm -f /data/tasks.db* && cp storage/production.sqlite3 /data/tasks.db'
 
 echo "smoke-image: the image's own CMD"
 "${run[@]}" -d --name "$name" -p "127.0.0.1:$port:8080" "$image" >/dev/null

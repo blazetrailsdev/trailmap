@@ -5,7 +5,7 @@ import { Base, MigrationContext } from "@blazetrails/activerecord";
  * Bring an in-memory database up to the current schema.
  *
  * `MigrationContext` is Rails' own entry point — it discovers
- * `db/migrate/<version>_<name>.ts` itself, the same way `trails db migrate`
+ * `db/migrate/<version>_<name>.ts` itself, the same way `trails db:migrate`
  * does, so the suite exercises the migrations rather than a hand-written
  * schema that could drift from them.
  */

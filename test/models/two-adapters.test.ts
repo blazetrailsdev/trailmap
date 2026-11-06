@@ -68,7 +68,7 @@ describe.skipIf(!hasHubTestDatabase())("two adapters in one process", () => {
     const taskTables = new Set(await Base.connectionPool().withConnection((c) => c.tables()));
     const hubTables = new Set(await Hub.connectionPool().withConnection((c) => c.tables()));
 
-    // The one that caught a real defect: `trails db migrate --database hub`
+    // The one that caught a real defect: `trails db:migrate --database hub`
     // treats the targeted database as primary and loads `db/schema.ts` into
     // it, which puts `stories` and `rfcs` in Postgres. See tmp notes / the
     // trails story; the fix is to migrate with no `--database` flag.

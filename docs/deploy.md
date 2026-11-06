@@ -88,8 +88,8 @@ dokku postgres:link trailmap-hub trailmap --alias HUB_DATABASE   # → HUB_DATAB
 # Then the schema and the seed rows, IN THE APP CONTAINER — see "Migrating the
 # hub" below for why it cannot be run from a host checkout. NO `--database hub`.
 # After this first time, deploys migrate the hub themselves (Procfile release).
-dokku run trailmap bin/trails db migrate
-dokku run trailmap bin/trails db seed
+dokku run trailmap bin/trails db:migrate
+dokku run trailmap bin/trails db:seed
 ```
 
 `HUB_DATABASE_URL` is as NOT optional as `TASKS_DATABASE`:
@@ -134,7 +134,7 @@ deployment-tasks page names it for migrations.
 To run it by hand — the first deploy, or a repair:
 
 ```sh
-dokku run trailmap bin/trails db migrate   # both databases
+dokku run trailmap bin/trails db:migrate   # both databases
 ```
 
 **Not `pnpm db:migrate`, and not from a host checkout.** Both halves of the
@@ -156,13 +156,13 @@ obvious recipe are wrong here, and each fails differently:
 Seeds are NOT part of the release task: they are first-time setup, and
 `db/seeds.ts` is idempotent, so running it again is harmless.
 
-It used to print its output TWICE, because `trails db seed` loaded the file
+It used to print its output TWICE, because `trails db:seed` loaded the file
 once per configured database. trails#8768 fixed that — Rails loads
 `db/seeds.rb` once, through the seed loader — so one run is now one load. The
 `db reset` and `db setup` paths always seeded once, since both narrow to
 `--database primary` before fanning out.
 
-**Never `pnpm exec trails db migrate --database hub`.** That flag narrows the
+**Never `pnpm exec trails db:migrate --database hub`.** That flag narrows the
 registered database configurations to the one targeted, and
 `DatabaseConfigurations#isPrimary` answers "the first registered config" for
 any name that is not literally `primary` — so the hub becomes primary for every
@@ -601,7 +601,7 @@ sleep 6
 env -u TASKS_DATABASE -u STATS_DB TRAILS_ENV=production NODE_ENV=production \
   STATS_SYNC_DB="$PWD/scratch.db" \
   HUB_DATABASE_URL=postgres://postgres:p@127.0.0.1:55449/postgres \
-  pnpm exec trails db prepare
+  pnpm exec trails db:prepare
 docker rm -f stats-check
 columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT IN ('schema_migrations', 'ar_internal_metadata') ORDER BY 1"; }
 diff <(columns /home/dean/github/blazetrailsdev/stats.db) <(columns scratch.db)
