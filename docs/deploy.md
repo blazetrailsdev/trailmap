@@ -239,7 +239,24 @@ To serve the page, its directory must be in the container, and named:
 # It is the parent-directory mount from "First-time setup" — already in place
 # there, so there is nothing more to mount; this is all the stats database adds.
 dokku config:set --no-restart trailmap \
-  STATS_DB=/home/dean/github/blazetrailsdev/stats.db
+  STATS_DB=/home/dean/github/blazetrailsdev/stats-job.db
+```
+
+**`STATS_DB` reads `stats-job.db`, the stats-sync job's file, not the crontab's
+`stats.db`.** The packages pages read `package_meta`, `package_file_stats`,
+`package_tag_*`, `package_mark_stats` and `package_skip_tests`, and only the job
+writes those; `stats.db` has none of them, so pointing at it renders "No
+package data". Before the switch (2026-11-06) `stats-job.db` held every table
+and column `stats.db` has, at the same row counts and latest `pr_number`, except
+the PRs opened between the job's 03:00 run and the crontab's: the job's file can
+trail by up to a day, never by a table. Re-run that comparison before pointing
+`STATS_DB` anywhere else:
+
+```sh
+cd /home/dean/github/blazetrailsdev
+for t in $(sqlite3 -readonly stats.db "SELECT name FROM sqlite_master WHERE type = 'table'"); do
+  echo "$t $(sqlite3 -readonly stats.db "SELECT count(*) FROM \"$t\"") $(sqlite3 -readonly stats-job.db "SELECT count(*) FROM \"$t\"")"
+done
 ```
 
 A narrower alternative, if mounting the whole directory is unwanted: move
@@ -634,6 +651,6 @@ empty tables and a sync from scratch.
 so the two do not draw on the same GitHub API budget at once. During the trial it writes
 `stats-job.db` beside the crontab's `stats.db`, and its own log, so the crontab
 keeps running and neither can hide a gap in the other. Each run ends in a
-`[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. Once
-the trial holds up, remove the crontab entry and point `STATS_SYNC_DB` and
-`STATS_SYNC_LOG` at the real files.
+`[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. Pages
+already read the job's file (`STATS_DB`, above). Once the trial holds up, remove
+the crontab entry; `stats.db` then stops changing and can be deleted.

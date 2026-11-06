@@ -238,7 +238,7 @@ export function statsDatabaseConfig(): Record<string, unknown> {
   if (!database) {
     throw new Error(
       "STATS_DB is not set. Point it at the trails stats database " +
-        "(~/github/blazetrailsdev/stats.db, the one the nightly stats-sync cron fills).",
+        "(~/github/blazetrailsdev/stats-job.db, the one StatsSyncJob fills).",
     );
   }
   return {
