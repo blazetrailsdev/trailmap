@@ -7,6 +7,7 @@ import { StoryPackage } from "./story-package.ts";
 import { StoryPath } from "./story-path.ts";
 import { StoryRfcDep } from "./story-rfc-dep.ts";
 import { VerbExit } from "./verb-exit.ts";
+import { effectiveStoryStatus } from "./concerns/effective-status.ts";
 import {
   bestBundle,
   claimableIn,
@@ -412,7 +413,8 @@ export class Story extends ApplicationRecord {
     const byPackage = new Map<string, number>();
     let unattributed = 0;
     for (const story of index.stories) {
-      if (story.status === null || !OPEN_STORY_STATUSES.includes(story.status)) continue;
+      const status = effectiveStoryStatus(index.rfcStatus.get(story.rfc_id), story.status);
+      if (status == null || !OPEN_STORY_STATUSES.includes(status)) continue;
       const packages = packageAttribution(index, rfcPackages, story);
       if (packages.length === 0) unattributed += 1;
       for (const pkg of packages) byPackage.set(pkg, (byPackage.get(pkg) ?? 0) + 1);

@@ -144,7 +144,7 @@ class Story < ApplicationRecord
       by_package = Hash.new(0)
       unattributed = 0
       index.stories.each do |story|
-        next unless Ranking::OPEN_STORY_STATUSES.include?(story.status)
+        next unless Ranking::OPEN_STORY_STATUSES.include?(EffectiveStatus.of(index.rfc_status[story.rfc_id], story.status))
         attributed = Ranking.package_attribution(index, packages, story)
         unattributed += 1 if attributed.empty?
         attributed.each { |pkg| by_package[pkg] += 1 }
