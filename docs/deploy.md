@@ -23,7 +23,7 @@ dokku domains:set trailmap trailmap.deanoftech.com
 # container, so the mount is writable and at the identical host path — the
 # database and the repo must look the same from in and out of the container.
 # It is the PARENT directory, not `tasks/` alone: one mount serves the tasks
-# checkout and `tasks.db` beside it, and `stats.db` with its WAL sidecars
+# checkout and `tasks.db` beside it, and `stats-job.db` with its WAL sidecars
 # ("The stats database" below has why a sidecar-bearing database needs its
 # directory). An app set up before trailmap#71 also carries a tasks-only mount
 # nested inside this one; it is redundant, and
@@ -209,7 +209,8 @@ repositories only. With SSO off, so is everyone.
 ## The stats database
 
 `/graphs/parity` charts the trails port's convergence out of the stats database
-the nightly stats-sync cron fills (ringo's `/crons`). trailmap only ever READS
+`StatsSyncJob` fills (`stats-job.db`; ringo's `/crons` fills `stats.db`, which ringo
+still reads). trailmap only ever READS
 it: `statsDatabaseConfig()` in `config/database.ts` opens it `readonly: true`,
 which SQLite enforces at the driver.
 
@@ -224,8 +225,8 @@ stats database is supported, not broken.
 To serve the page, its directory must be in the container, and named:
 
 ```sh
-# The DIRECTORY, not the file, and writable. SQLite finds `stats.db-wal` and
-# `stats.db-shm` by path, beside the database, and a READ-ONLY connection to a
+# The DIRECTORY, not the file, and writable. SQLite finds `stats-job.db-wal` and
+# `stats-job.db-shm` by path, beside the database, and a READ-ONLY connection to a
 # WAL database still maps the `-shm` — so the directory it lives in has to be
 # writable even though trailmap never writes the database itself.
 #
@@ -249,7 +250,13 @@ writes those; `stats.db` has none of them, so pointing at it renders "No
 package data". Before the switch (2026-11-06) `stats-job.db` held every table
 and column `stats.db` has, at the same row counts and latest `pr_number`, except
 the PRs opened between the job's 03:00 run and the crontab's: the job's file can
-trail by up to a day, never by a table. Re-run that comparison before pointing
+trail by up to a day, never by a table. `/graphs/parity` loses nothing to that
+lag: `ParityRefresh` joins the compare tables to `pull_requests` on
+`merge_commit_sha`, and the job writes a PR's compare rows in the same run as
+its `pull_requests` row, so the newest day is missing whole, never half-joined.
+The job writing the file while the web container reads it is ordinary WAL
+concurrency: one writer, readers on snapshots, both sharing the `-shm` in the
+mounted directory. Re-run that comparison before pointing
 `STATS_DB` anywhere else:
 
 ```sh
@@ -260,11 +267,10 @@ done
 ```
 
 A narrower alternative, if mounting the whole directory is unwanted: move
-`stats.db` and its two sidecars into a directory of their own with the cron
-stopped, mount only that, and point ringo at it with its own `STATS_DB`
-(`statsDBPath()` in `webhook/parity.go` defaults to
-`$HOME/github/blazetrailsdev/stats.db` and reads the override). Tidier, at the
-cost of touching ringo's cron.
+`stats-job.db` and its two sidecars into a directory of their own with the
+worker stopped, mount only that, and point `STATS_DB` and `STATS_SYNC_DB` at it.
+The job writes the file from inside the container, so the mount must stay
+writable.
 
 `scripts/smoke-prod.sh` tier 2 asserts the endpoint is actually serving —
 `tier2.graphs-parity-data` requires the payload to name at least one run and one
@@ -653,4 +659,7 @@ so the two do not draw on the same GitHub API budget at once. During the trial i
 keeps running and neither can hide a gap in the other. Each run ends in a
 `[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. Pages
 already read the job's file (`STATS_DB`, above). Once the trial holds up, remove
-the crontab entry; `stats.db` then stops changing and can be deleted.
+the crontab entry. `stats.db` then stops changing, but do not delete it:
+ringo still reads it, through `statsDBPath()` (`webhook/parity.go`), for
+its report cards among others (`app/controllers/audits-controller.ts` leaves
+those on ringo for that reason). Repoint ringo first.

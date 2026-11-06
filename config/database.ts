@@ -216,8 +216,8 @@ export function tasksDatabasePath(): string | undefined {
  *
  * Like `tasksDatabaseConfig` and unlike the `hub` entry, this is NOT one of
  * the environment keys above. `trails db` must never migrate or drop it: it is
- * filled by the nightly stats-sync cron on the host (ringo's `/crons`), its
- * schema is that cron's, and trailmap only reads it.
+ * filled by `StatsSyncJob` (`stats-job.db`, beside ringo's `stats.db`), its
+ * schema is the stats-sync migrations', and trailmap only reads it.
  *
  * `readonly: true` reaches the driver's open flag, so a write is refused by
  * SQLite itself rather than by a convention someone can forget. It is a

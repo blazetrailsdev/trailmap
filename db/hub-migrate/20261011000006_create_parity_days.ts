@@ -3,8 +3,8 @@ import { Migration } from "@blazetrails/activerecord";
 /**
  * Where each package stood under each comparison run, at the end of each day.
  *
- * A PROJECTION, not a source of truth. The source is the stats database the
- * nightly stats-sync cron fills — a 7 GB SQLite file on the host — and this
+ * A PROJECTION, not a source of truth. The source is the stats database
+ * `StatsSyncJob` fills — a 7 GB SQLite file on the host — and this
  * table is the rollup of it that `/graphs/parity` actually reads: 180,999 raw
  * rows across five tables collapse to 14,137 here, one per (metric, package,
  * day), a 12.9× shrink. Not 26×, which counted distinct (day, package) per
