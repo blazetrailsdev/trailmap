@@ -1,0 +1,49 @@
+<div class="page-header">
+  <h1 class="page-title"><a href="/packages"><%= @name %></a> &middot; deviations</h1>
+  <div class="page-subhead"><span class="muted">at <a href="https://github.com/blazetrailsdev/trails/commit/<%= @sha %>"><code><%= @sha.first(10) %></code></a> &middot; <a href="/packages/<%= @name %>/files">files</a></span></div>
+</div>
+
+<h2 class="section-title">Receipts</h2>
+<% if @tags.empty? %><div class="empty">None.</div><% end %>
+<% @tags.each do |tag| %>
+  <details class="pkg-tag">
+    <summary><code><%= tag.tag %></code><% if tag.receipt && tag.receipt != "none" %> <span class="tag"><%= tag.receipt %></span><% end %> <strong><%= tag.count %></strong></summary>
+    <ul>
+      <% @sites_by_tag.fetch("#{tag.tag} #{tag.receipt}", []).each do |site| %>
+        <li><a href="<%= @blob %>/<%= site.file %>#L<%= site.line %>"><code><%= site.file %>:<%= site.line %></code></a><% if site.declaration %> <span class="muted"><%= site.declaration %></span><% end %></li>
+      <% end %>
+    </ul>
+  </details>
+<% end %>
+
+<h2 class="section-title">Marks and baselines</h2>
+<% if @marks.empty? %><div class="empty">None.</div><% end %>
+<table class="pkg-table">
+  <% @marks.each do |mark| %>
+    <tr><td><code><%= mark.mark %></code></td><td><strong><%= mark.latest %></strong></td><td><svg class="sparkline" width="80" height="16" viewBox="0 0 80 16"><polyline fill="none" stroke="currentColor" points="<%= mark.points %>"/></svg></td></tr>
+  <% end %>
+</table>
+
+<h2 class="section-title">Permanently skipped tests</h2>
+<% if @skips.empty? %><div class="empty">None.</div><% end %>
+<% @skips.each do |anchor, tests| %>
+  <h3><a href="#<%= anchor %>"><%= anchor.empty? ? "(no section cited)" : anchor %></a> <span class="muted"><%= tests.size %></span></h3>
+  <ul>
+    <% tests.each do |test| %><li><code><%= test.file %></code> <%= test.test_name %></li><% end %>
+  </ul>
+<% end %>
+
+<h2 class="section-title">Open surfaced deviations <span class="muted"><%= @surfaced.size %></span></h2>
+<% if @surfaced.empty? %><div class="empty">None.</div><% end %>
+<ul>
+  <% @surfaced.each do |story| %><li><a href="/story/<%= story.id %>"><%= story.id %></a> <span class="muted"><%= story.title %></span></li><% end %>
+</ul>
+
+<h2 class="section-title">Works differently than you'd expect</h2>
+<% if @sections.empty? %><div class="empty">None.</div><% end %>
+<% @sections.each do |section| %>
+  <div class="card" id="<%= section.anchor %>">
+    <div class="card-head"><a class="card-title" href="<%= @blob %>/<%= section.file %>#<%= section.anchor %>"><%= section.heading %></a> <span class="muted"><%= section.file %></span></div>
+    <div class="field-note"><%= section.lede %></div>
+  </div>
+<% end %>

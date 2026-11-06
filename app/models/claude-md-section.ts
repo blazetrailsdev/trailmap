@@ -10,4 +10,12 @@ export class ClaudeMdSection extends Stats {
   static {
     this.tableName = "claude_md_sections";
   }
+
+  // The stats-sync cron owns this schema, so trails-tsc has none to read.
+  declare merge_commit_sha: string;
+  declare pr_number: number;
+  declare file: string;
+  declare heading: string;
+  declare anchor: string;
+  declare lede: string | null;
 }

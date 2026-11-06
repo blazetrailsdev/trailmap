@@ -1,0 +1,28 @@
+<div class="page-header">
+  <h1 class="page-title"><a href="/packages"><%= name %></a> &middot; files</h1>
+  <div class="page-subhead">
+    <span class="muted"><%= count %> Rails <%= count === 1 ? "file" : "files" %> &middot; sort:
+      <a href="?"<% if (sort === "") { %> class="active"<% } %>>path</a>
+      <a href="?sort=missing"<% if (sort === "missing") { %> class="active"<% } %>>missing methods</a>
+      <a href="?sort=tests"<% if (sort === "tests") { %> class="active"<% } %>>test match</a>
+      &middot; <a href="/packages/<%= name %>/deviations">deviations</a></span>
+  </div>
+</div>
+
+<% if (count === 0) { %><div class="empty">None.</div><% } %>
+<% for (const [dir, rows] of groups) { %>
+  <h2 class="section-title"><%= dir %> <span class="muted"><%= rows.length %></span></h2>
+  <table class="pkg-table">
+    <tr><th>Rails file</th><th>TS port</th><th>matched</th><th>missing</th><th>tests</th><th>open stories</th></tr>
+    <% for (const row of rows) { %>
+      <tr>
+        <td><code><%= row.railsFile %></code></td>
+        <td><% if (row.tsFile === null) { %><span class="muted">unported</span><% } else { %><code><%= row.tsFile %></code><% } %></td>
+        <td><%= row.matched %></td>
+        <td><%= row.missing %></td>
+        <td><%= row.testPercent === null ? "—" : `${row.testPercent}%` %></td>
+        <td><% if (row.stories.length > 0) { %><details><summary><%= row.stories.length %></summary><% for (const id of row.stories) { %><a href="/story/<%= id %>"><%= id %></a> <% } %></details><% } else { %>0<% } %></td>
+      </tr>
+    <% } %>
+  </table>
+<% } %>
