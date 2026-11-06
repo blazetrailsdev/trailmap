@@ -12,6 +12,7 @@ minimumReleaseAgeExclude:
 
 overrides:
   "@blazetrails/actioncable": "file:./vendor/blazetrails-actioncable-0.1.0.tgz"
+  "@blazetrails/actionmailer": "file:./vendor/blazetrails-actionmailer-0.1.0.tgz"
   "@blazetrails/actionpack": "file:./vendor/blazetrails-actionpack-0.1.0.tgz"
   "@blazetrails/actionview": "file:./vendor/blazetrails-actionview-0.1.0.tgz"
   "@blazetrails/activejob": "file:./vendor/blazetrails-activejob-0.1.0.tgz"
@@ -29,7 +30,10 @@ overrides:
   "@blazetrails/globalid": "file:./vendor/blazetrails-globalid-0.1.0.tgz"
   "@blazetrails/html-sanitizer": "file:./vendor/blazetrails-html-sanitizer-0.1.0.tgz"
   "@blazetrails/i18n": "file:./vendor/blazetrails-i18n-0.1.0.tgz"
+  "@blazetrails/mail": "file:./vendor/blazetrails-mail-0.1.0.tgz"
   "@blazetrails/marcel": "file:./vendor/blazetrails-marcel-0.1.0.tgz"
+  "@blazetrails/mini-mime": "file:./vendor/blazetrails-mini-mime-0.1.0.tgz"
+  "@blazetrails/net-smtp": "file:./vendor/blazetrails-net-smtp-0.1.0.tgz"
   "@blazetrails/nokogiri": "file:./vendor/blazetrails-nokogiri-0.1.0.tgz"
   "@blazetrails/raabro": "file:./vendor/blazetrails-raabro-0.1.0.tgz"
   "@blazetrails/rack": "file:./vendor/blazetrails-rack-0.1.0.tgz"
