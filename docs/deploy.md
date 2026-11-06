@@ -88,8 +88,8 @@ dokku postgres:link trailmap-hub trailmap --alias HUB_DATABASE   # → HUB_DATAB
 # Then the schema and the seed rows, IN THE APP CONTAINER — see "Migrating the
 # hub" below for why it cannot be run from a host checkout. NO `--database hub`.
 # After this first time, deploys migrate the hub themselves (Procfile release).
-dokku run trailmap bin/trails db migrate
-dokku run trailmap bin/trails db seed
+dokku run trailmap bin/trails db:migrate
+dokku run trailmap bin/trails db:seed
 ```
 
 `HUB_DATABASE_URL` is as NOT optional as `TASKS_DATABASE`:
@@ -119,14 +119,14 @@ is how a process on the box reaches it without exposing a port.
 ### Migrating the hub
 
 **Deploys do this.** The `Procfile` declares a `release` task that runs
-`db migrate` in a container built from the new image, before it serves
+`db:migrate` in a container built from the new image, before it serves
 traffic, so a release that adds a hub table migrates on the way in. A failed
 release task fails the deploy and leaves the running containers alone, so a
 hub that cannot be migrated never gets a container serving pages against it.
 
 `release` rather than `app.json`'s `scripts.dokku.predeploy`, which also
 works: a predeploy container is COMMITTED back into the built image — that is
-what it is for — and `db migrate` rewrites `db/schema.ts` and
+what it is for — and `db:migrate` rewrites `db/schema.ts` and
 `db/hub_schema.ts` as it runs, so every release would bake a schema dump into
 the image. A release container's changes are discarded, which is why dokku's
 deployment-tasks page names it for migrations.
@@ -134,7 +134,7 @@ deployment-tasks page names it for migrations.
 To run it by hand — the first deploy, or a repair:
 
 ```sh
-dokku run trailmap bin/trails db migrate   # both databases
+dokku run trailmap bin/trails db:migrate   # both databases
 ```
 
 **Not `pnpm db:migrate`, and not from a host checkout.** Both halves of the
@@ -156,13 +156,13 @@ obvious recipe are wrong here, and each fails differently:
 Seeds are NOT part of the release task: they are first-time setup, and
 `db/seeds.ts` is idempotent, so running it again is harmless.
 
-It used to print its output TWICE, because `trails db seed` loaded the file
+It used to print its output TWICE, because `trails db:seed` loaded the file
 once per configured database. trails#8768 fixed that — Rails loads
 `db/seeds.rb` once, through the seed loader — so one run is now one load. The
-`db reset` and `db setup` paths always seeded once, since both narrow to
+`db:reset` and `db:setup` paths always seeded once, since both narrow to
 `--database primary` before fanning out.
 
-**Never `pnpm exec trails db migrate --database hub`.** That flag narrows the
+**Never `pnpm exec trails db:migrate --database hub`.** That flag narrows the
 registered database configurations to the one targeted, and
 `DatabaseConfigurations#isPrimary` answers "the first registered config" for
 any name that is not literally `primary` — so the hub becomes primary for every
@@ -584,13 +584,13 @@ kill -9 "$(docker inspect -f '{{.State.Pid}}' "$(docker ps -q --filter name=trai
 
 The `worker` process (`bin/jobs`) runs config/queue.yml and the recurring
 schedule in config/recurring.yml. Its queue is a SQLite database in
-`/app/storage`, created by the release task's `db prepare`.
+`/app/storage`, created by the release task's `db:prepare`.
 
 **Before anything below, compare `stats.db` with the schema.** The migration
 adopts any file with a `sync_log` table as it stands and repairs nothing, so a
 missing column would only surface when a sync fails. Migrate an empty scratch
 file from a checkout and diff it against `stats.db`; `pr_readmes`, abandoned, is
-the one expected difference. Production's `db prepare` covers every database, so
+the one expected difference. Production's `db:prepare` covers every database, so
 give it a throwaway Postgres: the SQLite files it writes are the checkout's own
 `storage/`, any seeds go to that throwaway hub (nothing seeds the task domain), and
 with `TASKS_DATABASE` unset nothing live is touched.
@@ -601,7 +601,7 @@ sleep 6
 env -u TASKS_DATABASE -u STATS_DB TRAILS_ENV=production NODE_ENV=production \
   STATS_SYNC_DB="$PWD/scratch.db" \
   HUB_DATABASE_URL=postgres://postgres:p@127.0.0.1:55449/postgres \
-  pnpm exec trails db prepare
+  pnpm exec trails db:prepare
 docker rm -f stats-check
 columns() { sqlite3 -readonly "$1" "SELECT m.name || '.' || p.name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT IN ('schema_migrations', 'ar_internal_metadata') ORDER BY 1"; }
 diff <(columns /home/dean/github/blazetrailsdev/stats.db) <(columns scratch.db)
@@ -624,7 +624,7 @@ dokku storage:mount trailmap /var/lib/dokku/data/storage/trailmap-queue:/app/sto
 
 # Seed the job's database from stats.db, once, so the first run syncs only what
 # is new rather than refilling 8 GB from GitHub. The script stamps
-# schema_migrations from db/stats-sync-migrate (without that stamp `db prepare`
+# schema_migrations from db/stats-sync-migrate (without that stamp `db:prepare`
 # DROPS every table in the copy) and refuses a target that already exists.
 scripts/seed-stats-job-db.sh /home/dean/github/blazetrailsdev/stats.db \
   /home/dean/github/blazetrailsdev/stats-job.db
@@ -650,7 +650,7 @@ dokku ps:scale trailmap worker=1
 ```
 
 Seed and stamp before the first deploy that sets `STATS_SYNC_DB`: the release task
-runs `db prepare` on that file, an unstamped one is wiped, and a missing one gets
+runs `db:prepare` on that file, an unstamped one is wiped, and a missing one gets
 empty tables and a sync from scratch.
 
 `StatsSyncJob` runs at 03:00 America/Detroit, three hours ahead of the crontab

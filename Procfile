@@ -5,7 +5,7 @@
 # why: a predeploy container is COMMITTED back into the built image, which is
 # what it is for ("for changing the built image"), while a release container's
 # changes are discarded ("tasks like migrations, since changes are not
-# persisted to disk"). `trails db migrate` rewrites db/schema.ts and
+# persisted to disk"). `trails db:migrate` rewrites db/schema.ts and
 # db/hub_schema.ts as it runs, so under predeploy every release would bake a
 # schema dump into the image and the deployed files would drift from the repo.
 #
@@ -13,14 +13,14 @@
 # alone, which is the property that makes this worth having: a hub that cannot
 # be migrated never gets a container serving pages against it.
 #
-# `db prepare`, not `db migrate`: it also creates the `queue` database and loads
+# `db:prepare`, not `db:migrate`: it also creates the `queue` database and loads
 # db/queue_schema.ts the first time, which `migrate` cannot do because the
 # queue has no migrations.
 #
 # NO `--database` flag. The unflagged command registers both configurations
 # and migrates both; `--database hub` loads the task domain's SQLite schema
 # into Postgres (docs/deploy.md).
-release: bin/trails db prepare
+release: bin/trails db:prepare
 
 # `web` is declared even though the Dockerfile's CMD says the same thing, and
 # the duplication is deliberate. A Procfile takes precedence over CMD for the

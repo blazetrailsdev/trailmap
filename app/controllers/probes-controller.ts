@@ -210,7 +210,7 @@ export class ProbesController extends ApiController {
    * queue ranks over columns that are not what the code expects.
    *
    * The head the code expects is READ FROM `db/migrate`, on every request, by
-   * the pool's own `MigrationContext` — the object `trails db migrate` asks
+   * the pool's own `MigrationContext` — the object `trails db:migrate` asks
    * for the same list. It is not baked in at build time, for three reasons:
    *
    * - it cannot drift. A generated constant is a second copy of the directory

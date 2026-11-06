@@ -11,7 +11,7 @@ console.log("== Installing dependencies ==");
 system("pnpm install");
 
 console.log("\n== Preparing database ==");
-system("bin/trails db setup");
+system("bin/trails db:setup");
 
 console.log("\n== Removing old logs and tempfiles ==");
 for (const dir of ["log", "tmp"]) {

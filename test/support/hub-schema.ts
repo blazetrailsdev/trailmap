@@ -25,7 +25,7 @@ import { Setting } from "../../app/models/setting.ts";
  *       HUB_DATABASE_URL=<the test database> pnpm db:migrate
  *
  *   which is what `.github/workflows/ci.yml` does before `pnpm test`, and what
- *   the error below tells you to run. `trails db migrate` is therefore still
+ *   the error below tells you to run. `trails db:migrate` is therefore still
  *   what exercises the migrations; it just happens one step earlier.
  *
  * Deliberately NOT `HUB_DATABASE_URL`: that variable names the database a

@@ -7,7 +7,7 @@
 # against `git archive` output, never the working tree's node_modules.
 set -euo pipefail
 
-# Required by name, first. Without it `bin/trails db create` below fails much
+# Required by name, first. Without it `bin/trails db:create` below fails much
 # later, in Postgres's quoting of a nil name ("no implicit conversion of nil
 # into String", "Couldn't create 'undefined' database"), because the `hub` entry
 # of config/database.ts holds an undefined `url`.
@@ -41,22 +41,22 @@ pnpm exec trails-tsc-views build --views app/views
 #
 # The rows are not the point here (the gate job is what runs against real
 # content), so this is the schema and nothing else: trailmap owns the tasks
-# migrations under db/migrate, so `db create` + `db migrate` produce a valid,
+# migrations under db/migrate, so `db:create` + `db:migrate` produce a valid,
 # empty tasks database to point TASKS_DATABASE at. They run in the TEST
 # environment, whose primary is a plain scratch database: the served
 # environments will name `env.TASKS_DATABASE` with `databaseTasks: false`, and
-# `db migrate` skips such a database by design, so a recipe that relied on
+# `db:migrate` skips such a database by design, so a recipe that relied on
 # them would build nothing.
 #
-# `db migrate` with no `--database` migrates BOTH of the environment's
+# `db:migrate` with no `--database` migrates BOTH of the environment's
 # databases (config/database.ts): the SQLite primary below, and the `hub`
 # Postgres one when HUB_DATABASE_URL is set, which it is in CI because
 # `config/initializers/hub-database.ts` refuses to boot without it. That is
 # also why there is no `--database` flag here — see the note on the CI step
 # that prepares the hub schema.
 trails="bin/trails"
-NODE_ENV=test "$trails" db create
-NODE_ENV=test "$trails" db migrate
+NODE_ENV=test "$trails" db:create
+NODE_ENV=test "$trails" db:migrate
 export TASKS_DATABASE="$work/storage/test.sqlite3"
 export TASKS_DIR="$work"
 

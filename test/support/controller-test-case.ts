@@ -48,7 +48,7 @@ async function assertNoClassCollisions(tc: ActionController.TestCase): Promise<v
 type Controller = Parameters<typeof ActionController.TestCase.tests>[0] & {
   name: string;
   controllerPath(): string;
-  actionMethods(): string[];
+  actionMethods(): ReadonlySet<string>;
 };
 
 export async function controllerTestCase(
@@ -67,7 +67,7 @@ export async function controllerTestCase(
   };
 
   const application = Trails.application!.routes();
-  const routed = [...application.routes].some(
+  const routed = [...application.routes()].some(
     (route) => route.defaults.controller === controller.controllerPath(),
   );
   if (routed) {
