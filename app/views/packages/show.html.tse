@@ -1,0 +1,27 @@
+<div class="page-header">
+  <h1 class="page-title"><a href="<%= packagesPath() %>">Packages</a> &middot; <%= name %></h1>
+  <div class="page-subhead">
+    <span class="muted"><% if (railsCounterpart !== null) { %>ports <span class="tag"><%= railsCounterpart %></span><% } else { %>trails-only<% } %>
+      &middot; <%= openStories %> open <%= openStories === 1 ? "story" : "stories" %>
+      &middot; <a href="<%= packageFilesPath(name) %>">files</a>
+      &middot; <a href="<%= packageDeviationsPath(name) %>">deviations</a></span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="pkg-stats">
+    <% for (const [label, ratio] of [["api", api], ["tests", tests]] as const) { %>
+      <div class="pkg-meter">
+        <div class="pkg-meter-line">
+          <span class="pkg-meter-label"><%= label %></span>
+          <% if (ratio === null) { %>
+            <span class="muted">no data</span>
+          <% } else { %>
+            <span><strong><%= ratio.percent %>%</strong> <span class="muted"><%= ratio.matched.toLocaleString("en-US") %> / <%= ratio.total.toLocaleString("en-US") %></span></span>
+          <% } %>
+        </div>
+        <div class="pkg-track"><% if (ratio !== null) { %><span class="pkg-fill <%= ratio.percent >= 95 ? "good" : ratio.percent >= 75 ? "fair" : "poor" %>" style="width:<%= Math.min(100, Math.max(0, ratio.percent)) %>%"></span><% } %></div>
+      </div>
+    <% } %>
+  </div>
+</div>
