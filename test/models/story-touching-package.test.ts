@@ -49,3 +49,13 @@ describe("Story.touchingPackage", () => {
     expect(ids(await Story.unattributed())).toEqual(["bare-dir", "orphan", "scripts-only"]);
   });
 });
+
+describe("Story.openCountsByPackage", () => {
+  it("counts open stories per attributed package and the unattributed ones", async () => {
+    const { byPackage, unattributed } = await Story.openCountsByPackage();
+    expect(byPackage.get("activesupport")).toBe(1);
+    expect(byPackage.get("actionpack")).toBe(1);
+    expect(byPackage.get("activerecord")).toBe(2);
+    expect(unattributed).toBe(3);
+  });
+});

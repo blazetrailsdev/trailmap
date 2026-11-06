@@ -320,5 +320,7 @@ class ModelMethodsTest < ActiveSupport::TestCase
     assert_empty Story.touching_package("actionview")
     assert_equal %w[inherited non-package-path], ids.(Story.touching_package("activerecord"))
     assert_equal %w[bare-dir orphan scripts-only], ids.(Story.unattributed)
+    by_package, unattributed = Story.open_counts_by_package
+    assert_equal [ 1, 1, 2, 3 ], [ *by_package.values_at("activesupport", "actionpack", "activerecord"), unattributed ]
   end
 end
