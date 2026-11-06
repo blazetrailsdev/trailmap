@@ -128,6 +128,7 @@ Trails.application!.routes().draw(function () {
   this.get("packages/:name", { to: "packages#show", as: "package" });
   this.get("packages/:name/deviations", { to: "packages#deviations", as: "package_deviations" });
   this.get("packages/:name/files", { to: "packages#files", as: "package_files" });
+  this.get("packages/:name/work", { to: "packages#work", as: "package_work" });
 
   // The audits, ported from ringo's `/audits`. A resource: `index` is the
   // list, `show` an audit's page, and the member `raw` the file on its own,

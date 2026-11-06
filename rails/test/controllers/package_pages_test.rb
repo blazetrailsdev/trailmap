@@ -12,6 +12,7 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     PackageMarkStat.create!(merge_commit_sha: "sha1", pr_number: 1, package: "arel", mark: "sends", value: 5)
     PackageMarkStat.create!(**key, mark: "sends", value: 3)
     PackageMarkStat.create!(**key, mark: "params", matched: 9, total: 10)
+    PackageMarkStat.create!(**key, mark: "predicates", matched: 0, total: 0)
     [ [ 1, 0 ], [ 2, 1 ], [ 3, 32 ] ].each { |pr, value| PackageMarkStat.create!(merge_commit_sha: "sha#{pr}", pr_number: pr, package: "arel", mark: "boundary", value: value) }
     PackageTagSite.create!(**key, tag: "@noRailsEquivalent", receipt: "PERMANENT", file: "packages/arel/src/b.ts", line: 5, cited_anchor: "runtime-facts")
     PackageMeta.create!(merge_commit_sha: "sha2", pr_number: 2, package: "a_el")
@@ -35,10 +36,22 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     story!("catch-all-ar", rfc_id: "0023-surfaced-deviations", packages: [ "activerecord" ])
     story!("open-arel", rfc_id: "0001-wide", paths: [ "packages/arel/src/nodes/node.ts" ])
     story!("done-arel", rfc_id: "0001-wide", status: "done", paths: [ "packages/arel/src/nodes/node.ts" ])
+    PackageMeta.find_by(merge_commit_sha: "sha2", package: "arel")
+               .update!(rails_counterpart: "arel", description: "SQL AST", claude_md: "packages/arel/CLAUDE.md")
+    ApiCompareStat.create!(merge_commit_sha: "sha1", pr_number: 1, package: "arel", matched: 40, total: 100, percent: 40.0)
+    ApiCompareStat.create!(**key, matched: 50, total: 100, percent: 50.0)
+    TestCompareStat.create!(**key, matched: 20, total: 80, percent: 25.0, assertion_count_mismatch: 5)
+    rfc!("0002-arel-only", packages: [ "arel" ])
+    [ %w[arel-ready-b ready], %w[arel-ready-a ready], %w[arel-blocked blocked], %w[arel-wip in-progress], %w[arel-shipped done] ].each do |id, status|
+      story!(id, rfc_id: "0002-arel-only", status: status)
+    end
+    [ [ "2026-11-03T10:00:00Z", "arel-shipped" ], [ "2026-11-04T10:00:00Z", "arel-shipped" ], [ "2026-11-08T10:00:00Z", "done-arel" ], [ "2026-11-10T10:00:00Z", "catch-all-ar" ] ].each do |at, id|
+      Event.create!(at: at, verb: "done", story_id: id)
+    end
   end
 
   teardown do
-    [ PackageMeta, PackageTagStat, PackageTagSite, PackageMarkStat, PackageSkipTest, ClaudeMdSection, PackageFileStat ].each(&:delete_all)
+    [ PackageMeta, ApiCompareStat, TestCompareStat, PackageTagStat, PackageTagSite, PackageMarkStat, PackageSkipTest, ClaudeMdSection, PackageFileStat ].each(&:delete_all)
   end
 
   def page(path)
@@ -121,5 +134,59 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     by_tests = page("/packages/arel/files?sort=tests")
     assert_operator by_tests.index("table.rb"), :>, by_tests.index("node.rb")
     assert_operator by_tests.index("<h2", by_tests.index("node.rb")), :>, by_tests.index("binary.rb")
+  end
+
+  test "shows counterpart, description and a tile per gate, no data where a gate has none" do
+    body = page("/packages/arel")
+    assert_includes body, "port of <code>arel</code>"
+    assert_includes body, "SQL AST"
+    assert_match %r{<span class="card-title">api</span></div>\s*<div><strong>50\.0%</strong> <span class="muted">50 / 100</span>}, body
+    assert_includes body, 'points="0,16 80,0"'
+    assert_includes body, '<strong>90.0%</strong> <span class="muted">9 / 10</span>'
+    assert_includes body, '<strong>75.0%</strong> <span class="muted">15 / 20</span>'
+    assert_includes body, '<strong>0.0%</strong> <span class="muted">0 / 0</span>'
+    assert_equal 3, body.scan("no data").size
+  end
+
+  test "counts stories by status and lists the RFCs touching the package" do
+    body = page("/packages/arel")
+    assert_includes body, "ready <strong>4</strong>"
+    assert_includes body, "in-progress <strong>1</strong>"
+    assert_includes body, "blocked <strong>1</strong>"
+    assert_includes body, "done <strong>2</strong>"
+    assert_includes body, 'href="/rfc/0002-arel-only"'
+    assert_includes body, 'href="/rfc/0023-surfaced-deviations"'
+    assert_not_includes body, 'href="/rfc/0124-arel-surfaced-deviations"'
+  end
+
+  test "starts with three ready stories, the CLAUDE.md and the file missing most" do
+    start = page("/packages/arel").then { |body| body[body.index("Start here")..] }
+    assert_equal 3, start.scan('<li><a href="/story/').size
+    assert_includes start, 'href="https://github.com/blazetrailsdev/trails/blob/sha2/packages/arel/CLAUDE.md"'
+    assert_includes start, '<code>arel/nodes/binary.rb</code> <span class="muted">7 missing</span>'
+  end
+
+  test "answers 404 for an unknown package on the overview" do
+    get "/packages/nope"
+    assert_response :not_found
+  end
+
+  test "groups stories by RFC, ready first, done collapsed" do
+    body = page("/packages/arel/work")
+    group = body[body.index('href="/rfc/0002-arel-only"')...body.index('href="/rfc/0023')]
+    positions = [ "arel-ready-a", "arel-ready-b", "arel-wip", "arel-blocked", "1 done or closed", "arel-shipped" ].map { |id| group.index(id) }
+    assert positions.all?
+    assert_equal positions.sort, positions
+  end
+
+  test "counts done events per week" do
+    body = page("/packages/arel/work")
+    assert_includes body, "<code>2026-11-02</code></td><td><strong>2</strong>"
+    assert_not_includes body, "2026-11-09"
+  end
+
+  test "answers 404 for an unknown package on the work page" do
+    get "/packages/nope/work"
+    assert_response :not_found
   end
 end

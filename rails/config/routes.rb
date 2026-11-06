@@ -63,6 +63,7 @@ Rails.application.routes.draw do
   get "packages/:name", to: "packages#show", as: :package
   get "packages/:name/deviations", to: "packages#deviations", as: :package_deviations
   get "packages/:name/files", to: "packages#files", as: :package_files
+  get "packages/:name/work", to: "packages#work", as: :package_work
 
   resources :audits, only: %i[index show], constraints: { id: Audit::SEGMENT }, format: false do
     get :raw, on: :member

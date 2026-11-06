@@ -36,13 +36,13 @@ describe("GET /packages and each package's pages", () => {
     expect(body).toContain('href="/packages/arel/deviations"');
   });
 
-  for (const path of ["/packages/arel/files", "/packages/arel/deviations"]) {
+  for (const path of ["/packages/arel/files", "/packages/arel/deviations", "/packages/arel/work"]) {
     it(`answers ${path}`, async () => {
       expect((await get(path)).status).toBe(200);
     });
   }
 
-  for (const path of ["/packages/nope", "/packages/nope/files", "/packages/nope/deviations"]) {
+  for (const path of ["/packages/nope", "/packages/nope/files", "/packages/nope/deviations", "/packages/nope/work"]) {
     it(`answers ${path} for an unknown package with a 404`, async () => {
       expect((await get(path)).status).toBe(404);
     });

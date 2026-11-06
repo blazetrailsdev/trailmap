@@ -35,7 +35,7 @@ describe("the packages pages on a STATS_DB without package tables", () => {
     expect(body).toContain("No package data");
   });
 
-  for (const path of ["/packages/arel", "/packages/arel/files", "/packages/arel/deviations"]) {
+  for (const path of ["/packages/arel", "/packages/arel/files", "/packages/arel/deviations", "/packages/arel/work"]) {
     it(`answers ${path} with a 404`, async () => {
       expect((await get(path)).status).toBe(404);
     });

@@ -1,0 +1,34 @@
+<div class="page-header">
+  <h1 class="page-title"><a href="<%= packagePath(name) %>"><%= name %></a> &middot; work</h1>
+</div>
+
+<h2 class="section-title">Done per week</h2>
+<% if (burndown.length === 0) { %><div class="empty">Nothing done yet.</div><% } %>
+<div class="pkg-table-wrap"><table class="pkg-table">
+  <% for (const row of burndown) { %>
+    <tr><td><code><%= row.week %></code></td><td><strong><%= row.count %></strong></td><td><svg width="80" height="8" viewBox="0 0 80 8"><rect fill="currentColor" height="8" width="<%= Math.round((row.count * 80) / max) %>"/></svg></td></tr>
+  <% } %>
+</table></div>
+
+<% if (groups.size === 0) { %><div class="empty">No stories attributed to this package.</div><% } %>
+<% for (const [rfc, group] of groups) { %>
+  <h2 class="section-title"><a href="/rfc/<%= rfc %>"><%= rfc %></a> <span class="muted"><%= group.open.length + group.done.length %></span></h2>
+  <div class="box">
+    <% for (const story of group.open) { %>
+      <div class="item-row">
+        <%= render({ partial: "shared/status-badge", locals: { status: statuses.get(story.id) } }) %>
+        <span class="row-main"><a class="row-title" href="/story/<%= story.id %>"><%= story.title %></a> <code><%= story.id %></code></span>
+      </div>
+    <% } %>
+    <% if (group.done.length > 0) { %>
+      <details><summary><%= group.done.length %> done or closed</summary>
+        <% for (const story of group.done) { %>
+          <div class="item-row">
+            <%= render({ partial: "shared/status-badge", locals: { status: statuses.get(story.id) } }) %>
+            <span class="row-main"><a class="row-title" href="/story/<%= story.id %>"><%= story.title %></a> <code><%= story.id %></code></span>
+          </div>
+        <% } %>
+      </details>
+    <% } %>
+  </div>
+<% } %>

@@ -1,27 +1,39 @@
 <div class="page-header">
-  <h1 class="page-title"><a href="<%= packagesPath() %>">Packages</a> &middot; <%= name %></h1>
-  <div class="page-subhead">
-    <span class="muted"><% if (railsCounterpart !== null) { %>ports <span class="tag"><%= railsCounterpart %></span><% } else { %>trails-only<% } %>
-      &middot; <%= openStories %> open <%= openStories === 1 ? "story" : "stories" %>
-      &middot; <a href="<%= packageFilesPath(name) %>">files</a>
-      &middot; <a href="<%= packageDeviationsPath(name) %>">deviations</a></span>
-  </div>
+  <h1 class="page-title"><a href="<%= packagesPath() %>">packages</a> &middot; <%= name %></h1>
+  <div class="page-subhead"><span class="muted"><% if (meta.rails_counterpart !== null) { %>port of <code><%= meta.rails_counterpart %></code><% } else { %>trails-only<% } %> &middot; <a href="<%= packageFilesPath(name) %>">files</a> &middot; <a href="<%= packageDeviationsPath(name) %>">deviations</a> &middot; <a href="<%= packageWorkPath(name) %>">work</a></span></div>
+  <% if (meta.description !== null) { %><div class="field-note"><%= meta.description %></div><% } %>
 </div>
 
+<h2 class="section-title">Parity</h2>
+<div class="pkg-grid">
+  <% for (const tile of tiles) { %>
+    <div class="pkg-tile">
+      <div class="card-head"><span class="card-title"><%= tile.label %></span></div>
+      <% if (tile.latest === null) { %>
+        <div class="muted">no data</div>
+      <% } else { %>
+        <div><strong><%= tile.latest.percent.toFixed(1) %>%</strong> <span class="muted"><%= tile.latest.matched %> / <%= tile.latest.total %></span></div>
+        <svg class="sparkline" width="80" height="16" viewBox="0 0 80 16"><polyline fill="none" stroke="currentColor" points="<%= tile.points %>"/></svg>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<h2 class="section-title">Stories</h2>
+<div class="pkg-counts">
+  <% for (const row of counts) { %><span class="tag"><%= row.status %> <strong><%= row.count %></strong></span> <% } %>
+</div>
+<% if (rfcs.length === 0) { %><div class="empty">No open RFCs touch this package.</div><% } %>
+<ul>
+  <% for (const rfc of rfcs) { %><li><a href="/rfc/<%= rfc %>"><%= rfc %></a></li><% } %>
+</ul>
+
+<h2 class="section-title">Start here</h2>
 <div class="card">
-  <div class="pkg-stats">
-    <% for (const [label, ratio] of [["api", api], ["tests", tests]] as const) { %>
-      <div class="pkg-meter">
-        <div class="pkg-meter-line">
-          <span class="pkg-meter-label"><%= label %></span>
-          <% if (ratio === null) { %>
-            <span class="muted">no data</span>
-          <% } else { %>
-            <span><strong><%= ratio.percent %>%</strong> <span class="muted"><%= ratio.matched.toLocaleString("en-US") %> / <%= ratio.total.toLocaleString("en-US") %></span></span>
-          <% } %>
-        </div>
-        <div class="pkg-track"><% if (ratio !== null) { %><span class="pkg-fill <%= ratio.percent >= 95 ? "good" : ratio.percent >= 75 ? "fair" : "poor" %>" style="width:<%= Math.min(100, Math.max(0, ratio.percent)) %>%"></span><% } %></div>
-      </div>
-    <% } %>
-  </div>
+  <% if (ready.length === 0) { %><div class="empty">No ready stories.</div><% } %>
+  <ol>
+    <% for (const story of ready) { %><li><a href="/story/<%= story.id %>"><%= story.id %></a> <span class="muted"><%= story.title %></span></li><% } %>
+  </ol>
+  <% if (meta.claude_md !== null) { %><div>Read <a href="<%= blob %>/<%= meta.claude_md %>"><code><%= meta.claude_md %></code></a> first.</div><% } %>
+  <% if (topFile !== null) { %><div>Most missing methods: <code><%= topFile.rails_file %></code> <span class="muted"><%= topFile.methods_missing %> missing</span></div><% } %>
 </div>

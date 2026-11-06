@@ -18,4 +18,7 @@ export class PackageMeta extends Stats {
   declare package: string;
   /** The Rails gem this package ports; null for a trails-only package. */
   declare rails_counterpart: string | null;
+  declare description: string | null;
+  /** `packages/<pkg>/CLAUDE.md` when the package has one. */
+  declare claude_md: string | null;
 }

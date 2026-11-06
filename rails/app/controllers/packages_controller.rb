@@ -6,6 +6,24 @@ class PackagesController < ApplicationController
   MarkRow = Struct.new(:mark, :latest, :points, keyword_init: true)
   FileRow = Struct.new(:rails_file, :ts_file, :matched, :missing, :test_percent, :stories, keyword_init: true)
 
+  Ratio = Struct.new(:matched, :total, :percent, keyword_init: true)
+  Tile = Struct.new(:label, :latest, :points, keyword_init: true)
+
+  # The overview's tiles, in order; `mark` gates read `package_mark_stats`.
+  GATES = [
+    { label: "api", model: ApiCompareStat },
+    { label: "calls", model: ApiCallsStat },
+    { label: "call args", model: ApiCallArgsStat },
+    { label: "params", mark: "params" },
+    { label: "predicates", mark: "predicates" },
+    { label: "tests", model: TestCompareStat },
+    { label: "assertions", model: TestCompareStat, assertions: true },
+    { label: "privates", model: ApiComparePrivatesStat }
+  ].freeze
+  # The statuses the overview counts, and the work page's group order.
+  COUNTED_STATUSES = %w[ready in-progress blocked done].freeze
+  WORK_ORDER = %w[ready in-progress blocked draft].freeze
+
   TRAILS_BLOB = "https://github.com/blazetrailsdev/trails/blob"
   # The retired catch-all bucket, attributed per story by Story.touching_package.
   CATCH_ALL_BUCKET = "0023-surfaced-deviations"
@@ -29,15 +47,56 @@ class PackagesController < ApplicationController
     @counterparts, @trails_only = rows.partition(&:rails_counterpart)
   end
 
-  # `/packages/:name` — the counterpart, latest api and tests ratios, open
-  # story count and the links to the tabs. RFC 0222's package-overview-page
-  # grows this into gate tiles and the start-here box.
+  # `/packages/:name` — counterpart and purpose, a tile per gate, story counts
+  # by status and the RFCs touching the package, and "Start here": the top
+  # ready stories in queue order, the package CLAUDE.md, and the Rails file
+  # with most missing methods.
   def show
     @name = params[:name].to_s
-    @rails_counterpart = latest_meta(@name).rails_counterpart
-    @api = latest_ratios(ApiCompareStat)[@name]
-    @tests = latest_ratios(TestCompareStat)[@name]
-    @open_stories = Story.open_counts_by_package.first[@name]
+    @meta = latest_meta(@name)
+    sha = @meta.merge_commit_sha
+    @blob = "#{TRAILS_BLOB}/#{sha}"
+    @tiles = GATES.map do |gate|
+      ratios =
+        if gate[:mark]
+          PackageMarkStat.where(package: @name, mark: gate[:mark]).where.not(total: nil).order(:pr_number).map do |row|
+            Ratio.new(matched: row.matched || 0, total: row.total, percent: row.total.positive? ? ((row.matched || 0) * 1000.0 / row.total).round / 10.0 : 0)
+          end
+        else
+          gate[:model].where(package: @name).order(:pr_number).map do |row|
+            next Ratio.new(matched: row.matched, total: row.total, percent: row.percent) unless gate[:assertions]
+            matched = row.matched - (row.assertion_count_mismatch || 0)
+            Ratio.new(matched: matched, total: row.matched, percent: row.matched.positive? ? (matched * 1000.0 / row.matched).round / 10.0 : 0)
+          end
+        end
+      Tile.new(label: gate[:label], latest: ratios.last, points: ratios.empty? ? "" : sparkline(ratios.map(&:percent)))
+    end
+
+    stories = Story.touching_package(@name)
+    statuses = effective_statuses(stories)
+    @counts = COUNTED_STATUSES.map { |status| [ status, stories.count { |story| statuses[story.id] == status } ] }
+    @rfcs = stories.select { |story| Ranking::OPEN_STORY_STATUSES.include?(statuses[story.id]) }.map(&:rfc_id).uniq.sort
+    ids = stories.map(&:id).to_set
+    @ready = Story.claimable.select { |story| ids.include?(story.id) }.first(3)
+    @top_file = PackageFileStat.where(merge_commit_sha: sha, package: @name).where("methods_missing > 0")
+                               .order(methods_missing: :desc, rails_file: :asc).first
+  end
+
+  # `/packages/:name/work` — the stories attributed to the package, grouped by
+  # RFC, ready first, then in-progress, blocked and draft, done collapsed; and
+  # a weekly count of their `done` events.
+  def work
+    @name = params[:name].to_s
+    latest_meta(@name)
+    stories = Story.touching_package(@name)
+    @statuses = effective_statuses(stories)
+    rank = ->(story) { WORK_ORDER.index(@statuses[story.id]) || WORK_ORDER.size }
+    @groups = stories.sort_by { |story| [ rank.(story), story.id ] }.group_by(&:rfc_id).sort.to_h
+                     .transform_values { |group| group.partition { |story| %w[done closed].exclude?(@statuses[story.id]) } }
+    @burndown = Event.where(verb: "done", story_id: stories.map(&:id)).order(:at)
+                     .group_by { |event| Time.parse(event.at).utc.to_date.beginning_of_week.iso8601 }
+                     .map { |week, events| [ week, events.map(&:story_id).uniq.size ] }
+    @max = [ 1, *@burndown.map(&:last) ].max
   end
 
   # `/packages/:name/deviations` — receipt counts drillable to their sites,
@@ -96,6 +155,12 @@ class PackagesController < ApplicationController
     # compare tables and not these.
     def package_data?
       Stats.configured? && PackageMeta.table_exists?
+    end
+
+    # Each story's effective status (shared/_status_badge's rule), by id.
+    def effective_statuses(stories)
+      rfc_status = Rfc.where(id: stories.map(&:rfc_id).uniq).pluck(:id, :status).to_h
+      stories.to_h { |s| [ s.id, EffectiveStatus.of(rfc_status[s.rfc_id], s.status) || s.status ] }
     end
 
     # The latest `package_meta` row naming `name`, or a 404.
