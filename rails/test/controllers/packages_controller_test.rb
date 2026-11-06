@@ -36,12 +36,18 @@ class PackagesControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "removed"
   end
 
-  test "shows each package's latest api and tests percent, or no data" do
+  test "shows each package's latest api and tests ratio, or no data" do
     get "/packages"
-    arel = response.body[response.body.index('href="/packages/arel"')..]
-    assert_match(/api 90%\s*&middot; tests 75%\s*&middot; 1 open story/, arel)
-    ar = response.body[response.body.index('href="/packages/activerecord"')..]
-    assert_match(/api no data\s*&middot; tests no data\s*&middot; 0 open stories/, ar)
+    card = ->(name) { start = response.body.index(%(href="/packages/#{name}")); response.body[start...response.body.index("</a>", start)] }
+    arel = card.("arel")
+    assert_includes arel, '<strong>90%</strong> <span class="muted">9 / 10</span>'
+    assert_includes arel, '<strong>75%</strong> <span class="muted">3 / 4</span>'
+    assert_includes arel, 'style="width:90%"'
+    assert_includes arel, "1 open story"
+    ar = card.("activerecord")
+    assert_equal 2, ar.scan("no data").size
+    assert_not_includes ar, "pkg-fill"
+    assert_includes ar, "0 open stories"
   end
 
   test "shows the open unattributed story count" do

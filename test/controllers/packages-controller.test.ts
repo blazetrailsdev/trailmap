@@ -103,16 +103,21 @@ describe("PackagesController", () => {
     expect(body).not.toContain("removed");
   });
 
-  it("shows each package's latest api and tests percent, or no data", async () => {
+  it("shows each package's latest api and tests ratio, or no data", async () => {
     const body = await index();
-    const arel = body.slice(body.indexOf('href="/packages/arel"'));
-    expect(arel).toMatch(
-      /api 90%\s*&middot; tests 75%\s*&middot; 1 open story/,
-    );
-    const ar = body.slice(body.indexOf('href="/packages/activerecord"'));
-    expect(ar).toMatch(
-      /api no data\s*&middot; tests no data\s*&middot; 0 open stories/,
-    );
+    const card = (name: string) => {
+      const start = body.indexOf(`href="/packages/${name}"`);
+      return body.slice(start, body.indexOf("</a>", start));
+    };
+    const arel = card("arel");
+    expect(arel).toContain('<strong>90%</strong> <span class="muted">9 / 10</span>');
+    expect(arel).toContain('<strong>75%</strong> <span class="muted">3 / 4</span>');
+    expect(arel).toContain('style="width:90%"');
+    expect(arel).toContain("1 open story");
+    const ar = card("activerecord");
+    expect(ar.match(/no data/g)).toHaveLength(2);
+    expect(ar).not.toContain("pkg-fill");
+    expect(ar).toContain("0 open stories");
   });
 
   it("shows the open unattributed story count", async () => {

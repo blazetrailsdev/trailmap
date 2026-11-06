@@ -14,22 +14,29 @@
 
 <% for (const group of [{ title: "Rails counterparts", rows: counterparts }, { title: "trails-only", rows: trailsOnly }]) { %>
   <h2 class="section-title"><%= group.title %> <span class="muted"><%= group.rows.length %></span></h2>
-  <div class="box">
-    <% if (group.rows.length === 0) { %><div class="empty">None.</div><% } %>
+  <% if (group.rows.length === 0) { %><div class="empty">None.</div><% } %>
+  <div class="pkg-grid">
     <% for (const row of group.rows) { %>
-      <div class="item-row">
-        <span class="row-main">
-          <span class="titleline">
-            <a class="row-title" href="/packages/<%= row.name %>"><%= row.name %></a>
-            <% if (row.railsCounterpart !== null) { %><span class="tag"><%= row.railsCounterpart %></span><% } %>
-          </span>
-          <div class="row-meta">
-            api <%= row.api === null ? "no data" : `${row.api}%` %>
-            &middot; tests <%= row.tests === null ? "no data" : `${row.tests}%` %>
-            &middot; <%= row.openStories %> open <%= row.openStories === 1 ? "story" : "stories" %>
+      <a class="pkg-card" href="/packages/<%= row.name %>">
+        <div class="pkg-head">
+          <span class="pkg-name"><%= row.name %></span>
+          <% if (row.railsCounterpart !== null) { %><span class="tag"><%= row.railsCounterpart %></span><% } %>
+        </div>
+        <% for (const [label, ratio] of [["api", row.api], ["tests", row.tests]] as const) { %>
+          <div class="pkg-meter">
+            <div class="pkg-meter-line">
+              <span class="pkg-meter-label"><%= label %></span>
+              <% if (ratio === null) { %>
+                <span class="muted">no data</span>
+              <% } else { %>
+                <span><strong><%= ratio.percent %>%</strong> <span class="muted"><%= ratio.matched.toLocaleString("en-US") %> / <%= ratio.total.toLocaleString("en-US") %></span></span>
+              <% } %>
+            </div>
+            <div class="pkg-track"><% if (ratio !== null) { %><span class="pkg-fill <%= ratio.percent >= 95 ? "good" : ratio.percent >= 75 ? "fair" : "poor" %>" style="width:<%= Math.min(100, Math.max(0, ratio.percent)) %>%"></span><% } %></div>
           </div>
-        </span>
-      </div>
+        <% } %>
+        <div class="pkg-foot muted"><%= row.openStories %> open <%= row.openStories === 1 ? "story" : "stories" %></div>
+      </a>
     <% } %>
   </div>
 <% } %>

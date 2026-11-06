@@ -14,22 +14,29 @@
 
 <% [ [ "Rails counterparts", @counterparts ], [ "trails-only", @trails_only ] ].each do |title, rows| %>
   <h2 class="section-title"><%= title %> <span class="muted"><%= rows.size %></span></h2>
-  <div class="box">
-    <% if rows.empty? %><div class="empty">None.</div><% end %>
+  <% if rows.empty? %><div class="empty">None.</div><% end %>
+  <div class="pkg-grid">
     <% rows.each do |row| %>
-      <div class="item-row">
-        <span class="row-main">
-          <span class="titleline">
-            <a class="row-title" href="/packages/<%= row.name %>"><%= row.name %></a>
-            <% if row.rails_counterpart %><span class="tag"><%= row.rails_counterpart %></span><% end %>
-          </span>
-          <div class="row-meta">
-            api <%= row.api.nil? ? "no data" : "#{row.api.to_s.delete_suffix(".0")}%" %>
-            &middot; tests <%= row.tests.nil? ? "no data" : "#{row.tests.to_s.delete_suffix(".0")}%" %>
-            &middot; <%= row.open_stories %> open <%= row.open_stories == 1 ? "story" : "stories" %>
+      <a class="pkg-card" href="/packages/<%= row.name %>">
+        <div class="pkg-head">
+          <span class="pkg-name"><%= row.name %></span>
+          <% if row.rails_counterpart %><span class="tag"><%= row.rails_counterpart %></span><% end %>
+        </div>
+        <% [ [ "api", row.api ], [ "tests", row.tests ] ].each do |label, ratio| %>
+          <div class="pkg-meter">
+            <div class="pkg-meter-line">
+              <span class="pkg-meter-label"><%= label %></span>
+              <% if ratio.nil? %>
+                <span class="muted">no data</span>
+              <% else %>
+                <span><strong><%= ratio[:percent].to_s.delete_suffix(".0") %>%</strong> <span class="muted"><%= number_with_delimiter(ratio[:matched]) %> / <%= number_with_delimiter(ratio[:total]) %></span></span>
+              <% end %>
+            </div>
+            <div class="pkg-track"><% if ratio %><span class="pkg-fill <%= ratio[:percent] >= 95 ? "good" : ratio[:percent] >= 75 ? "fair" : "poor" %>" style="width:<%= ratio[:percent].clamp(0, 100).to_s.delete_suffix(".0") %>%"></span><% end %></div>
           </div>
-        </span>
-      </div>
+        <% end %>
+        <div class="pkg-foot muted"><%= row.open_stories %> open <%= row.open_stories == 1 ? "story" : "stories" %></div>
+      </a>
     <% end %>
   </div>
 <% end %>

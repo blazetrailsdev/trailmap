@@ -11,8 +11,8 @@ class PackagesController < ApplicationController
     if @configured
       latest = PackageMeta.order(pr_number: :desc).first
       metas = latest ? PackageMeta.where(merge_commit_sha: latest.merge_commit_sha).order(:package) : []
-      api = latest_percents(ApiCompareStat)
-      tests = latest_percents(TestCompareStat)
+      api = latest_ratios(ApiCompareStat)
+      tests = latest_ratios(TestCompareStat)
       rows = metas.map do |meta|
         Row.new(name: meta.package, rails_counterpart: meta.rails_counterpart,
                 api: api[meta.package], tests: tests[meta.package],
@@ -23,10 +23,10 @@ class PackagesController < ApplicationController
   end
 
   private
-    # Each package's percent on the latest merge commit that measured it.
-    def latest_percents(model)
+    # Each package's matched, total and percent on the latest merge commit that measured it.
+    def latest_ratios(model)
       table = model.table_name
       model.where("(package, pr_number) IN (SELECT package, MAX(pr_number) FROM #{table} GROUP BY package)")
-           .to_h { |row| [ row.package, row.percent ] }
+           .to_h { |row| [ row.package, row.slice(:matched, :total, :percent).symbolize_keys ] }
     end
 end
