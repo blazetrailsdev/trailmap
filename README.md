@@ -27,7 +27,7 @@ which it only reads, fills one chart:
 | Adapter | sqlite3 | **postgresql** | node-sqlite, `readonly: true` |
 | Holds | the task domain — RFCs, stories, events | the owner/repository hierarchy | the trails port's comparison runs, which `/graphs/parity` is projected from |
 | Pointed at by | `TASKS_DATABASE` (the CLI's live file) | `HUB_DATABASE_URL` | `STATS_DB` — **optional**; unset, the page says so |
-| Migrations | `db/migrate` | `db/hub-migrate` | none — the nightly stats-sync cron owns its schema |
+| Migrations | `db/migrate` | `db/hub-migrate` | none here — `db/stats-sync-migrate`, applied to `STATS_SYNC_DB`, owns its schema |
 | Schema | `db/schema.ts` | `db/hub_schema.ts` | none |
 | Base class | `ActiveRecord::Base` | `Hub` (`app/models/hub.ts`) | `Stats` (`app/models/stats.ts`) |
 
