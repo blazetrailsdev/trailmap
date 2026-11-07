@@ -3,6 +3,7 @@
     {
       "name": "arel",
       "railsCounterpart": "activerecord/lib/arel",
+      "compareKeys": ["arel"],
       "description": "SQL AST",
       "claudeMd": "packages/arel/CLAUDE.md",
       "tags": {

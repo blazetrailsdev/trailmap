@@ -21,4 +21,11 @@ export class PackageMeta extends Stats {
   declare description: string | null;
   /** `packages/<pkg>/CLAUDE.md` when the package has one. */
   declare claude_md: string | null;
+  /** The compare keys its rows are written under, comma-joined; NULL keys it by `package`. */
+  declare compare_keys: string | null;
+
+  /** The api:compare and test:compare keys this package's rows are written under. */
+  compareKeys(): string[] {
+    return this.compare_keys ? this.compare_keys.split(",") : [this.package];
+  }
 }

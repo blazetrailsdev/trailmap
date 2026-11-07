@@ -9,7 +9,7 @@
   </div>
 </div>
 
-<% if @count.zero? %><div class="empty">None.</div><% end %>
+<% if @trails_only %><div class="empty">trails-only: no Rails counterpart</div><% elsif @count.zero? %><div class="empty">None.</div><% end %>
 <% @groups.each do |dir, rows| %>
   <h2 class="section-title"><%= dir %> <span class="muted"><%= rows.size %></span></h2>
   <div class="pkg-table-wrap"><table class="pkg-table">

@@ -40,7 +40,8 @@ class PackagesController < ApplicationController
       tests = latest_ratios(TestCompareStat)
       rows = metas.map do |meta|
         Row.new(name: meta.package, rails_counterpart: meta.rails_counterpart,
-                api: api[meta.package], tests: tests[meta.package],
+                api: sum_ratios(api.values_at(*meta.compare_keys).compact),
+                tests: sum_ratios(tests.values_at(*meta.compare_keys).compact),
                 open_stories: by_package[meta.package])
       end
     end
@@ -63,14 +64,19 @@ class PackagesController < ApplicationController
             Ratio.new(matched: row.matched || 0, total: row.total, percent: row.total.positive? ? ((row.matched || 0) * 1000.0 / row.total).round / 10.0 : 0)
           end
         else
-          gate[:model].where(package: @name).order(:pr_number).map do |row|
-            next Ratio.new(matched: row.matched, total: row.total, percent: row.percent) unless gate[:assertions]
-            matched = row.matched - (row.assertion_count_mismatch || 0)
-            Ratio.new(matched: matched, total: row.matched, percent: row.matched.positive? ? (matched * 1000.0 / row.matched).round / 10.0 : 0)
+          gate[:model].where(package: @meta.compare_keys).order(:pr_number).group_by(&:pr_number).values.map do |rows|
+            ratios = rows.map do |row|
+              next { matched: row.matched, total: row.total, percent: row.percent } unless gate[:assertions]
+              matched = row.matched - (row.assertion_count_mismatch || 0)
+              { matched: matched, total: row.matched, percent: row.matched.positive? ? (matched * 1000.0 / row.matched).round / 10.0 : 0 }
+            end
+            Ratio.new(**sum_ratios(ratios))
           end
         end
       Tile.new(label: gate[:label], latest: ratios.last, points: ratios.empty? ? "" : sparkline(ratios.map(&:percent)))
     end
+    @trails_only = @meta.rails_counterpart.nil?
+    @tiles = @tiles.reject { |tile| tile.latest.nil? } if @trails_only
 
     stories = Story.touching_package(@name)
     statuses = effective_statuses(stories)
@@ -132,7 +138,9 @@ class PackagesController < ApplicationController
   # TS path. `?sort=missing` or `?sort=tests` orders files before grouping.
   def files
     @name = params[:name].to_s
-    stats = PackageFileStat.where(merge_commit_sha: latest_meta(@name).merge_commit_sha, package: @name).order(:rails_file).to_a
+    meta = latest_meta(@name)
+    @trails_only = meta.rails_counterpart.nil?
+    stats = PackageFileStat.where(merge_commit_sha: meta.merge_commit_sha, package: @name).order(:rails_file).to_a
     paths = StoryPath.where(path: stats.filter_map(&:ts_file)).to_a
     open = Story.where(id: paths.map(&:story_id), status: Ranking::OPEN_STORY_STATUSES).pluck(:id).to_set
     stories_by_path = paths.select { |p| open.include?(p.story_id) }.group_by(&:path).transform_values { |ps| ps.map(&:story_id).sort }
@@ -185,6 +193,16 @@ class PackagesController < ApplicationController
     end
 
     # Each package's matched, total and percent on the latest merge commit that measured it.
+    # One ratio for a package whose rows sit under several compare keys
+    # (`actionpack`): matched and total summed, the percent recomputed. A
+    # single row keeps CI's own percent.
+    def sum_ratios(ratios)
+      return ratios.first if ratios.size <= 1
+      matched = ratios.sum { |r| r[:matched] }
+      total = ratios.sum { |r| r[:total] }
+      { matched: matched, total: total, percent: total.positive? ? (matched * 1000.0 / total).round / 10.0 : 0 }
+    end
+
     def latest_ratios(model)
       table = model.table_name
       model.where("(package, pr_number) IN (SELECT package, MAX(pr_number) FROM #{table} GROUP BY package)")

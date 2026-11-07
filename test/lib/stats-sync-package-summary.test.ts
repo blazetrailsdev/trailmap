@@ -54,7 +54,7 @@ describe("syncPackageSummaries", () => {
 
       expect(
         await q(
-          "SELECT merge_commit_sha, pr_number, package, rails_counterpart, claude_md FROM package_meta WHERE merge_commit_sha = 'abc'",
+          "SELECT merge_commit_sha, pr_number, package, rails_counterpart, claude_md, compare_keys FROM package_meta WHERE merge_commit_sha = 'abc'",
         ),
       ).toEqual([
         {
@@ -63,6 +63,7 @@ describe("syncPackageSummaries", () => {
           package: "arel",
           rails_counterpart: "activerecord/lib/arel",
           claude_md: "packages/arel/CLAUDE.md",
+          compare_keys: "arel",
         },
       ]);
       expect(

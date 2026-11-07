@@ -909,7 +909,7 @@ function extractStepLogs(rawLog: string): Map<string, string> {
   return steps;
 }
 
-function parseApiCompareFromLogs(logs: string) {
+export function parseApiCompareFromLogs(logs: string) {
   const results = new Map<
     string,
     {
@@ -922,10 +922,10 @@ function parseApiCompareFromLogs(logs: string) {
   >();
 
   // Match new method-centric format: "  arel  —  335/442 methods (75.8%)  |  files: 50/80"
-  const reNew = /\s{2}(\w+)\s+—\s+(\d+)\/(\d+) methods \(([\d.]+)%\)\s+\|\s+files: (\d+)\/(\d+)/g;
+  const reNew = /\s{2}([\w-]+)\s+—\s+(\d+)\/(\d+) methods \(([\d.]+)%\)\s+\|\s+files: (\d+)\/(\d+)/g;
   // Also match old format for parsing historical CI logs
   const reOld =
-    /\s{2}(\w+)\s+—\s+(\d+)\/(\d+) classes\/modules \(([\d.]+)%\)\s+\|\s+(\d+) misplaced\s+\|\s+(\d+) missing/g;
+    /\s{2}([\w-]+)\s+—\s+(\d+)\/(\d+) classes\/modules \(([\d.]+)%\)\s+\|\s+(\d+) misplaced\s+\|\s+(\d+) missing/g;
 
   let m;
   while ((m = reNew.exec(logs)) !== null) {

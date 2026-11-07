@@ -27,7 +27,9 @@
           <span class="pkg-name"><%= row.name %></span>
           <% if (row.railsCounterpart !== null) { %><span class="tag"><%= row.railsCounterpart %></span><% } %>
         </div>
+        <% if (row.railsCounterpart === null) { %><div class="muted">trails-only: no Rails counterpart</div><% } %>
         <% for (const [label, ratio] of [["api", row.api], ["tests", row.tests]] as const) { %>
+          <% if (row.railsCounterpart === null && ratio === null) continue; %>
           <div class="pkg-meter">
             <div class="pkg-meter-line">
               <span class="pkg-meter-label"><%= label %></span>

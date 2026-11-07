@@ -48,6 +48,9 @@ importers:
 
   .:
     dependencies:
+      '@blazetrails/actionmailer':
+        specifier: file:vendor/blazetrails-actionmailer-0.1.0.tgz
+        version: file:vendor/blazetrails-actionmailer-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(vite@7.3.6(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(tsx@4.23.13)(yaml@2.9.0))
       '@blazetrails/actionpack':
         specifier: file:vendor/blazetrails-actionpack-0.1.0.tgz
         version: file:vendor/blazetrails-actionpack-0.1.0.tgz(vite@7.3.6(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(tsx@4.23.13)(yaml@2.9.0))

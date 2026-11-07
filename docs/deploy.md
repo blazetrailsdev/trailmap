@@ -657,7 +657,25 @@ empty tables and a sync from scratch.
 so the two do not draw on the same GitHub API budget at once. During the trial it writes
 `stats-job.db` beside the crontab's `stats.db`, and its own log, so the crontab
 keeps running and neither can hide a gap in the other. Each run ends in a
-`[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. Pages
+`[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. A
+run that fails after its retries also mails `EMAIL`, as the wrapper's msmtp alert
+did, over SMTP to the relay the host's `~/.msmtprc` names. An unset `EMAIL`, or a
+relay that refuses, adds one line to the log and never hides the sync's error:
+
+```sh
+dokku config:set --no-restart trailmap EMAIL=<alert address> \
+  SMTP_ADDRESS=<relay host> SMTP_PORT=587 SMTP_USER_NAME=<user> SMTP_PASSWORD=<password>
+```
+
+btwhooks' stats watcher (`webhook/statssync.go`) reads `STATS_SYNC_LOG`. Point it at
+the job's log before the crontab entry goes. The job writes its run headers in whole
+seconds because the watcher's header pattern rejects a fractional second:
+
+```sh
+dokku config:set btwhooks STATS_SYNC_LOG=/home/dean/github/blazetrailsdev/stats-sync-job.log
+```
+
+Pages
 already read the job's file (`STATS_DB`, above). Once the trial holds up, remove
 the crontab entry (`stats-sync-cron-cutover`, which waits on ringo's repoint).
 `stats.db` then stops changing. Ringo reads its report cards and parity pages

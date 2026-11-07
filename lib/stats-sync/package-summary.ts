@@ -13,6 +13,8 @@ export interface PackageSummaryJson {
   packages: {
     name: string;
     railsCounterpart: string | null;
+    /** Absent from artifacts built before trails emitted it. */
+    compareKeys?: string[];
     description: string | null;
     claudeMd: string | null;
     tags: Record<string, Record<string, number>>;
@@ -70,6 +72,7 @@ export async function storePackageSummary(
       rails_counterpart: pkg.railsCounterpart,
       description: pkg.description,
       claude_md: pkg.claudeMd,
+      compare_keys: pkg.compareKeys?.join(",") ?? null,
     });
     for (const [tag, receipts] of Object.entries(pkg.tags)) {
       for (const [receipt, count] of Object.entries(receipts)) {
