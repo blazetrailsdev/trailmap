@@ -255,6 +255,28 @@ tier2() {
     '(has("error") | not) and (.metrics | type == "array" and length > 0)
      and (.packages | type == "array" and length > 0) and has("series")'
 
+  # /packages answers 200 with or without package tables (the empty state is
+  # "No package data"), so the status proves nothing: it must link a package.
+  local statsHint="STATS_DB must name the stats-sync job's file (stats-job.db),
+  which has the package tables; check \`dokku config:show $APP\` and see
+  docs/deploy.md, \"The stats database\"."
+  page tier2.page-packages "/packages" "Packages"
+  local pkg
+  pkg=
+  [[ "$(cat "$work/body" 2>/dev/null)" =~ href=\"/packages/([^\"/]+)\" ]] && pkg="${BASH_REMATCH[1]}"
+  if grep -q "No package data" "$work/body" 2>/dev/null; then
+    fail tier2.packages-data "/packages says \"No package data\"" "$statsHint"
+  elif [ -z "$pkg" ]; then
+    fail tier2.packages-data "/packages links no /packages/<name> page" "$statsHint"
+  else
+    pass tier2.packages-data "/packages links /packages/$pkg"
+  fi
+  if [ -n "$pkg" ]; then
+    page tier2.page-package "/packages/$pkg" "<a href=\"/packages\">packages</a>"
+  else
+    fail tier2.page-package "no package to ask for: /packages linked none" "$statsHint"
+  fi
+
   if [ -n "$id" ]; then
     json tier2.stories-show "/stories/$id" "$story and .id == \"$id\""
     page tier2.page-story "/story/$id" "" "$id"
@@ -499,6 +521,8 @@ healthy() {
   can _rfcs 200 text/html "${html}RFCs</h1>"
   can _backlog 200 text/html "${html}Backlog</h1>"
   can _graphs_parity 200 text/html "${html}Parity over time</h1>"
+  can _packages 200 text/html "${html}Packages</h1><a class=\"pkg-card\" href=\"/packages/arel\">"
+  can _packages_arel 200 text/html "${html}<a href=\"/packages\">packages</a> &middot; arel</h1>"
   can _story_story-a 200 text/html "${html}A story</h1><span class=\"id\">story-a</span>"
   can _rfc_rfc-r 200 text/html "${html}An RFC</h1><span class=\"id\">rfc-r</span>"
   local nwo=blazetrailsdev/trailmap tab
@@ -608,6 +632,16 @@ TASKS
     '{"metrics":[],"packages":[],"series":[],"max_packages":8}'
   expect "a parity endpoint with a stats database it cannot chart is caught" 2 1 \
     tier2.graphs-parity-data
+
+  # STATS_DB on a file without the package tables: /packages still answers 200.
+  healthy
+  can _packages 200 text/html '<main class="site-main"><h1>Packages</h1><span class="card-title">No package data</span>'
+  expect "a packages page with no package data is caught" 2 1 \
+    tier2.packages-data,tier2.page-package
+
+  healthy
+  can _packages_arel 500 text/html ''
+  expect "a package page that does not serve is caught" 2 1 tier2.page-package
 
   healthy
   can _backlog 200 text/html '<main class="site-main"><h1>Something went wrong</h1>'

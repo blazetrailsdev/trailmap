@@ -321,7 +321,7 @@ export class PackagesController extends ApplicationController {
       const values = rows.map((r) => r.value ?? r.matched ?? 0);
       return {
         mark,
-        latest: last.value != null ? String(last.value) : `${last.matched} / ${last.total}`,
+        latest: last.value != null ? String(last.value) : last.total == null ? "—" : `${last.matched ?? 0} / ${last.total}`,
         points: sparkline(values),
       };
     });

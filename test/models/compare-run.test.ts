@@ -33,7 +33,7 @@ describe("CompareRun.dailyRollup", () => {
       columns: COLUMNS,
     }).toArray();
 
-    expect(rows.map((row) => [(row as never as { day: string }).day, row.pr_number, row.percent])).toEqual([
+    expect(rows.map((row) => [(row as never as { day: string }).day, row.pr_number, Number(row.percent)])).toEqual([
       // 2026-05-01 is PR 11's number, not PR 10's: the later merge wins.
       ["2026-05-01", 11, 75],
       ["2026-05-03", 12, 90],
@@ -65,7 +65,7 @@ describe("CompareRun.dailyRollup", () => {
       columns: COLUMNS,
     }).toArray();
 
-    expect(rows.filter((row) => row.package === "i18n").map((row) => row.percent)).toEqual([50]);
+    expect(rows.filter((row) => row.package === "i18n").map((row) => Number(row.percent))).toEqual([50]);
   });
 
   it("bounds the window by day, inclusively", async () => {

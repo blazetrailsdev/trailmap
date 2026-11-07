@@ -189,3 +189,10 @@ crosses in each direction (`test/jobs/tandem-probe-job.test.ts`,
 
 `StatsSyncJob`, the writer models in `app/models/stats-sync` and the `statsSync`
 database exist on the trails side only.
+
+The Rails test environment builds its stats database from that same schema:
+`db/stats_schema.rb` reads `../db/statsSync_schema.ts`, the dump of
+`db/stats-sync-migrate`, and evaluates it as `ActiveRecord::Schema`. It is a
+loader, not a dump, so the test environment sets
+`dump_schema_after_migration = false`. A decision on purpose: the schema has
+one owner, and a column added there reaches both suites with no edit here.

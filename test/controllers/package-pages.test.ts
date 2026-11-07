@@ -41,6 +41,7 @@ beforeAll(async () => {
     `INSERT INTO package_mark_stats (merge_commit_sha, pr_number, package, mark, value, matched, total) VALUES
        ('sha1', 1, 'arel', 'sends', 5, NULL, NULL), ('sha2', 2, 'arel', 'sends', 3, NULL, NULL),
        ('sha2', 2, 'arel', 'params', NULL, 9, 10), ('sha2', 2, 'arel', 'predicates', NULL, 0, 0),
+       ('sha2', 2, 'arel', 'unmatched', NULL, NULL, 0), ('sha2', 2, 'arel', 'empty', NULL, NULL, NULL),
        ('sha1', 1, 'arel', 'boundary', 0, NULL, NULL), ('sha2', 2, 'arel', 'boundary', 1, NULL, NULL),
        ('sha3', 3, 'arel', 'boundary', 32, NULL, NULL)`,
     `INSERT INTO package_tag_sites (merge_commit_sha, pr_number, package, tag, receipt, file, line, declaration, cited_anchor) VALUES
@@ -107,6 +108,12 @@ describe("PackagesController#deviations", () => {
     expect(body).toContain('<code>sends</code></td><td><strong>3</strong></td><td><svg class="sparkline"');
     expect(body).toContain('points="0,0 80,16"');
     expect(body).toContain("<code>params</code></td><td><strong>9 / 10</strong>");
+  });
+
+  it("renders a NULL matched as 0 and a mark with no value as a dash", async () => {
+    const body = await page("deviations", { name: "arel" });
+    expect(body).toContain("<code>unmatched</code></td><td><strong>0 / 0</strong>");
+    expect(body).toContain("<code>empty</code></td><td><strong>—</strong>");
   });
 
   it("groups permanent skips by cited section and lists only cited sections", async () => {

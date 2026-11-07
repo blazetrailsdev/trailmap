@@ -43,4 +43,8 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
+
+  # db/stats_schema.rb is a loader for the stats sync's dump, not a dump: a
+  # test-env migration must not rewrite it, nor schema.rb from a test database.
+  config.active_record.dump_schema_after_migration = false
 end

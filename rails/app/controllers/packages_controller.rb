@@ -113,7 +113,7 @@ class PackagesController < ApplicationController
 
     @marks = PackageMarkStat.where(package: @name).order(:pr_number).group_by(&:mark).sort.map do |mark, rows|
       last = rows.last
-      MarkRow.new(mark: mark, latest: last.value.nil? ? "#{last.matched} / #{last.total}" : last.value.to_s,
+      MarkRow.new(mark: mark, latest: mark_latest(last),
                   points: sparkline(rows.map { |r| r.value || r.matched || 0 }))
     end
 
@@ -161,6 +161,13 @@ class PackagesController < ApplicationController
     def effective_statuses(stories)
       rfc_status = Rfc.where(id: stories.map(&:rfc_id).uniq).pluck(:id, :status).to_h
       stories.to_h { |s| [ s.id, EffectiveStatus.of(rfc_status[s.rfc_id], s.status) || s.status ] }
+    end
+
+    # A mark's latest value: its value, else matched of total (NULL matched as 0), else a dash.
+    def mark_latest(row)
+      return row.value.to_s unless row.value.nil?
+      return "—" if row.total.nil?
+      "#{row.matched || 0} / #{row.total}"
     end
 
     # The latest `package_meta` row naming `name`, or a 404.
