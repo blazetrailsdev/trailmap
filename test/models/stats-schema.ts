@@ -27,8 +27,10 @@ export async function createScratchStatsDatabase(database = ":memory:"): Promise
 
   const adapter = await Stats.connectionPool().leaseConnection();
   for (const file of Dir.glob(`${getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)}/[0-9]*_*.ts`).sort()) {
-    for (const migration of Object.values(await import(file))) {
-      await new (migration as typeof Migration)().execMigration(adapter, "up");
+    for (const exported of Object.values(await import(file))) {
+      if (typeof exported === "function" && exported.prototype instanceof Migration) {
+        await new (exported as new () => Migration)().execMigration(adapter, "up");
+      }
     }
   }
 

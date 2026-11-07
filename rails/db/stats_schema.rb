@@ -13,8 +13,8 @@ module StatsSyncSchema
       next unless line.start_with?("  await ctx.", "    t.")
 
       line.sub(/await ctx.createTable\((.*), \{ (.*) \}, \(t\) => \{$/) { "create_table #{$1}, #{$2} do |t|" }
-          .sub(/, \{ (.*) \}\)/) { ", #{$1})" }
-          .gsub(/(\w+): /) { "#{$1.underscore}: " }
+          .sub(/, \{ ([^{}]*) \}\)/) { ", #{$1})" }
+          .gsub(/\b([a-z]+[A-Z]\w*): /) { "#{$1.underscore}: " }
           .delete_suffix(";\n")
     end.join("\n")
   end
