@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1
 
-# Node 24 or newer, always: @blazetrails/rack uses duplicate named capture
+# Node 26 or newer, always: the vendored @blazetrails/* packages declare
+# engines.node >=26, and @blazetrails/rack uses duplicate named capture
 # groups (ES2025), which throw a SyntaxError at import time on Node 20 and 22.
 # Keep this in step with .node-version and the CI workflow.
-ARG NODE_VERSION=24.16.0
+ARG NODE_VERSION=26.13.0
 FROM node:${NODE_VERSION}-slim AS base
 
 LABEL fly_launch_runtime="Trails"
@@ -21,7 +22,7 @@ RUN apt-get update -qq && apt-get install --no-install-recommends -y build-essen
 # before install.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY vendor/ ./vendor/
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
+RUN npm install -g corepack && corepack enable pnpm && pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm exec trails-tsc-views build --views app/views

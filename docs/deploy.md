@@ -573,8 +573,11 @@ kill -9 "$(docker inspect -f '{{.State.Pid}}' "$(docker ps -q --filter name=trai
 
 ## Gotchas found the hard way
 
-- **Node 24 or newer.** `@blazetrails/rack` uses duplicate named capture groups
-  (ES2025); on Node 20 and 22 it throws a `SyntaxError` at import. `ARG
+- **Node 26 or newer.** The vendored `@blazetrails/*` packages declare
+  `engines.node >=26` (trails#9804), and `@blazetrails/rack` uses duplicate
+  named capture groups (ES2025); on Node 20 and 22 it throws a `SyntaxError`
+  at import. Node 26 no longer bundles corepack, so the Dockerfile installs
+  it with `npm install -g corepack` first. `ARG
   NODE_VERSION` in the `Dockerfile`, `.node-version` and CI all say the same
   version.
 - **Run as uid 1000.** A commit written as root leaves root-owned objects in
