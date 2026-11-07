@@ -6,7 +6,7 @@ class StatsSchemaTest < ActiveSupport::TestCase
   test "loads every table and column of the stats sync's dump" do
     dump = File.read(Rails.root.join("../db/statsSync_schema.ts"))
     tables = dump.scan(/createTable\("(\w+)", \{([^}]*)\}, \(t\) => \{\n(.*?)\n  \}\);/m)
-    assert_operator tables.size, :>, 20
+    assert_equal dump.scan("createTable(").size, tables.size
     connection = PackageMeta.connection
     tables.each do |table, options, body|
       columns = connection.columns(table).to_h { |c| [ c.name, c.type ] }
