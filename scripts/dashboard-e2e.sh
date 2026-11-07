@@ -40,7 +40,7 @@ trap 'exit 130' INT TERM
 
 NODE_ENV=production SECRET_KEY_BASE=dashboard-e2e-not-a-secret \
   RINGO_BASE="http://127.0.0.1:$ringo" FLEET_REPO_PATHS="o/r=/w/r" TASKS_DATABASE="$work/tasks.sqlite3" \
-  setsid pnpm exec tsx node_modules/@blazetrails/trailties/bin/trails.js server -b 127.0.0.1 -p "$app" >"$work/server.log" 2>&1 &
+  setsid bin/trails server -b 127.0.0.1 -p "$app" >"$work/server.log" 2>&1 &
 pids+=($!)
 # `--disable-dev-shm-usage`: a CI runner's /dev/shm is small enough to crash Chrome at start.
 setsid "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --remote-debugging-port="$cdp" \
