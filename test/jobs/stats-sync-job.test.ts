@@ -77,8 +77,23 @@ describe("StatsSyncJob", () => {
     syncLatest.mockRejectedValue(new Error("no such table: x"));
     const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
     await expect(job.performNow()).rejects.toThrow("no such table");
-    expect(read()).toContain("[cron-wrapper] alert email to ops@example.com could not be sent\n");
+    expect(read()).toContain("[cron-wrapper] alert email to ops@example.com could not be sent: connection refused\n");
     ApplicationMailer.deliveryMethod = "test";
+  });
+
+  it("mails when a rate limit outlives its last retry", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    syncLatest.mockRejectedValue(new Error("API rate limit exceeded"));
+    const job = new StatsSyncJob() as unknown as { executions: number; perform(): Promise<void> };
+    job.executions = 2;
+    await expect(job.perform()).rejects.toThrow("API rate limit exceeded");
+    expect(read()).toContain('stats sync failed at stage "Syncing job logs" (execution 2)');
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+    expect(String(ApplicationMailer.deliveries[0]!.subject())).toBe(
+      '[stats-sync] failed at "Syncing job logs" (execution 2)',
+    );
   });
 
   it("sends no alert while a retry is still due", async () => {

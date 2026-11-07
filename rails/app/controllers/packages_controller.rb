@@ -40,8 +40,8 @@ class PackagesController < ApplicationController
       tests = latest_ratios(TestCompareStat)
       rows = metas.map do |meta|
         Row.new(name: meta.package, rails_counterpart: meta.rails_counterpart,
-                api: sum_ratios(api.values_at(*meta.compare_keys).compact),
-                tests: sum_ratios(tests.values_at(*meta.compare_keys).compact),
+                api: ratio_for(api, meta.compare_keys),
+                tests: ratio_for(tests, meta.compare_keys),
                 open_stories: by_package[meta.package])
       end
     end
@@ -203,9 +203,18 @@ class PackagesController < ApplicationController
       { matched: matched, total: total, percent: total.positive? ? (matched * 1000.0 / total).round / 10.0 : 0 }
     end
 
+    # `ratios` for `keys`, summed over the keys measured on the newest of
+    # their commits, so a key the latest run did not write never adds a stale
+    # total.
+    def ratio_for(ratios, keys)
+      found = ratios.values_at(*keys).compact
+      pr = found.map { |r| r[:pr] }.max
+      sum_ratios(found.select { |r| r[:pr] == pr }.map { |r| r.except(:pr) })
+    end
+
     def latest_ratios(model)
       table = model.table_name
       model.where("(package, pr_number) IN (SELECT package, MAX(pr_number) FROM #{table} GROUP BY package)")
-           .to_h { |row| [ row.package, row.slice(:matched, :total, :percent).symbolize_keys ] }
+           .to_h { |row| [ row.package, row.slice(:matched, :total, :percent).symbolize_keys.merge(pr: row.pr_number) ] }
     end
 end

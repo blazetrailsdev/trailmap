@@ -78,10 +78,11 @@ beforeAll(async () => {
   );
   await stats(
     `INSERT INTO api_compare_stats (merge_commit_sha, pr_number, package, matched, total, percent)
-     VALUES ('sha2', 2, 'actiondispatch', 3, 4, 75), ('sha2', 2, 'actioncontroller', 5, 6, 83.3)`,
+     VALUES ('sha2', 2, 'actiondispatch', 3, 4, 75), ('sha2', 2, 'actioncontroller', 5, 6, 83.3),
+       ('sha1', 1, 'abstractcontroller', 1, 100, 1)`,
   );
   await stats(
-    `UPDATE package_meta SET compare_keys = 'actiondispatch,actioncontroller' WHERE package = 'actionpack'`,
+    `UPDATE package_meta SET compare_keys = 'actiondispatch,actioncontroller,abstractcontroller' WHERE package = 'actionpack'`,
   );
 
   await Rfc.create({

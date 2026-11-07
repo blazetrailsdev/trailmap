@@ -83,8 +83,9 @@ export class StatsSyncJob extends ApplicationJob {
     try {
       const tail = (await getFs().readFile(log, "utf8")).trimEnd().split("\n").slice(-30).join("\n");
       await StatsSyncMailer.failed({ to, stage, execution, error, log: tail }).deliverNow();
-    } catch {
-      getFs().appendFileSync(log, `[cron-wrapper] alert email to ${to} could not be sent\n`);
+    } catch (error) {
+      const cause = error instanceof Error ? error.message : String(error);
+      getFs().appendFileSync(log, `[cron-wrapper] alert email to ${to} could not be sent: ${cause}\n`);
     }
   }
 

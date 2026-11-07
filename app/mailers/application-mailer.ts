@@ -4,7 +4,8 @@ import { env } from "@blazetrails/ruby-compat";
 /**
  * Delivery goes over SMTP to `SMTP_ADDRESS` (the relay the host's msmtp used,
  * docs/deploy.md). Set on the class rather than as `config.actionMailer`:
- * trails ships no action_mailer railtie to read that config.
+ * trails ships no action_mailer railtie to read that config, and `Base` does
+ * not type `smtpSettings` (actionmailer-smtp-settings-typed-and-railtie).
  */
 export class ApplicationMailer extends Base {
   static {

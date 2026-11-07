@@ -12,6 +12,8 @@ export interface StatsSyncFailure {
 
 /** The alert cron-wrapper.sh sent through msmtp when the daily sync failed. */
 export class StatsSyncMailer extends ApplicationMailer {
+  // The class-level action call Base's methodMissing answers; untyped until
+  // actionmailer-smtp-settings-typed-and-railtie.
   declare static failed: (failure: StatsSyncFailure) => MessageDelivery;
 
   failed(failure: StatsSyncFailure): ReturnType<ApplicationMailer["mail"]> {

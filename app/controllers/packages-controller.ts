@@ -134,10 +134,10 @@ async function latestMeta(name: string): Promise<PackageMeta> {
   return meta;
 }
 
-/** Each package's result on the latest merge commit that measured it. */
+/** Each compare key's result on the latest merge commit that measured it, with that commit's PR. */
 async function latestRatios(
   model: typeof CompareRun,
-): Promise<Map<string, Ratio>> {
+): Promise<Map<string, Ratio & { pr: number }>> {
   const table = model.tableName;
   const rows = await model
     .where(
@@ -147,7 +147,7 @@ async function latestRatios(
   return new Map(
     rows.map((row) => [
       row.package,
-      { matched: row.matched, total: row.total, percent: row.percent },
+      { matched: row.matched, total: row.total, percent: row.percent, pr: row.pr_number },
     ]),
   );
 }
@@ -164,9 +164,16 @@ export function sumRatios(ratios: Ratio[]): Ratio | null {
   return { matched, total, percent: total > 0 ? Math.round((matched * 1000) / total) / 10 : 0 };
 }
 
-/** `ratios` for `keys`, summed. */
-function ratioFor(ratios: Map<string, Ratio>, keys: string[]): Ratio | null {
-  return sumRatios(keys.map((key) => ratios.get(key)).filter((r): r is Ratio => r != null));
+/**
+ * `ratios` for `keys`, summed over the keys measured on the newest of their
+ * commits, so a key the latest run did not write never adds a stale total.
+ */
+function ratioFor(ratios: Map<string, Ratio & { pr: number }>, keys: string[]): Ratio | null {
+  const found = keys.map((key) => ratios.get(key)).filter((r) => r != null);
+  const pr = Math.max(...found.map((r) => r.pr));
+  return sumRatios(
+    found.filter((r) => r.pr === pr).map(({ matched, total, percent }) => ({ matched, total, percent })),
+  );
 }
 
 /**
