@@ -116,9 +116,9 @@ importers:
 packages:
 
   '@blazetrails/actioncable@file:vendor/blazetrails-actioncable-0.1.0.tgz':
-    resolution: {integrity: sha512-Wc93e7afziUGJBGRV4+7Q+FMlwA8ngTLLZePZ1G3KiBP9eWIK4dxho15DJzYH4/SecuU3DlisL+chvDr9PSNlQ==, tarball: file:vendor/blazetrails-actioncable-0.1.0.tgz}
+    resolution: {integrity: sha512-K8L7ij/VKtg1rvhiqbhOO/3HXOGlZU26tht1KB3JdkFVBRAPwWlEWrRh65D9c+wphtnobI2iOHrE9E7FjnOScw==, tarball: file:vendor/blazetrails-actioncable-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
     peerDependencies:
       ioredis: '*'
       pg: '>=8.19.0'
@@ -129,14 +129,14 @@ packages:
         optional: true
 
   '@blazetrails/actionmailer@file:vendor/blazetrails-actionmailer-0.1.0.tgz':
-    resolution: {integrity: sha512-HjDWvG3lx2i1Ki3M6GAxPoptW7/GBp0kpvp5Id3J5SzyFXx3P0ktBwi6oaebbf7kUWLuDBO9XMvSR9xbyFsGQw==, tarball: file:vendor/blazetrails-actionmailer-0.1.0.tgz}
+    resolution: {integrity: sha512-SWDQoWOzEf+1LNeOeKWI0kTVTWvAV/ZCteCwpPe7Skgbiazr2SvIMSGU1HE3YX/0f4ZAs+87nixS0NEUV1PykA==, tarball: file:vendor/blazetrails-actionmailer-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/actionpack@file:vendor/blazetrails-actionpack-0.1.0.tgz':
-    resolution: {integrity: sha512-sqTNqGMb4nO4FQTsnDc37tWJN8o9nL8tU7e2A1DGzrIA9jwEPcHh4GOtLY9Sr9mEwtvVj4LH+kRrdTw/xgK9OA==, tarball: file:vendor/blazetrails-actionpack-0.1.0.tgz}
+    resolution: {integrity: sha512-erfiErvGL0t04KzfpzSW+81x2KI08WvM9PTU0RNqFoUs8eISoGrWNugvVb7ZJZfBFnaX98zKwJI99A204qORlA==, tarball: file:vendor/blazetrails-actionpack-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
     peerDependencies:
       playwright: '>=1.40.0'
       vite: '>=7.0.0'
@@ -150,34 +150,34 @@ packages:
         optional: true
 
   '@blazetrails/actionview@file:vendor/blazetrails-actionview-0.1.0.tgz':
-    resolution: {integrity: sha512-cBjVqs+naOWcm7AxKFt+fI7jnw+r/v6kJwed6bRPMIRt1hdPUa1rwuMdV6fCQSsQtPXpbnKIxga0t7OQL2FeBw==, tarball: file:vendor/blazetrails-actionview-0.1.0.tgz}
+    resolution: {integrity: sha512-lVAqpzcFuJR5P43MoBkxeuyWofxVBC4Vdx8jPdCI045luiTnPQuVrvfN1L/V475VPkD5wR1G6P3iX4zK2poOGw==, tarball: file:vendor/blazetrails-actionview-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/activejob@file:vendor/blazetrails-activejob-0.1.0.tgz':
-    resolution: {integrity: sha512-AHrpmW06aMJooKRm1bjXjdAwknwWcoSZJZL4YbpqzdeJRbc8KXyhoayxSysxAbpJLwa5Hd77BWTmoww6Q9CrWA==, tarball: file:vendor/blazetrails-activejob-0.1.0.tgz}
+    resolution: {integrity: sha512-5zI/dXz+/NKnROXaaycd8SoDSlNadgY5hEXjBXs7FvbWW1I+1SETnGf/zOqORzZh+uo4LWqIkFSi3kzKTweuQg==, tarball: file:vendor/blazetrails-activejob-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/activemodel@file:vendor/blazetrails-activemodel-0.1.0.tgz':
-    resolution: {integrity: sha512-SE0jO883KcZzgwJ1rMfWtBybM5JB0rcI8KcpH1+Li0ZTrlmwDdfDtQyqS0CJRNd0pYq8WSnxaf1/iDfWvLdBMQ==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
+    resolution: {integrity: sha512-quTJB4+muNGytgK0Xzz54zoQAOqOoizoN9FtA5wtPrIYBxeZNt4A+u9/MVzvSt/A73sAWmk8qmwFEZuNHUbuoA==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/activerecord-cli@file:vendor/blazetrails-activerecord-cli-0.1.0.tgz':
-    resolution: {integrity: sha512-l6SMVxkol9xwH2pF4OzwMSb/pK3fEwjxl22Bq69Stz1aS9vsKUzXRESaV28zbMn44m5GGjMer3XMgqF13IprOg==, tarball: file:vendor/blazetrails-activerecord-cli-0.1.0.tgz}
+    resolution: {integrity: sha512-JPOdg/gCin2sugZjX4Emax3ZKCWLcI/JhnIF6XLRPf3fxmLHOFojzAmCs2WZHmkMLWUuBQfJI1PEsMKjXdPN9w==, tarball: file:vendor/blazetrails-activerecord-cli-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
     hasBin: true
 
   '@blazetrails/activerecord@file:vendor/blazetrails-activerecord-0.1.0.tgz':
-    resolution: {integrity: sha512-J+SqB+TXIDq5NxP3BopH7MoQLNUsAddW7/BqqQovL3UccwIwbmaPQmIqVna8CHt4XlIjbxB610p8Pg6Et2Le6g==, tarball: file:vendor/blazetrails-activerecord-0.1.0.tgz}
+    resolution: {integrity: sha512-f7JyBv1ZVl2rLWAEGD1+Zdg4Gd+eSuTWdO6Ho44eRte6QQQy2GUYKQh6JPm+au2mIy9yXaQ5JUhtmWaFFrW9Fg==, tarball: file:vendor/blazetrails-activerecord-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
     peerDependencies:
       '@blazetrails/activejob': 0.1.0
       '@blazetrails/msgpack': 0.1.0
-      better-sqlite3: ^12.6.2
+      better-sqlite3: ^13.0.3
       expo-sqlite: ^15.0.0
       libsql: ^0.5.29
       mysql2: ^3.18.2
@@ -199,9 +199,9 @@ packages:
         optional: true
 
   '@blazetrails/activesupport@file:vendor/blazetrails-activesupport-0.1.0.tgz':
-    resolution: {integrity: sha512-ZTRjYB+iCw1BOtPsPgAPKIiY6u3G8BOvU99xlnnPGPrrfh8arki1gmvMfHgfwxXH1UCkalAZtGq9IrTDvVejzQ==, tarball: file:vendor/blazetrails-activesupport-0.1.0.tgz}
+    resolution: {integrity: sha512-mZImyO0dMW0VZEa6MOxHKnP/byWR6i1MLYLVuchC7pwQJG34hCzXboYQiok+EA63sOZZu9TuQLnGnxqR4LAuwQ==, tarball: file:vendor/blazetrails-activesupport-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
     peerDependencies:
       '@blazetrails/msgpack': 0.1.0
       '@blazetrails/nokogiri': 0.1.0
@@ -212,153 +212,156 @@ packages:
         optional: true
 
   '@blazetrails/arel@file:vendor/blazetrails-arel-0.1.0.tgz':
-    resolution: {integrity: sha512-+XKzLBY11eCk9Pcq4PSPaUY7s3AEbH4s1D2YLs06kNd7Qm7e7dyJ7BMIFGKA63bub4k54GPirm7mzx8ieeGz4g==, tarball: file:vendor/blazetrails-arel-0.1.0.tgz}
+    resolution: {integrity: sha512-Lf3rfzSS+wN8f537R2Qhp3B2qUWow51pbtFz3ZbvyBvWzf8cZECAKZbBkBTnoVmih1txPYJR+357kkCJUQEiEw==, tarball: file:vendor/blazetrails-arel-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/builder@file:vendor/blazetrails-builder-0.1.0.tgz':
-    resolution: {integrity: sha512-u7ROYKU+ywr6tyADojnnkT54SYsYkLcnvdutMuqPqS7r4Dj4fBhEDOVQN7unp6hngTmsVPxT0qeX6hs8vaP41g==, tarball: file:vendor/blazetrails-builder-0.1.0.tgz}
+    resolution: {integrity: sha512-JHAJIUN1jVG35TnNAR9Gy3s/yMWOZnaO29BdzC314FhE8IjIvNnzUN8TKILDqQoSL/E/fOkVRpZRY2B4On+aHw==, tarball: file:vendor/blazetrails-builder-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/date@file:vendor/blazetrails-date-0.1.0.tgz':
-    resolution: {integrity: sha512-n1WLy0jjrEEz8THW5kNRNToLU03/0jPyyGgvxjMiOHAOSj80a5uvbg6EUeTS3HP6UDrgf4CgxxytyexmosV7Ww==, tarball: file:vendor/blazetrails-date-0.1.0.tgz}
+    resolution: {integrity: sha512-eJG22sA/hpKgeVL8DObr8oVj8Rut1uDStpKhmRCHS5NDEudStCulPG1mgQFS9Ub8iRbr7GSD0pSt63O1982xdw==, tarball: file:vendor/blazetrails-date-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/did-you-mean@file:vendor/blazetrails-did-you-mean-0.1.0.tgz':
-    resolution: {integrity: sha512-1ExRTc8c4kZHysCPh36vFQ9yjdO8/dikKhICSolihK4TwjzZRbTEr4KXyzj+/sRfs4Fz9yPaKNNjLU/cqVAkDA==, tarball: file:vendor/blazetrails-did-you-mean-0.1.0.tgz}
+    resolution: {integrity: sha512-QUrwXgnD1GEd7HntfOqGbGY/C3zKyj8e+nIt/iOL9kwxcOLhq7HV954Qz8jyXsGg4qJzbX000ETDpEo5Pky+qg==, tarball: file:vendor/blazetrails-did-you-mean-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/et-orbi@file:vendor/blazetrails-et-orbi-0.1.0.tgz':
-    resolution: {integrity: sha512-hAOGSQDbvRoj12tWzJffQSX65FshYsBTyuAv2YgNjS6QfJiz0E7Pswqck2VSs3hX9tF3ucvuIZA6ZDHKJUC0Pw==, tarball: file:vendor/blazetrails-et-orbi-0.1.0.tgz}
+    resolution: {integrity: sha512-6F9hcs7ksJjWmzDJlTxdiv0c3HKKxd8y8LFcga81OPwRoJ7Vf6VPSE++pKFq0WOnvVO1TPDfDJpQ/CcCnVdajw==, tarball: file:vendor/blazetrails-et-orbi-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/fugit@file:vendor/blazetrails-fugit-0.1.0.tgz':
-    resolution: {integrity: sha512-z0l41QQfSHFt3eDbqKH0GU0ESFsxvDv9C9KhShT23SkacrgqKJv/s12/kM0hVaQf+92qdAZzZOcnpMfOfPFSYw==, tarball: file:vendor/blazetrails-fugit-0.1.0.tgz}
+    resolution: {integrity: sha512-I53mUJygoCMOBgX5/ymgtUxDI7Qiha+0+vyPeLTcKKQur4SMo+RsCCIk/T1uxTi9v2QU1IHIF6N46PpAwkhCHA==, tarball: file:vendor/blazetrails-fugit-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/globalid@file:vendor/blazetrails-globalid-0.1.0.tgz':
-    resolution: {integrity: sha512-63wlj+5M6AjU03+qIBDpyGG0nFrTX2NbJoEovgUpTZBP9RwuLGxyNPD80rNCIqOnENFqvsMj3Vh++wJXrvhkfA==, tarball: file:vendor/blazetrails-globalid-0.1.0.tgz}
+    resolution: {integrity: sha512-Z+fH7dB/PmYcBzj54SeE2KHdrKjM1COjXeaytzGFlwUNhRUpQRa8Jd3CvQSdwjuZXr1b4CfmaA4Yekfm6PyeZw==, tarball: file:vendor/blazetrails-globalid-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/html-sanitizer@file:vendor/blazetrails-html-sanitizer-0.1.0.tgz':
-    resolution: {integrity: sha512-ScVT+r5Nsqkg21dnBtB/hx4iXMQC/fakYV1tNgF47M01fPZyyxBXAYxFKqgb9oOQV3KUqvg6qBrnwCrr9NU5mw==, tarball: file:vendor/blazetrails-html-sanitizer-0.1.0.tgz}
+    resolution: {integrity: sha512-QhyUOCeN7nHGkXBx6OFciGGAJhX4nWwJ7XnDJok0BgLGgpe9OR0hbmv42oiCFbFWBbwolOAL+ZtUKPbNVQq/dw==, tarball: file:vendor/blazetrails-html-sanitizer-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/i18n@file:vendor/blazetrails-i18n-0.1.0.tgz':
-    resolution: {integrity: sha512-ojMipIVYCnxqhY/e4yS7Gz5KF1JUikgiJbQAiHJdcY4wBfwOiaLHun8eJyRD0DBNtnCmlrEykOXGtK1FwwBTnw==, tarball: file:vendor/blazetrails-i18n-0.1.0.tgz}
+    resolution: {integrity: sha512-terIoCDS1SmuzB8StrZ1V2+Poh9kHzLD5RJihi/maYt2DtAAyvhAfbo2tKEcxHrP9BYCDRDGTqedGDYS1Zerkw==, tarball: file:vendor/blazetrails-i18n-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/mail@file:vendor/blazetrails-mail-0.1.0.tgz':
-    resolution: {integrity: sha512-mYaEgY5o8c3Oij0hmQbkwhDQPK9l7myaOeQLxUh29kATREuOdAj6wqonVYmroCcDMBbHocRhsuNlGG+RDJOsQQ==, tarball: file:vendor/blazetrails-mail-0.1.0.tgz}
+    resolution: {integrity: sha512-V1K0Wbw4SCROFVUJMsWTo9S/NVF9pRSUDuypvh1hMljYLXMz1oxw+Yj8cC0FGgD0hNgHl8Vn9xobPIolA/NLZQ==, tarball: file:vendor/blazetrails-mail-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/mini-mime@file:vendor/blazetrails-mini-mime-0.1.0.tgz':
-    resolution: {integrity: sha512-pMRtnXr3LDmR/FwfStdvKFG7TPCfZZaRQhAJGZT4pn3Nmo9edIyNdKsadqWqOn5XNxCWEgPEjqVI4POcriy4uQ==, tarball: file:vendor/blazetrails-mini-mime-0.1.0.tgz}
+    resolution: {integrity: sha512-8JtEMHlMc9t9+iAlsG+BMdBYlV4B50eY7S8hnqtYpRWiOUqUaOrAqKBszZB9yVsStD742kZ1TAxzheZZVc8GqA==, tarball: file:vendor/blazetrails-mini-mime-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/net-smtp@file:vendor/blazetrails-net-smtp-0.1.0.tgz':
-    resolution: {integrity: sha512-dc1BcHwbr1230UjVooNK/2tvUusL4iMdWxS7wVt42597nsj8PNUIgJJaahqAFrCKnHABJ9TQs7raCPRSqm6eFA==, tarball: file:vendor/blazetrails-net-smtp-0.1.0.tgz}
+    resolution: {integrity: sha512-EAaTbEcLEIkpYpacokgUH7LhMJ+VGUneRNGNEqirone+FG15NZ+PjGrcBfhLr0Mq37HFOZdty24rigARsMHVaA==, tarball: file:vendor/blazetrails-net-smtp-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz':
-    resolution: {integrity: sha512-bPuPlCOCm034B5FqHysjVhmrLmtUbvl9SAvQoD4T6udxMa1XHcXfThT7bJAUOu/67HXg+uBP4WKUyrJB/ogYEQ==, tarball: file:vendor/blazetrails-nokogiri-0.1.0.tgz}
+    resolution: {integrity: sha512-BKRmBr8ILuNQSMEXLEwKAFA7xl9ErqGD8o2B7iEfbKyXWTyVpxPPEzD/WuQC0sj44RqBJI2QR1CBPrD1ii8Hng==, tarball: file:vendor/blazetrails-nokogiri-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/raabro@file:vendor/blazetrails-raabro-0.1.0.tgz':
-    resolution: {integrity: sha512-MfshMomfnzxXkqpAd4hf9CZuUACZdTX3AeN1CfpHdkkzRLSq8fm8y3wWZNkxDkyfOajvQrR7d07jsrufAFv+1A==, tarball: file:vendor/blazetrails-raabro-0.1.0.tgz}
+    resolution: {integrity: sha512-bRmkKxigjJ3BwnUIero/wFr2Dr+2GFgTd2r9TDi6TlX5UWCs1FyL1l4nNoB9OI1oS6YYVscRKvLQQkNpfvW3dw==, tarball: file:vendor/blazetrails-raabro-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/rack-session@file:vendor/blazetrails-rack-session-0.1.0.tgz':
-    resolution: {integrity: sha512-6nqOOEb9Xpc4GD0dboipOxnZCiN7It1djsOr3b9cbFnqK/IROweqpqJ92kJgJS0+fsZ5mlN5K9VRWB7axEUoxg==, tarball: file:vendor/blazetrails-rack-session-0.1.0.tgz}
+    resolution: {integrity: sha512-6mgnYxFffnEhle+aFh1GvULm4y5MS0Fj1moWFf/9k859x08G7dgH+0f0pr61yCbYqgtKkN06cY70gltjdds14A==, tarball: file:vendor/blazetrails-rack-session-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/rack-test@file:vendor/blazetrails-rack-test-0.1.0.tgz':
-    resolution: {integrity: sha512-Dy/BnUXovU1W+Oxs+/09620qiJVPuvU5tlEQ6oHodCiCPVXBtxZiNZQr+Zsk6aXVcUB1wh3iUFrdpBDv72N9pg==, tarball: file:vendor/blazetrails-rack-test-0.1.0.tgz}
+    resolution: {integrity: sha512-VGYn8UJ6Ri2y6HnhiHQANFbCLFyRypmr2u46VnIS7P7F/M8WGj7HnFKKjX0fSq1n5jNeO7IKPZiWPMkshyhQTw==, tarball: file:vendor/blazetrails-rack-test-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz':
-    resolution: {integrity: sha512-xdvPIj85wR2QjAKU8lzdfawGI49dG11jR4z4+3zveCEy/cnQf+TyCkgKy9ihDD0a7wDCLlzLM2FGAbR2f+2NpQ==, tarball: file:vendor/blazetrails-rack-0.1.0.tgz}
+    resolution: {integrity: sha512-P7Rji7TONgVqP/nzQBZtvBPdqBqWtB1nHgIoZ5k5nb49euyeG/Eg/8iJRdReqWLd7paFoYrM38RnTDS4MEMeHg==, tarball: file:vendor/blazetrails-rack-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/rackup@file:vendor/blazetrails-rackup-0.1.0.tgz':
-    resolution: {integrity: sha512-+Lykth9Fum0SxEsdqpcAT/W4ShnZPuffPlc+MoXNbWCclf7i8jrIRZy1g0E5rYOEg5/kZl2WjItWByrYzxKmNg==, tarball: file:vendor/blazetrails-rackup-0.1.0.tgz}
+    resolution: {integrity: sha512-eKzs95nUhzx1iY/bySqWDfVEkNI9CFOFARA+suGV53YetW5xX6jB8UvjShKMUFJv7DtjT7zUZ2LjGrqFNntb1g==, tarball: file:vendor/blazetrails-rackup-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
     hasBin: true
 
   '@blazetrails/rake@file:vendor/blazetrails-rake-0.1.0.tgz':
-    resolution: {integrity: sha512-8Zyzytq1XoHCXNzvJJfB/mJURR1O1zuDLUY8//EZUiq0aTEb/W9eBTn5Xeva0aFV2vwg51gH6vJhvhjpQxc1Vg==, tarball: file:vendor/blazetrails-rake-0.1.0.tgz}
+    resolution: {integrity: sha512-bYXDxOnDGiSD0tAKKJqCTTqK+axWH/iTOK57ww9YMuLTuO5nlwmuaeeghhwx/weoSWHE3i34IF6ZHnETO+2zCQ==, tarball: file:vendor/blazetrails-rake-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
     hasBin: true
 
   '@blazetrails/ruby-compat@file:vendor/blazetrails-ruby-compat-0.1.0.tgz':
-    resolution: {integrity: sha512-/SSAM1LSNs74y4cxKocyATVczbhWErUXCdbwqaXXFcxXBx2Uv5det9Q1Ext07zp7pgvKgORWUJE+f2ZFvMUMCg==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
+    resolution: {integrity: sha512-IZR7jGQQE31tf4hlrhDbbdB71i0pQm5mwY8TLxlLr5iTsiaj4XGMBoescCPEruK46Jac5QFBi/8fa1QX8/d1iQ==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/solid-queue@file:vendor/blazetrails-solid-queue-0.1.0.tgz':
-    resolution: {integrity: sha512-R/tVD02JShV3FrElSlMlZxErs8sQgDT2uWNkkqmhDyT0LXgSjV9S9ToXI+xOf+6sf5iLIx+IztL/MC66svzrig==, tarball: file:vendor/blazetrails-solid-queue-0.1.0.tgz}
+    resolution: {integrity: sha512-35rbs9ttzl6/2CnZHQxi0nZt9WF0u+ES4gdG58d7NkN67KRGiRZ+Gs3F+PWZDWhpX21+AvMJSzpC2tlUhR9HFg==, tarball: file:vendor/blazetrails-solid-queue-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/thor@file:vendor/blazetrails-thor-0.1.0.tgz':
-    resolution: {integrity: sha512-lTT/C4fXNZYgszIp21Ot1wIFcHWnviAE7oUNbsANAxP0eWRpI/04P4WaIb6MjTkjazM/K3mcNIvurYRiZaL14A==, tarball: file:vendor/blazetrails-thor-0.1.0.tgz}
+    resolution: {integrity: sha512-KSvf3c6JgOXQL2RJ1t8YH8bEjSLST255V3xcIFZ5HFVUkY68nQb8y+qriGNTVdpXcfny4wpcaqKLzT74+hTwJw==, tarball: file:vendor/blazetrails-thor-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/trails-tsc@file:vendor/blazetrails-trails-tsc-0.1.0.tgz':
-    resolution: {integrity: sha512-X4LiCTNJsxY44Hf+BDi/41L6y31GILvvK+QwU8zDErdXnfXDiklkaSMc7iyb62Xd535EGAguYssp71yHITJhTw==, tarball: file:vendor/blazetrails-trails-tsc-0.1.0.tgz}
+    resolution: {integrity: sha512-+ycuAxr6DNifqXn0dwRAzyoroGGD/w5lBvSUcWrmFSDE4se/Y7vfm8J2/JDqRqn7aQtCYl8NkkpecYYkkGeUoQ==, tarball: file:vendor/blazetrails-trails-tsc-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
     hasBin: true
     peerDependencies:
       '@blazetrails/actionview': 0.1.0
 
   '@blazetrails/trailties@file:vendor/blazetrails-trailties-0.1.0.tgz':
-    resolution: {integrity: sha512-LXYox3ZnhCz6UCEsSYPQcgpCylGIgWlDh14fJS9SqUGn+p2XH3yJoXdeSgUL9RLnabBQ+GuregnVlQwDvrycug==, tarball: file:vendor/blazetrails-trailties-0.1.0.tgz}
+    resolution: {integrity: sha512-WjDBvg38HTRalANCyGFOZXf26DNb2YPuweIobpWJ4ybVq9qhsS9udHtD4TMRKbx3X5kze3uSH4z9gwQS/FN/GQ==, tarball: file:vendor/blazetrails-trailties-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
     hasBin: true
     peerDependencies:
+      '@blazetrails/actionmailbox': 0.1.0
       '@blazetrails/activestorage': 0.1.0
       typescript: 7.1.0-dev.20260920.1
     peerDependenciesMeta:
+      '@blazetrails/actionmailbox':
+        optional: true
       '@blazetrails/activestorage':
         optional: true
       typescript:
         optional: true
 
   '@blazetrails/tse-compiler@file:vendor/blazetrails-tse-compiler-0.1.0.tgz':
-    resolution: {integrity: sha512-PHQxlVC0lvTecOKc5qk+JleIs6iKyXcom6DOQ+p/59bQSaEnHlaXDDHOUsbEmv/Vuvh9NYE3g83CXobldHpntg==, tarball: file:vendor/blazetrails-tse-compiler-0.1.0.tgz}
+    resolution: {integrity: sha512-edl8xjlPN5Br4WLZhCyzqaKsRVTQVqDVIXSmjvfXwOPrPFKFM7MEdkFI/JBTBiGswJefZ8414kMXAiimlGFzOQ==, tarball: file:vendor/blazetrails-tse-compiler-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/tzinfo@file:vendor/blazetrails-tzinfo-0.1.0.tgz':
-    resolution: {integrity: sha512-zzGYes1JTTAkR6jVJhAb+s9xZ5rS9E1wWQrMEJxax3vEgMkEPejLezJeRffW+FVB8foSASrGGyECeBJLMVodNQ==, tarball: file:vendor/blazetrails-tzinfo-0.1.0.tgz}
+    resolution: {integrity: sha512-s2odeKul6FwVqDo6DXiGG67/Geti3I/c810C8sLmCJOIr0sedD9LKCP308cNGHTAG26B7K8n3tDY+tXtNW3JnA==, tarball: file:vendor/blazetrails-tzinfo-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24'}
+    engines: {node: '>=26'}
 
   '@blazetrails/zeitwerk@file:vendor/blazetrails-zeitwerk-0.1.0.tgz':
-    resolution: {integrity: sha512-9RL71i/nmR/6e/D9fdm9EM9jRui5qxp8vlBdC3FLAG22MZMdSbp4PPGMiwB+B/OK5Mw+DvUzYVBEfKLHgR6RzA==, tarball: file:vendor/blazetrails-zeitwerk-0.1.0.tgz}
+    resolution: {integrity: sha512-VAYrXB//6dbDxtupptgVqWAYpfKpxYhom96ZQFh72WnDwmYqNU9xexCxFXHtJuYzSeHHTdlAj4grT5/Locc9Vw==, tarball: file:vendor/blazetrails-zeitwerk-0.1.0.tgz}
     version: 0.1.0
-    engines: {node: '>=24.13.1'}
+    engines: {node: '>=26'}
 
   '@csstools/css-tokenizer@4.0.2':
     resolution: {integrity: sha512-OoKoR0f76dCY666JlcbhmVTs2drYj1GUXZTYTcbUgJjh9Nv41aFfZ21bPQTERm5+L5cBDo466NltB2lplS5GBw==}
@@ -1537,6 +1540,7 @@ snapshots:
       '@blazetrails/thor': file:vendor/blazetrails-thor-0.1.0.tgz
       '@blazetrails/trailties': file:vendor/blazetrails-trailties-0.1.0.tgz(better-sqlite3@12.11.1)(pg@8.23.1)(tsx@4.23.13)(typescript@5.9.3)(vitest@3.2.7(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
     transitivePeerDependencies:
+      - '@blazetrails/actionmailbox'
       - '@blazetrails/activestorage'
       - '@blazetrails/msgpack'
       - '@blazetrails/nokogiri'
