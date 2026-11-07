@@ -32,6 +32,7 @@
     "gate:snapshot": "tsx scripts/gate-page-snapshot.ts"
   },
   "dependencies": {
+    "@blazetrails/actionmailer": "file:vendor/blazetrails-actionmailer-0.1.0.tgz",
     "@blazetrails/actionpack": "file:vendor/blazetrails-actionpack-0.1.0.tgz",
     "@blazetrails/actionview": "file:vendor/blazetrails-actionview-0.1.0.tgz",
     "@blazetrails/activejob": "file:vendor/blazetrails-activejob-0.1.0.tgz",

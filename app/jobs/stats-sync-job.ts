@@ -1,6 +1,7 @@
 import { Duration } from "@blazetrails/activesupport";
 import { env, getFs, getPath } from "@blazetrails/ruby-compat";
 import { isTransientGhError } from "../../lib/stats-sync/gh-transient-error.ts";
+import { StatsSyncMailer } from "../mailers/stats-sync-mailer.ts";
 import { ApplicationJob } from "./application-job.ts";
 
 const STALE_HOURS = 26;
@@ -22,7 +23,8 @@ function requiredEnv(name: string): string {
 /**
  * The daily `stats:sync --latest`, replacing cron-wrapper.sh: `retryOn` takes
  * the wrapper's two retry loops, and the log keeps its `=== <time> ===` headers
- * and `[cron-wrapper]` verdict lines. It writes STATS_SYNC_DB, not stats.db,
+ * and `[cron-wrapper]` verdict lines, and a run that fails for good mails
+ * `EMAIL` as the wrapper's `send_alert` did. It writes STATS_SYNC_DB, not stats.db,
  * while the crontab still runs (docs/deploy.md).
  */
 export class StatsSyncJob extends ApplicationJob {
@@ -42,7 +44,8 @@ export class StatsSyncJob extends ApplicationJob {
     const { currentStage, syncLatest } = await import("../../lib/stats-sync/sync.ts");
     getFs().mkdirSync(getPath().dirname(log), { recursive: true });
     this.reportGap(log);
-    getFs().appendFileSync(log, `=== ${new Date().toISOString()} ===\n`);
+    // Whole seconds, as the wrapper's `date -Iseconds`: btwhooks' run-header pattern has no `.`.
+    getFs().appendFileSync(log, `=== ${new Date().toISOString().replace(/\.\d+Z$/, "Z")} ===\n`);
 
     try {
       await syncLatest();
@@ -60,9 +63,30 @@ export class StatsSyncJob extends ApplicationJob {
           ? `retrying at stage "${currentStage()}" (execution ${execution} of ${attempts})`
           : `stats sync failed at stage "${currentStage()}" (execution ${execution}): ${message.split("\n")[0]}`;
       getFs().appendFileSync(log, `${message}\n[cron-wrapper] ${verdict}\n`);
+      if (execution >= attempts) await this.alert(log, currentStage(), execution, message.split("\n")[0]);
       throw retried ? new retried(message) : error;
     }
     getFs().appendFileSync(log, "[cron-wrapper] ok\n");
+  }
+
+  /**
+   * Mail `EMAIL` the failed verdict, as cron-wrapper.sh's `send_alert` did. An
+   * unreachable mailer only adds a line: the verdict is already written, and
+   * the job must still fail with the sync's error, not the mailer's.
+   */
+  private async alert(log: string, stage: string, execution: number, error: string): Promise<void> {
+    const to = env.EMAIL;
+    if (!to) {
+      getFs().appendFileSync(log, "[cron-wrapper] no alert email sent: EMAIL is not set\n");
+      return;
+    }
+    try {
+      const tail = (await getFs().readFile(log, "utf8")).trimEnd().split("\n").slice(-30).join("\n");
+      await StatsSyncMailer.failed({ to, stage, execution, error, log: tail }).deliverNow();
+    } catch (error) {
+      const cause = error instanceof Error ? error.message : String(error);
+      getFs().appendFileSync(log, `[cron-wrapper] alert email to ${to} could not be sent: ${cause}\n`);
+    }
   }
 
   private reportGap(log: string): void {

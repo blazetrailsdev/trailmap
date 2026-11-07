@@ -27,7 +27,9 @@
           <span class="pkg-name"><%= row.name %></span>
           <% if row.rails_counterpart %><span class="tag"><%= row.rails_counterpart %></span><% end %>
         </div>
+        <% unless row.rails_counterpart %><div class="muted">trails-only: no Rails counterpart</div><% end %>
         <% [ [ "api", row.api ], [ "tests", row.tests ] ].each do |label, ratio| %>
+          <% next if row.rails_counterpart.nil? && ratio.nil? %>
           <div class="pkg-meter">
             <div class="pkg-meter-line">
               <span class="pkg-meter-label"><%= label %></span>

@@ -5,6 +5,7 @@
 </div>
 
 <h2 class="section-title">Parity</h2>
+<% if @trails_only %><div class="empty">trails-only: no Rails counterpart</div><% end %>
 <div class="pkg-grid">
   <% @tiles.each do |tile| %>
     <div class="pkg-tile">

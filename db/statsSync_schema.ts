@@ -13,7 +13,7 @@
 import { Schema } from "@blazetrails/activerecord";
 import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapters/sqlite3-adapter.js";
 
-await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_05_000001 }, async (ctx) => {
+await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_06_000001 }, async (ctx) => {
   await ctx.createTable("api_call_args_stats", { force: "cascade" }, (t) => {
     t.string("merge_commit_sha");
     t.integer("pr_number");
@@ -126,6 +126,7 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_05_000001 }, async
     t.string("rails_counterpart");
     t.text("description");
     t.string("claude_md");
+    t.string("compare_keys");
     t.index(["merge_commit_sha", "package"], { name: "index_package_meta_on_merge_commit_sha_and_package", unique: true });
   });
 

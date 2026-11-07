@@ -5,6 +5,7 @@
 </div>
 
 <h2 class="section-title">Parity</h2>
+<% if (trailsOnly) { %><div class="empty">trails-only: no Rails counterpart</div><% } %>
 <div class="pkg-grid">
   <% for (const tile of tiles) { %>
     <div class="pkg-tile">

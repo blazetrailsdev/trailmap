@@ -134,10 +134,10 @@ async function latestMeta(name: string): Promise<PackageMeta> {
   return meta;
 }
 
-/** Each package's result on the latest merge commit that measured it. */
+/** Each compare key's result on the latest merge commit that measured it, with that commit's PR. */
 async function latestRatios(
   model: typeof CompareRun,
-): Promise<Map<string, Ratio>> {
+): Promise<Map<string, Ratio & { pr: number }>> {
   const table = model.tableName;
   const rows = await model
     .where(
@@ -147,8 +147,32 @@ async function latestRatios(
   return new Map(
     rows.map((row) => [
       row.package,
-      { matched: row.matched, total: row.total, percent: row.percent },
+      { matched: row.matched, total: row.total, percent: row.percent, pr: row.pr_number },
     ]),
+  );
+}
+
+/**
+ * One ratio for a package whose rows sit under several compare keys
+ * (`actionpack`): matched and total summed, the percent recomputed. A single
+ * row keeps CI's own percent.
+ */
+export function sumRatios(ratios: Ratio[]): Ratio | null {
+  if (ratios.length <= 1) return ratios[0] ?? null;
+  const matched = ratios.reduce((n, r) => n + r.matched, 0);
+  const total = ratios.reduce((n, r) => n + r.total, 0);
+  return { matched, total, percent: total > 0 ? Math.round((matched * 1000) / total) / 10 : 0 };
+}
+
+/**
+ * `ratios` for `keys`, summed over the keys measured on the newest of their
+ * commits, so a key the latest run did not write never adds a stale total.
+ */
+function ratioFor(ratios: Map<string, Ratio & { pr: number }>, keys: string[]): Ratio | null {
+  const found = keys.map((key) => ratios.get(key)).filter((r) => r != null);
+  const pr = Math.max(...found.map((r) => r.pr));
+  return sumRatios(
+    found.filter((r) => r.pr === pr).map(({ matched, total, percent }) => ({ matched, total, percent })),
   );
 }
 
@@ -177,8 +201,8 @@ export class PackagesController extends ApplicationController {
         rows.push({
           name,
           railsCounterpart: meta.rails_counterpart ?? null,
-          api: api.get(name) ?? null,
-          tests: tests.get(name) ?? null,
+          api: ratioFor(api, meta.compareKeys()),
+          tests: ratioFor(tests, meta.compareKeys()),
           openStories: byPackage.get(name) ?? 0,
         });
       }
@@ -215,16 +239,15 @@ export class PackagesController extends ApplicationController {
             return { matched, total: row.total!, percent: row.total! > 0 ? Math.round((matched * 1000) / row.total!) / 10 : 0 };
           });
       } else {
-        const rows = await gate.model!.where({ package: name }).order("pr_number").toArray();
-        ratios = rows.map((row) => {
-          if (!gate.assertions) return { matched: row.matched, total: row.total, percent: row.percent };
-          const matched = row.matched - ((row as TestCompareStat).assertion_count_mismatch ?? 0);
-          return {
-            matched,
-            total: row.matched,
-            percent: row.matched > 0 ? Math.round((matched * 1000) / row.matched) / 10 : 0,
-          };
-        });
+        const rows = await gate.model!.where({ package: meta.compareKeys() }).order("pr_number").toArray();
+        const byPr = new Map<number, Ratio[]>();
+        for (const row of rows) {
+          const matched = gate.assertions ? row.matched - ((row as TestCompareStat).assertion_count_mismatch ?? 0) : row.matched;
+          const total = gate.assertions ? row.matched : row.total;
+          const percent = gate.assertions ? (total > 0 ? Math.round((matched * 1000) / total) / 10 : 0) : row.percent;
+          byPr.set(row.pr_number, [...(byPr.get(row.pr_number) ?? []), { matched, total, percent }]);
+        }
+        ratios = [...byPr.values()].map((group) => sumRatios(group)!);
       }
       tiles.push({
         label: gate.label,
@@ -249,12 +272,14 @@ export class PackagesController extends ApplicationController {
       .order({ methods_missing: "desc" }, "rails_file")
       .first();
 
+    const trailsOnly = meta.rails_counterpart == null;
     await this.render({
       locals: {
         name,
         meta,
         blob: `${TRAILS_BLOB}/${sha}`,
-        tiles,
+        trailsOnly,
+        tiles: trailsOnly ? tiles.filter((tile) => tile.latest !== null) : tiles,
         counts,
         rfcs,
         ready,
@@ -408,6 +433,8 @@ export class PackagesController extends ApplicationController {
       const dir = row.railsFile.includes("/") ? row.railsFile.slice(0, row.railsFile.lastIndexOf("/")) : ".";
       groups.set(dir, [...(groups.get(dir) ?? []), row]);
     }
-    await this.render({ locals: { name, sort, groups, count: rows.length } });
+    await this.render({
+      locals: { name, sort, groups, count: rows.length, trailsOnly: meta.rails_counterpart == null },
+    });
   }
 }
