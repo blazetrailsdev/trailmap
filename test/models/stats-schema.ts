@@ -1,15 +1,15 @@
 import { Stats } from "../../app/models/stats.ts";
+import { Dir, getPath } from "@blazetrails/ruby-compat";
+import { Migration } from "@blazetrails/activerecord";
+import { STATS_SYNC_MIGRATIONS_PATH } from "../../config/database.ts";
 import { loadStatsSchemas } from "../../lib/model-schemas.ts";
 
 /**
  * A scratch stats database, on the same adapter production uses.
  *
- * trailmap does NOT own this schema — the nightly stats-sync cron in another
- * repository does — so there are no migrations to replay the way
- * `migrateScratchDatabase` replays `db/migrate`. What is written here is the
- * shape the real database has, taken from it column for column; the gate
- * (scripts/gate-ringo-parity.ts) is what checks that claim against the live
- * file, and this is what lets the rollup be tested without one.
+ * The tables come from replaying `db/stats-sync-migrate` on this connection,
+ * the schema StatsSyncJob writes, so a column added there reaches the tests
+ * with no edit here.
  *
  * `node-sqlite` rather than `sqlite3`, because that is the adapter the stats
  * connection runs on and the point of these tests is the query it executes.
@@ -25,59 +25,13 @@ export async function createScratchStatsDatabase(database = ":memory:"): Promise
     pool: 1,
   });
 
-  const pool = Stats.connectionPool();
-  const adapter = await pool.leaseConnection();
-  await adapter.execute(`
-    CREATE TABLE pull_requests (
-      number INTEGER PRIMARY KEY, title VARCHAR(255), author VARCHAR(255),
-      branch VARCHAR(255), merge_commit_sha VARCHAR(255), merged_at VARCHAR(255)
-    )`);
-  await adapter.execute(`
-    CREATE TABLE api_compare_stats (
-      id INTEGER PRIMARY KEY, merge_commit_sha VARCHAR(255), pr_number INTEGER,
-      package VARCHAR(255), matched INTEGER, total INTEGER, percent REAL,
-      misplaced INTEGER, missing INTEGER
-    )`);
-  await adapter.execute(`
-    CREATE TABLE api_compare_privates_stats (
-      id INTEGER PRIMARY KEY, merge_commit_sha VARCHAR(255), pr_number INTEGER,
-      package VARCHAR(255), matched INTEGER, total INTEGER, percent REAL, missing INTEGER
-    )`);
-  await adapter.execute(`
-    CREATE TABLE test_compare_stats (
-      id INTEGER PRIMARY KEY, merge_commit_sha VARCHAR(255), pr_number INTEGER,
-      package VARCHAR(255), matched INTEGER, total INTEGER, percent REAL,
-      skipped INTEGER, files_mapped INTEGER, files_total INTEGER, misplaced INTEGER,
-      assertion_count_mismatch INTEGER, assertion_kind_mismatch INTEGER
-    )`);
-  await adapter.execute(`
-    CREATE TABLE package_meta (
-      id INTEGER PRIMARY KEY, merge_commit_sha varchar, pr_number INTEGER,
-      package varchar, rails_counterpart varchar, description TEXT, claude_md varchar
-    )`);
-  for (const [table, columns] of [
-    ["package_tag_stats", "tag varchar, receipt varchar, count INTEGER"],
-    ["package_mark_stats", "mark varchar, value INTEGER, matched INTEGER, total INTEGER"],
-    ["package_tag_sites", "tag varchar, receipt varchar, file varchar, line INTEGER, declaration varchar, cited_anchor varchar"],
-    ["package_skip_tests", "file varchar, test_name varchar, cited_anchor varchar"],
-    ["package_file_stats", "rails_file varchar, ts_file varchar, methods_matched INTEGER, methods_missing INTEGER, tests_matched INTEGER, tests_total INTEGER"],
-  ]) {
-    await adapter.execute(`
-      CREATE TABLE ${table} (
-        id INTEGER PRIMARY KEY, merge_commit_sha varchar, pr_number INTEGER, package varchar, ${columns}
-      )`);
-  }
-  await adapter.execute(`
-    CREATE TABLE claude_md_sections (
-      id INTEGER PRIMARY KEY, merge_commit_sha varchar, pr_number INTEGER,
-      file varchar, heading varchar, anchor varchar, lede TEXT
-    )`);
-  for (const table of ["api_calls_stats", "api_call_args_stats"]) {
-    await adapter.execute(`
-      CREATE TABLE ${table} (
-        id INTEGER PRIMARY KEY, merge_commit_sha varchar, pr_number INTEGER,
-        package varchar, matched INTEGER, total INTEGER, percent float, mismatched INTEGER
-      )`);
+  const adapter = await Stats.connectionPool().leaseConnection();
+  for (const file of Dir.glob(`${getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)}/[0-9]*_*.ts`).sort()) {
+    for (const exported of Object.values(await import(file))) {
+      if (typeof exported === "function" && exported.prototype instanceof Migration) {
+        await new (exported as new () => Migration)().execMigration(adapter, "up");
+      }
+    }
   }
 
   await loadStatsSchemas();

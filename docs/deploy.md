@@ -659,7 +659,17 @@ so the two do not draw on the same GitHub API budget at once. During the trial i
 keeps running and neither can hide a gap in the other. Each run ends in a
 `[cron-wrapper] ok` line or a `[cron-wrapper] stats sync failed ...` line. Pages
 already read the job's file (`STATS_DB`, above). Once the trial holds up, remove
-the crontab entry. `stats.db` then stops changing, but do not delete it:
-ringo still reads it, through `statsDBPath()` (`webhook/parity.go`), for
-its report cards among others (`app/controllers/audits-controller.ts` leaves
-those on ringo for that reason). Repoint ringo first.
+the crontab entry (`stats-sync-cron-cutover`, which waits on ringo's repoint).
+`stats.db` then stops changing. Ringo reads its report cards and parity pages
+through `statsDBPath()` (`webhook/parity.go`), which honours `STATS_DB`, so it
+is pointed at the job's file too (ringo only reads it; the crontab writes
+`stats.db` from the host, not through ringo):
+
+```sh
+dokku config:set btwhooks STATS_DB=/home/dean/github/blazetrailsdev/stats-job.db
+```
+
+Deleting `stats.db` becomes safe once three things hold: ringo's
+`dokku config:show btwhooks` names `stats-job.db`, the crontab entry is gone,
+and nothing on the box opens it (`fuser stats.db` prints nothing). Until then
+keep it: it is the crontab's output and ringo's fallback default.

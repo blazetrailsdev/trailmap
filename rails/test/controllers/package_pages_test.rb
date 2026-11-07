@@ -13,6 +13,8 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     PackageMarkStat.create!(**key, mark: "sends", value: 3)
     PackageMarkStat.create!(**key, mark: "params", matched: 9, total: 10)
     PackageMarkStat.create!(**key, mark: "predicates", matched: 0, total: 0)
+    PackageMarkStat.create!(**key, mark: "unmatched", total: 0)
+    PackageMarkStat.create!(**key, mark: "empty")
     [ [ 1, 0 ], [ 2, 1 ], [ 3, 32 ] ].each { |pr, value| PackageMarkStat.create!(merge_commit_sha: "sha#{pr}", pr_number: pr, package: "arel", mark: "boundary", value: value) }
     PackageTagSite.create!(**key, tag: "@noRailsEquivalent", receipt: "PERMANENT", file: "packages/arel/src/b.ts", line: 5, cited_anchor: "runtime-facts")
     PackageMeta.create!(merge_commit_sha: "sha2", pr_number: 2, package: "a_el")
@@ -72,6 +74,12 @@ class PackagePagesTest < ActionDispatch::IntegrationTest
     assert_includes body, '<code>sends</code></td><td><strong>3</strong></td><td><svg class="sparkline"'
     assert_includes body, 'points="0,0 80,16"'
     assert_includes body, "<code>params</code></td><td><strong>9 / 10</strong>"
+  end
+
+  test "renders a NULL matched as 0 and a mark with no value as a dash" do
+    body = page("/packages/arel/deviations")
+    assert_includes body, "<code>unmatched</code></td><td><strong>0 / 0</strong>"
+    assert_includes body, "<code>empty</code></td><td><strong>—</strong>"
   end
 
   test "groups permanent skips by cited section and lists only cited sections" do

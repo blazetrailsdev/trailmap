@@ -118,6 +118,13 @@ async function hasPackageData(): Promise<boolean> {
   return hasStatsDatabase() && (await PackageMeta.tableExists());
 }
 
+/** A mark's latest value: its value, else matched of total (NULL matched as 0), else a dash. */
+function markLatest(row: { value: number | null; matched: number | null; total: number | null }): string {
+  if (row.value != null) return String(row.value);
+  if (row.total == null) return "—";
+  return `${row.matched ?? 0} / ${row.total}`;
+}
+
 /** The latest `package_meta` row naming `name`, or a 404. */
 async function latestMeta(name: string): Promise<PackageMeta> {
   const meta = (await hasPackageData())
@@ -321,7 +328,7 @@ export class PackagesController extends ApplicationController {
       const values = rows.map((r) => r.value ?? r.matched ?? 0);
       return {
         mark,
-        latest: last.value != null ? String(last.value) : `${last.matched} / ${last.total}`,
+        latest: markLatest(last),
         points: sparkline(values),
       };
     });

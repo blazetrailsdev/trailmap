@@ -48,7 +48,6 @@ test:
   stats:
     <<: *sqlite
     database: storage/test_stats.sqlite3
-    migrations_paths: db/stats_migrate
 
 production:
   # READ-ONLY, enforced by SQLite: the deployed Rails app reads the CLI's live
