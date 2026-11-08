@@ -76,7 +76,14 @@ export class StatsSyncJob extends ApplicationJob {
    */
   private async reportMissingCompareData(log: string): Promise<void> {
     const { packagesMissingCompareData } = await import("../../lib/stats-sync/missing-compare-data.ts");
-    const packages = await packagesMissingCompareData();
+    let packages;
+    try {
+      packages = await packagesMissingCompareData();
+    } catch (error) {
+      const cause = error instanceof Error ? error.message : String(error);
+      getFs().appendFileSync(log, `[cron-wrapper] missing-data check failed: ${cause}\n`);
+      return;
+    }
     if (packages.length === 0) return;
     getFs().appendFileSync(
       log,

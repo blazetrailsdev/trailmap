@@ -1,4 +1,7 @@
-import { StatsSyncRecord } from "../../app/models/stats-sync/stats-sync-record.ts";
+import { PackageMeta as PackageMetaReader } from "../../app/models/package-meta.ts";
+import { ApiCompareStat } from "../../app/models/stats-sync/api-compare-stat.ts";
+import { PackageMeta } from "../../app/models/stats-sync/package-meta.ts";
+import { TestCompareStat } from "../../app/models/stats-sync/test-compare-stat.ts";
 
 /** The `package_meta` columns the check reads. */
 export interface PackageMetaRow {
@@ -14,12 +17,15 @@ export interface MissingCompareData {
   missing: Array<"api" | "tests">;
 }
 
+// The literal trails writes into a skipped package's description:
+// trails scripts/parity/package-summary.ts:354, `(Not in ${gate}: ${excluded})`.
 const REASONS = { api: "Not in parity:api:", tests: "Not in parity:test:" } as const;
 
 /**
  * The packages with a Rails counterpart whose api or tests tile reads no rows
  * under any of its compare keys, and whose description gives no reason for it.
- * Keys split as `PackageMeta#compareKeys` (app/models/package-meta.ts) does.
+ * Keys come from `PackageMeta#compareKeys` (app/models/package-meta.ts:28), so the
+ * check reads the same keys the packages pages' tiles do.
  */
 export function missingCompareData(
   metas: PackageMetaRow[],
@@ -29,7 +35,7 @@ export function missingCompareData(
   const found: MissingCompareData[] = [];
   for (const meta of metas) {
     if (meta.rails_counterpart == null) continue;
-    const keys = meta.compare_keys ? meta.compare_keys.split(",") : [meta.package];
+    const keys = PackageMetaReader.prototype.compareKeys.call(meta as PackageMetaReader);
     const missing = (["api", "tests"] as const).filter(
       (kind) =>
         !keys.some((key) => (kind === "api" ? apiKeys : testKeys).has(key)) &&
@@ -42,18 +48,12 @@ export function missingCompareData(
 
 /** `missingCompareData` over STATS_SYNC_DB's `package_meta` at its latest commit. */
 export async function packagesMissingCompareData(): Promise<MissingCompareData[]> {
-  const connection = await StatsSyncRecord.leaseConnection();
-  const metas = (
-    await connection.selectAll(`
-    SELECT package, rails_counterpart, description, compare_keys FROM package_meta
-    WHERE merge_commit_sha = (SELECT merge_commit_sha FROM package_meta ORDER BY pr_number DESC LIMIT 1)
-  `)
-  ).toArray() as unknown as PackageMetaRow[];
-  const keys = async (table: string) =>
-    new Set(
-      (await connection.selectAll(`SELECT DISTINCT package FROM ${table}`))
-        .toArray()
-        .map((row) => (row as { package: string }).package),
-    );
-  return missingCompareData(metas, await keys("api_compare_stats"), await keys("test_compare_stats"));
+  const latest = (await PackageMeta.order({ pr_number: "desc" }).first()) as PackageMetaRow & {
+    merge_commit_sha: string;
+  } | null;
+  if (latest == null) return [];
+  const metas = (await PackageMeta.where({ merge_commit_sha: latest.merge_commit_sha }).toArray()) as unknown as PackageMetaRow[];
+  const apiKeys = new Set((await ApiCompareStat.distinct().pluck("package")) as string[]);
+  const testKeys = new Set((await TestCompareStat.distinct().pluck("package")) as string[]);
+  return missingCompareData(metas, apiKeys, testKeys);
 }

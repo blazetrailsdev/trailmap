@@ -33,7 +33,7 @@ export class StatsSyncMailer extends ApplicationMailer {
     return this.mail({
       to: report.to,
       from: report.to,
-      subject: `[stats-sync] ${report.packages.length} packages have no compare data`,
+      subject: `[stats-sync] ${report.packages.length} ${report.packages.length === 1 ? "package has" : "packages have"} no compare data`,
       body: `These packages have a Rails counterpart, no rows under their compare keys, and no "Not in parity" reason:\n\n${lines.join("\n")}\n`,
     });
   }

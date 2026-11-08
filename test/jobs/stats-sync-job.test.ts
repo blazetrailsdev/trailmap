@@ -48,8 +48,14 @@ describe("StatsSyncJob", () => {
     expect(read()).toContain("[cron-wrapper] missing compare data: rack-test (api)\n");
     expect(ApplicationMailer.deliveries).toHaveLength(1);
     const mail = ApplicationMailer.deliveries[0]!;
-    expect(String(mail.subject())).toBe("[stats-sync] 1 packages have no compare data");
+    expect(String(mail.subject())).toBe("[stats-sync] 1 package has no compare data");
     expect(String(mail.body())).toContain("rack-test: no api rows");
+  });
+
+  it("logs a failed missing-data check without failing a good run", async () => {
+    packagesMissingCompareData.mockRejectedValue(new Error("no such table: package_meta"));
+    await new StatsSyncJob().perform();
+    expect(read()).toContain("[cron-wrapper] ok\n[cron-wrapper] missing-data check failed: no such table: package_meta\n");
   });
 
   it("writes its run header in whole seconds, as the wrapper did", async () => {

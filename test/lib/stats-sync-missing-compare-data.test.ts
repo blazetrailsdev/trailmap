@@ -74,12 +74,17 @@ describe("missingCompareData", () => {
       const connection = await StatsSyncRecord.leaseConnection();
       await connection.execute(`INSERT INTO package_meta (merge_commit_sha, pr_number, package, rails_counterpart)
         VALUES ('old', 1, 'gone', 'gone'), ('new', 2, 'rack-test', 'rack-test'), ('new', 2, 'rack', 'rack')`);
+      await connection.execute(`INSERT INTO package_meta (merge_commit_sha, pr_number, package, rails_counterpart, description)
+        VALUES ('new', 2, 'solid-cache', 'solid_cache', 'Solid Cache (Not in parity:api: no package) (Not in parity:test: no package)')`);
       await connection.execute(`INSERT INTO api_compare_stats (merge_commit_sha, pr_number, package) VALUES ('new', 2, 'rack')`);
       await connection.execute(
         `INSERT INTO test_compare_stats (merge_commit_sha, pr_number, package) VALUES ('new', 2, 'rack'), ('new', 2, 'rack-test')`,
       );
-      expect(await packagesMissingCompareData()).toEqual([{ package: "rack-test", missing: ["api"] }]);
-      await StatsSyncRecord.removeConnection();
+      try {
+        expect(await packagesMissingCompareData()).toEqual([{ package: "rack-test", missing: ["api"] }]);
+      } finally {
+        await StatsSyncRecord.removeConnection();
+      }
     } finally {
       delete writable["STATS_SYNC_DB"];
       getFs().rmSync(dir, { recursive: true, force: true });
