@@ -1,48 +1,103 @@
 import { env, getFs, getOs, getPath } from "@blazetrails/ruby-compat";
 import { Base, MigrationContext } from "@blazetrails/activerecord";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { STATS_SYNC_MIGRATIONS_PATH, statsSyncDatabaseConfig } from "../../config/database.ts";
-import {
-  missingCompareData,
-  packagesMissingCompareData,
-  type PackageMetaRow,
-} from "../../lib/stats-sync/missing-compare-data.ts";
+import { ApiCompareStat } from "../../app/models/stats-sync/api-compare-stat.ts";
+import { PackageMeta } from "../../app/models/stats-sync/package-meta.ts";
+import { StatsSyncRecord } from "../../app/models/stats-sync/stats-sync-record.ts";
+import { TestCompareStat } from "../../app/models/stats-sync/test-compare-stat.ts";
+import { packagesMissingCompareData } from "../../lib/stats-sync/missing-compare-data.ts";
 
-const meta = (pkg: string, description: string | null = null): PackageMetaRow => ({
+interface Row {
+  package: string;
+  rails_counterpart: string | null;
+  description: string | null;
+  compare_keys: string | null;
+}
+
+const writable = env as Record<string, string | undefined>;
+let dir: string;
+
+const meta = (pkg: string, attributes: Partial<Row> = {}): Row => ({
   package: pkg,
   rails_counterpart: pkg,
-  description,
+  description: null,
   compare_keys: null,
+  ...attributes,
 });
 
-describe("missingCompareData", () => {
-  it("reports only a package missing rows with no reason", () => {
-    const metas = [
-      meta("complete"),
-      meta("no-api"),
-      meta("no-tests", "No Tests (Not in parity:test: compareTests: false)"),
-    ];
-    const found = missingCompareData(metas, new Set(["complete", "no-tests"]), new Set(["complete", "no-api"]));
-    expect(found).toEqual([{ package: "no-api", missing: ["api"] }]);
+async function seed(metas: Row[], apiKeys: string[], testKeys: string[], sha = "new", pr = 2): Promise<void> {
+  const key = { merge_commit_sha: sha, pr_number: pr };
+  await PackageMeta.insertAll(metas.map((m) => ({ ...key, ...m })));
+  if (apiKeys.length > 0) await ApiCompareStat.insertAll(apiKeys.map((p) => ({ ...key, package: p })));
+  if (testKeys.length > 0) await TestCompareStat.insertAll(testKeys.map((p) => ({ ...key, package: p })));
+}
+
+describe("packagesMissingCompareData", () => {
+  beforeAll(async () => {
+    dir = getFs().mkdtempSync!(getPath().join(getOs().tmpdir!(), "missing-compare-data-"));
+    writable["STATS_SYNC_DB"] = getPath().join(dir, "stats.db");
+    await StatsSyncRecord.establishConnection(statsSyncDatabaseConfig());
+    await Base.establishConnection(statsSyncDatabaseConfig());
+    try {
+      await new MigrationContext([getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)]).migrate();
+    } finally {
+      await Base.removeConnection();
+    }
   });
 
-  it("skips a trails-only package and reads every compare key", () => {
-    const metas = [
-      { ...meta("ruby-compat"), rails_counterpart: null },
-      { ...meta("actionpack"), compare_keys: "actiondispatch,actioncontroller" },
-    ];
-    expect(missingCompareData(metas, new Set(["actioncontroller"]), new Set(["actiondispatch"]))).toEqual([]);
+  beforeEach(async () => {
+    await PackageMeta.deleteAll();
+    await ApiCompareStat.deleteAll();
+    await TestCompareStat.deleteAll();
+  });
+
+  afterAll(async () => {
+    try {
+      await StatsSyncRecord.removeConnection();
+    } finally {
+      delete writable["STATS_SYNC_DB"];
+      getFs().rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports only a package missing rows with no reason", async () => {
+    await seed(
+      [
+        meta("complete"),
+        meta("no-api"),
+        meta("no-tests", { description: "No Tests (Not in parity:test: compareTests: false)" }),
+        meta("solid-cache", {
+          description: "Solid Cache (Not in parity:api: no package) (Not in parity:test: no package)",
+        }),
+      ],
+      ["complete", "no-tests"],
+      ["complete", "no-api"],
+    );
+    expect(await packagesMissingCompareData()).toEqual([{ package: "no-api", missing: ["api"] }]);
+  });
+
+  it("skips a trails-only package and reads every compare key", async () => {
+    await seed(
+      [meta("ruby-compat", { rails_counterpart: null }), meta("actionpack", { compare_keys: "actiondispatch,actioncontroller" })],
+      ["actioncontroller"],
+      ["actiondispatch"],
+    );
+    expect(await packagesMissingCompareData()).toEqual([]);
+  });
+
+  it("reads package_meta at the latest commit only", async () => {
+    await seed([meta("gone")], [], [], "old", 1);
+    await seed([meta("rack-test"), meta("rack")], ["rack"], ["rack", "rack-test"]);
+    expect(await packagesMissingCompareData()).toEqual([{ package: "rack-test", missing: ["api"] }]);
   });
 
   it("reports exactly the ten no-data packages of the 2026-11-07 snapshot", async () => {
     const snapshot = JSON.parse(
       await getFs().readFile("test/fixtures/stats-sync/missing-compare-data-2026-11-07.json", "utf8"),
-    ) as { package_meta: PackageMetaRow[]; api_compare_keys: string[]; test_compare_keys: string[] };
-    const found = missingCompareData(
-      snapshot.package_meta,
-      new Set(snapshot.api_compare_keys),
-      new Set(snapshot.test_compare_keys),
-    );
+    ) as { package_meta: Row[]; api_compare_keys: string[]; test_compare_keys: string[] };
+    await seed(snapshot.package_meta, snapshot.api_compare_keys, snapshot.test_compare_keys);
+    const found = await packagesMissingCompareData();
     expect(found.map((p) => p.package)).toEqual([
       "actionpack",
       "did-you-mean",
@@ -56,38 +111,5 @@ describe("missingCompareData", () => {
       "solid-queue",
     ]);
     expect(found.find((p) => p.package === "actionpack")!.missing).toEqual(["api", "tests"]);
-  });
-
-  it("reads package_meta at the latest commit from STATS_SYNC_DB", async () => {
-    const writable = env as Record<string, string | undefined>;
-    const dir = getFs().mkdtempSync!(getPath().join(getOs().tmpdir!(), "missing-compare-data-"));
-    writable["STATS_SYNC_DB"] = getPath().join(dir, "stats.db");
-    try {
-      const { StatsSyncRecord } = await import("../../app/models/stats-sync/stats-sync-record.ts");
-      await StatsSyncRecord.establishConnection(statsSyncDatabaseConfig());
-      await Base.establishConnection(statsSyncDatabaseConfig());
-      try {
-        await new MigrationContext([getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)]).migrate();
-      } finally {
-        await Base.removeConnection();
-      }
-      const connection = await StatsSyncRecord.leaseConnection();
-      await connection.execute(`INSERT INTO package_meta (merge_commit_sha, pr_number, package, rails_counterpart)
-        VALUES ('old', 1, 'gone', 'gone'), ('new', 2, 'rack-test', 'rack-test'), ('new', 2, 'rack', 'rack')`);
-      await connection.execute(`INSERT INTO package_meta (merge_commit_sha, pr_number, package, rails_counterpart, description)
-        VALUES ('new', 2, 'solid-cache', 'solid_cache', 'Solid Cache (Not in parity:api: no package) (Not in parity:test: no package)')`);
-      await connection.execute(`INSERT INTO api_compare_stats (merge_commit_sha, pr_number, package) VALUES ('new', 2, 'rack')`);
-      await connection.execute(
-        `INSERT INTO test_compare_stats (merge_commit_sha, pr_number, package) VALUES ('new', 2, 'rack'), ('new', 2, 'rack-test')`,
-      );
-      try {
-        expect(await packagesMissingCompareData()).toEqual([{ package: "rack-test", missing: ["api"] }]);
-      } finally {
-        await StatsSyncRecord.removeConnection();
-      }
-    } finally {
-      delete writable["STATS_SYNC_DB"];
-      getFs().rmSync(dir, { recursive: true, force: true });
-    }
   });
 });

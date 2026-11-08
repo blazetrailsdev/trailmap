@@ -75,9 +75,9 @@ export class StatsSyncJob extends ApplicationJob {
    * without a reason, so a parser or summary gap is not found by eye.
    */
   private async reportMissingCompareData(log: string): Promise<void> {
-    const { packagesMissingCompareData } = await import("../../lib/stats-sync/missing-compare-data.ts");
     let packages;
     try {
+      const { packagesMissingCompareData } = await import("../../lib/stats-sync/missing-compare-data.ts");
       packages = await packagesMissingCompareData();
     } catch (error) {
       const cause = error instanceof Error ? error.message : String(error);

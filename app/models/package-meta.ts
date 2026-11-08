@@ -1,3 +1,4 @@
+import { compareKeys } from "./concerns/compare-keys.ts";
 import { Stats } from "./stats.ts";
 
 /**
@@ -25,7 +26,9 @@ export class PackageMeta extends Stats {
   declare compare_keys: string | null;
 
   /** The api:compare and test:compare keys this package's rows are written under. */
-  compareKeys(): string[] {
-    return this.compare_keys ? this.compare_keys.split(",") : [this.package];
+  declare compareKeys: typeof compareKeys;
+
+  static {
+    this.prototype.compareKeys = compareKeys;
   }
 }

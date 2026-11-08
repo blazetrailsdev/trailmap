@@ -1,15 +1,6 @@
-import { PackageMeta as PackageMetaReader } from "../../app/models/package-meta.ts";
 import { ApiCompareStat } from "../../app/models/stats-sync/api-compare-stat.ts";
 import { PackageMeta } from "../../app/models/stats-sync/package-meta.ts";
 import { TestCompareStat } from "../../app/models/stats-sync/test-compare-stat.ts";
-
-/** The `package_meta` columns the check reads. */
-export interface PackageMetaRow {
-  package: string;
-  rails_counterpart: string | null;
-  description: string | null;
-  compare_keys: string | null;
-}
 
 /** A package the packages pages would show "no data" for, and which tiles. */
 export interface MissingCompareData {
@@ -24,18 +15,18 @@ const REASONS = { api: "Not in parity:api:", tests: "Not in parity:test:" } as c
 /**
  * The packages with a Rails counterpart whose api or tests tile reads no rows
  * under any of its compare keys, and whose description gives no reason for it.
- * Keys come from `PackageMeta#compareKeys` (app/models/package-meta.ts:28), so the
+ * Keys come from `PackageMeta#compareKeys` (app/models/concerns/compare-keys.ts), so the
  * check reads the same keys the packages pages' tiles do.
  */
 export function missingCompareData(
-  metas: PackageMetaRow[],
+  metas: PackageMeta[],
   apiKeys: Set<string>,
   testKeys: Set<string>,
 ): MissingCompareData[] {
   const found: MissingCompareData[] = [];
   for (const meta of metas) {
     if (meta.rails_counterpart == null) continue;
-    const keys = PackageMetaReader.prototype.compareKeys.call(meta as PackageMetaReader);
+    const keys = meta.compareKeys();
     const missing = (["api", "tests"] as const).filter(
       (kind) =>
         !keys.some((key) => (kind === "api" ? apiKeys : testKeys).has(key)) &&
@@ -48,11 +39,9 @@ export function missingCompareData(
 
 /** `missingCompareData` over STATS_SYNC_DB's `package_meta` at its latest commit. */
 export async function packagesMissingCompareData(): Promise<MissingCompareData[]> {
-  const latest = (await PackageMeta.order({ pr_number: "desc" }).first()) as PackageMetaRow & {
-    merge_commit_sha: string;
-  } | null;
+  const latest = await PackageMeta.order({ pr_number: "desc" }).first();
   if (latest == null) return [];
-  const metas = (await PackageMeta.where({ merge_commit_sha: latest.merge_commit_sha }).toArray()) as unknown as PackageMetaRow[];
+  const metas = await PackageMeta.where({ merge_commit_sha: latest.merge_commit_sha }).toArray();
   const apiKeys = new Set((await ApiCompareStat.distinct().pluck("package")) as string[]);
   const testKeys = new Set((await TestCompareStat.distinct().pluck("package")) as string[]);
   return missingCompareData(metas, apiKeys, testKeys);
