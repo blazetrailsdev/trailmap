@@ -67,6 +67,29 @@ export class StatsSyncJob extends ApplicationJob {
       throw retried ? new retried(message) : error;
     }
     getFs().appendFileSync(log, "[cron-wrapper] ok\n");
+    await this.reportMissingCompareData(log);
+  }
+
+  /**
+   * Mail `EMAIL` the packages the packages pages would show "no data" for
+   * without a reason, so a parser or summary gap is not found by eye.
+   */
+  private async reportMissingCompareData(log: string): Promise<void> {
+    const { packagesMissingCompareData } = await import("../../lib/stats-sync/missing-compare-data.ts");
+    const packages = await packagesMissingCompareData();
+    if (packages.length === 0) return;
+    getFs().appendFileSync(
+      log,
+      `[cron-wrapper] missing compare data: ${packages.map((p) => `${p.package} (${p.missing.join(", ")})`).join(", ")}\n`,
+    );
+    const to = env.EMAIL;
+    if (!to) return;
+    try {
+      await StatsSyncMailer.missingCompareData({ to, packages }).deliverNow();
+    } catch (error) {
+      const cause = error instanceof Error ? error.message : String(error);
+      getFs().appendFileSync(log, `[cron-wrapper] missing-data email to ${to} could not be sent: ${cause}\n`);
+    }
   }
 
   /**

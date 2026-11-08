@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const syncLatest = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/stats-sync/sync.ts", () => ({ syncLatest, currentStage: () => "Syncing job logs" }));
+const packagesMissingCompareData = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/stats-sync/missing-compare-data.ts", () => ({ packagesMissingCompareData }));
 
 import { constantize } from "@blazetrails/activesupport";
 import { env } from "@blazetrails/ruby-compat";
@@ -21,6 +23,7 @@ describe("StatsSyncJob", () => {
     writable["STATS_SYNC_LOG"] = log;
     writable["STATS_SYNC_DB"] = getPath().join(dir, "stats.db");
     syncLatest.mockReset();
+    packagesMissingCompareData.mockReset().mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -34,6 +37,19 @@ describe("StatsSyncJob", () => {
     await new StatsSyncJob().perform();
     expect(syncLatest).toHaveBeenCalledOnce();
     expect(read()).toMatch(/^=== \S+ ===\n\[cron-wrapper\] ok\n$/);
+  });
+
+  it("mails EMAIL the packages a good run left with no compare data", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    packagesMissingCompareData.mockResolvedValue([{ package: "rack-test", missing: ["api"] }]);
+    await new StatsSyncJob().perform();
+    expect(read()).toContain("[cron-wrapper] missing compare data: rack-test (api)\n");
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+    const mail = ApplicationMailer.deliveries[0]!;
+    expect(String(mail.subject())).toBe("[stats-sync] 1 packages have no compare data");
+    expect(String(mail.body())).toContain("rack-test: no api rows");
   });
 
   it("writes its run header in whole seconds, as the wrapper did", async () => {
