@@ -1,5 +1,5 @@
 import { env } from "@blazetrails/ruby-compat";
-import { Hub } from "../../app/models/hub.ts";
+import { establishHubConnection, Hub } from "../../app/models/hub.ts";
 import { HUB_MIGRATIONS_PATH } from "../../config/database.ts";
 import { loadHubSchemas } from "../../lib/model-schemas.ts";
 import { Setting } from "../../app/models/setting.ts";
@@ -54,6 +54,10 @@ const HUB_TABLES = [
   // left behind by another file's refresh would make this file's row counts
   // wrong, and the hub test database is shared.
   "parity_days",
+  "audits",
+  "active_storage_attachments",
+  "active_storage_variant_records",
+  "active_storage_blobs",
 ] as const;
 
 /**
@@ -101,7 +105,7 @@ export async function connectHubTestDatabase(): Promise<void> {
   // another would leak it and hang the next test file.
   // `migrationsPaths` as `hubDatabaseConfig()` passes it, so the pool's
   // `MigrationContext` lists `db/hub-migrate` here as it does when serving.
-  await Hub.establishConnection({ adapter: "postgresql", url, pool: 1, migrationsPaths: HUB_MIGRATIONS_PATH });
+  await establishHubConnection({ adapter: "postgresql", url, pool: 1, migrationsPaths: HUB_MIGRATIONS_PATH });
 
   const present = new Set(await Hub.connectionPool().withConnection((c) => c.tables()));
   const missing = HUB_TABLES.filter((table) => !present.has(table));

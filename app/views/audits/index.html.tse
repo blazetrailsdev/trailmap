@@ -17,7 +17,7 @@
       <% for (const audit of audits) { %>
         <a class="audit-item<%= audit.name === selected.name ? " active" : "" %>" href="<%= auditPath(audit) %>">
           <span class="audit-title"><%= audit.title %></span>
-          <time class="muted" datetime="<%= audit.when.toISOString() %>"><%= audit.when.toISOString().slice(0, 16).replace("T", " ") %></time>
+          <time class="muted" datetime="<%= audit.writtenAt.toISOString() %>"><%= audit.writtenAt.toISOString().slice(0, 16).replace("T", " ") %></time>
         </a>
       <% } %>
     </div>

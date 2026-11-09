@@ -13,3 +13,9 @@ production:
     class: StatsSyncJob
     schedule: "0 3 * * * America/Detroit"
     description: "Sync trails PRs, CI runs and compare stats into the job's stats database"
+  # Agents write audit files into AUDITS_DIR; the pages read them from Active
+  # Storage, so new files are imported every five minutes (app/models/audit.ts).
+  import_audits:
+    class: ImportAuditsJob
+    schedule: "*/5 * * * *"
+    description: "Attach new audit files from AUDITS_DIR as Active Storage blobs"

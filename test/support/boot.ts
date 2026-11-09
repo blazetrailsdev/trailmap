@@ -8,11 +8,13 @@ import { Base } from "@blazetrails/activerecord";
 import { Trails } from "@blazetrails/trailties";
 import "../../config/environment.ts";
 import { Hub } from "../../app/models/hub.ts";
+import { Record as ActiveStorageRecord } from "@blazetrails/activestorage";
 
 // The test files connect their own scratch databases. The fallback pool the
 // boot leaves on `Base` is a schemaless SQLite that `Hub` would inherit, so
 // `Setting`'s "no pool" branch would become "no such table".
 await Hub.removeConnection();
+await ActiveStorageRecord.removeConnection();
 await Base.removeConnection();
 
 // Routes load lazily. Loaded here, before a test can touch the route set,

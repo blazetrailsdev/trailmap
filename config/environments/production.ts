@@ -56,4 +56,7 @@ Trails.application!.configure(function () {
 
   // Only use "id" for inspections in production.
   this.config.activeRecord.attributesForInspect = ["id"];
+
+  // Store uploaded files on the local file system (see config/storage.ts for options).
+  this.config.activeStorage.service = "local";
 });

@@ -38,6 +38,7 @@
     "@blazetrails/activejob": "file:vendor/blazetrails-activejob-0.1.0.tgz",
     "@blazetrails/activemodel": "file:vendor/blazetrails-activemodel-0.1.0.tgz",
     "@blazetrails/activerecord": "file:vendor/blazetrails-activerecord-0.1.0.tgz",
+    "@blazetrails/activestorage": "file:vendor/blazetrails-activestorage-0.1.0.tgz",
     "@blazetrails/activesupport": "file:vendor/blazetrails-activesupport-0.1.0.tgz",
     "@blazetrails/date": "file:vendor/blazetrails-date-0.1.0.tgz",
     "@blazetrails/rack": "file:vendor/blazetrails-rack-0.1.0.tgz",

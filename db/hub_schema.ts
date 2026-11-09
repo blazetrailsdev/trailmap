@@ -13,9 +13,49 @@
 import { Schema } from "@blazetrails/activerecord";
 import type { PostgreSQLAdapter } from "@blazetrails/activerecord/connection-adapters/postgresql-adapter.js";
 
-await Schema.get(8).define<PostgreSQLAdapter>({ version: 2026_10_11_000006 }, async (ctx) => {
+await Schema.get(8).define<PostgreSQLAdapter>({ version: 2026_11_08_000008 }, async (ctx) => {
   // These are extensions that must be enabled in order to support this database
   await ctx.enableExtension("pg_catalog.plpgsql");
+
+  await ctx.createTable("active_storage_attachments", { force: "cascade" }, (t) => {
+    t.string("name", { null: false });
+    t.string("record_type", { null: false });
+    t.bigint("record_id", { null: false });
+    t.bigint("blob_id", { null: false });
+    t.datetime("created_at", { null: false });
+    t.index(["blob_id"], { name: "index_active_storage_attachments_on_blob_id" });
+    t.index(["record_type", "record_id", "name", "blob_id"], { name: "index_active_storage_attachments_uniqueness", unique: true });
+  });
+
+  await ctx.createTable("active_storage_blobs", { force: "cascade" }, (t) => {
+    t.string("key", { null: false });
+    t.string("filename", { null: false });
+    t.string("content_type");
+    t.text("metadata");
+    t.string("service_name", { null: false });
+    t.bigint("byte_size", { null: false });
+    t.string("checksum");
+    t.datetime("created_at", { null: false });
+    t.index(["key"], { name: "index_active_storage_blobs_on_key", unique: true });
+  });
+
+  await ctx.createTable("active_storage_variant_records", { force: "cascade" }, (t) => {
+    t.bigint("blob_id", { null: false });
+    t.string("variation_digest", { null: false });
+    t.index(["blob_id", "variation_digest"], { name: "index_active_storage_variant_records_uniqueness", unique: true });
+  });
+
+  await ctx.createTable("audits", { force: "cascade" }, (t) => {
+    t.string("repo", { null: false });
+    t.string("name", { null: false });
+    t.string("slug", { null: false });
+    t.integer("size", { null: false });
+    t.datetime("written_at", { null: false });
+    t.datetime("created_at", { null: false });
+    t.datetime("updated_at", { null: false });
+    t.index(["name"], { name: "index_audits_on_name", unique: true });
+    t.index(["written_at"], { name: "index_audits_on_written_at" });
+  });
 
   await ctx.createTable("owners", { force: "cascade" }, (t) => {
     t.string("login", { null: false });
@@ -88,6 +128,8 @@ await Schema.get(8).define<PostgreSQLAdapter>({ version: 2026_10_11_000006 }, as
     t.datetime("updated_at", { null: false });
   });
 
+  await ctx.addForeignKey("active_storage_attachments", "active_storage_blobs", { column: "blob_id" });
+  await ctx.addForeignKey("active_storage_variant_records", "active_storage_blobs", { column: "blob_id" });
   await ctx.addForeignKey("repositories", "owners");
   await ctx.addForeignKey("repository_collaborators", "owners");
   await ctx.addForeignKey("repository_collaborators", "repositories");

@@ -1,7 +1,7 @@
 import { Trails } from "@blazetrails/trailties";
 import { env } from "@blazetrails/ruby-compat";
 import { hasHubDatabase, hubDatabaseConfig } from "../database.ts";
-import { Hub } from "../../app/models/hub.ts";
+import { establishHubConnection } from "../../app/models/hub.ts";
 import { loadHubSchemas, missingHubTables } from "../../lib/model-schemas.ts";
 
 /**
@@ -54,7 +54,7 @@ export async function connectToHubDatabase(): Promise<void> {
         "Postgres database (`dokku postgres:info trailmap-hub --dsn`); see docs/deploy.md.",
     );
   }
-  await Hub.establishConnection(hubDatabaseConfig());
+  await establishHubConnection(hubDatabaseConfig());
   await loadHubSchemas();
 
   const missing = await missingHubTables();
@@ -73,5 +73,5 @@ export async function connectToHubDatabase(): Promise<void> {
 // `establish_connection` is only this. The server block establishes again
 // from the environment as it stands when the server starts, which is what
 // lets it be called alone (boot-probe, and tests that repoint the variable).
-if (hasHubDatabase()) await Hub.establishConnection(hubDatabaseConfig());
+if (hasHubDatabase()) await establishHubConnection(hubDatabaseConfig());
 Trails.application.server(connectToHubDatabase);

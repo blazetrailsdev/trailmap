@@ -1,9 +1,8 @@
-import { Attributes, Model, type AttributesClassHalf } from "@blazetrails/activemodel";
-import { RecordNotFound } from "@blazetrails/activerecord";
-import { include } from "@blazetrails/activesupport";
-import { getFs, getPath } from "@blazetrails/ruby-compat";
+import { getFs, getPath, StringIO } from "@blazetrails/ruby-compat";
+import type { One } from "@blazetrails/activestorage";
 import { Trails } from "@blazetrails/trailties";
 import { AUDIT_FILE_RE } from "../../config/audit-files.ts";
+import { Hub } from "./hub.ts";
 
 export { AUDIT_FILE_RE };
 
@@ -23,107 +22,81 @@ export function auditTitle(name: string): string {
   return base === "" ? name : base;
 }
 
-/** Rails' `find` message and fields (activerecord/lib/active_record/core.rb:280). */
-function notFound(name: string): RecordNotFound {
-  return new RecordNotFound(`Couldn't find Audit with 'name'=${name}`, "Audit", "name", name);
-}
-
-function isEnoent(e: unknown): boolean {
-  return (e as { code?: string }).code === "ENOENT";
+/**
+ * `<owner>/<repo>` from an audits directory laid out as btwhooks writes it,
+ * `…/github/<owner>/<repo>/audits`; any other layout is trails' own, which is
+ * the only repository that has audits today.
+ */
+export function auditsRepo(dir: string): string {
+  const match = /\/github\/([^/]+)\/([^/]+)\/audits$/.exec(dir);
+  return match ? `${match[1]}/${match[2]}` : "blazetrailsdev/trails";
 }
 
 /**
- * One agent-written progress report in the audits directory.
+ * One agent-written progress report. Agents still write files into
+ * `AUDITS_DIR`; `Audit.importFrom` copies each into Active Storage once, and
+ * the pages read the row and its `report` blob — never the directory.
  *
- * An ActiveModel, not an ActiveRecord: the audits are a directory of files
- * agents write, as they are for ringo, and RFC 0136 leaves them so. The class
- * methods are shaped like AR's finders — `all`, `first`, `findBy`, `find`
- * raising `RecordNotFound` — so a controller reads the same either way; the
- * "table" is `AUDITS_DIR` and the primary key is the filename.
+ * `name` is the filename and the route key (`/audits/<name>`), so `toParam`
+ * answers it rather than the id.
  */
-export class Audit extends Model {
-  // trails-tsc synthesizes from a table, and an ActiveModel has none.
-  // Story: trails-tsc-synthesize-activemodel-attributes.
-  declare static attribute: AttributesClassHalf["attribute"];
+export class Audit extends Hub {
+  static _tableName = "audits";
+
+  declare report: One;
 
   static {
-    include(this, Attributes);
-    this.attribute("name", "string");
-    this.attribute("size", "integer");
-    // mtime, truncated to the second — ringo compares RFC 3339 strings.
-    this.attribute("when", "datetime");
+    this.hasOneAttached("report");
+  }
+
+  /** Every audit, newest first; ties in filename order, as ringo lists them. */
+  static newestFirst() {
+    return this.order({ writtenAt: "desc", name: "asc" });
   }
 
   /**
-   * Every audit, newest first — ringo's `listAudits`. A missing or unset
-   * directory is no audits yet, not an error.
-   *
-   * Ties keep filename order, because Go's `os.ReadDir` returns entries sorted
-   * by name and ringo then sorts on a whole-second timestamp string.
+   * Import every audit file in `dir` that has no row yet: one row per file,
+   * its contents attached as `report`. Re-running skips what is already
+   * imported, so it is safe on a schedule. Answers the names it imported.
    */
-  static async all(): Promise<Audit[]> {
-    const dir = auditsDir();
+  static async importFrom(dir: string | null = auditsDir()): Promise<string[]> {
     if (dir === null) return [];
     const [fs, path] = await Promise.all([getFs(), getPath()]);
-    if (!fs.readdir || !fs.stat) {
-      throw new Error("the filesystem adapter cannot list directories asynchronously");
-    }
-
     let names: string[];
     try {
-      names = await fs.readdir(dir);
+      names = await fs.readdir!(dir);
     } catch (e) {
-      if (isEnoent(e)) return [];
+      if ((e as { code?: string }).code === "ENOENT") return [];
       throw e;
     }
-    const out: Audit[] = [];
+    const known = new Set((await this.pluck("name")) as string[]);
+    const repo = auditsRepo(dir);
+    const imported: string[] = [];
     for (const name of [...names].sort()) {
-      if (!AUDIT_FILE_RE.test(name)) continue;
-      try {
-        const info = await fs.stat(path.join(dir, name));
-        if (info.isDirectory()) continue;
-        const when = new Date(Math.floor(info.mtime.getTime() / 1000) * 1000);
-        out.push(new Audit({ name, size: info.size, when }));
-      } catch {
-        continue;
-      }
+      if (!AUDIT_FILE_RE.test(name) || known.has(name)) continue;
+      const file = path.join(dir, name);
+      const info = await fs.stat!(file);
+      if (info.isDirectory()) continue;
+      const audit = new Audit({
+        repo,
+        name,
+        slug: name.replace(/\.(md|html)$/, ""),
+        size: info.size,
+        writtenAt: new Date(Math.floor(info.mtime.getTime() / 1000) * 1000),
+      });
+      await audit.report.attach({
+        io: new StringIO(await fs.readFile!(file, "utf8")),
+        filename: name,
+        contentType: name.endsWith(".html") ? "text/html" : "text/markdown",
+      });
+      await audit.saveBang();
+      imported.push(name);
     }
-    return out.sort((a, b) => b.when.getTime() - a.when.getTime());
+    return imported;
   }
 
-  /** The newest audit, or null when there are none. */
-  static async first(): Promise<Audit | null> {
-    return (await this.all())[0] ?? null;
-  }
-
-  /**
-   * The audit with this filename, or null. A name that fails `AUDIT_FILE_RE`
-   * is null before anything touches the filesystem — this is the line between
-   * a name and a path, so it checks rather than trusts its caller.
-   */
-  static async findBy({ name }: { name: string }): Promise<Audit | null> {
-    if (!AUDIT_FILE_RE.test(name)) return null;
-    return (await this.all()).find((audit) => audit.name === name) ?? null;
-  }
-
-  /** `findBy`, raising `RecordNotFound` (a 404) for a missing audit, as AR's `find`. */
-  static async find(name: string): Promise<Audit> {
-    const audit = await this.findBy({ name });
-    if (audit === null) throw notFound(name);
-    return audit;
-  }
-
-  /**
-   * The filename is the primary key, and an audit that was listed exists on
-   * disk — so, as Rails' `to_param` does from `persisted?` and `id`,
-   * `toParam()` answers the name `/audits/<file>` takes.
-   */
-  get id(): string {
+  toParam(): string {
     return this.name;
-  }
-
-  isPersisted(): boolean {
-    return true;
   }
 
   /** ringo's `auditTitle`. */
@@ -136,26 +109,8 @@ export class Audit extends Model {
     return this.name.endsWith(".html");
   }
 
-  /** The file's contents. Only reachable for a name `all` listed. */
+  /** The report's contents, from its blob. */
   async read(): Promise<string> {
-    const dir = auditsDir();
-    if (dir === null) throw notFound(this.name);
-    const [fs, path] = await Promise.all([getFs(), getPath()]);
-    if (!fs.readFile) throw new Error("the filesystem adapter cannot read files asynchronously");
-    try {
-      return await fs.readFile(path.join(dir, this.name), "utf8");
-    } catch (e) {
-      if (isEnoent(e)) throw notFound(this.name);
-      throw e;
-    }
+    return String(await this.report.download());
   }
-}
-
-export interface Audit extends Attributes {
-  get name(): string;
-  set name(value: unknown);
-  get size(): number;
-  set size(value: unknown);
-  get when(): Date;
-  set when(value: unknown);
 }

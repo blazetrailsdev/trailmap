@@ -7,7 +7,8 @@ import { stripFrontmatter } from "../models/concerns/document.ts";
 /**
  * `/audits` — the agent-written progress reports, newest first;
  * `/audits/<file>`, the list with one of them open; and
- * `/audits/<file>/raw`, one report on its own. Ported from ringo's
+ * `/audits/<file>/raw`, one report on its own. The rows and their `report`
+ * blobs are what `Audit.importFrom` copied out of `AUDITS_DIR`. Ported from ringo's
  * `webhook/audits.go`; ringo's `/audits/view/<file>` redirects to `raw`.
  *
  * The filename is checked by the route (config/audit-files.ts), so a bad name
@@ -22,14 +23,14 @@ import { stripFrontmatter } from "../models/concerns/document.ts";
 export class AuditsController extends ApplicationController {
   /** The list, with the newest audit open. */
   async index(): Promise<void> {
-    const audits = await Audit.all();
+    const audits = await Audit.newestFirst().toArray();
     await this.renderPage(audits, audits[0] ?? null);
   }
 
   /** The list, with this audit open. */
   async show(): Promise<void> {
-    const audit = await Audit.find(String(this.params.get("id")));
-    await this.renderPage(await Audit.all(), audit, "index");
+    const audit = await Audit.findByBang({ name: String(this.params.get("id")) });
+    await this.renderPage(await Audit.newestFirst().toArray(), audit, "index");
   }
 
   /**
@@ -37,7 +38,7 @@ export class AuditsController extends ApplicationController {
    * exactly as the agent wrote it.
    */
   async raw(): Promise<void> {
-    const audit = await Audit.find(String(this.params.get("id")));
+    const audit = await Audit.findByBang({ name: String(this.params.get("id")) });
     const source = await audit.read();
     this.response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     // An audit is agent-written and served from trailmap's own origin, so a

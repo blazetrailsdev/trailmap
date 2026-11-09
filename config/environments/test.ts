@@ -27,4 +27,7 @@ Trails.application!.configure(function () {
 
   // Raise error when a before_action's only/except options reference missing actions.
   this.config.actionController.raiseOnMissingCallbackActions = true;
+
+  // Store uploaded files on the local file system (see config/storage.ts for options).
+  this.config.activeStorage.service = "test";
 });

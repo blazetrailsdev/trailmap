@@ -11,6 +11,7 @@ import { Repository } from "../app/models/repository.ts";
 import { RepositorySetting } from "../app/models/repository-setting.ts";
 import { RepositoryCollaborator } from "../app/models/repository-collaborator.ts";
 import { Setting } from "../app/models/setting.ts";
+import { Audit } from "../app/models/audit.ts";
 import { ParityDay } from "../app/models/parity-day.ts";
 import { Hub } from "../app/models/hub.ts";
 import { PullRequest } from "../app/models/pull-request.ts";
@@ -57,6 +58,7 @@ const HUB_MODELS = [
   // though it is DERIVED from the stats database on a third connection —
   // see app/models/parity-day.ts.
   ParityDay,
+  Audit,
 ];
 
 /**

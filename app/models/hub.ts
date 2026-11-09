@@ -1,3 +1,4 @@
+import { Record as ActiveStorageRecord } from "@blazetrails/activestorage";
 import { ApplicationRecord } from "./application-record.ts";
 
 /**
@@ -41,4 +42,15 @@ export class Hub extends ApplicationRecord {
     // abstract class and cannot be instantiated". Assignment runs the setter.
     this.abstractClass = true;
   }
+}
+
+/**
+ * Connect `Hub` and Active Storage's own abstract record to the hub database.
+ * The blobs and attachments live beside the audits they store (app/models/audit.ts):
+ * left on `ActiveRecord::Base`, Active Storage would write the CLI's tasks
+ * database. Rails' `on_load(:active_storage_record) { connects_to ... }`.
+ */
+export async function establishHubConnection(config: Record<string, unknown>): Promise<void> {
+  await Hub.establishConnection(config);
+  await ActiveStorageRecord.establishConnection(config);
 }
