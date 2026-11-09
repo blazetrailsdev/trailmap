@@ -694,3 +694,34 @@ Deleting `stats.db` becomes safe once three things hold: ringo's
 `dokku config:show btwhooks` names `stats-job.db`, the crontab entry is gone,
 and nothing on the box opens it (`fuser stats.db` prints nothing). Until then
 keep it: it is the crontab's output and ringo's fallback default.
+
+### Compare before cutover
+
+`scripts/compare-stats-dbs.sh stats.db stats-job.db` compares the two files row by
+row: every shared table, over its shared columns except `id`. Run on 2026-11-08,
+after the job's 03:00 run (queue job 6, the sixth daily 08:00Z run in a row, none
+failed or blocked, the `StatsSyncJob/stats_sync` semaphore taken and released) and
+the crontab's 06:00 run, 19 of 24 shared tables matched exactly, including
+`pull_requests`, `workflow_*`, `raw_job_logs` and `test_compare_stats`. Every
+difference had a cause:
+
+- `api_compare_stats`, `api_compare_privates_stats`: +330 rows in the job, the
+  hyphenated `api:compare` keys only the job parses (trailmap#127).
+- `pr_files` (5 rows), `pr_timeline_events` (+11): PRs 9777 and 9826, which the
+  crontab synced before they merged and the job synced after. The job holds the
+  final state.
+- `expired_job_logs` (`checked_at`), `sync_log`: each run stamps its own time.
+
+Not reproduced in those six runs: the `gh pr list` failure seen once in an
+overlapping E2E run.
+
+### trails tracking (tasks CLI)
+
+The host crontab runs the tasks repo's `scripts/track-trails-cron.sh` hourly at
+:17 (`scripts/track-trails-cron.sh --crontab` prints the entry). The wrapper runs
+`pnpm trails:track` through the login shell, and a failed run opens or comments on
+the "trails tracking is failing" issue in blazetrailsdev/tasks. After every run it
+writes `pnpm trails:status` to `trails-status.txt` beside `tasks.db`
+(`<tasks checkout>/.git/`, blazetrailsdev/tasks#328). That directory is already in
+this app's storage mount, and `/dashboard` shows the file (`TrailsTracking.status`),
+red once it holds an `ERROR:` line. No file, no card.
