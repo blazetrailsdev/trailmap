@@ -84,6 +84,9 @@ jobs:
       - name: Prepare the hub schema
         env:
           HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+          # The test environment: development's primary is TASKS_DATABASE,
+          # which `trails db` skips (`databaseTasks: false`, config/database.ts).
+          NODE_ENV: test
         run: pnpm db:migrate
       - run: pnpm test
 
@@ -202,7 +205,8 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm db:migrate
+      # NODE_ENV=test: see "Prepare the hub schema" on the test job.
+      - run: NODE_ENV=test pnpm db:migrate
       # Builds the views itself.
       - run: ./scripts/dashboard-e2e.sh
 
@@ -240,11 +244,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec trails-tsc-views build --views app/views
       - name: The show pages still say what ringo said
-        run: pnpm gate:snapshot
+        run: NODE_ENV=test pnpm gate:snapshot
       # Proves the gate still detects a difference, rather than passing because
       # it stopped looking.
       - name: The snapshot gate still goes red on a difference
-        run: pnpm gate:snapshot --self-test
+        run: NODE_ENV=test pnpm gate:snapshot --self-test
 
   # THE GATE (RFC 0136). trailmap's ready queue is a rewrite of the CLI's
   # ranking functions, and the only thing that makes that safe is proving the
@@ -404,6 +408,9 @@ jobs:
       - name: Prepare the hub schema
         env:
           HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+          # The test environment: development's primary is TASKS_DATABASE,
+          # which `trails db` skips (`databaseTasks: false`, config/database.ts).
+          NODE_ENV: test
         run: pnpm db:migrate
       - name: /graphs/parity/data == ringo's /spawnloop/parity, point for point
         run: pnpm gate:parity --fixture

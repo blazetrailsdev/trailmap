@@ -270,7 +270,10 @@ export function tasksDatabaseIdentity(): TasksDatabaseIdentity | null {
  * adapter that reports no `ino` records nothing.
  */
 export async function recordTasksDatabaseIdentity(path: string): Promise<void> {
-  const stat = getFs().stat ? await getFs().stat!(path) : null;
+  const fs = getFs();
+  // A process that never opened the file (`trails db` before it exists)
+  // records nothing, and the probe falls back to existence.
+  const stat = fs.stat && (await fs.exists(path)) ? await fs.stat(path) : null;
   opened = stat?.ino === undefined ? null : { path, dev: stat.dev, ino: stat.ino };
 }
 
