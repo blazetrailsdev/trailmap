@@ -23,7 +23,7 @@
 
 <pre id="paneScreen" class="terminal" tabindex="0" aria-label="Pane <%= pane %> screen"></pre>
 <form id="paneSend" class="pane-send" autocomplete="off">
-  <input id="paneMessage" class="input" type="text" maxlength="4096" required
+  <input id="paneMessage" class="input" type="text" required
          placeholder="Type a line for the agent; Enter sends it" aria-label="Message to pane <%= pane %>">
   <button id="paneSendButton" class="btn btn-sm" type="submit">Send</button>
   <span id="paneSendResult" class="muted" role="status"></span>
