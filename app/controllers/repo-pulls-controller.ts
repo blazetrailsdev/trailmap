@@ -57,7 +57,7 @@ export class RepoPullsController extends RepoController {
     const shown = rows.filter((row) => (state === "merged" ? row.merged : !row.merged));
 
     await this.render({
-      locals: this.repoLocals({
+      locals: this._repoLocals({
         state,
         tabCounts: {
           open: rows.filter((row) => !row.merged).length,
@@ -74,7 +74,7 @@ export class RepoPullsController extends RepoController {
     const ref = `${this.repo.name}#${number}`;
     const stories = (await storiesForRepo(this.repo.name)).filter((story) => story.pr === ref);
     await this.render({
-      locals: this.repoLocals({
+      locals: this._repoLocals({
         ref,
         number,
         href: `https://github.com/${this.nwo}/pull/${number}`,

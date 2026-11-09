@@ -59,7 +59,7 @@ export class RepoIssuesController extends RepoController {
     );
 
     await this.render({
-      locals: this.repoLocals({
+      locals: this._repoLocals({
         state,
         pager,
         tabCounts: { open: open.length, closed: closed.length },
@@ -83,7 +83,7 @@ export class RepoIssuesController extends RepoController {
     const story = await storyForRepo(this.repo.name, id);
 
     await this.render({
-      locals: this.repoLocals({ id, row: story === null ? null : toRow(story) }),
+      locals: this._repoLocals({ id, row: story === null ? null : toRow(story) }),
       status: story === null ? 404 : 200,
     });
   }

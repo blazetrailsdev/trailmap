@@ -224,7 +224,7 @@ server {
     proxy_set_header Host $http_host;
     proxy_set_header X-Request-Start $msec;
 
-    # NO X-Forwarded-* HEADERS HERE, deliberately. `requireLoopback`
+    # NO X-Forwarded-* HEADERS HERE, deliberately. `_requireLoopback`
     # (app/controllers/concerns/loopback-only.ts) refuses any request carrying
     # proxy provenance, because a request that was forwarded is by definition
     # not one that originated on the box, and `X-Forwarded-Host` can otherwise

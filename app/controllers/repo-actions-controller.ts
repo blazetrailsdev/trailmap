@@ -33,7 +33,7 @@ export class RepoActionsController extends RepoController {
     const titles = new Map(stories.map((story) => [story.id, story.title ?? story.id]));
 
     await this.render({
-      locals: this.repoLocals({
+      locals: this._repoLocals({
         limit: RUN_LIMIT,
         windowDays: WINDOW_DAYS,
         rows: events.map((event) => ({

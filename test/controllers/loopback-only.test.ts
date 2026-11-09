@@ -91,6 +91,6 @@ describe("LoopbackOnly", () => {
 describe("LoopbackOnly", () => {
   it("adds no action to the class it guards", () => {
     expect([...ProbeController.actionMethods()]).not.toContain("_requireLoopback");
-    expect(typeof (ProbeController.prototype as unknown as Record<string, unknown>)._requireLoopback).toBe("function");
+    expect(Object.hasOwn(ProbeController.prototype, "_requireLoopback")).toBe(true);
   });
 });

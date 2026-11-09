@@ -29,7 +29,7 @@ export class RepoCodeController extends RepoController {
     }
 
     await this.render({
-      locals: this.repoLocals({
+      locals: this._repoLocals({
         storyCount: stories.length,
         directories: [...counts.entries()]
           .map(([name, count]) => ({ name, count }))

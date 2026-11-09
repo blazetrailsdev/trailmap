@@ -194,7 +194,7 @@ such conflict; it re-points at the new container each deploy.
 
 Two consequences worth keeping in mind:
 
-- **The block sets no `X-Forwarded-*` headers**, deliberately. `requireLoopback`
+- **The block sets no `X-Forwarded-*` headers**, deliberately. `_requireLoopback`
   refuses any request carrying proxy provenance, so adding one 404s the whole
   JSON API for the CLI and ringo while the dashboard keeps working.
   `scripts/check-nginx-sigil.sh` fails CI on it.

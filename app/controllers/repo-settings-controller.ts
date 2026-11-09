@@ -53,7 +53,7 @@ export class RepoSettingsController extends RepoController {
       .toArray();
 
     await this.render({
-      locals: this.repoLocals({
+      locals: this._repoLocals({
         collaborators: (
           await Promise.all(
             collaborators.map(async (c) => ({
