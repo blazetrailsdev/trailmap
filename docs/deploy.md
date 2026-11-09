@@ -678,6 +678,26 @@ seconds because the watcher's header pattern rejects a fractional second:
 dokku config:set btwhooks STATS_SYNC_LOG=/home/dean/github/blazetrailsdev/stats-sync-job.log
 ```
 
+### Compare before cutover
+
+`scripts/compare-stats-dbs.sh stats.db stats-job.db` compares the two files row by
+row: every shared table, over its shared columns except `id`. Run on 2026-11-08,
+after the job's 03:00 run (queue job 6, the sixth daily 08:00Z run in a row, none
+failed or blocked, the `StatsSyncJob/stats_sync` semaphore taken and released) and
+the crontab's 06:00 run, 19 of 24 shared tables matched exactly, including
+`pull_requests`, `workflow_*`, `raw_job_logs` and `test_compare_stats`. Every
+difference had a cause:
+
+- `api_compare_stats`, `api_compare_privates_stats`: +330 rows in the job, the
+  hyphenated `api:compare` keys only the job parses (trailmap#127).
+- `pr_files` (5 rows), `pr_timeline_events` (+11): PRs 9777 and 9826, which the
+  crontab synced before they merged and the job synced after. The job holds the
+  final state.
+- `expired_job_logs` (`checked_at`), `sync_log`: each run stamps its own time.
+
+Not reproduced in those six runs: the `gh pr list` failure seen once in an
+overlapping E2E run.
+
 Pages
 already read the job's file (`STATS_DB`, above). Once the trial holds up, remove
 the crontab entry (`stats-sync-cron-cutover`, which waits on ringo's repoint).
