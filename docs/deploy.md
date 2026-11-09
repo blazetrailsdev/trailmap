@@ -678,6 +678,23 @@ seconds because the watcher's header pattern rejects a fractional second:
 dokku config:set btwhooks STATS_SYNC_LOG=/home/dean/github/blazetrailsdev/stats-sync-job.log
 ```
 
+Pages
+already read the job's file (`STATS_DB`, above). Once the trial holds up, remove
+the crontab entry (`stats-sync-cron-cutover`, which waits on ringo's repoint).
+`stats.db` then stops changing. Ringo reads its report cards and parity pages
+through `statsDBPath()` (`webhook/parity.go`), which honours `STATS_DB`, so it
+is pointed at the job's file too (ringo only reads it; the crontab writes
+`stats.db` from the host, not through ringo):
+
+```sh
+dokku config:set btwhooks STATS_DB=/home/dean/github/blazetrailsdev/stats-job.db
+```
+
+Deleting `stats.db` becomes safe once three things hold: ringo's
+`dokku config:show btwhooks` names `stats-job.db`, the crontab entry is gone,
+and nothing on the box opens it (`fuser stats.db` prints nothing). Until then
+keep it: it is the crontab's output and ringo's fallback default.
+
 ### Compare before cutover
 
 `scripts/compare-stats-dbs.sh stats.db stats-job.db` compares the two files row by
@@ -698,19 +715,13 @@ difference had a cause:
 Not reproduced in those six runs: the `gh pr list` failure seen once in an
 overlapping E2E run.
 
-Pages
-already read the job's file (`STATS_DB`, above). Once the trial holds up, remove
-the crontab entry (`stats-sync-cron-cutover`, which waits on ringo's repoint).
-`stats.db` then stops changing. Ringo reads its report cards and parity pages
-through `statsDBPath()` (`webhook/parity.go`), which honours `STATS_DB`, so it
-is pointed at the job's file too (ringo only reads it; the crontab writes
-`stats.db` from the host, not through ringo):
+### trails tracking (tasks CLI)
 
-```sh
-dokku config:set btwhooks STATS_DB=/home/dean/github/blazetrailsdev/stats-job.db
-```
-
-Deleting `stats.db` becomes safe once three things hold: ringo's
-`dokku config:show btwhooks` names `stats-job.db`, the crontab entry is gone,
-and nothing on the box opens it (`fuser stats.db` prints nothing). Until then
-keep it: it is the crontab's output and ringo's fallback default.
+The host crontab runs the tasks repo's `scripts/track-trails-cron.sh` hourly at
+:17 (`scripts/track-trails-cron.sh --crontab` prints the entry). The wrapper runs
+`pnpm trails:track` through the login shell, and a failed run opens or comments on
+the "trails tracking is failing" issue in blazetrailsdev/tasks. After every run it
+writes `pnpm trails:status` to `trails-status.txt` beside `tasks.db`
+(`<tasks checkout>/.git/`, blazetrailsdev/tasks#328). That directory is already in
+this app's storage mount, and `/dashboard` shows the file (`TrailsTracking.status`),
+red once it holds an `ERROR:` line. No file, no card.
