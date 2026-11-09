@@ -413,9 +413,9 @@ jobs:
           NODE_ENV: test
         run: pnpm db:migrate
       - name: /graphs/parity/data == ringo's /spawnloop/parity, point for point
-        run: pnpm gate:parity --fixture
+        run: NODE_ENV=test pnpm gate:parity --fixture
       - name: The parity gate still goes red on a changed point
-        run: pnpm gate:parity --fixture --self-test
+        run: NODE_ENV=test pnpm gate:parity --fixture --self-test
 
   # Ported from trails' Preflight job. CLAUDE.md forbids Claude attribution in
   # commits and PR bodies here exactly as it does there, and trailmap is a
