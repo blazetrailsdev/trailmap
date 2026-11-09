@@ -66,7 +66,7 @@ import {
   trailmapRfcRows,
   trailmapStoryRows,
 } from "./page-extract.ts";
-import { tasksDatabaseConfig } from "../config/database.ts";
+import { primaryDatabaseConfig } from "../config/database.ts";
 import { loadModelSchemas } from "../lib/model-schemas.ts";
 import { ApplicationController } from "../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../app/controllers/rfc-pages-controller.ts";
@@ -119,7 +119,7 @@ async function main(): Promise<number> {
   for (const suffix of ["", "-wal", "-shm"]) {
     if (await fs.exists(snapshot + suffix)) await fs.unlink!(snapshot + suffix);
   }
-  await Base.establishConnection(tasksDatabaseConfig());
+  await Base.establishConnection(primaryDatabaseConfig().configurationHash);
   (await Base.leaseConnection()).execute(`VACUUM INTO '${snapshot.replace(/'/g, "''")}'`);
   (await Base.leaseConnection()).disconnectBang();
   await Base.establishConnection({ adapter: "sqlite3", database: snapshot, pool: 1 });

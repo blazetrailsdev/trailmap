@@ -37,8 +37,8 @@ describe("connectToStatsDatabase", () => {
   it("is a no-op without STATS_DB rather than a boot failure", async () => {
     if (hasStatsDatabase()) return;
 
-    // The one place this initializer differs from tasks-database.ts and
-    // hub-database.ts, both of which throw. Those back every page; this backs
+    // The one place this initializer differs from the tasks database and
+    // hub-database.ts, both of which refuse to boot. Those back every page; this backs
     // one, against a multi-gigabyte host file that most deployments do not
     // have. Demanding it would make trailmap undeployable to gain nothing.
     await expect(connectToStatsDatabase()).resolves.toBeUndefined();

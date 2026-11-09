@@ -10,7 +10,7 @@ import { ApplicationRecord } from "./application-record.ts";
  * calls `Hub.establishConnection(hubDatabaseConfig())`, which sets this class's
  * `_connectionSpecificationName` to "Hub", and every subclass resolves its pool
  * through that name instead of `ActiveRecord::Base`'s. `Story` and `Rfc` keep
- * the `tasks.db` connection `config/initializers/tasks-database.ts` establishes
+ * the `tasks.db` connection the framework establishes from `config/database.ts`
  * on `Base` itself, untouched.
  *
  * `abstractClass` is what makes that work AND what keeps the class tableless —

@@ -13,7 +13,7 @@ anything here stops being true.
 | `journal_mode` | `WAL` | Readers never block the writer and the writer never blocks readers, so a page render cannot stall a webhook write. The trails SQLite adapter sets it on every writable connection. |
 | `busy_timeout` | `5000` ms | Every write is one short transaction (a verb, a webhook row). Five seconds is far above a real write and well under the proxy's request timeout. |
 
-trailmap takes both from `tasksDatabaseConfig()` (`pragmas.journal_mode`, and
+trailmap takes both from `config/database.ts`'s served `primary` (`pragmas.journal_mode`, and
 `timeout:`, the adapter's spelling of `busy_timeout`). `journal_mode` is a property of the file, so
 trailmap's writable connection sets it for everyone.
 

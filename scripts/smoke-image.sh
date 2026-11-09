@@ -43,13 +43,24 @@ run=(docker run --network "$name" -v "$data":/data
   -e TASKS_DATABASE=/data/tasks.db -e TASKS_DIR=/data
   -e SECRET_KEY_BASE=smoke-image-not-a-secret)
 
-# The release command migrates the hub and the image's own primary. The tasks
-# database is the CLI's in deployment and nothing here creates one, so the
-# freshly migrated primary — the same schema, empty — is handed over as it, as
+# The release command migrates production's own databases and must NOT touch
+# its primary: that is the CLI's live tasks.db, declared `databaseTasks: false`
+# (config/database.ts). The boot connection may open (so create) an empty file
+# there, as Rails' would; what must never reach it is a schema. SQLite keeps
+# table names as plain text, so a migrated file — or its WAL — names this one.
+echo "smoke-image: the release command does not migrate TASKS_DATABASE"
+"${run[@]}" --rm "$image" sh -c 'rm -f /data/tasks.db* && bin/trails db:migrate'
+if cat "$data"/tasks.db* 2>/dev/null | grep -aq schema_migrations; then
+  echo "smoke-image: db:migrate migrated the live tasks database" >&2
+  exit 1
+fi
+rm -f "$data"/tasks.db*
+
+# Nothing in deployment creates the tasks database, so the test environment's
+# scratch primary — the same schema, empty — is handed over as it, as
 # smoke-boot.sh does.
-echo "smoke-image: the release command migrates both databases"
-"${run[@]}" --rm "$image" sh -c \
-  'bin/trails db:migrate && rm -f /data/tasks.db* && cp storage/production.sqlite3 /data/tasks.db'
+"${run[@]}" --rm -e NODE_ENV=test "$image" sh -c \
+  'bin/trails db:migrate && cp storage/test.sqlite3 /data/tasks.db'
 
 echo "smoke-image: the image's own CMD"
 "${run[@]}" -d --name "$name" -p "127.0.0.1:$port:8080" "$image" >/dev/null

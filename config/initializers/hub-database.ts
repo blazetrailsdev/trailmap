@@ -8,7 +8,7 @@ import { loadHubSchemas, missingHubTables } from "../../lib/model-schemas.ts";
  * Connect the owner/repository hierarchy to the `hub` Postgres database.
  *
  * Two connections, one process: this one is established on `Hub`
- * (app/models/hub.ts), and `tasks-database.ts` establishes the task domain's on
+ * (app/models/hub.ts), and the framework establishes the task domain's on
  * `ActiveRecord::Base` itself. Neither disturbs the other — a pool is keyed by
  * the connection specification name, and `Hub` has its own.
  *

@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { env, getFs } from "@blazetrails/ruby-compat";
-import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.ts";
+import { primaryDatabaseConfig, tasksDatabasePath } from "../../config/database.ts";
 import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
@@ -135,11 +135,11 @@ describe("the serializer", () => {
  *     TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db \
  *     TASKS_INDEX_JSON=~/github/blazetrailsdev/tasks/index.json pnpm test
  */
-const withLiveDatabase = hasTasksDatabase() && env.TASKS_INDEX_JSON ? describe : describe.skip;
+const withLiveDatabase = tasksDatabasePath() && env.TASKS_INDEX_JSON ? describe : describe.skip;
 
 withLiveDatabase("the published index.json", () => {
   beforeAll(async () => {
-    await Base.establishConnection(tasksDatabaseConfig());
+    await Base.establishConnection(primaryDatabaseConfig("development").configurationHash);
     await loadModelSchemas();
   });
 

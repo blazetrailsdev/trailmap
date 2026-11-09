@@ -2,7 +2,7 @@
  * The shared-SQLite write protocol: ONE writer per table, not per file.
  *
  * `docs/write-protocol.md` is the prose; these are the values. trailmap's
- * connection takes them from `tasksDatabaseConfig()`. ringo is Go in another
+ * connection takes them from `config/database.ts`'s served `primary`. ringo is Go in another
  * repository and cannot import this, so test/config/write-protocol.test.ts
  * reads every `sql.Open` in ringo's vendored database code (vendor/ringo/db)
  * and fails when its DSN or its SQL writes break the protocol.

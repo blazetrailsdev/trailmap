@@ -33,7 +33,7 @@ pnpm install --frozen-lockfile
 pnpm exec trails-tsc-views build --views app/views
 
 # A DATABASE, because the deployment has one and a boot without one is not the
-# boot being smoke-tested. Until `config/initializers/tasks-database.ts` began
+# boot being smoke-tested. Until the boot began
 # refusing it, a database-less process came up, answered `/up` green and 500ed
 # with `ConnectionNotDefined` on every page that reads a row — which is exactly
 # what the deployed app did, unnoticed, because this probe asked for `/up` and
@@ -44,7 +44,7 @@ pnpm exec trails-tsc-views build --views app/views
 # migrations under db/migrate, so `db:create` + `db:migrate` produce a valid,
 # empty tasks database to point TASKS_DATABASE at. They run in the TEST
 # environment, whose primary is a plain scratch database: the served
-# environments will name `env.TASKS_DATABASE` with `databaseTasks: false`, and
+# environments name `env.TASKS_DATABASE` with `databaseTasks: false`, and
 # `db:migrate` skips such a database by design, so a recipe that relied on
 # them would build nothing.
 #
@@ -183,9 +183,8 @@ if env -u TASKS_DATABASE -u TASKS_DIR pnpm exec tsx scripts/boot-probe.ts \
   echo "  It would answer /up green and 500 on every page that reads a row." >&2
   exit 1
 fi
-# Two messages say the same thing: the initializer's own, and the one the
-# framework's `active_record.initialize_database` raises first once the served
-# environments name `env.TASKS_DATABASE`.
+# The framework's `active_record.initialize_database` raises it: the served
+# environments name `env.TASKS_DATABASE`, so there is no file to open.
 if ! grep -qE "TASKS_DATABASE is not set|No database file specified" "$work/no-database-boot.log"; then
   echo "smoke-boot: the boot failed, but not for the missing database:" >&2
   tail -20 "$work/no-database-boot.log" >&2

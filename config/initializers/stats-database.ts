@@ -13,7 +13,7 @@ import { loadStatsSchemas } from "../../lib/model-schemas.ts";
  * An unset `STATS_DB` is NOT a boot failure, which is the one place this file
  * deliberately differs from its two neighbours.
  *
- * `tasks-database.ts` and `hub-database.ts` both throw, and they are right to:
+ * The tasks boot and `hub-database.ts` both fail, and they are right to:
  * without those connections EVERY page 500s, so a process that comes up
  * answers dokku's `GET /up` green (the healthcheck touches no row) and then
  * fails on everything. The stats database backs exactly one page. It is also a

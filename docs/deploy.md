@@ -47,11 +47,10 @@ dokku storage:mount trailmap \
 dokku ps:set trailmap restart-policy on-failure:10
 
 # The database and the checkout, at the identical host path the mount uses.
-# NOT optional: nothing else in the boot path establishes a connection, so a
-# container without TASKS_DATABASE comes up, answers /up green, and 500s with
-# `ConnectionNotDefined` on every page that reads a row. Since
-# `config/initializers/tasks-database.ts` began refusing that boot, the missing
-# variable is a container that will not start instead.
+# NOT optional: config/database.ts names it as production's primary, and the
+# framework's `active_record.initialize_database` connects at boot, so a
+# container without TASKS_DATABASE will not start (it once came up and 500ed
+# with `ConnectionNotDefined` on every page that reads a row).
 dokku config:set --no-restart trailmap NODE_ENV=production \
   TASKS_DATABASE=/home/dean/github/blazetrailsdev/tasks/.git/tasks.db \
   TASKS_DIR=/home/dean/github/blazetrailsdev/tasks

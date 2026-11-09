@@ -47,7 +47,7 @@
  */
 import { Base } from "@blazetrails/activerecord";
 import { argv, Dir, env, exit, getFs } from "@blazetrails/ruby-compat";
-import { tasksDatabaseConfig } from "../config/database.ts";
+import { primaryDatabaseConfig } from "../config/database.ts";
 import { Rfc } from "../app/models/rfc.ts";
 import { Story } from "../app/models/story.ts";
 import { loadModelSchemas } from "../lib/model-schemas.ts";
@@ -129,7 +129,7 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  await Base.establishConnection(tasksDatabaseConfig());
+  await Base.establishConnection(primaryDatabaseConfig().configurationHash);
   await loadModelSchemas();
   const rfcs = await Rfc.all().toArray();
   const stories = await Story.all().toArray();

@@ -45,7 +45,7 @@ describe("connectToHubDatabase", () => {
 
   /**
    * The deployed `ConnectionNotDefined`, from the boot side — the lesson
-   * `config/initializers/tasks-database.ts` records, applied to the second
+   * the tasks database's boot failure records, applied to the second
    * database. A container that comes up without this variable answers dokku's
    * `/up` green (the health check touches no row) and 500s on `/blazetrailsdev`
    * and every page under it.
