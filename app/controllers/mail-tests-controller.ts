@@ -20,8 +20,9 @@ export interface Outcome {
  * Its door is `/dashboard`'s, and deliberately not `LoopbackOnly`: off the box
  * every request has passed Authelia (`viewer.ts`), and `LoopbackOnly` would
  * refuse exactly those, leaving the page reachable only by curl on the box.
- * The mail always goes FROM `EMAIL` when it is set, so a sign-in cannot make
- * trailmap send as an address of the visitor's choosing.
+ * The mail goes FROM `EMAIL` when it is set. Unset, it goes from the
+ * recipient to itself, as `OpsMailer#jobFailed` does: the visitor can then
+ * name the sender, but only as the one address the mail is delivered to.
  */
 export class MailTestsController extends ApplicationController {
   async show(): Promise<void> {
