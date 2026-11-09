@@ -105,10 +105,10 @@ export class StatsSyncJob extends ApplicationJob {
    * The stage and the log tail, as cron-wrapper.sh's `send_alert` mailed them;
    * `ApplicationJob#mailFailure` sends them once the retries are spent.
    */
-  protected override async failureDetails(): Promise<string | null> {
+  protected override async failureDetails(): Promise<string[]> {
     const log = env.STATS_SYNC_LOG;
     const tail = log ? (await getFs().readFile(log, "utf8")).trimEnd().split("\n").slice(-30).join("\n") : "";
-    return `Stage: ${this.failedStage ?? "(before the sync started)"}\n\nLast 30 lines:\n${tail}`;
+    return [`Stage: ${this.failedStage ?? "(before the sync started)"}`, "", "Last 30 lines:", tail];
   }
 
   /** An unsent alert is a `[cron-wrapper]` line in the log, as the wrapper wrote it. */

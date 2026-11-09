@@ -50,8 +50,8 @@ export class ApplicationJob extends Base {
   }
 
   /** What a job adds to its failure mail beyond the exception: a stage, a log tail. */
-  protected async failureDetails(): Promise<string | null> {
-    return null;
+  protected async failureDetails(): Promise<string[]> {
+    return [];
   }
 
   /** Where a job notes that its failure went unmailed. */

@@ -11,7 +11,7 @@ export interface JobFailure {
   exceptionClass: string;
   message: string;
   backtrace: string;
-  details: string | null;
+  details: string[];
 }
 
 /** Mail to whoever runs trailmap: failed jobs, and the probe `/mail-test` sends. */
@@ -31,7 +31,7 @@ export class OpsMailer extends ApplicationMailer {
       `Executions: ${failure.executions}`,
       `Exception:  ${failure.exceptionClass}: ${failure.message}`,
     ];
-    if (failure.details) lines.push("", failure.details);
+    if (failure.details.length > 0) lines.push("", ...failure.details);
     lines.push("", "Backtrace:", failure.backtrace);
     return this.mail({
       to: failure.to,

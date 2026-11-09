@@ -46,6 +46,7 @@ describe("ApplicationJob failure mail", () => {
     expect(body).toContain('Arguments:  ["from a test"]');
     expect(body).toContain("Executions: 1");
     expect(body).toContain("Backtrace:\nDeliberateFailure: deliberate failure");
+    expect(body).not.toContain("Stage:");
   });
 
   it("mails once, when retryOn runs out of attempts, and not while a retry is due", async () => {

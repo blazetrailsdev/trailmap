@@ -87,6 +87,13 @@ describe("StatsSyncJob", () => {
     expect(String(mail.body())).toContain('[cron-wrapper] stats sync failed at stage "Syncing job logs"');
   });
 
+  it("notes in the log that no alert was sent when EMAIL is not set", async () => {
+    syncLatest.mockRejectedValue(new Error("no such table: x"));
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(job.performNow()).rejects.toThrow("no such table");
+    expect(read()).toContain("[cron-wrapper] no alert email sent: EMAIL is not set\n");
+  });
+
   it("notes an alert it could not send without masking the sync's error", async () => {
     writable["EMAIL"] = "ops@example.com";
     const addDeliveryMethod = ApplicationMailer.addDeliveryMethod as (name: string, klass: unknown) => void;
