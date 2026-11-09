@@ -9,5 +9,7 @@ class DashboardController < ApplicationController
     @reviewers_path = Fleet::REVIEWERS_PATH
     @read_path = Fleet::READ_PATH
     @relay_configured = !Setting.ringo_base.nil?
+    @trails_status = TrailsTracking.status
+    @trails_failing = !@trails_status.nil? && TrailsTracking.failing?(@trails_status)
   end
 end

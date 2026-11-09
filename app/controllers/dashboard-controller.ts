@@ -7,6 +7,7 @@ import {
 } from "../../config/fleet.ts";
 import { Setting } from "../models/setting.ts";
 import { Repository } from "../models/repository.ts";
+import { TrailsTracking } from "../models/trails-tracking.ts";
 
 /**
  * `/dashboard` — the fleet dashboard, ported from ringo's `/`.
@@ -23,6 +24,7 @@ import { Repository } from "../models/repository.ts";
  */
 export class DashboardController extends ApplicationController {
   async index(): Promise<void> {
+    const trailsStatus = await TrailsTracking.status();
     await this.render({
       locals: {
         repos: await Repository.spawnChoices(),
@@ -31,6 +33,8 @@ export class DashboardController extends ApplicationController {
         reviewersPath: FLEET_REVIEWERS_PATH,
         readPath: FLEET_READ_PATH,
         relayConfigured: (await Setting.ringoBase()) !== null,
+        trailsStatus,
+        trailsFailing: trailsStatus !== null && TrailsTracking.isFailing(trailsStatus),
       },
     });
   }

@@ -18,6 +18,13 @@
   </div>
 <% end %>
 
+<% unless @trails_status.nil? %>
+  <div class="card trails-tracking<%= @trails_failing ? " ci-fixer paused" : "" %>">
+    <div class="card-head"><span class="card-title">trails tracking</span><span class="muted">the tasks CLI's pin, from its hourly <code>pnpm trails:track</code></span></div>
+    <pre class="trails-status"><%= @trails_status %></pre>
+  </div>
+<% end %>
+
 <div class="status-group" title="Connection status">
   <span class="pill" id="eventsPill" title="Dashboard event stream"><span class="connected off" id="eventsDot"></span><span class="ico">&#128225;</span><span class="label">events</span></span>
   <span class="pill" id="tmuxPill" title="tmux socket to agent panes"><span class="connected off" id="tmuxDot"></span><span class="ico">&#128421;</span><span class="label">tmux</span></span>
