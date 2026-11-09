@@ -9,7 +9,7 @@ fleet. One container, one HTTP listener on `:8080`, two audiences:
 | The JSON API | `http://127.0.0.1:8080`, via nginx's loopback server block | none — unreachable off-box |
 
 The API is refused on the public hostname twice over: nginx puts SSO in front
-of it, and `requireLoopback`
+of it, and `_requireLoopback`
 (`app/controllers/concerns/loopback-only.ts`) rejects any request carrying
 proxy provenance, so a future SSO bypass rule cannot accidentally expose it.
 
@@ -466,7 +466,7 @@ stories, 275 in the queue), warm, with the same rows answered:
 `pnpm gate` is byte-identical over the same snapshot.
 
 `/up` is UNGUARDED, so a 200 from it proves only that the listener is up. The
-thing that has broken twice is `requireLoopback` refusing a request that
+thing that has broken twice is `_requireLoopback` refusing a request that
 arrived carrying proxy provenance, and only a guarded endpoint can show that —
 which is why the script asks for `/stories/ready` by name and fails on a 404
 from it.
@@ -523,7 +523,7 @@ trailmap the only writer of the task tables. Both writers use WAL and a shared
 busy timeout — see [write-protocol.md](write-protocol.md).
 
 A 404 from the loopback API — rather than a connection refused — means the
-request reached the app with `X-Forwarded-*` headers on it and `requireLoopback`
+request reached the app with `X-Forwarded-*` headers on it and `_requireLoopback`
 refused it. nginx's loopback server block must set none: read the block in
 `nginx.conf.sigil`, whose guard (`scripts/check-nginx-sigil.sh`) fails CI on a
 reintroduced forwarding header.

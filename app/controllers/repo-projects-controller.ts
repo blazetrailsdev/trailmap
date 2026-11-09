@@ -32,7 +32,7 @@ export class RepoProjectsController extends RepoController {
     const [statuses, held] = await Promise.all([storyStatusesByRfc(), Story.depHeldIds()]);
 
     await this.render({
-      locals: this.repoLocals({
+      locals: this._repoLocals({
         rows: rfcs
           .map((rfc) => {
             const own = statuses.get(rfc.id) ?? [];
@@ -61,7 +61,7 @@ export class RepoProjectsController extends RepoController {
     const mine = (await storiesForRepo(this.repo.name)).filter((story) => story.rfc_id === id);
 
     await this.render({
-      locals: this.repoLocals({
+      locals: this._repoLocals({
         id,
         rfc,
         columns: columnsOf(mine),

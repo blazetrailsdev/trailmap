@@ -50,14 +50,14 @@ export class ProbesController extends ApiController {
    * are `jq` and ringo's Go structs, not TypeScript.
    */
   async ready(): Promise<void> {
-    const database = await this.check(() => this.checkDatabase());
+    const database = await this._check(() => this._checkDatabase());
     const checks: Record<string, Check> = {
       database,
-      stories: this.checkStories(database),
-      migrations: await this.check(() => this.checkMigrations()),
-      hub_migrations: await this.check(() => this.checkHubMigrations()),
-      checkout: await this.check(() => this.checkCheckout()),
-      git_identity: await this.check(() => this.checkGitIdentity()),
+      stories: this._checkStories(database),
+      migrations: await this._check(() => this._checkMigrations()),
+      hub_migrations: await this._check(() => this._checkHubMigrations()),
+      checkout: await this._check(() => this._checkCheckout()),
+      git_identity: await this._check(() => this._checkGitIdentity()),
     };
     const failing = Object.keys(checks).filter((name) => !checks[name]!.ok);
     await this.render({
@@ -80,7 +80,7 @@ export class ProbesController extends ApiController {
    * Two things keep that from compounding:
    *
    * - ONE RUN AT A TIME. A `deep` arriving while one is in flight awaits the
-   *   same run and answers with its result (`sharedQueue`), so overlapping
+   *   same run and answers with its result (`_sharedQueue`), so overlapping
    *   canaries cost one ranking, not one each. Eight at once used to hold
    *   `ready` for 8.4s.
    * - A BOUND, `deepTimeoutMs`. Past it the answer is 503 naming the timeout.
@@ -94,7 +94,7 @@ export class ProbesController extends ApiController {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const rows = await Promise.race([
-        this.sharedQueue(),
+        this._sharedQueue(),
         new Promise<never>((_, reject) => {
           timer = setTimeout(() => reject(new DeepTimeout(bound)), bound);
         }),
@@ -120,7 +120,7 @@ export class ProbesController extends ApiController {
    * gives up on it: a run that outlived its bound is still running, and a
    * second one beside it is the stacking this exists to stop.
    */
-  private sharedQueue(): Promise<number> {
+  private _sharedQueue(): Promise<number> {
     const probes = ProbesController;
     if (probes.inFlight === null) {
       const run = (async () => {
@@ -140,7 +140,7 @@ export class ProbesController extends ApiController {
    * A check that RAISES is a red check, with its name in the body like any
    * other. Without this a throw anywhere in one is a bare 500 naming nothing.
    */
-  private async check(run: () => Promise<Check>): Promise<Check> {
+  private async _check(run: () => Promise<Check>): Promise<Check> {
     try {
       return await run();
     } catch (e) {
@@ -167,7 +167,7 @@ export class ProbesController extends ApiController {
    * or the process was not booted through config/environment.ts — the second
    * question degrades to the first, and the body says so in `identity`.
    */
-  private async checkDatabase(): Promise<Check> {
+  private async _checkDatabase(): Promise<Check> {
     let identity: string | undefined;
     const file = tasksDatabasePath();
     if (file) {
@@ -197,7 +197,7 @@ export class ProbesController extends ApiController {
    * count rather than asking twice, so with the database red it reports that
    * it could not look — a different failure from "looked and found none".
    */
-  private checkStories(database: Check): Check {
+  private _checkStories(database: Check): Check {
     if (!database.ok) return { ok: false, error: "not counted: the database check failed" };
     const count = Number(database.stories);
     return count > 0 ? { ok: true, count } : { ok: false, count, error: "the stories table is empty" };
@@ -234,7 +234,7 @@ export class ProbesController extends ApiController {
    * It asks `Story`'s pool, so it is the database the queue is read from. The
    * hub has its own history (`db/hub-migrate`), and `hub_migrations` below.
    */
-  private async checkMigrations(): Promise<Check> {
+  private async _checkMigrations(): Promise<Check> {
     return headCheck(Story.connectionPool().migrationContext, "db/migrate");
   }
 
@@ -252,7 +252,7 @@ export class ProbesController extends ApiController {
    * one that legitimately has no hub. Production cannot reach the green
    * branch, and `scripts/smoke-prod.sh` fails a `skipped` answer anyway.
    */
-  private async checkHubMigrations(): Promise<Check> {
+  private async _checkHubMigrations(): Promise<Check> {
     if (!hasHubDatabase()) return { ok: true, skipped: "HUB_DATABASE_URL is not set" };
     return headCheck(Hub.connectionPool().migrationContext, HUB_MIGRATIONS_PATH);
   }
@@ -271,7 +271,7 @@ export class ProbesController extends ApiController {
    * `probeSweepAgeMs`: a younger one may be a concurrent probe's, and
    * removing it would turn that probe red.
    */
-  private async checkCheckout(): Promise<Check> {
+  private async _checkCheckout(): Promise<Check> {
     const dir = tasksContentDir();
     if (dir === null) return { ok: false, error: "TASKS_DIR names no tasks checkout" };
     const fs = getFs();
@@ -330,7 +330,7 @@ export class ProbesController extends ApiController {
    * The directory reaches the shell as a variable, never spliced into the
    * command line, so there is no quoting to get wrong.
    */
-  private async checkGitIdentity(): Promise<Check> {
+  private async _checkGitIdentity(): Promise<Check> {
     const dir = tasksContentDir();
     if (dir === null) return { ok: false, error: "TASKS_DIR names no tasks checkout" };
     const child = await getChildProcessAsync();
@@ -349,7 +349,7 @@ export class ProbesController extends ApiController {
 
 /**
  * One database's migration head against the last file its history holds,
- * compared for EQUALITY (see `checkMigrations`). `dir` names the directory in
+ * compared for EQUALITY (see `_checkMigrations`). `dir` names the directory in
  * the error, so a red check says which of the two histories is out of step.
  */
 async function headCheck(context: MigrationContext, dir: string): Promise<Check> {

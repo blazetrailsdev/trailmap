@@ -54,29 +54,27 @@ export function isLoopbackRequest(request: LoopbackRequest): boolean {
   return LOOPBACK_HOSTS.includes(stripPort(String(host).trim().toLowerCase()));
 }
 
-/** What `requireLoopback` needs of the controller it is mixed into. */
+/** What `_requireLoopback` needs of the controller it is mixed into. */
 type LoopbackHost = Pick<ActionController.Base, "request" | "render">;
 
 /**
- * Refuse anything not arriving on loopback with a 404, which declines to
- * confirm the API exists. Rendering is what halts the callback chain: the
- * `process_action` terminator stops at a performed response, as Rails'
- * `performed?` does, so the action never runs.
- */
-async function requireLoopback(this: LoopbackHost): Promise<void> {
-  if (isLoopbackRequest(this.request)) return;
-  await this.render({ json: { error: "not_found" }, status: 404 });
-}
-
-/**
- * `include(this, LoopbackOnly)` guards every action of the class. The guard
- * is registered as a block rather than by name until `beforeAction` takes a
- * method name (`before-action-does-not-accept-a-method-name`, RFC 0141), and
- * it is NOT added to the class: trails' `actionMethods` counts every public
- * prototype method as an action, where Rails' concern would keep it `private`.
+ * `include(this, LoopbackOnly)` guards every action of the class with
+ * `before_action :require_loopback`. The guard is `_`-prefixed, trails'
+ * spelling of a non-action helper (Rails keeps it `private`).
  */
 export const LoopbackOnly = {
   [included](base: typeof ActionController.Base): void {
-    base.beforeAction((controller) => requireLoopback.call(controller as ActionController.Base));
+    base.beforeAction(":_requireLoopback");
+  },
+
+  /**
+   * Refuse anything not arriving on loopback with a 404, which declines to
+   * confirm the API exists. Rendering is what halts the callback chain: the
+   * `process_action` terminator stops at a performed response, as Rails'
+   * `performed?` does, so the action never runs.
+   */
+  async _requireLoopback(this: LoopbackHost): Promise<void> {
+    if (isLoopbackRequest(this.request)) return;
+    await this.render({ json: { error: "not_found" }, status: 404 });
   },
 };

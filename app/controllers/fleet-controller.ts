@@ -178,7 +178,7 @@ export class FleetController extends ApplicationController {
    * keep in step.
    */
   async reviewers(): Promise<void> {
-    await this.relayRead("reviewer/list");
+    await this._relayRead("reviewer/list");
   }
 
   /**
@@ -195,10 +195,10 @@ export class FleetController extends ApplicationController {
       return;
     }
     const agent = String(this.params.get("agent") ?? "");
-    await this.relayRead(FLEET_READS[name] + (name === "drain-status" && /^[a-z]+$/.test(agent) ? `?agent=${agent}` : ""));
+    await this._relayRead(FLEET_READS[name] + (name === "drain-status" && /^[a-z]+$/.test(agent) ? `?agent=${agent}` : ""));
   }
 
-  private async relayRead(path: string): Promise<void> {
+  private async _relayRead(path: string): Promise<void> {
     const base = await Setting.ringoBase();
     if (base === null) {
       await this.render({ plain: "no ringo origin is configured", status: 503 });

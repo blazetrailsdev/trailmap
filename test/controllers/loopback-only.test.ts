@@ -88,10 +88,9 @@ describe("LoopbackOnly", () => {
   });
 });
 
-// Rails' concern keeps its guard `private`, so it is never an action. trails
-// counts every public prototype method, so the guard must stay off the class.
 describe("LoopbackOnly", () => {
   it("adds no action to the class it guards", () => {
-    expect([...ProbeController.actionMethods()]).not.toContain("requireLoopback");
+    expect([...ProbeController.actionMethods()]).not.toContain("_requireLoopback");
+    expect(Object.hasOwn(ProbeController.prototype, "_requireLoopback")).toBe(true);
   });
 });

@@ -43,7 +43,7 @@ export class RepoInsightsController extends RepoController {
       .reduce((total, story) => total + (story.est_loc ?? 0), 0);
 
     await this.render({
-      locals: this.repoLocals({
+      locals: this._repoLocals({
         windowDays: WINDOW_DAYS,
         storyCount: stories.length,
         openEstimate,

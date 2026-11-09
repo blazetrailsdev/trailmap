@@ -40,7 +40,7 @@ export class RepoWikiController extends RepoController {
     const doc = rfc === null ? null : await readDocument(rfc.file_path);
 
     await this.render({
-      locals: this.repoLocals({
+      locals: this._repoLocals({
         pages,
         selected,
         pageTitle: rfc === null ? null : (rfc.title ?? rfc.id),

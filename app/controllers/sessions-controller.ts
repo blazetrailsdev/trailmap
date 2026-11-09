@@ -104,9 +104,9 @@ export class SessionsController extends ApplicationController {
   /** ringo's `HandleSessionFile`: one archive file, gunzipped, as plain text. */
   async file(): Promise<void> {
     this.noStore();
-    const read = await this.readArchive("/sessions/file", ARCHIVE_FILE_MAX_BYTES, "head");
+    const read = await this._readArchive("/sessions/file", ARCHIVE_FILE_MAX_BYTES, "head");
     if (read === null) return;
-    if (read.truncated) return this.refuseTooLarge();
+    if (read.truncated) return this._refuseTooLarge();
     const p = String(this.params.get("p") ?? "");
     const name = p.slice(p.lastIndexOf("/") + 1).replace(/\.gz$/, "");
     this.response.setHeader("Content-Disposition", `inline; filename="${name}"`);
@@ -119,7 +119,7 @@ export class SessionsController extends ApplicationController {
    */
   async transcript(): Promise<void> {
     this.noStore();
-    const read = await this.readArchive("/sessions/file", TRANSCRIPT_MAX_BYTES, "head");
+    const read = await this._readArchive("/sessions/file", TRANSCRIPT_MAX_BYTES, "head");
     if (read === null) return;
     // A half line is a JSON error to ringo's reader; end on the last whole one.
     const bytes = read.truncated ? read.bytes.subarray(0, read.bytes.lastIndexOf(0x0a) + 1) : read.bytes;
@@ -150,7 +150,7 @@ export class SessionsController extends ApplicationController {
       this.redirectTo(this.sessionsTranscriptPath({ p }));
       return;
     }
-    const read = await this.readArchive("/sessions/file", PANE_VIEW_MAX_BYTES, "tail");
+    const read = await this._readArchive("/sessions/file", PANE_VIEW_MAX_BYTES, "tail");
     if (read === null) return;
     const { html, lines } = await renderPaneLog(read.bytes, PANE_VIEW_MAX_LINES);
     await this.render({
@@ -163,7 +163,7 @@ export class SessionsController extends ApplicationController {
    * rendered: a refused path, no ringo, ringo down, or ringo's own refusal
    * (its status and text, as ringo's `http.Error` wrote them).
    */
-  private async readArchive(path: string, max: number, keep: "head" | "tail"): Promise<BoundedRead | null> {
+  private async _readArchive(path: string, max: number, keep: "head" | "tail"): Promise<BoundedRead | null> {
     const p = String(this.params.get("p") ?? "");
     const problem = archivePathProblem(p);
     if (problem !== null) {
@@ -196,7 +196,7 @@ export class SessionsController extends ApplicationController {
     }
   }
 
-  private async refuseTooLarge(): Promise<void> {
+  private async _refuseTooLarge(): Promise<void> {
     await this.render({
       plain: `larger than trailmap relays (${ARCHIVE_FILE_MAX_BYTES >> 20} MiB); ringo serves it whole`,
       status: 413,
