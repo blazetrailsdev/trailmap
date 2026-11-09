@@ -52,6 +52,11 @@ Trails.application!.routes().draw(function () {
   // moving trailmap's own landing page out from under `/` before then would
   // change two things in one step.
   this.get("dashboard", { to: "dashboard#index", as: "dashboard" });
+  // Send a test email, or enqueue a job that fails to exercise the failure
+  // mail ApplicationJob sends (MailTestsController).
+  this.get("mail-test", { to: "mail_tests#show", as: "mail_test" });
+  this.post("mail-test", { to: "mail_tests#deliver" });
+  this.post("mail-test/failing-job", { to: "mail_tests#enqueue", as: "mail_test_failing_job" });
   this.get("fleet/socket", { to: "fleet#socket", as: "fleet_socket" });
   this.post("fleet/control/*path", { to: "fleet#control" });
 

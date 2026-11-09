@@ -1,0 +1,22 @@
+<h1>Mail test</h1>
+<p class="muted">Mail goes over SMTP to <code><%= smtpAddress %></code>. A job that fails for good mails
+<% if (alertTo) { %><code><%= alertTo %></code><% } else { %><strong>nobody: <code>EMAIL</code> is not set</strong><% } %>.</p>
+
+<% if (outcome) { %>
+<div class="box" id="mailTestOutcome">
+  <div class="box-row"><span class="badge s-<%= outcome.ok ? "done" : "blocked" %>"><%= outcome.ok ? "ok" : "error" %></span> <%= outcome.message %></div>
+</div>
+<% } %>
+
+<h2>Send a test email</h2>
+<%= formWith({ url: mailTestPath(), method: "post" }, (f) => { %>
+  <div class="box">
+    <div class="box-row"><label>To <%= f.emailField("to", { value: to, required: true }) %></label></div>
+    <div class="box-row"><%= f.submit("Send test email", { class: "btn btn-green btn-sm" }) %></div>
+  </div>
+<% }) %>
+
+<h2>Fail a job</h2>
+<p class="muted">Enqueues <code>FailingProbeJob</code>, which raises on its first run. The worker discards it and
+<code>ApplicationJob</code> mails the failure, as it would for any job.</p>
+<%= buttonTo("Enqueue a failing job", mailTestFailingJobPath(), { class: "btn" }) %>

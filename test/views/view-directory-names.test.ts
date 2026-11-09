@@ -17,6 +17,7 @@ import { RepoSettingsController } from "../../app/controllers/repo-settings-cont
 import { RepoWikiController } from "../../app/controllers/repo-wiki-controller.ts";
 import { ParityGraphsController } from "../../app/controllers/parity-graphs-controller.ts";
 import { PackagesController } from "../../app/controllers/packages-controller.ts";
+import { MailTestsController } from "../../app/controllers/mail-tests-controller.ts";
 import { AuditsController } from "../../app/controllers/audits-controller.ts";
 import { DeploysController } from "../../app/controllers/deploys-controller.ts";
 import { SearchesController } from "../../app/controllers/searches-controller.ts";
@@ -62,6 +63,7 @@ const PAGE_CONTROLLERS = [
   RepoSettingsController,
   ParityGraphsController,
   PackagesController,
+  MailTestsController,
 ];
 
 /** The two directories that back no controller: layouts and shared partials. */
