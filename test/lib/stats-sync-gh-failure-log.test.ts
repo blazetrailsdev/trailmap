@@ -28,6 +28,11 @@ describe("logGhFailure", () => {
     expect(getFs().readFileSync(log, "utf8")).toBe("[gh] exit 4: gh api rate_limit\n(no stderr)\n");
   });
 
+  it("does not throw when the log cannot be written", () => {
+    writable["STATS_SYNC_LOG"] = getPath().join(dir, "missing", "sync.log");
+    expect(() => logGhFailure(new GhCommandError("gh pr list", 1, "boom"))).not.toThrow();
+  });
+
   it("ignores errors that are not a failed command", () => {
     logGhFailure(new Error("boom"));
     expect(getFs().existsSync(log)).toBe(false);

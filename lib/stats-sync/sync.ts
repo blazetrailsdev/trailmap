@@ -70,7 +70,13 @@ export function logGhFailure(error: unknown): void {
   const log = env.STATS_SYNC_LOG;
   if (!log || !(error instanceof GhCommandError)) return;
   const stderr = error.stderr.trimEnd() || "(no stderr)";
-  getFs().appendFileSync(log, `[gh] exit ${error.exitStatus ?? "?"}: ${error.command}\n${stderr}\n`);
+  const line = `[gh] exit ${error.exitStatus ?? "?"}: ${error.command}\n${stderr}\n`;
+  // A log that cannot be written must not replace gh's error or skip its retry.
+  try {
+    getFs().appendFileSync(log, line);
+  } catch (writeError) {
+    console.warn(`  [gh] could not write ${log}: ${writeError instanceof Error ? writeError.message : writeError}\n${line}`);
+  }
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

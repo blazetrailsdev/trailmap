@@ -298,7 +298,7 @@ const pane = await openTab("/panes/5");
 await until("the pane's screen", () => pane(`${byId("paneScreen")}.textContent === "$ " && !${byId("paneMessage")}.disabled`));
 await pane(
   `window.sentHeaders = []; const realFetch = window.fetch; window.fetch = (url, init) => ` +
-    `{ if (init && init.method === "POST") window.sentHeaders.push(init.headers); return realFetch(url, init); }; true`,
+    `{ if (init && init.method === "POST") window.sentHeaders.push(new Headers(init.headers)); return realFetch(url, init); }; true`,
 );
 const send = (text: string): string =>
   `${byId("paneMessage")}.value = ${JSON.stringify(text)}; ` +
@@ -312,8 +312,8 @@ if (JSON.stringify(typed) !== JSON.stringify(["/pane/5/send", { text: "git statu
 await until("the pane message box to clear", () =>
   pane(
     `${byId("paneMessage")}.value === "" && ${byId("paneSendResult")}.textContent === "sent" && ` +
-      `window.sentHeaders[0]["X-CSRF-Token"] === document.querySelector('meta[name="csrf-token"]').content && ` +
-      `window.sentHeaders[0]["X-CSRF-Token"].length > 0`,
+      `window.sentHeaders[0].get("X-CSRF-Token") === document.querySelector('meta[name="csrf-token"]').content && ` +
+      `window.sentHeaders[0].get("X-CSRF-Token").length > 0`,
   ),
 );
 console.log("ok  pane message, sent with the CSRF token and the box cleared");
