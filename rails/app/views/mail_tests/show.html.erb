@@ -1,0 +1,22 @@
+<h1>Mail test</h1>
+<p class="muted">Mail goes over SMTP to <code><%= @smtp_address %></code>. A job that fails for good mails
+<% if @alert_to %><code><%= @alert_to %></code><% else %><strong>nobody: <code>EMAIL</code> is not set</strong><% end %>.</p>
+
+<% if @outcome %>
+<div class="box" id="mailTestOutcome">
+  <div class="box-row"><span class="badge s-<%= @outcome[:ok] ? "done" : "blocked" %>"><%= @outcome[:ok] ? "ok" : "error" %></span> <%= @outcome[:message] %></div>
+</div>
+<% end %>
+
+<h2>Send a test email</h2>
+<%= form_with url: mail_test_path, method: :post do |f| %>
+  <div class="box">
+    <div class="box-row"><label>To <%= f.email_field :to, value: @to, required: true %></label></div>
+    <div class="box-row"><%= f.submit "Send test email", class: "btn btn-green btn-sm" %></div>
+  </div>
+<% end %>
+
+<h2>Fail a job</h2>
+<p class="muted">Enqueues <code>FailingProbeJob</code>, which raises on its first run. The worker discards it and
+<code>ApplicationJob</code> mails the failure, as it would for any job.</p>
+<%= button_to "Enqueue a failing job", mail_test_failing_job_path, class: "btn" %>

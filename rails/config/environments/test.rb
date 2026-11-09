@@ -47,4 +47,6 @@ Rails.application.configure do
   # db/stats_schema.rb is a loader for the stats sync's dump, not a dump: a
   # test-env migration must not rewrite it, nor schema.rb from a test database.
   config.active_record.dump_schema_after_migration = false
+  # Mail collects in ActionMailer::Base.deliveries instead of reaching SMTP.
+  config.action_mailer.delivery_method = :test
 end

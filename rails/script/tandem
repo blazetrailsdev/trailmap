@@ -30,7 +30,7 @@ DEFAULT_PATHS = %w[
   /stories?status=draft /stories/touching?path=packages/activerecord /index /events
   / /rfcs /rfcs?status=draft /rfcs?status=closed /backlog /backlog?filter=ready /backlog?filter=done&page=2
   /backlog?filter=icebox /search?q=serialize /search?q=has_many&page=2 /graphs/parity /audits /deploys
-  /dashboard /panes/42 /sessions /sessions/blazetrailsdev/trails/1 /api/sessions
+  /dashboard /mail-test /panes/42 /sessions /sessions/blazetrailsdev/trails/1 /api/sessions
   /blazetrailsdev /blazetrailsdev/trails /blazetrailsdev/trails/issues /blazetrailsdev/trails/issues?state=closed
   /blazetrailsdev/trails/issues?page=2 /blazetrailsdev/trails/issues?page=2&state=closed
   /blazetrailsdev/trails/pulls /blazetrailsdev/trails/pulls?state=merged /blazetrailsdev/trails/projects
@@ -58,6 +58,8 @@ INTENDED = [
   [ %r{/assets/ringo-parity-css-}, "/assets/parity-" ],
   [ %r{/assets/ringo-parity-}, "/assets/parity-draw-" ],
   [ %r{/assets/(?:javascripts/|stylesheets/)?([a-z-]+?)(?:-[A-Za-z0-9_-]{8})?\.(js|css)}, '/assets/\\1.\\2' ],
+  # A form's CSRF token is masked afresh on every request, on both sides.
+  [ /name="authenticity_token" value="[^"]*"/, 'name="authenticity_token" value="TOKEN"' ],
   # A pointer to a file that exists only in the TypeScript app.
   [ / — see<code>config\/initializers\/stats-database\.ts<\/code>\./, "." ]
 ].freeze

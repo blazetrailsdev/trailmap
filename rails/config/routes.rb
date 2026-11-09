@@ -15,6 +15,11 @@ Rails.application.routes.draw do
   get "up/deep", to: "probes#deep", as: :up_deep
 
   get "dashboard", to: "dashboard#index", as: :dashboard
+  # Send a test email, or enqueue a job that fails to exercise the failure
+  # mail ApplicationJob sends (MailTestsController).
+  get "mail-test", to: "mail_tests#show", as: :mail_test
+  post "mail-test", to: "mail_tests#deliver"
+  post "mail-test/failing-job", to: "mail_tests#enqueue", as: :mail_test_failing_job
   get "fleet/socket", to: "fleet#socket", as: :fleet_socket
   post "fleet/control/*path", to: "fleet#control", format: false
   get "fleet/reviewers", to: "fleet#reviewers", as: :fleet_reviewers

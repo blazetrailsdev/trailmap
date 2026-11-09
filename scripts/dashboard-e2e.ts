@@ -57,6 +57,8 @@ const READS: Record<string, () => unknown> = {
   "/usage-status": () => usage,
 };
 const posts: Array<[string, unknown]> = [];
+const PANE_SCREEN = { exists: true, html: "<span>$ </span>", hash: "h1", cwd: "/w/r", lines: 1, status: "idle" };
+const PANE_GONE = "pane %5 has exited";
 
 const ringo = (await getHttpAsync()).createServer((req, res) => {
   const path = req.url ?? "/";
@@ -74,6 +76,10 @@ const ringo = (await getHttpAsync()).createServer((req, res) => {
       const then = loop && { ...loop };
       loopHeldReads.push(() => answer(then));
     }
+  } else if (/^\/pane\/\d+\/screen/.test(path)) {
+    // Pane 5 is live; pane 6 has exited, as ringo says it.
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(path.startsWith("/pane/5/") ? PANE_SCREEN : { exists: false }));
   } else if (req.method !== "POST") {
     res.writeHead(READS[path] ? 200 : 404, { "content-type": "application/json" });
     res.end(JSON.stringify(READS[path]?.() ?? null));
@@ -91,6 +97,8 @@ const ringo = (await getHttpAsync()).createServer((req, res) => {
       if (path === "/pause") usage.manualPause = sent.paused;
       if (path === "/refresh-usage") usage.watchConnected = true;
       let [status, text] = ANSWERS[path] ?? [404, "not a ringo endpoint"];
+      // ringo types a line into a live pane, and refuses one for a pane that went meanwhile.
+      if (path === "/pane/5/send") [status, text] = sent.text === "too late" ? [410, PANE_GONE] : [204, ""];
       // A setting ringo refuses, by its size; anything else IS the loop's new state.
       if (path === "/spawnloop/config") {
         if (sent.live_cap > 50) [status, text] = [400, "live_cap must be at most 50"];
@@ -121,28 +129,31 @@ async function until<T>(what: string, probe: () => Promise<T | false | null | un
 }
 
 await until("trailmap to boot", async () => (await fetch(`${APP}/up`)).ok);
-const tab = await until("chrome", async () => {
-  const opened = await fetch(`${env.E2E_CDP}/json/new?${APP}/dashboard`, { method: "PUT" });
-  return (await opened.json()) as { webSocketDebuggerUrl: string };
-});
-const devtools = new WebSocket(tab.webSocketDebuggerUrl);
-await new Promise((resolve) => devtools.addEventListener("open", resolve));
-
 let calls = 0;
-function evaluate(expression: string): Promise<unknown> {
-  const id = ++calls;
-  return new Promise((resolve, reject) => {
-    const answer = (event: MessageEvent): void => {
-      const message = JSON.parse(String(event.data));
-      if (message.id !== id) return;
-      devtools.removeEventListener("message", answer);
-      if (message.result.exceptionDetails) reject(new Error(`${expression}: threw in the page`));
-      else resolve(message.result.result.value);
-    };
-    devtools.addEventListener("message", answer);
-    devtools.send(JSON.stringify({ id, method: "Runtime.evaluate", params: { expression, returnByValue: true } }));
+/** Open `path` in a new tab and answer an `evaluate` for it, over the tab's DevTools socket. */
+async function openTab(path: string): Promise<(expression: string) => Promise<unknown>> {
+  const tab = await until("chrome", async () => {
+    const opened = await fetch(`${env.E2E_CDP}/json/new?${APP}${path}`, { method: "PUT" });
+    return (await opened.json()) as { webSocketDebuggerUrl: string };
   });
+  const devtools = new WebSocket(tab.webSocketDebuggerUrl);
+  await new Promise((resolve) => devtools.addEventListener("open", resolve));
+  return (expression) => {
+    const id = ++calls;
+    return new Promise((resolve, reject) => {
+      const answer = (event: MessageEvent): void => {
+        const message = JSON.parse(String(event.data));
+        if (message.id !== id) return;
+        devtools.removeEventListener("message", answer);
+        if (message.result.exceptionDetails) reject(new Error(`${expression}: threw in the page`));
+        else resolve(message.result.result.value);
+      };
+      devtools.addEventListener("message", answer);
+      devtools.send(JSON.stringify({ id, method: "Runtime.evaluate", params: { expression, returnByValue: true } }));
+    });
+  };
 }
+const evaluate = await openTab("/dashboard");
 
 const button = (action: string, pr = ""): string =>
   `document.querySelector('button[data-action="${action}"]${pr && `[data-pr="${pr}"]`}')`;
@@ -280,6 +291,46 @@ await until("the refused setting to be put back", () =>
 );
 console.log("ok  spawn loop, a refused setting alerts and takes ringo's value back");
 
+// The pane page's message box: a line goes through the relay with the page's
+// CSRF token and the box empties on a 204; ringo's refusal is shown as its own
+// text; and an exited pane's box and button are disabled.
+const pane = await openTab("/panes/5");
+await until("the pane's screen", () => pane(`${byId("paneScreen")}.textContent === "$ " && !${byId("paneMessage")}.disabled`));
+await pane(
+  `window.sentHeaders = []; const realFetch = window.fetch; window.fetch = (url, init) => ` +
+    `{ if (init && init.method === "POST") window.sentHeaders.push(new Headers(init.headers)); return realFetch(url, init); }; true`,
+);
+const send = (text: string): string =>
+  `${byId("paneMessage")}.value = ${JSON.stringify(text)}; ` +
+  `${byId("paneSendButton")}.closest("form").requestSubmit(); true`;
+before = posts.length;
+await pane(send("git status"));
+const typed = await until("the pane message's POST", async () => posts[before]);
+if (JSON.stringify(typed) !== JSON.stringify(["/pane/5/send", { text: "git status" }])) {
+  throw new Error(`dashboard-e2e: the pane message sent ${JSON.stringify(typed)}`);
+}
+await until("the pane message box to clear", () =>
+  pane(
+    `${byId("paneMessage")}.value === "" && ${byId("paneSendResult")}.textContent === "sent" && ` +
+      `window.sentHeaders[0].get("X-CSRF-Token") === document.querySelector('meta[name="csrf-token"]').content && ` +
+      `window.sentHeaders[0].get("X-CSRF-Token").length > 0`,
+  ),
+);
+console.log("ok  pane message, sent with the CSRF token and the box cleared");
+await pane(send("too late"));
+await until("ringo's refusal under the box", () =>
+  pane(
+    `${byId("paneSendResult")}.textContent === ${JSON.stringify(PANE_GONE)} && ` +
+      `${byId("paneSendResult")}.className === "bad" && ${byId("paneMessage")}.value === "too late"`,
+  ),
+);
+console.log("ok  pane message, ringo's 410 shown as its own text");
+const gone = await openTab("/panes/6");
+await until("an exited pane's box to be disabled", () =>
+  gone(`${byId("paneMessage")}.disabled && ${byId("paneSendButton")}.disabled`),
+);
+console.log("ok  pane message, disabled once the pane has exited");
+
 // The class lists the page drew at run time, against the source scan's rule
 // (test/assets/class-collisions.test.ts): rows, cards and toggled classes included.
 const rules = boxRules(await getFs().readFile(STYLESHEET, "utf8"));
@@ -289,5 +340,5 @@ if (drawn.length < 50 || collided.length) {
   throw new Error(`dashboard-e2e: ${drawn.length} class lists drawn, colliding: ${collided.join(", ") || "none"}`);
 }
 console.log(`ok  ${drawn.length} drawn class lists, none wearing two boxes`);
-console.log(`dashboard-e2e: ${CASES.length + 6} cases — every control posts what ringo expects and says what happened`);
+console.log(`dashboard-e2e: ${CASES.length + 9} cases — every control posts what ringo expects and says what happened`);
 exit(0);
