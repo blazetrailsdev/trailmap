@@ -77,3 +77,12 @@ describe("a 500", () => {
     expect(String(headers["content-type"])).toMatch(/^text\/html/);
   });
 });
+
+describe("ApiController", () => {
+  it("lists no helper among its actions", () => {
+    const actions = [...ReadModelsController.actionMethods()];
+    expect(actions).not.toContain("_renderServerError");
+    expect(actions).not.toContain("_requireLoopback");
+    expect(actions.filter((name) => name.startsWith("_"))).toEqual([]);
+  });
+});

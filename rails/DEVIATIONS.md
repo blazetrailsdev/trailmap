@@ -63,14 +63,15 @@ answering, `/up` included. Seen once, locally, and not investigated. The
 deployed image builds its assets first (`scripts/build-assets.sh`), which this
 run skipped, so that is the first thing to rule out.
 
-### trails: a concern's `before_action` method cannot be private
+### trails: a non-action helper is `_`-prefixed, not `private`
 
-`LoopbackOnly` here is a concern whose `require_loopback` is `private`, and
-`before_action :require_loopback` names it. trails' `beforeAction` takes no
-method name (`before-action-does-not-accept-a-method-name`, RFC 0141), and
-`actionMethods` counts every public prototype method as an action, so
-`app/controllers/concerns/loopback-only.ts` registers the guard as a block
-and keeps it off the class.
+Rails keeps `require_loopback`, `render_server_error` and every other
+controller helper under `private`, which takes them out of `action_methods`.
+TypeScript's `private` leaves nothing at run time, so trails' `actionMethods`
+would list them. The trails app spells them `_requireLoopback`,
+`_renderServerError` and so on, which is trails' own spelling for a
+non-action helper (trails#9833). `before_action :require_loopback` is
+`beforeAction(":_requireLoopback")`.
 
 ## trails differs from Rails
 

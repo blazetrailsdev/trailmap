@@ -153,7 +153,7 @@ export class RfcPagesController extends ApplicationController {
   }
 
   async show(): Promise<void> {
-    await this.loadShow(String(this.params.get("id") ?? ""));
+    await this._loadShow(String(this.params.get("id") ?? ""));
     if (this.rfc === null) await this.render({ action: "show", status: 404 });
   }
 
@@ -170,38 +170,38 @@ export class RfcPagesController extends ApplicationController {
     const id = String(this.params.get("id") ?? "");
     const to = String(this.params.get("status") ?? "");
     const rfc = await Rfc.findBy({ id });
-    if (rfc === null) return this.renderShow(id, null, 404);
+    if (rfc === null) return this._renderShow(id, null, 404);
     if (!rfcStatusMoves(rfc.status).some((move) => move.to === to)) {
-      return this.renderShow(id, `rfc ${id} is "${rfc.status}"; cannot move it to "${to}"`, 409);
+      return this._renderShow(id, `rfc ${id} is "${rfc.status}"; cannot move it to "${to}"`, 409);
     }
     const reason = this.params.get("reason");
-    await this.mutate(id, () => rfcStatusSet(id, to, { reason: reason == null ? null : String(reason) }));
+    await this._mutate(id, () => rfcStatusSet(id, to, { reason: reason == null ? null : String(reason) }));
   }
 
   /** `POST /rfc/<id>/ready-drafts` — "Mark drafts ready", ringo's `HandleRFCReadyDrafts`. */
   async readyDrafts(): Promise<void> {
     const id = String(this.params.get("id") ?? "");
-    await this.mutate(id, () => rfcReadyDrafts(id));
+    await this._mutate(id, () => rfcReadyDrafts(id));
   }
 
-  private async mutate(id: string, body: () => Promise<unknown>): Promise<void> {
+  private async _mutate(id: string, body: () => Promise<unknown>): Promise<void> {
     try {
       await body();
     } catch (error) {
       if (!(error instanceof VerbExit)) throw error;
-      return this.renderShow(id, error.message, error.code === 1 ? 422 : 409);
+      return this._renderShow(id, error.message, error.code === 1 ? 422 : 409);
     }
     this.redirectTo(this.rfcPath(id), { status: 303 });
   }
 
   /** `/rfc/<id>` again, carrying a refusal or a not-found. */
-  private async renderShow(id: string, refusal: string | null, code: number): Promise<void> {
+  private async _renderShow(id: string, refusal: string | null, code: number): Promise<void> {
     this.refusal = refusal;
-    await this.loadShow(id);
+    await this._loadShow(id);
     await this.render({ action: "show", status: this.rfc === null ? 404 : code });
   }
 
-  private async loadShow(id: string): Promise<void> {
+  private async _loadShow(id: string): Promise<void> {
     this.rfcId = id;
     const rfc = id === "" ? null : await Rfc.findBy({ id });
     this.rfc = rfc;

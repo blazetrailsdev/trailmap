@@ -17,7 +17,7 @@ const DEFAULT_MAX_LOC = 250;
  * as a Rails API scope fixes it, so every action renders JSON whatever the
  * client's `Accept` says — ringo's Go client sends none.
  *
- * `requireLoopback` (LoopbackOnly) runs first, so a proxied request is a 404:
+ * `_requireLoopback` (LoopbackOnly) runs first, so a proxied request is a 404:
  * the API must not be reachable from the public hostname, and a 404 (rather
  * than a 403) declines to confirm it exists.
  *
@@ -34,13 +34,13 @@ export class StoriesController extends ApiController {
       status: presentParam(this.params, "status"),
       cluster: presentParam(this.params, "cluster"),
     });
-    await this.renderStories(rows, index);
+    await this._renderStories(rows, index);
   }
 
   /** `tasks ready [--rfc R]` — the ready queue, in ready-queue order. */
   async ready(): Promise<void> {
     const { stories, index } = await Story.readyQueue({ rfc: presentParam(this.params, "rfc") });
-    await this.renderStories(stories, index);
+    await this._renderStories(stories, index);
   }
 
   /**
@@ -86,7 +86,7 @@ export class StoriesController extends ApiController {
       await this.render({ json: { error: `story "${id}" not found` }, status: 404 });
       return;
     }
-    await this.renderStories([story], index);
+    await this._renderStories([story], index);
   }
 
   /**
@@ -105,14 +105,14 @@ export class StoriesController extends ApiController {
     }
     const index = await Story.rankingRows();
     const rows = storiesTouchingIn(index, path, { all: presentParam(this.params, "all") !== undefined });
-    await this.renderStories(rows, index);
+    await this._renderStories(rows, index);
   }
 
   /**
    * `show` renders the bare object the CLI's `show` prints; every other verb
    * renders the array its `--json` prints.
    */
-  private async renderStories(rows: SerializedStory[], index: StoryJsonContext): Promise<void> {
+  private async _renderStories(rows: SerializedStory[], index: StoryJsonContext): Promise<void> {
     const stories = serializeStories(rows, index);
     await this.render({ json: this.actionName === "show" ? stories[0] : stories });
   }

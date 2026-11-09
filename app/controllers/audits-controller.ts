@@ -23,13 +23,13 @@ export class AuditsController extends ApplicationController {
   /** The list, with the newest audit open. */
   async index(): Promise<void> {
     const audits = await Audit.all();
-    await this.renderPage(audits, audits[0] ?? null);
+    await this._renderPage(audits, audits[0] ?? null);
   }
 
   /** The list, with this audit open. */
   async show(): Promise<void> {
     const audit = await Audit.find(String(this.params.get("id")));
-    await this.renderPage(await Audit.all(), audit, "index");
+    await this._renderPage(await Audit.all(), audit, "index");
   }
 
   /**
@@ -63,7 +63,7 @@ export class AuditsController extends ApplicationController {
    * own styles and possibly scripts, so it is never inlined into this origin:
    * it stays in a sandboxed frame on `raw`, and `body` is null.
    */
-  private async renderPage(audits: Audit[], selected: Audit | null, action?: string): Promise<void> {
+  private async _renderPage(audits: Audit[], selected: Audit | null, action?: string): Promise<void> {
     const body =
       selected === null || selected.isHtml()
         ? null

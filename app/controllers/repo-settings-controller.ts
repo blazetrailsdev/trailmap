@@ -96,7 +96,7 @@ export class RepoSettingsController extends RepoController {
       throw new RecordNotFound(`${this.nwo} has no settings this viewer may change`);
     }
     const row = (await this.repo.settings) ?? this.repo.buildSettings();
-    await row.updateBang(this.switchParams());
+    await row.updateBang(this._switchParams());
     this.redirectTo(this.repoSettingsPath(this.repoOwner.login, this.repo.name), { status: 303 });
   }
 
@@ -104,7 +104,7 @@ export class RepoSettingsController extends RepoController {
    * Exactly the six switches. `repository_id` and `id` are never permitted, so
    * a form that names them cannot move the row to another repository.
    */
-  private switchParams(): Record<string, unknown> {
+  private _switchParams(): Record<string, unknown> {
     const scoped = this.params.require("repository_setting") as ActionController.Parameters;
     return scoped.permit(...OPTIONAL_TABS.map((tab) => `${tab}_enabled`)).toHash() as Record<string, unknown>;
   }

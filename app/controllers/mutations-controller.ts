@@ -37,42 +37,42 @@ export class MutationsController extends ApiController {
   static {
     // Registered after ApiController's `Error`, so it is the one consulted
     // first: a refusal is an answer, never a 500.
-    this.rescueFrom(VerbExit, { with: "renderVerbExit" });
+    this.rescueFrom(VerbExit, { with: "_renderVerbExit" });
   }
 
   /** `tasks claim <id...> [--assignee NAME]` — assignee defaults to the first id. */
   async claim(): Promise<void> {
-    const ids = this.ids();
-    if (!ids.length) return this.usage("claim requires at least one story id");
-    await this.run(() => Story.claimAll(ids, presentParam(this.params, "assignee") ?? ids[0]));
+    const ids = this._ids();
+    if (!ids.length) return this._usage("claim requires at least one story id");
+    await this._run(() => Story.claimAll(ids, presentParam(this.params, "assignee") ?? ids[0]));
   }
 
   /** `tasks release <id...>` */
   async release(): Promise<void> {
-    const ids = this.ids();
-    if (!ids.length) return this.usage("release requires at least one story id");
-    await this.run(() => Story.releaseAll(ids));
+    const ids = this._ids();
+    if (!ids.length) return this._usage("release requires at least one story id");
+    await this._run(() => Story.releaseAll(ids));
   }
 
   /** `tasks in-progress <id...> --pr repo#N` — the PR is required, as in the CLI. */
   async inProgress(): Promise<void> {
-    const ids = this.ids();
+    const ids = this._ids();
     const pr = prRefParam(this.params, "pr");
-    if (!ids.length) return this.usage("in-progress requires at least one story id");
-    if (pr === INVALID_PR) return this.usage(PR_REF_USAGE);
-    if (pr === null) return this.usage("in-progress requires --pr");
-    await this.run(() => Story.markTrackingAll(ids, "in-progress", pr));
+    if (!ids.length) return this._usage("in-progress requires at least one story id");
+    if (pr === INVALID_PR) return this._usage(PR_REF_USAGE);
+    if (pr === null) return this._usage("in-progress requires --pr");
+    await this._run(() => Story.markTrackingAll(ids, "in-progress", pr));
   }
 
   /** `tasks done <id...> [--pr repo#N]` — the PR is optional here, unlike in-progress. */
   async done(): Promise<void> {
-    const ids = this.ids();
+    const ids = this._ids();
     const pr = prRefParam(this.params, "pr");
-    if (!ids.length) return this.usage("done requires at least one story id");
+    if (!ids.length) return this._usage("done requires at least one story id");
     // Given-but-malformed is refused, not read as "no PR": on `done` that would
     // silently drop the PR.
-    if (pr === INVALID_PR) return this.usage(PR_REF_USAGE);
-    await this.run(() => Story.markTrackingAll(ids, "done", pr));
+    if (pr === INVALID_PR) return this._usage(PR_REF_USAGE);
+    await this._run(() => Story.markTrackingAll(ids, "done", pr));
   }
 
   /**
@@ -81,13 +81,13 @@ export class MutationsController extends ApiController {
    * dispatch; a source with neither is the usage refusal the CLI gives.
    */
   async recordSpawn(): Promise<void> {
-    const ids = this.ids();
+    const ids = this._ids();
     const source = presentParam(this.params, "source");
     const rfc = presentParam(this.params, "rfc");
     if (!source || (!ids.length && !rfc)) {
-      return this.usage("record-spawn requires --source and either story ids or --rfc");
+      return this._usage("record-spawn requires --source and either story ids or --rfc");
     }
-    await this.run(async () => [
+    await this._run(async () => [
       await Story.recordSpawn(ids, source, {
         branch: presentParam(this.params, "branch"),
         pane: presentParam(this.params, "pane"),
@@ -99,8 +99,8 @@ export class MutationsController extends ApiController {
   /** `tasks block <id> <reason>` */
   async block(): Promise<void> {
     const reason = presentParam(this.params, "reason");
-    if (!reason) return this.usage("block requires a reason");
-    await this.onOne((story) => story.block(reason));
+    if (!reason) return this._usage("block requires a reason");
+    await this._onOne((story) => story.block(reason));
   }
 
   /**
@@ -112,9 +112,9 @@ export class MutationsController extends ApiController {
    */
   async close(): Promise<void> {
     const raw = this.params.get("reason");
-    if (raw == null) return this.usage("close requires a reason");
+    if (raw == null) return this._usage("close requires a reason");
     const reason = String(raw);
-    await this.onOne((story) => story.close(reason));
+    await this._onOne((story) => story.close(reason));
   }
 
   /**
@@ -130,11 +130,11 @@ export class MutationsController extends ApiController {
    */
   async statusSet(): Promise<void> {
     const status = presentParam(this.params, "status");
-    if (!status) return this.usage("status-set requires a status");
+    if (!status) return this._usage("status-set requires a status");
     if (!(STORY_STATUSES as readonly string[]).includes(status)) {
-      return this.usage(`unknown status "${status}"`);
+      return this._usage(`unknown status "${status}"`);
     }
-    await this.onOne((story) => story.statusSet(status as StoryStatus));
+    await this._onOne((story) => story.statusSet(status as StoryStatus));
   }
 
   /**
@@ -153,9 +153,9 @@ export class MutationsController extends ApiController {
     let priority: number | null = null;
     if (raw != null && raw !== "clear") {
       priority = Number(raw);
-      if (!Number.isFinite(priority)) return this.usage(`priority must be a number or "clear"`);
+      if (!Number.isFinite(priority)) return this._usage(`priority must be a number or "clear"`);
     }
-    await this.onOne((story) => story.prioritySet(priority));
+    await this._onOne((story) => story.prioritySet(priority));
   }
 
   /**
@@ -163,10 +163,10 @@ export class MutationsController extends ApiController {
    * loaded through `findAllOrThrow` so a missing id gives the CLI's `story not
    * found:` refusal rather than a null dereference.
    */
-  private async onOne(body: (story: Story) => Promise<string>): Promise<void> {
-    const ids = this.ids();
-    if (ids.length !== 1) return this.usage("this verb takes exactly one story id");
-    await this.run(async () => {
+  private async _onOne(body: (story: Story) => Promise<string>): Promise<void> {
+    const ids = this._ids();
+    if (ids.length !== 1) return this._usage("this verb takes exactly one story id");
+    await this._run(async () => {
       const [story] = await Story.findAllOrThrow(ids);
       return [await body(story)];
     });
@@ -180,7 +180,7 @@ export class MutationsController extends ApiController {
    * makes the single-story verbs, which have none, atomic with the `events`
    * row they write, and leaves the batch verbs' own atomicity untouched.
    */
-  private async run(body: () => Promise<string[]>): Promise<void> {
+  private async _run(body: () => Promise<string[]>): Promise<void> {
     let lines: string[] = [];
     await ApplicationRecord.transaction(async () => {
       lines = await body();
@@ -189,7 +189,7 @@ export class MutationsController extends ApiController {
   }
 
   /** A refusal the model raised: the CLI's message and exit code (see the class comment). */
-  private async renderVerbExit(error: VerbExit): Promise<void> {
+  private async _renderVerbExit(error: VerbExit): Promise<void> {
     await this.render({
       json: { ok: false, error: error.message, exit_code: error.code },
       status: error.code === 1 ? 422 : 409,
@@ -211,7 +211,7 @@ export class MutationsController extends ApiController {
    * lost-race, close-requires-a-reason — are the CLI's messages verbatim,
    * because those are decided by the model and not restated here.
    */
-  private async usage(message: string): Promise<void> {
+  private async _usage(message: string): Promise<void> {
     await this.render({ json: { ok: false, error: message, exit_code: 1 }, status: 400 });
   }
 
@@ -226,7 +226,7 @@ export class MutationsController extends ApiController {
    * `["s1","s1"]` answered "claimed s1" twice for one claim. A caller
    * reconciling that count against the queue would be reading a lie.
    */
-  private ids(): string[] {
+  private _ids(): string[] {
     const raw = this.params.get("ids");
     const list = Array.isArray(raw)
       ? raw.map((id) => String(id)).filter((id) => id !== "")

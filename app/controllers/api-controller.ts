@@ -26,10 +26,10 @@ export class ApiController extends ApplicationController {
     include(this, LoopbackOnly);
     // The CLI posts JSON with no session, so it has no token to send.
     this.skipForgeryProtection();
-    this.rescueFrom(Error, { with: "renderServerError" });
+    this.rescueFrom(Error, { with: "_renderServerError" });
   }
 
-  private async renderServerError(error: Error): Promise<void> {
+  private async _renderServerError(error: Error): Promise<void> {
     if (new ExceptionWrapper(error).statusCode !== 500) throw error;
     // The rescue keeps the error from reaching the middleware that would have
     // logged it, so it is logged here. The message goes in the body too: the
