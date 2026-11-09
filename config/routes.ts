@@ -67,6 +67,8 @@ Trails.application!.routes().draw(function () {
   // `%` (`%42` is `/panes/42`), which both actions check as digits.
   this.get("panes/:id", { to: "panes#show", as: "pane" });
   this.get("fleet/pane/:id/screen", { to: "fleet#screen", as: "fleet_pane_screen" });
+  // A line of text typed into that pane, then Enter: ringo's `/pane/<n>/send`.
+  this.post("fleet/pane/:id/send", { to: "fleet#message", as: "fleet_pane_send" });
 
   // The deploy history and one run's log, relayed read-only from ringo, which
   // keeps both on its own disk (DeploysController). ringo's spelling of the

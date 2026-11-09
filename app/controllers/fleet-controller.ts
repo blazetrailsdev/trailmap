@@ -1,6 +1,6 @@
 import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { ApplicationController } from "./application-controller.ts";
-import { FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash } from "../../config/fleet.ts";
+import { FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash, paneMessageProblem } from "../../config/fleet.ts";
 import { Setting } from "../models/setting.ts";
 import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.ts";
 
@@ -17,6 +17,12 @@ export const CONTROL_TIMEOUT_MS = 30_000;
  * reader one missed frame, not a queue of held requests.
  */
 export const SCREEN_TIMEOUT_MS = 1_500;
+
+/**
+ * How long ringo has to answer a pane message: one send-keys burst, so far
+ * less than a merge, but a person is waiting at the box for the answer.
+ */
+export const MESSAGE_TIMEOUT_MS = 5_000;
 
 /**
  * How long ringo has to answer for the reviewer list. Between a control's
@@ -112,6 +118,53 @@ export class FleetController extends ApplicationController {
       await this.render({ plain: await response.text(), status: response.status });
     } catch (error) {
       await this.render(ringoFailure(error, CONTROL_TIMEOUT_MS));
+    }
+  }
+
+  /**
+   * `POST /fleet/pane/<n>/send` with `{ "text": "..." }`: type one line into a
+   * live pane, then Enter, through ringo's `POST /pane/<n>/send`.
+   *
+   * A control in all but its route: the ringo path carries the pane id, so it
+   * cannot be a fixed entry in `FLEET_CONTROLS`, and this action builds that
+   * one path itself from an id checked with `isPaneId`. Forgery protection
+   * covers it as it covers `control`. The text is capped here, at ringo's own
+   * limit, so an oversized body never leaves trailmap; what ringo refuses
+   * (control characters, an exited pane) comes back as ringo's own text.
+   */
+  async message(): Promise<void> {
+    const id = String(this.params.get("id") ?? "");
+    if (!isPaneId(id)) {
+      await this.render({ plain: "Not a pane id", status: 400 });
+      return;
+    }
+    const text = this.params.get("text");
+    const problem = paneMessageProblem(typeof text === "string" ? text : "");
+    if (problem !== null) {
+      await this.render({ plain: problem, status: 400 });
+      return;
+    }
+    const base = await Setting.ringoBase();
+    if (base === null) {
+      await this.render({ plain: "no ringo origin is configured", status: 503 });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${base}/pane/${id}/send`, {
+        method: "POST",
+        signal: AbortSignal.timeout(MESSAGE_TIMEOUT_MS),
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const answer = await response.text();
+      if (response.status === 204) {
+        this.head(204);
+      } else {
+        await this.render({ plain: answer, status: response.status });
+      }
+    } catch (error) {
+      await this.render(ringoFailure(error, MESSAGE_TIMEOUT_MS));
     }
   }
 

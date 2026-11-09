@@ -89,4 +89,37 @@ class FleetControllerTest < ActionDispatch::IntegrationTest
     end
     assert_equal [ [ "#{StandInRingo::BASE}/spawn", "x=1" ] ], posted
   end
+
+  test "message forwards one line to ringo's send endpoint and passes refusals through" do
+    posted = []
+    answers = { "/pane/42/send" => [ 204, "" ], "/pane/7/send" => [ 410, "pane %7 has exited; nothing was sent" ] }
+    relay = lambda do |url, body:, content_type:, timeout:|
+      path = url.delete_prefix(StandInRingo::BASE)
+      posted << [ path, body, content_type ]
+      ringo_response(*answers.fetch(path))
+    end
+    with_ringo({}) do
+      Fleet::Relay.stub(:post, relay) do
+        post "/fleet/pane/42/send", params: { text: "yes, go ahead" }, as: :json
+        assert_response :no_content
+        post "/fleet/pane/7/send", params: { text: "hi" }, as: :json
+        assert_response :gone
+        assert_equal "pane %7 has exited; nothing was sent", response.body
+        post "/fleet/pane/x1/send", params: { text: "hi" }, as: :json
+        assert_response :bad_request
+        post "/fleet/pane/42/send", params: { text: "" }, as: :json
+        assert_response :bad_request
+        post "/fleet/pane/42/send", params: { text: "é" * 2049 }, as: :json
+        assert_response :bad_request
+        assert_equal "message is longer than 4096 bytes", response.body
+      end
+    end
+    assert_equal [ [ "/pane/42/send", '{"text":"yes, go ahead"}', "application/json" ],
+                   [ "/pane/7/send", '{"text":"hi"}', "application/json" ] ], posted
+  end
+
+  test "message says ringo is not configured" do
+    without_ringo { post "/fleet/pane/42/send", params: { text: "hi" }, as: :json }
+    assert_response :service_unavailable
+  end
 end

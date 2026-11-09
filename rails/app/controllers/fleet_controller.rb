@@ -5,8 +5,9 @@ class FleetController < ApplicationController
   CONTROL_TIMEOUT = 30
   SCREEN_TIMEOUT = 1.5
   REVIEWERS_TIMEOUT = 5
+  MESSAGE_TIMEOUT = 5
 
-  before_action :require_ringo, except: :control
+  before_action :require_ringo, except: %i[control message]
 
   # `GET /fleet/socket`, a WebSocket handshake. The handshake must name this
   # site as its origin, as Action Cable requires of its own.
@@ -27,6 +28,25 @@ class FleetController < ApplicationController
     return unless require_ringo
     response = Fleet::Relay.post("#{@base}/#{path}", body: request.raw_post, content_type: request.content_type,
                                  timeout: CONTROL_TIMEOUT)
+    render plain: response.body, status: response.code.to_i
+  rescue Fleet::Relay::Failure => e
+    render plain: e.plain, status: e.status
+  end
+
+  # `POST /fleet/pane/<n>/send` with `{"text": "..."}`: type one line into a
+  # live pane through ringo's `/pane/<n>/send`. The ringo path carries the
+  # pane id, so it is built here from a checked id rather than listed in
+  # `Fleet::CONTROLS`; forgery protection covers it as it covers `control`.
+  def message
+    id = params[:id].to_s
+    return render plain: "Not a pane id", status: :bad_request unless Fleet.pane_id?(id)
+    text = params[:text]
+    problem = Fleet.pane_message_problem(text.is_a?(String) ? text : "")
+    return render plain: problem, status: :bad_request if problem
+    return unless require_ringo
+    response = Fleet::Relay.post("#{@base}/pane/#{id}/send", body: { text: text }.to_json,
+                                 content_type: "application/json", timeout: MESSAGE_TIMEOUT)
+    return head :no_content if response.code == "204"
     render plain: response.body, status: response.code.to_i
   rescue Fleet::Relay::Failure => e
     render plain: e.plain, status: e.status

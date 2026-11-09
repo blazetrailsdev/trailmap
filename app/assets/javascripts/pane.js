@@ -21,6 +21,12 @@ const byId = (id) => document.getElementById(id);
 const screenPath = byId("paneConfig").dataset.screenPath;
 const screen = byId("paneScreen");
 const pauseButton = byId("panePause");
+const sendPath = byId("paneConfig").dataset.sendPath;
+const sendForm = byId("paneSend");
+const sendInput = byId("paneMessage");
+const sendButton = byId("paneSendButton");
+const sendResult = byId("paneSendResult");
+let sending = false;
 
 /** The header. Every value but the status dot goes in as text. */
 function paintHeader() {
@@ -36,7 +42,50 @@ function paintHeader() {
   byId("paneLines").textContent = state.lines ? " (" + state.lines + " now)" : "";
   pauseButton.textContent = paused ? "Resume" : "Pause";
   pauseButton.disabled = state.exited;
+  // An exited pane has nobody to read the line; ringo would refuse it with 410.
+  sendInput.disabled = state.exited;
+  sendButton.disabled = state.exited || sending;
 }
+
+/**
+ * POST the line through trailmap's relay with the page's CSRF token. A 204 is
+ * "typed"; anything else shows ringo's (or the relay's) own text.
+ */
+async function sendMessage(text) {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  try {
+    const response = await fetch(sendPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(meta ? { "X-CSRF-Token": meta.content } : {}) },
+      body: JSON.stringify({ text }),
+    });
+    if (response.ok) return { ok: true };
+    return { ok: false, error: (await response.text()).slice(0, 300) || "HTTP " + response.status };
+  } catch (error) {
+    return { ok: false, error: error && error.message ? error.message : String(error) };
+  }
+}
+
+sendForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const text = sendInput.value;
+  if (text === "" || sending) return;
+  sending = true;
+  sendResult.className = "muted";
+  sendResult.textContent = "sending…";
+  paintHeader();
+  const outcome = await sendMessage(text);
+  sending = false;
+  if (outcome.ok) {
+    sendInput.value = "";
+    sendResult.textContent = "sent";
+  } else {
+    sendResult.className = "bad";
+    sendResult.textContent = outcome.error;
+  }
+  paintHeader();
+  loop.pollNow();
+});
 
 async function fetchScreen(hash) {
   try {
