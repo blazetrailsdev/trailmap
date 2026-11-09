@@ -15,8 +15,13 @@ export interface Outcome {
  * One form sends a test email to any address, synchronously, so the page can
  * say whether the SMTP relay took it. One button enqueues `FailingProbeJob`,
  * which the worker runs, fails and discards, so `ApplicationJob`'s failure
- * mail goes to `EMAIL` the way a real failure's would. It sits behind the same
- * door as `/dashboard`: Authelia in front of nginx, and loopback on the box.
+ * mail goes to `EMAIL` the way a real failure's would.
+ *
+ * Its door is `/dashboard`'s, and deliberately not `LoopbackOnly`: off the box
+ * every request has passed Authelia (`viewer.ts`), and `LoopbackOnly` would
+ * refuse exactly those, leaving the page reachable only by curl on the box.
+ * The mail always goes FROM `EMAIL` when it is set, so a sign-in cannot make
+ * trailmap send as an address of the visitor's choosing.
  */
 export class MailTestsController extends ApplicationController {
   async show(): Promise<void> {

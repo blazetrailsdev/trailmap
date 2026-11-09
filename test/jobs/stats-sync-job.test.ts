@@ -87,6 +87,40 @@ describe("StatsSyncJob", () => {
     expect(String(mail.body())).toContain('[cron-wrapper] stats sync failed at stage "Syncing job logs"');
   });
 
+  it("still mails the stage when the log tail cannot be read", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    syncLatest.mockImplementation(async () => {
+      writable["STATS_SYNC_LOG"] = getPath().join(dir, "gone", "sync.log");
+      throw new Error("no such table: x");
+    });
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(job.performNow()).rejects.toThrow("no such table");
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+    const body = String(ApplicationMailer.deliveries[0]!.body());
+    expect(body).toContain("Stage: Syncing job logs");
+    expect(body).toContain("(the log could not be read:");
+  });
+
+  it("names the stage when a retried run, a fresh instance, runs out of attempts", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    syncLatest.mockRejectedValue(new Error("API rate limit exceeded"));
+    const first = new StatsSyncJob() as unknown as {
+      performNow(): Promise<unknown>;
+      retryJob(options: unknown): Promise<void>;
+      serialize(): Record<string, unknown>;
+    };
+    vi.spyOn(first, "retryJob").mockResolvedValue();
+    await first.performNow();
+    const payload = { ...first.serialize(), executions: 1 };
+    await expect(StatsSyncJob.execute(payload as never)).rejects.toThrow("API rate limit exceeded");
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+    expect(String(ApplicationMailer.deliveries[0]!.body())).toContain("Stage: Syncing job logs");
+  });
+
   it("notes in the log that no alert was sent when EMAIL is not set", async () => {
     syncLatest.mockRejectedValue(new Error("no such table: x"));
     const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };

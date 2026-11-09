@@ -107,7 +107,13 @@ export class StatsSyncJob extends ApplicationJob {
    */
   protected override async failureDetails(): Promise<string[]> {
     const log = env.STATS_SYNC_LOG;
-    const tail = log ? (await getFs().readFile(log, "utf8")).trimEnd().split("\n").slice(-30).join("\n") : "";
+    let tail = "";
+    // A log that cannot be read costs the mail its tail, not the mail itself.
+    try {
+      if (log) tail = (await getFs().readFile(log, "utf8")).trimEnd().split("\n").slice(-30).join("\n");
+    } catch (error) {
+      tail = `(the log could not be read: ${error instanceof Error ? error.message : String(error)})`;
+    }
     return [`Stage: ${this.failedStage ?? "(before the sync started)"}`, "", "Last 30 lines:", tail];
   }
 
