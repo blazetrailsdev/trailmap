@@ -15,16 +15,6 @@ apart from the differences it lists in `INTENDED`.
 
 ## Found by the port (open)
 
-### app: job-failure mail and `/mail-test` exist on the trails side only
-
-`ApplicationJob`'s `after_discard` mail (`OpsMailer#job_failed`), `FailingProbeJob`
-and `/mail-test` (trailmap#134) have no twin here, because `rails/` has no
-Action Mailer: no `ApplicationMailer`, no SMTP settings, no `EMAIL`. The Rails
-form is `after_discard { |job, error| OpsMailer.job_failed(...).deliver_now }`
-in `application_job.rb`, a mailer, and a `MailTestsController`. Land them
-together when `rails/` gets a mailer; until then `script/tandem` must not
-compare `/mail-test`.
-
 ### trails: prepare callbacks are not awaited
 
 trails' reloader runs `toPrepare` blocks synchronously (`Reloader.prepareBang`),

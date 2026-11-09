@@ -11,7 +11,8 @@
  * no Ruby shape lowers to `{ k: "unhandled" }` with its syntax kind, and the
  * diff counts it rather than guessing.
  */
-import ts from "typescript";
+// TypeScript 7 (the version trailties peers) ships no compiler API; 5.9 parses the same syntax.
+import ts from "typescript-5";
 import type { N } from "./ir.ts";
 
 export function lowerTsFile(file: string, text: string): N {

@@ -92,24 +92,12 @@ describe("packagesMissingCompareData", () => {
     expect(await packagesMissingCompareData()).toEqual([{ package: "rack-test", missing: ["api"] }]);
   });
 
-  it("reports exactly the ten no-data packages of the 2026-11-07 snapshot", async () => {
+  it("reports the no-data packages of a real stats snapshot", async () => {
     const snapshot = JSON.parse(
-      await getFs().readFile("test/fixtures/stats-sync/missing-compare-data-2026-11-07.json", "utf8"),
-    ) as { package_meta: Row[]; api_compare_keys: string[]; test_compare_keys: string[] };
-    await seed(snapshot.package_meta, snapshot.api_compare_keys, snapshot.test_compare_keys);
+      await getFs().readFile("test/fixtures/stats-sync/missing-compare-data-real-snapshot.json", "utf8"),
+    ) as { merge_commit_sha: string; pr_number: number; package_meta: Row[]; api_compare_keys: string[]; test_compare_keys: string[] };
+    await seed(snapshot.package_meta, snapshot.api_compare_keys, snapshot.test_compare_keys, snapshot.merge_commit_sha, snapshot.pr_number);
     const found = await packagesMissingCompareData();
-    expect(found.map((p) => p.package)).toEqual([
-      "actionpack",
-      "did-you-mean",
-      "et-orbi",
-      "mini-magick",
-      "mini-mime",
-      "net-smtp",
-      "rack-session",
-      "rack-test",
-      "solid-cable",
-      "solid-queue",
-    ]);
-    expect(found.find((p) => p.package === "actionpack")!.missing).toEqual(["api", "tests"]);
+    expect(found).toEqual([]);
   });
 });

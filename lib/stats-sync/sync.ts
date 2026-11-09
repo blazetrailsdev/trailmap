@@ -43,8 +43,34 @@ const BUDGET_CHECK_EVERY = 100;
 async function run(command: string): Promise<string> {
   const child = await getChildProcessAsync();
   const [stdout, stderr, status] = await child.capture3!(command, { ...env }, null, "");
-  if (status.status !== 0) throw new Error(`Command failed: ${command}\n${stderr}`);
+  if (status.status !== 0) throw new GhCommandError(command, status.status, String(stderr));
   return String(stdout);
+}
+
+/** A failed command, with what `gh` said about it: the exit status and its stderr. */
+export class GhCommandError extends Error {
+  readonly command: string;
+  readonly exitStatus: number | null;
+  readonly stderr: string;
+
+  constructor(command: string, exitStatus: number | null, stderr: string) {
+    super(`Command failed: ${command}\n${stderr}`);
+    this.command = command;
+    this.exitStatus = exitStatus;
+    this.stderr = stderr;
+  }
+}
+
+/**
+ * Every failed `gh` call goes to the job's log (STATS_SYNC_LOG), the one
+ * btwhooks' watcher reads, retried or not: the worker's console is lost on a
+ * restart, and an intermittent failure is only diagnosable from its stderr.
+ */
+export function logGhFailure(error: unknown): void {
+  const log = env.STATS_SYNC_LOG;
+  if (!log || !(error instanceof GhCommandError)) return;
+  const stderr = error.stderr.trimEnd() || "(no stderr)";
+  getFs().appendFileSync(log, `[gh] exit ${error.exitStatus ?? "?"}: ${error.command}\n${stderr}\n`);
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -139,6 +165,7 @@ async function gh(args: string): Promise<string> {
       return result;
     } catch (err) {
       lastGhCallAt = Date.now();
+      logGhFailure(err);
       const msg = err instanceof Error ? err.message : String(err);
       if (/rate limit|secondary rate|abuse detection/i.test(msg) && attempt < MAX_RETRIES) {
         const backoffMs = Math.min(120_000, 5_000 * Math.pow(2, attempt));
