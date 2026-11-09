@@ -313,8 +313,7 @@ jobs:
           TASKS_INDEX_JSON: ${{ github.workspace }}/tasks/index.json
         run: >-
           pnpm exec vitest run
-          test/initializers/tasks-database.test.ts
-          test/models/tasks-database-config.test.ts
+          test/config/database.test.ts
           test/models/tasks-database.test.ts
           test/serializers/story-json.test.ts
 

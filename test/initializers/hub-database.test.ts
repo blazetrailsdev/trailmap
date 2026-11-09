@@ -10,8 +10,7 @@ import { missingHubTables } from "../../lib/model-schemas.ts";
 const HUB_SCRATCH_DATABASE_TIMEOUT_MS = 30_000;
 
 /**
- * The hub initializer, as `tasks-database.test.ts` tests the other one:
- * importing it registers `connectToHubDatabase` as a `server` block, and these
+ * The hub initializer: importing it registers `connectToHubDatabase` as a `server` block, and these
  * call that block directly; calling it more than once is safe.
  */
 describe("connectToHubDatabase", () => {

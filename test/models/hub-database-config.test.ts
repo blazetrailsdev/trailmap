@@ -7,7 +7,7 @@ import databases, {
 } from "../../config/database.ts";
 
 /**
- * `config/database.ts`'s hub half — the twin of `tasks-database-config.test.ts`.
+ * `config/database.ts`'s hub half — the twin of test/config/database.test.ts.
  *
  * The three-tier shape matters as much as the values: `trails db` fans out over
  * the entries of the current environment, so a `hub` key that went missing

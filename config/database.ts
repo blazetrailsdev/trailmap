@@ -30,13 +30,13 @@ export const STATS_SYNC_MIGRATIONS_PATH = "db/stats-sync-migrate";
  * `hub` carries `migrationsPaths` because its migrations are NOT `db/migrate`:
  * that directory is the task domain's history, shared with the tasks CLI, and
  * `trails db:migrate` would otherwise try to run it against Postgres.
- * `pnpm db:migrate` — with NO `--database` flag — migrates both.
+ * `pnpm db:migrate` — with NO `--database` flag — migrates both. That flag
+ * loads `db/schema.ts` into whichever database it targets; docs/deploy.md and
+ * CLAUDE.md both say never to pass it.
  *
  * The served environments' `primary` IS the CLI's live `tasks.db`
  * (`tasksEntry`), with `databaseTasks: false` so `trails db` never migrates,
- * creates or drops it. `test` keeps a scratch file `trails db` may build. That flag
- * loads `db/schema.ts` into whichever database it targets; docs/deploy.md and
- * CLAUDE.md both say never to pass it.
+ * creates or drops it. `test` keeps a scratch file `trails db` may build.
  */
 const databaseConfigurations = {
   development: {
