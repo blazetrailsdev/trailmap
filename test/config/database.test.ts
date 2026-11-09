@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { DatabaseConfigurations } from "@blazetrails/activerecord";
 import { env } from "@blazetrails/ruby-compat";
-import databaseConfigurations, { primaryDatabaseConfig } from "../../config/database.ts";
+import databaseConfigurations, {
+  forgetTasksDatabaseIdentity,
+  primaryDatabaseConfig,
+  recordTasksDatabaseIdentity,
+  tasksDatabaseIdentity,
+} from "../../config/database.ts";
 import { writeProtocol } from "../../config/write-protocol.ts";
 
 describe("config/database.ts", () => {
@@ -29,5 +34,18 @@ describe("config/database.ts", () => {
 
   it("keeps test's primary a scratch file trails db may build", () => {
     expect(primaryDatabaseConfig("test").databaseTasks()).toBe(true);
+  });
+});
+
+describe("recordTasksDatabaseIdentity", () => {
+  it("records nothing for a file that does not exist", async () => {
+    await recordTasksDatabaseIdentity("/nonexistent/trailmap/tasks.db");
+    expect(tasksDatabaseIdentity()).toBeNull();
+  });
+
+  it("records the dev and ino of a file that does", async () => {
+    await recordTasksDatabaseIdentity("package.json");
+    expect(tasksDatabaseIdentity()).toMatchObject({ path: "package.json", ino: expect.any(Number) });
+    forgetTasksDatabaseIdentity();
   });
 });
