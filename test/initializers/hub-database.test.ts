@@ -10,8 +10,7 @@ import { missingHubTables } from "../../lib/model-schemas.ts";
 const HUB_SCRATCH_DATABASE_TIMEOUT_MS = 30_000;
 
 /**
- * The hub initializer, as `tasks-database.test.ts` tests the other one:
- * importing it registers `connectToHubDatabase` as a `server` block, and these
+ * The hub initializer: importing it registers `connectToHubDatabase` as a `server` block, and these
  * call that block directly; calling it more than once is safe.
  */
 describe("connectToHubDatabase", () => {
@@ -45,7 +44,7 @@ describe("connectToHubDatabase", () => {
 
   /**
    * The deployed `ConnectionNotDefined`, from the boot side — the lesson
-   * `config/initializers/tasks-database.ts` records, applied to the second
+   * the tasks database's boot failure records, applied to the second
    * database. A container that comes up without this variable answers dokku's
    * `/up` green (the health check touches no row) and 500s on `/blazetrailsdev`
    * and every page under it.

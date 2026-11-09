@@ -5,9 +5,9 @@
 #   hub      the owner/repository hierarchy, PostgreSQL (HUB_DATABASE_URL)
 #   stats    the trails comparison stats, read-only (STATS_DB, optional)
 #
-# Rails spells this as database.yml entries and `connects_to`; trails
-# establishes each connection by hand from an initializer
-# (../config/initializers/*-database.ts). DEVIATIONS.md has the why.
+# Rails spells this as database.yml entries and `connects_to`. trails declares
+# primary the same way (../config/database.ts) and establishes the others by
+# hand from an initializer (../config/initializers/*-database.ts). DEVIATIONS.md has the why.
 #
 # `database_tasks: false` on the live tasks.db and on stats: `bin/rails
 # db:migrate` must never migrate or drop a file the tasks CLI or the stats

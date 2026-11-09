@@ -6,9 +6,8 @@ import { Hub } from "../models/hub.ts";
 import {
   HUB_MIGRATIONS_PATH,
   hasHubDatabase,
-  hasTasksDatabase,
-  tasksDatabaseConfig,
   tasksDatabaseIdentity,
+  tasksDatabasePath,
 } from "../../config/database.ts";
 import { tasksContentDir } from "../../config/tasks-content.ts";
 
@@ -159,19 +158,19 @@ export class ProbesController extends ApiController {
    * - It has to be the SAME file the connection opened. A restore, a
    *   re-import or `cutover-import.sh` puts a different file at the path, so
    *   existence alone stays green while the connection reads the old inode.
-   *   `connectToTasksDatabase` records the path's `dev`/`ino` once the
+   *   config/environment.ts records the path's `dev`/`ino` once the
    *   connection has opened it (`tasksDatabaseIdentity`), and this compares
    *   the path's identity now against that record.
    * - A count, the cheapest query that reads a real table, has to succeed.
    *
    * Where no identity was recorded — the filesystem adapter reports no `ino`,
-   * or the connection was not made by `connectToTasksDatabase` — the second
+   * or the process was not booted through config/environment.ts — the second
    * question degrades to the first, and the body says so in `identity`.
    */
   private async checkDatabase(): Promise<Check> {
     let identity: string | undefined;
-    if (hasTasksDatabase()) {
-      const file = String(tasksDatabaseConfig().database);
+    const file = tasksDatabasePath();
+    if (file) {
       const fs = getFs();
       if (!(await fs.exists(file))) {
         return { ok: false, error: `${file} is gone: the open connection is reading a file nothing else can see` };

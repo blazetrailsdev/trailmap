@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { hasTasksDatabase, tasksDatabaseConfig } from "../../config/database.ts";
+import { primaryDatabaseConfig, tasksDatabasePath } from "../../config/database.ts";
 import { RFC_STATUSES, Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { loadModelSchemas } from "../../lib/model-schemas.ts";
@@ -15,11 +15,11 @@ import { loadModelSchemas } from "../../lib/model-schemas.ts";
  *
  *     TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db pnpm test
  */
-const withLiveDatabase = hasTasksDatabase() ? describe : describe.skip;
+const withLiveDatabase = tasksDatabasePath() ? describe : describe.skip;
 
 withLiveDatabase("the live tasks database", () => {
   beforeAll(async () => {
-    await Base.establishConnection(tasksDatabaseConfig());
+    await Base.establishConnection(primaryDatabaseConfig("development").configurationHash);
     await loadModelSchemas();
   });
 

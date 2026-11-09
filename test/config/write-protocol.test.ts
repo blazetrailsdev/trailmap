@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { env, getFs, setEnv } from "@blazetrails/ruby-compat";
-import { tasksDatabaseConfig } from "../../config/database.ts";
+import { primaryDatabaseConfig } from "../../config/database.ts";
 import { ringoBusyTimeoutPragma, tableOwners, tablesOwnedBy, writeProtocol } from "../../config/write-protocol.ts";
 import { ALL_MODELS } from "../../lib/model-schemas.ts";
 import { Hub } from "../../app/models/hub.ts";
@@ -98,7 +98,7 @@ describe("write protocol", () => {
     const database = env.TASKS_DATABASE;
     setEnv("TASKS_DATABASE", database ?? "storage/test.sqlite3");
     try {
-      expect(tasksDatabaseConfig()).toMatchObject({
+      expect(primaryDatabaseConfig("production").configurationHash).toMatchObject({
         timeout: writeProtocol.busyTimeoutMs,
         pragmas: { journal_mode: writeProtocol.journalMode },
       });

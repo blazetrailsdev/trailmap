@@ -17,7 +17,7 @@
  */
 import { Base } from "@blazetrails/activerecord";
 import { Dir, env, exit, getChildProcessAsync, getFs, getPath } from "@blazetrails/ruby-compat";
-import { tasksDatabaseConfig } from "../config/database.ts";
+import { primaryDatabaseConfig } from "../config/database.ts";
 import { Rfc } from "../app/models/rfc.ts";
 import { Story } from "../app/models/story.ts";
 import { StoryPath } from "../app/models/story-path.ts";
@@ -54,13 +54,13 @@ async function main(): Promise<number> {
   // transaction. Copying the files by hand instead is what a live database
   // punishes: a stale `-shm` reads back SQLITE_CORRUPT, and skipping the WAL
   // reads back a queue missing whatever committed last.
-  const live = String(tasksDatabaseConfig().database);
+  const live = String(primaryDatabaseConfig().database);
   const snapshot = path.join(Dir.pwd(), "tmp", "equivalence-snapshot.sqlite3");
   await fs.mkdir!(path.dirname(snapshot), { recursive: true });
   for (const suffix of ["", "-wal", "-shm"]) {
     if (await fs.exists(snapshot + suffix)) await fs.unlink!(snapshot + suffix);
   }
-  await Base.establishConnection(tasksDatabaseConfig());
+  await Base.establishConnection(primaryDatabaseConfig().configurationHash);
   (await Base.leaseConnection()).execute(`VACUUM INTO '${snapshot.replace(/'/g, "''")}'`);
   (await Base.leaseConnection()).disconnectBang();
   console.log(`snapshot: ${live} -> ${snapshot}`);

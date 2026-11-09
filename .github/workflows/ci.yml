@@ -84,6 +84,9 @@ jobs:
       - name: Prepare the hub schema
         env:
           HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+          # The test environment: development's primary is TASKS_DATABASE,
+          # which `trails db` skips (`databaseTasks: false`, config/database.ts).
+          NODE_ENV: test
         run: pnpm db:migrate
       - run: pnpm test
 
@@ -127,7 +130,7 @@ jobs:
     timeout-minutes: 15
     # The same service as `test`, for a different reason:
     # `config/initializers/hub-database.ts` refuses to boot without
-    # `HUB_DATABASE_URL`, exactly as the tasks-database initializer refuses
+    # `HUB_DATABASE_URL`, exactly as the framework's boot connection refuses
     # without `TASKS_DATABASE`. A boot smoke test that skipped it would be
     # testing a process the deployment never runs.
     services:
@@ -202,7 +205,8 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm db:migrate
+      # NODE_ENV=test: see "Prepare the hub schema" on the test job.
+      - run: NODE_ENV=test pnpm db:migrate
       # Builds the views itself.
       - run: ./scripts/dashboard-e2e.sh
 
@@ -240,11 +244,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec trails-tsc-views build --views app/views
       - name: The show pages still say what ringo said
-        run: pnpm gate:snapshot
+        run: NODE_ENV=test pnpm gate:snapshot
       # Proves the gate still detects a difference, rather than passing because
       # it stopped looking.
       - name: The snapshot gate still goes red on a difference
-        run: pnpm gate:snapshot --self-test
+        run: NODE_ENV=test pnpm gate:snapshot --self-test
 
   # THE GATE (RFC 0136). trailmap's ready queue is a rewrite of the CLI's
   # ranking functions, and the only thing that makes that safe is proving the
@@ -309,8 +313,7 @@ jobs:
           TASKS_INDEX_JSON: ${{ github.workspace }}/tasks/index.json
         run: >-
           pnpm exec vitest run
-          test/initializers/tasks-database.test.ts
-          test/models/tasks-database-config.test.ts
+          test/config/database.test.ts
           test/models/tasks-database.test.ts
           test/serializers/story-json.test.ts
 
@@ -404,11 +407,14 @@ jobs:
       - name: Prepare the hub schema
         env:
           HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+          # The test environment: development's primary is TASKS_DATABASE,
+          # which `trails db` skips (`databaseTasks: false`, config/database.ts).
+          NODE_ENV: test
         run: pnpm db:migrate
       - name: /graphs/parity/data == ringo's /spawnloop/parity, point for point
-        run: pnpm gate:parity --fixture
+        run: NODE_ENV=test pnpm gate:parity --fixture
       - name: The parity gate still goes red on a changed point
-        run: pnpm gate:parity --fixture --self-test
+        run: NODE_ENV=test pnpm gate:parity --fixture --self-test
 
   # Ported from trails' Preflight job. CLAUDE.md forbids Claude attribution in
   # commits and PR bodies here exactly as it does there, and trailmap is a

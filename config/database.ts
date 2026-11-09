@@ -1,3 +1,4 @@
+import { DatabaseConfigurations, type HashConfig } from "@blazetrails/activerecord";
 import { env, getFs } from "@blazetrails/ruby-compat";
 import { writeProtocol } from "./write-protocol.ts";
 
@@ -32,13 +33,14 @@ export const STATS_SYNC_MIGRATIONS_PATH = "db/stats-sync-migrate";
  * `pnpm db:migrate` — with NO `--database` flag — migrates both. That flag
  * loads `db/schema.ts` into whichever database it targets; docs/deploy.md and
  * CLAUDE.md both say never to pass it.
+ *
+ * The served environments' `primary` IS the CLI's live `tasks.db`
+ * (`tasksEntry`), with `databaseTasks: false` so `trails db` never migrates,
+ * creates or drops it. `test` keeps a scratch file `trails db` may build.
  */
-export default {
+const databaseConfigurations = {
   development: {
-    primary: {
-      adapter: "sqlite3",
-      database: "storage/development.sqlite3",
-    },
+    primary: tasksEntry(),
     hub: hubEntry(),
   },
   test: {
@@ -49,15 +51,14 @@ export default {
     hub: hubEntry(),
   },
   production: {
-    primary: {
-      adapter: "sqlite3",
-      database: "storage/production.sqlite3",
-    },
+    primary: tasksEntry(),
     hub: hubEntry(),
     queue: queueEntry("storage/production_queue.sqlite3"),
     statsSync: statsSyncDatabaseConfig(),
   },
 };
+
+export default databaseConfigurations;
 
 /**
  * The `hub` entry of a `config/database.ts` environment.
@@ -123,7 +124,7 @@ export function statsSyncDatabaseConfig(): Record<string, unknown> {
 /**
  * The hub connection, as `app/models/hub.ts` opens it.
  *
- * Separate from the entries above for the same reason `tasksDatabaseConfig()`
+ * Separate from the entries above for the same reason `statsDatabaseConfig()`
  * is: those are what `trails db` fans out over, and this is what the running
  * application connects with. They happen to name the same database.
  *
@@ -148,53 +149,42 @@ export function hasHubDatabase(): boolean {
 }
 
 /**
- * The live CLI database, read-write.
+ * The live CLI database, read-write: the served environments' `primary`.
  *
- * This is deliberately NOT one of the environment keys above: those are the
- * databases `trails db:migrate` fans out over, and migrating or dropping the
- * CLI's live file is exactly what must not happen. It is a connection you opt
- * into by pointing `TASKS_DATABASE` at the file (`<tasks checkout>/.git/tasks.db`).
+ * `databaseTasks: false` is Rails' `database_tasks: false`
+ * (hash_config.rb `database_tasks?`): `trails db:migrate`, `create` and `drop`
+ * skip it, because migrating or dropping the CLI's live file is exactly what
+ * must not happen. The framework's `active_record.initialize_database`
+ * initializer connects to it at boot, and an unset `TASKS_DATABASE` leaves no
+ * database file, which fails that boot loudly rather than serving 500s.
  *
- * `readonly` came off here when the mutation endpoints landed
- * (app/controllers/mutations-controller.ts): a read-only connection would
- * refuse the writes they exist to perform.
- *
- * That makes trailmap ABLE to write, not yet the only writer — the CLI still
- * opens this file until `move-the-tasks-cli-into-trailmap` turns it into an
- * HTTP client. The deployed mount is read-write and that sequencing is the
- * accepted guard until then; docs/deploy.md records the decision, and
- * docs/write-protocol.md the WAL + busy-timeout protocol `timeout` comes from.
- *
- * `pool: 1` is load-bearing now rather than incidental. SQLite takes one
- * writer at a time, and a single connection serializes the mutation verbs in
- * the process rather than letting concurrent requests race into
- * `SQLITE_BUSY`.
- *
- * Ask `hasTasksDatabase()` first. This throws rather than returning null when
- * `TASKS_DATABASE` is unset, so a caller that forgot the check fails at the
- * connection instead of handing `establishConnection` a nullish config and
- * failing somewhere further in.
+ * `readonly` came off when the mutation endpoints landed; `timeout` and the
+ * journal mode are docs/write-protocol.md's. `pool: 1` serializes the mutation
+ * verbs in the process, since SQLite takes one writer at a time.
  */
-export function tasksDatabaseConfig(): Record<string, unknown> {
-  const database = tasksDatabasePath();
-  if (!database) {
-    throw new Error(
-      "TASKS_DATABASE is not set. Point it at the CLI's tasks.db " +
-        "(<tasks checkout>/.git/tasks.db) to read the live database.",
-    );
-  }
+function tasksEntry(): Record<string, unknown> {
   return {
     adapter: "sqlite3",
-    database,
+    database: tasksDatabasePath(),
     pool: 1,
     timeout: writeProtocol.busyTimeoutMs,
     pragmas: { journal_mode: writeProtocol.journalMode },
+    databaseTasks: false,
   };
 }
 
-/** Whether `TASKS_DATABASE` names a database to read. */
-export function hasTasksDatabase(): boolean {
-  return tasksDatabasePath() !== undefined;
+/**
+ * The resolved `primary` of an environment, as the framework reads it — for
+ * scripts that connect without booting the application.
+ */
+export function primaryDatabaseConfig(envName = env.NODE_ENV ?? "development"): HashConfig {
+  const config = new DatabaseConfigurations(databaseConfigurations).configsFor({
+    envName,
+    name: "primary",
+    includeHidden: true,
+  });
+  if (!config) throw new Error(`config/database.ts has no primary database for ${envName}`);
+  return config as HashConfig;
 }
 
 /** The path `TASKS_DATABASE` names, trimmed: the one read all three share. */
@@ -206,7 +196,7 @@ export function tasksDatabasePath(): string | undefined {
  * The trails stats database, read-only.
  *
  * A THIRD connection, and the third adapter in this process: the task domain
- * is better-sqlite3 (`tasksDatabaseConfig`), the hub is PostgreSQL
+ * is better-sqlite3 (`tasksEntry`), the hub is PostgreSQL
  * (`hubDatabaseConfig`), and this one is `node-sqlite` — Node's built-in
  * `node:sqlite`, which trails registers under that adapter name. Two drivers
  * for one engine in one process is deliberate: nothing about this connection
@@ -214,7 +204,7 @@ export function tasksDatabasePath(): string | undefined {
  * application is the only way anyone finds out whether it works outside
  * trails' own suite.
  *
- * Like `tasksDatabaseConfig` and unlike the `hub` entry, this is NOT one of
+ * Unlike the served `primary` and the `hub` entry, this is NOT one of
  * the environment keys above. `trails db` must never migrate or drop it: it is
  * filled by `StatsSyncJob` (`stats-job.db`, beside ringo's `stats.db`), its
  * schema is the stats-sync migrations', and trailmap only reads it.
@@ -274,13 +264,16 @@ export function tasksDatabaseIdentity(): TasksDatabaseIdentity | null {
 }
 
 /**
- * Recorded AFTER `loadModelSchemas`, whose queries are what make SQLite open
- * the file: `establishConnection` alone opens nothing, so a stat taken before
+ * Recorded after boot (config/environment.ts), once the framework's schema
+ * load has made SQLite open the file: `establishConnection` alone opens nothing, so a stat taken before
  * them would describe whatever was at the path, not what was opened. An
  * adapter that reports no `ino` records nothing.
  */
 export async function recordTasksDatabaseIdentity(path: string): Promise<void> {
-  const stat = getFs().stat ? await getFs().stat!(path) : null;
+  const fs = getFs();
+  // A process that never opened the file (`trails db` before it exists)
+  // records nothing, and the probe falls back to existence.
+  const stat = fs.stat && (await fs.exists(path)) ? await fs.stat(path) : null;
   opened = stat?.ino === undefined ? null : { path, dev: stat.dev, ino: stat.ino };
 }
 

@@ -9,7 +9,7 @@
  * (trails#9375). `trails server` runs the same two steps.
  *
  * That is the path the deployed 500 came down, and it is the path a unit test
- * calling `connectToTasksDatabase()` by hand cannot reach: it would keep
+ * calling a connect function by hand cannot reach: it would keep
  * passing if the initializer stopped being LOADED at boot, or stopped
  * registering the check as a `server` block. This runs the real thing in its own process,
  * so `scripts/smoke-boot.sh` can assert both directions — boots with a
