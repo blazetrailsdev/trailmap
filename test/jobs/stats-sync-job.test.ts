@@ -82,9 +82,50 @@ describe("StatsSyncJob", () => {
     expect(ApplicationMailer.deliveries).toHaveLength(1);
     const mail = ApplicationMailer.deliveries[0]!;
     expect([...(mail.to() as string[])]).toEqual(["ops@example.com"]);
-    expect(String(mail.subject())).toBe('[stats-sync] failed at "Syncing job logs" (execution 1)');
-    expect(String(mail.body())).toContain("Error: no such table: x");
+    expect(String(mail.subject())).toBe("[trailmap] StatsSyncJob failed: Error: no such table: x");
+    expect(String(mail.body())).toContain("Stage: Syncing job logs");
     expect(String(mail.body())).toContain('[cron-wrapper] stats sync failed at stage "Syncing job logs"');
+  });
+
+  it("still mails the stage when the log tail cannot be read", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    syncLatest.mockImplementation(async () => {
+      writable["STATS_SYNC_LOG"] = getPath().join(dir, "gone", "sync.log");
+      throw new Error("no such table: x");
+    });
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(job.performNow()).rejects.toThrow("no such table");
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+    const body = String(ApplicationMailer.deliveries[0]!.body());
+    expect(body).toContain("Stage: Syncing job logs");
+    expect(body).toContain("(the log could not be read:");
+  });
+
+  it("names the stage when a retried run, a fresh instance, runs out of attempts", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    syncLatest.mockRejectedValue(new Error("API rate limit exceeded"));
+    const first = new StatsSyncJob() as unknown as {
+      performNow(): Promise<unknown>;
+      retryJob(options: unknown): Promise<void>;
+      serialize(): Record<string, unknown>;
+    };
+    vi.spyOn(first, "retryJob").mockResolvedValue();
+    await first.performNow();
+    const payload = { ...first.serialize(), executions: 1 };
+    await expect(StatsSyncJob.execute(payload as never)).rejects.toThrow("API rate limit exceeded");
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+    expect(String(ApplicationMailer.deliveries[0]!.body())).toContain("Stage: Syncing job logs");
+  });
+
+  it("notes in the log that no alert was sent when EMAIL is not set", async () => {
+    syncLatest.mockRejectedValue(new Error("no such table: x"));
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(job.performNow()).rejects.toThrow("no such table");
+    expect(read()).toContain("[cron-wrapper] no alert email sent: EMAIL is not set\n");
   });
 
   it("notes an alert it could not send without masking the sync's error", async () => {
@@ -108,13 +149,18 @@ describe("StatsSyncJob", () => {
     ApplicationMailer.deliveryMethod = "test";
     ApplicationMailer.deliveries.length = 0;
     syncLatest.mockRejectedValue(new Error("API rate limit exceeded"));
-    const job = new StatsSyncJob() as unknown as { executions: number; perform(): Promise<void> };
-    job.executions = 2;
-    await expect(job.perform()).rejects.toThrow("API rate limit exceeded");
+    const job = new StatsSyncJob() as unknown as {
+      performNow(): Promise<unknown>;
+      retryJob(options: unknown): Promise<void>;
+    };
+    vi.spyOn(job, "retryJob").mockResolvedValue();
+    await job.performNow();
+    expect(ApplicationMailer.deliveries).toHaveLength(0);
+    await expect(job.performNow()).rejects.toThrow("API rate limit exceeded");
     expect(read()).toContain('stats sync failed at stage "Syncing job logs" (execution 2)');
     expect(ApplicationMailer.deliveries).toHaveLength(1);
     expect(String(ApplicationMailer.deliveries[0]!.subject())).toBe(
-      '[stats-sync] failed at "Syncing job logs" (execution 2)',
+      "[trailmap] StatsSyncJob failed: RateLimitedSync: API rate limit exceeded",
     );
   });
 

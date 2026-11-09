@@ -24,10 +24,12 @@ function requiredEnv(name: string): string {
  * The daily `stats:sync --latest`, replacing cron-wrapper.sh: `retryOn` takes
  * the wrapper's two retry loops, and the log keeps its `=== <time> ===` headers
  * and `[cron-wrapper]` verdict lines, and a run that fails for good mails
- * `EMAIL` as the wrapper's `send_alert` did. It writes STATS_SYNC_DB, not stats.db,
- * while the crontab still runs (docs/deploy.md).
+ * `EMAIL` through ApplicationJob's failure mail, as the wrapper's `send_alert`
+ * did. It writes STATS_SYNC_DB, not stats.db, while the crontab still runs (docs/deploy.md).
  */
 export class StatsSyncJob extends ApplicationJob {
+  private failedStage: string | null = null;
+
   // Temporary: trails does not type this on Base (limits-concurrency-typed-on-activejob-base).
   declare static limitsConcurrency: (options: { key: string; duration: Duration }) => void;
 
@@ -63,7 +65,7 @@ export class StatsSyncJob extends ApplicationJob {
           ? `retrying at stage "${currentStage()}" (execution ${execution} of ${attempts})`
           : `stats sync failed at stage "${currentStage()}" (execution ${execution}): ${message.split("\n")[0]}`;
       getFs().appendFileSync(log, `${message}\n[cron-wrapper] ${verdict}\n`);
-      if (execution >= attempts) await this.alert(log, currentStage(), execution, message.split("\n")[0]);
+      this.failedStage = currentStage();
       throw retried ? new retried(message) : error;
     }
     getFs().appendFileSync(log, "[cron-wrapper] ok\n");
@@ -100,23 +102,26 @@ export class StatsSyncJob extends ApplicationJob {
   }
 
   /**
-   * Mail `EMAIL` the failed verdict, as cron-wrapper.sh's `send_alert` did. An
-   * unreachable mailer only adds a line: the verdict is already written, and
-   * the job must still fail with the sync's error, not the mailer's.
+   * The stage and the log tail, as cron-wrapper.sh's `send_alert` mailed them;
+   * `ApplicationJob#mailFailure` sends them once the retries are spent.
    */
-  private async alert(log: string, stage: string, execution: number, error: string): Promise<void> {
-    const to = env.EMAIL;
-    if (!to) {
-      getFs().appendFileSync(log, "[cron-wrapper] no alert email sent: EMAIL is not set\n");
-      return;
-    }
+  protected override async failureDetails(): Promise<string[]> {
+    const log = env.STATS_SYNC_LOG;
+    let tail = "";
+    // A log that cannot be read costs the mail its tail, not the mail itself.
     try {
-      const tail = (await getFs().readFile(log, "utf8")).trimEnd().split("\n").slice(-30).join("\n");
-      await StatsSyncMailer.failed({ to, stage, execution, error, log: tail }).deliverNow();
+      if (log) tail = (await getFs().readFile(log, "utf8")).trimEnd().split("\n").slice(-30).join("\n");
     } catch (error) {
-      const cause = error instanceof Error ? error.message : String(error);
-      getFs().appendFileSync(log, `[cron-wrapper] alert email to ${to} could not be sent: ${cause}\n`);
+      tail = `(the log could not be read: ${error instanceof Error ? error.message : String(error)})`;
     }
+    return [`Stage: ${this.failedStage ?? "(before the sync started)"}`, "", "Last 30 lines:", tail];
+  }
+
+  /** An unsent alert is a `[cron-wrapper]` line in the log, as the wrapper wrote it. */
+  protected override failureMailNotSent(reason: string): void {
+    const log = env.STATS_SYNC_LOG;
+    if (log) getFs().appendFileSync(log, `[cron-wrapper] ${reason}\n`);
+    super.failureMailNotSent(reason);
   }
 
   private reportGap(log: string): void {
