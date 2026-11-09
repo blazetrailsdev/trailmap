@@ -37,6 +37,7 @@ describe("PanesController", () => {
       const body = (await show("42")).body;
 
       expect(body).toContain('data-screen-path="/fleet/pane/42/screen"');
+      expect(body).toContain('data-send-path="/fleet/pane/42/send"');
       expect(body).not.toContain("btwhooks.web");
       expect(body).not.toContain("No fleet data");
     } finally {
@@ -47,7 +48,7 @@ describe("PanesController", () => {
   it("declares everything the script fills in, and the terminal panel", async () => {
     const body = (await show("42")).body;
 
-    for (const id of ["paneWorktree", "paneStatus", "paneUpdated", "paneNotice", "panePause"]) {
+    for (const id of ["paneWorktree", "paneStatus", "paneUpdated", "paneNotice", "panePause", "paneSend", "paneMessage", "paneSendButton", "paneSendResult"]) {
       expect(body).toContain(`id="${id}"`);
     }
     expect(body).toContain('<pre id="paneScreen" class="terminal"');
