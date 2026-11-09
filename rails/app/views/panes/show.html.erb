@@ -1,6 +1,6 @@
 <!-- Where the page polls for the screen: trailmap's relay, never ringo. On an
      element rather than in an inline <script>, as on the fleet page. -->
-<div id="paneConfig" hidden data-screen-path="<%= @screen_path %>"></div>
+<div id="paneConfig" hidden data-screen-path="<%= @screen_path %>" data-send-path="<%= @send_path %>"></div>
 
 <div class="page-header">
   <h1 class="page-title">Pane <code class="pane-id"><%= @pane %></code></h1>
@@ -22,6 +22,12 @@
 <% end %>
 
 <pre id="paneScreen" class="terminal" tabindex="0" aria-label="Pane <%= @pane %> screen"></pre>
-<div class="field-note">Read-only. Only the pane's last ~2000 rows are shown<span id="paneLines"></span>.</div>
+<form id="paneSend" class="pane-send" autocomplete="off">
+  <input id="paneMessage" class="input" type="text" required
+         placeholder="Type a line for the agent; Enter sends it" aria-label="Message to pane <%= @pane %>">
+  <button id="paneSendButton" class="btn btn-sm" type="submit">Send</button>
+  <span id="paneSendResult" class="muted" role="status"></span>
+</form>
+<div class="field-note">One line of text, then Enter, typed into the pane. Only the pane's last ~2000 rows are shown<span id="paneLines"></span>.</div>
 
 <script src="<%= javascript_path("pane") %>" type="module"></script>

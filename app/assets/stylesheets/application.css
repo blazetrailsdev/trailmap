@@ -722,6 +722,9 @@ ul { margin: 0 0 10px 20px; }
 .pane-id { font-size: inherit; }
 .pane-notice { font-size: 12px; color: var(--muted); }
 .pane-notice.bad { color: var(--red); font-weight: 600; }
+.pane-send { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.pane-send input { flex: 1 1 240px; min-width: 0; font: inherit; padding: 4px 8px; }
+.pane-send .bad { color: var(--red); }
 #panePause { margin-left: auto; }
 .terminal {
   background: #0d1117; color: #c9d1d9; color-scheme: dark;

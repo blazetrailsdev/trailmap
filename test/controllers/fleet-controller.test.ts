@@ -12,6 +12,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { getHttpAsync, setEnv, type HttpServer } from "@blazetrails/ruby-compat";
 import {
   FleetController,
+  MESSAGE_TIMEOUT_MS,
   REVIEWERS_TIMEOUT_MS,
   SCREEN_TIMEOUT_MS,
 } from "../../app/controllers/fleet-controller.ts";
@@ -93,6 +94,20 @@ beforeAll(async () => {
         // A ringo with no such endpoint: Go's own not-found, for every pane.
         res.writeHead(404);
         res.end("404 page not found\n");
+        return;
+      }
+      if (url.pathname === "/pane/42/send") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+      if (url.pathname === "/pane/7/send") {
+        res.writeHead(410);
+        res.end("pane %7 has exited; nothing was sent");
+        return;
+      }
+      if (url.pathname === "/pane/99/send") {
+        hung.push(() => res.end());
         return;
       }
       if (url.pathname.startsWith("/pane/")) {
@@ -189,6 +204,77 @@ describe("FleetController#control", () => {
     expect(response.status).toBe(502);
     expect(response.body).toContain("ringo is unreachable");
   });
+});
+
+async function message(id: string, body: unknown) {
+  const tc = await controllerTestCase(FleetController);
+  await tc.post("message", { params: { id }, body: JSON.stringify(body), as: "json" });
+  return { status: tc.response.status, body: tc.response.body };
+}
+
+describe("FleetController#message", () => {
+  it("forwards one line to ringo's send endpoint and answers 204 when it is typed", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await message("42", { text: "yes, go ahead" });
+
+    expect(response.status).toBe(204);
+    expect(received).toHaveLength(1);
+    expect(received[0]!.url).toBe("/pane/42/send");
+    expect(received[0]!.contentType).toContain("application/json");
+    expect(JSON.parse(received[0]!.body)).toEqual({ text: "yes, go ahead" });
+  });
+
+  it("passes ringo's refusal through, so the box can say why", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await message("7", { text: "hello" });
+
+    expect(response).toEqual({ status: 410, body: "pane %7 has exited; nothing was sent" });
+  });
+
+  it("refuses anything but digits before a request is made of it", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await message("42/../../merge-pr", { text: "hi" });
+
+    expect(response.status).toBe(400);
+    expect(received).toEqual([]);
+  });
+
+  it("refuses an empty or overlong message without calling ringo", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    expect((await message("42", { text: "" })).status).toBe(400);
+    expect((await message("42", {})).status).toBe(400);
+    const long = await message("42", { text: "é".repeat(2049) });
+    expect(long).toEqual({ status: 400, body: "message is longer than 4096 bytes" });
+    expect(received).toEqual([]);
+  });
+
+  it("says ringo is not configured rather than guessing where it is", async () => {
+    expect((await message("42", { text: "hi" })).status).toBe(503);
+  });
+
+  it("answers 502 when ringo cannot be reached", async () => {
+    setEnv("RINGO_BASE", "http://127.0.0.1:1");
+
+    const response = await message("42", { text: "hi" });
+
+    expect(response.status).toBe(502);
+    expect(response.body).toContain("ringo is unreachable");
+  });
+
+  it("answers 504 when ringo takes the request and does not answer", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await message("99", { text: "hi" });
+
+    expect(response.status).toBe(504);
+    expect(response.body).toContain("ringo did not answer");
+    // A person is waiting at the box; the answer comes inside ten seconds.
+    expect(MESSAGE_TIMEOUT_MS).toBeLessThanOrEqual(10_000);
+  }, 15_000);
 });
 
 async function screen(id: string, have?: string) {

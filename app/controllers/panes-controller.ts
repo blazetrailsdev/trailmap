@@ -3,7 +3,8 @@ import { FLEET_PANE_PATH, isPaneId } from "../../config/fleet.ts";
 import { Setting } from "../models/setting.ts";
 
 /**
- * `/panes/<n>` — one agent's tmux pane, live in the browser and read-only.
+ * `/panes/<n>` — one agent's tmux pane, live in the browser, with a box that
+ * types one line into it (`FleetController#message`).
  *
  * Like `/dashboard`, the controller reads nothing: the screen is Go-owned
  * process state. It renders the shell and tells the script where to poll,
@@ -20,6 +21,7 @@ export class PanesController extends ApplicationController {
       locals: {
         pane: `%${id}`,
         screenPath: `${FLEET_PANE_PATH}/${id}/screen`,
+        sendPath: `${FLEET_PANE_PATH}/${id}/send`,
         relayConfigured: (await Setting.ringoBase()) !== null,
       },
     });

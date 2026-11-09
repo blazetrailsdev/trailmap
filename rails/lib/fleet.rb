@@ -29,6 +29,16 @@ module Fleet
 
   SCREEN_HASH_MAX = 128
 
+  # ringo's own cap on one pane message (`paneSendMaxBytes`), in bytes.
+  PANE_MESSAGE_MAX_BYTES = 4096
+
+  # Why `text` cannot be sent to a pane, or nil when it can. ringo decides the rest.
+  def self.pane_message_problem(text)
+    return "message is empty" if text.empty?
+    return "message is longer than #{PANE_MESSAGE_MAX_BYTES} bytes" if text.bytesize > PANE_MESSAGE_MAX_BYTES
+    nil
+  end
+
   def self.pane_id?(id)
     id.match?(/\A[0-9]{1,10}\z/)
   end

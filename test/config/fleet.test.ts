@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash } from "../../config/fleet.ts";
+import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash, PANE_MESSAGE_MAX_BYTES, paneMessageProblem } from "../../config/fleet.ts";
 
 /**
  * The dashboard's two configured pieces, unit-tested rather than only through
@@ -123,5 +123,18 @@ describe("isScreenHash", () => {
     expect(isScreenHash("abc+/=1")).toBe(true);
     expect(isScreenHash("a".repeat(SCREEN_HASH_MAX))).toBe(true);
     expect(isScreenHash("a".repeat(SCREEN_HASH_MAX + 1))).toBe(false);
+  });
+});
+
+describe("paneMessageProblem", () => {
+  it("accepts one line up to ringo's cap, counted in UTF-8 bytes", () => {
+    expect(paneMessageProblem("yes, go ahead")).toBeNull();
+    expect(paneMessageProblem("a".repeat(PANE_MESSAGE_MAX_BYTES))).toBeNull();
+    expect(paneMessageProblem("é".repeat(PANE_MESSAGE_MAX_BYTES / 2))).toBeNull();
+  });
+
+  it("refuses an empty message and one over the cap", () => {
+    expect(paneMessageProblem("")).toBe("message is empty");
+    expect(paneMessageProblem("é".repeat(PANE_MESSAGE_MAX_BYTES / 2 + 1))).toBe("message is longer than 4096 bytes");
   });
 });

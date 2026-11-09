@@ -101,6 +101,22 @@ export function isPaneId(id: string): boolean {
   return /^[0-9]{1,10}$/.test(id);
 }
 
+/**
+ * The longest message the pane page may send, in UTF-8 bytes: ringo's own cap
+ * (`paneSendMaxBytes`, webhook/panesend.go), so trailmap refuses what ringo
+ * would and never forwards an unbounded body.
+ */
+export const PANE_MESSAGE_MAX_BYTES = 4096;
+
+/** Why `text` cannot be sent to a pane, or null when it can. ringo decides the rest. */
+export function paneMessageProblem(text: string): string | null {
+  if (text === "") return "message is empty";
+  if (new TextEncoder().encode(text).length > PANE_MESSAGE_MAX_BYTES) {
+    return `message is longer than ${PANE_MESSAGE_MAX_BYTES} bytes`;
+  }
+  return null;
+}
+
 /** The longest `have` the screen relay passes on. ringo's hashes are far shorter. */
 export const SCREEN_HASH_MAX = 128;
 
