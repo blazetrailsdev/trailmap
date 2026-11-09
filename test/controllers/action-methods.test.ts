@@ -3,15 +3,21 @@ import { describe, it, expect } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { Trails } from "@blazetrails/trailties";
 
-const modules: Record<string, Record<string, unknown>> = import.meta.glob("../../app/controllers/*.ts", {
-  eager: true,
-});
+const modules: Record<string, Record<string, unknown>> = import.meta.glob(
+  "../../app/controllers/**/*.ts",
+  {
+    eager: true,
+  },
+);
 
 function controllers(): (typeof ActionController.Base)[] {
   const found = new Set<typeof ActionController.Base>();
   for (const exports of Object.values(modules)) {
     for (const value of Object.values(exports)) {
-      if (typeof value === "function" && value.prototype instanceof ActionController.Base) {
+      if (
+        typeof value === "function" &&
+        value.prototype instanceof ActionController.Base
+      ) {
         found.add(value as typeof ActionController.Base);
       }
     }
@@ -37,7 +43,8 @@ describe("app/controllers", () => {
     const all = controllers();
     expect(all.length).toBeGreaterThan(20);
     for (const controller of all) {
-      const actions = routed.get(controller.controllerPath()) ?? new Set<string>();
+      const actions =
+        routed.get(controller.controllerPath()) ?? new Set<string>();
       for (const name of controller.actionMethods()) {
         if (!actions.has(name)) unrouted.push(`${controller.name}#${name}`);
       }
