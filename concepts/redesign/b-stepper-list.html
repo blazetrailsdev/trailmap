@@ -37,11 +37,17 @@
 .section-head { margin-top: 28px; }
 .stagebar { display: flex; gap: 3px; margin-left: auto; }
 .stagebar i { width: 18px; height: 6px; border-radius: 3px; background: var(--c); }
+.step .lbl { display: none; }
+.step:not(:last-child)::after { margin: 0 6px; }
+.stage-header { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr) 110px; gap: 24px; padding: 8px 20px 10px 25px; position: sticky; top: 0; z-index: 3; background: var(--bg); }
+.stepper.header .step::after { visibility: hidden; }
+.stepper.header .node { background: color-mix(in srgb, var(--c) 18%, var(--surface)); border-color: transparent; color: var(--c); }
+.stepper.header .hl { font-size: 11px; font-weight: 600; color: var(--c); line-height: 1.2; white-space: normal; max-width: 80px; }
 .section-head h2 { font-family: var(--display); font-size: 22px; margin: 0; }
 .filters { display: flex; gap: 8px; margin-bottom: 14px; }
 .sessions { display: flex; flex-direction: column; gap: 12px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; border-left: 5px solid var(--c); }
-.card-main { display: grid; grid-template-columns: minmax(260px, 1.1fr) minmax(480px, 2fr) 110px; gap: 24px; align-items: center; padding: 16px 20px; cursor: pointer; }
+.card-main { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr) 110px; gap: 24px; align-items: center; padding: 16px 20px; cursor: pointer; }
 .card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
 .meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--ink-2); font-size: 12.5px; }
 .stories { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
@@ -74,6 +80,7 @@
   .status .pill { flex: none; }
   .status .grow { display: none; }
   .status .btn { flex: none; }
+  .stage-header { display: none; }
   .panels { grid-template-columns: 1fr; gap: 8px; margin-inline: -16px; }
   .panel { border-radius: 0; border-inline: 0; box-shadow: none; }
   .sessions { margin-inline: -16px; gap: 8px; }
@@ -162,6 +169,7 @@ document.getElementById("app").innerHTML = topbar() + `
   </div>
   ${REPOS.map((repo) => { const list = SESSIONS.filter((s) => s.repo === repo).sort((a, b) => stageIdx(a.stage) - stageIdx(b.stage)); return `
   <div class="section-head"><h2>${repo}</h2><span class="muted">${list.length} sessions · ${list.filter((s) => s.stage !== "merged").length} in flight</span><span class="stagebar">${list.map((s) => `<i class="stage-${s.stage}"></i>`).join("")}</span></div>
+  <div class="stage-header"><span></span>${stageHeader()}<span></span></div>
   <section class="sessions">${list.map((s) => `
     <article class="card stage-${s.stage} ${openId === s.id ? "open" : ""}">
       <div class="card-main">
