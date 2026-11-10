@@ -13,6 +13,7 @@ const url = (file) => "file://" + path.join(dir, file);
 const desktop = [
   ["b-stepper-list.html", "b-stepper-collapsed", true],
   ["b-stepper-list.html?open=s3", "b-stepper-expanded", true],
+  ["b-stepper-list.html?filter=needs", "b-stepper-needs-you", true],
   ["b-stepper-list.html?search=1", "b-search-desktop", false],
   ["c-soil-dark.html", "c-soil-collapsed", true],
   ["c-soil-dark.html?open=s3", "c-soil-expanded", true],

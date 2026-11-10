@@ -46,6 +46,14 @@
 .stepper.header .node { background: color-mix(in srgb, var(--c) 30%, var(--surface)); border: 0; color: var(--ink); }
 .stepper.header .hl { font-size: 11px; font-weight: 600; color: var(--ink-2); line-height: 1.2; white-space: normal; max-width: 80px; }
 .step .lbl { display: none; }
+/* a stage not reached yet is a dot: the header names the column, and the current stage stands out */
+.card .step.todo .node { width: 10px; height: 10px; margin: 0 8px; border-style: solid; border-color: var(--clay); }
+.card .step.todo .node svg { display: none; }
+.filters { display: flex; gap: 6px; align-items: center; }
+.chip.filter { font: inherit; font-size: 12px; font-weight: 600; border: 0; cursor: pointer; }
+.chip.filter[aria-pressed="true"] { background: var(--soil); color: var(--cream); }
+.chip.filter:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+.only-needs .card:not(.needs), .only-needs .merged-line, .only-needs .repo:not(:has(.card.needs)) { display: none; }
 
 .repo { margin-top: 22px; }
 .repo-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; }
@@ -131,7 +139,8 @@ details.panel:not([open]) h2 { margin: 0; }
   details.panel[open] h2 small::after { transform: rotate(90deg); }
   .meta .prog { display: none; }
   .meta { flex-direction: row; align-items: center; gap: 8px; }
-  .stage-header { display: none; }
+  .stage-header { display: block; padding: 8px 0; }
+  .stage-header .stepper { display: none; }
   .sessions { margin-inline: -16px; gap: 8px; }
   .merged-line { border-radius: 0; border-inline: 0; }
   .card { border-radius: 0; border-right: 0; box-shadow: none; }
@@ -175,9 +184,10 @@ const progress = (s) => {
 const progText = (s) => {
   if (s.ringo) return `<b>${s.ringo.done}</b> of ${s.ringo.total} findings`;
   if (s.ci) return `<b>${s.ci.pass}</b> of ${s.ci.pass + s.ci.fail + s.ci.run} checks`;
-  return `<b>${s.loc}</b> LOC`;
+  return `<b>${s.loc}</b> of 700 LOC`;
 };
 const flags = (s) => (s.ask ? `<span class="flag">Waiting on you</span>` : "") + (s.ci && s.ci.fail ? `<span class="flag bad">${s.ci.fail} check failed</span>` : "");
+const needs = (s) => s.ask || (s.ci && s.ci.fail) || s.stage === "ready";
 const side = (s) => `
   <div class="side">
     <dl class="kv">
@@ -191,7 +201,7 @@ const side = (s) => `
   </div>`;
 
 const card = (s) => `
-  <article class="card stage-${s.stage} ${openId === s.id ? "open" : ""}" id="${s.id}">
+  <article class="card stage-${s.stage} ${needs(s) ? "needs" : ""} ${openId === s.id ? "open" : ""}" id="${s.id}">
     <div class="card-main list-grid">
       <div>
         <div class="tags">${s.pr ? `<a class="pr-link" href="#">↗ ${s.repo}#${s.pr}</a>` : `<span class="pr-link none">no PR yet</span>`}${flags(s)}</div>
@@ -259,16 +269,32 @@ document.getElementById("app").innerHTML = topbar() + `
       </div>
     </details>
   </div>
-  <div class="stage-header list-grid"><span></span>${stageHeader()}<span></span></div>
+  <div class="stage-header list-grid"><div class="filters"><button class="chip filter" data-f="all">All ${live.length}</button><button class="chip filter" data-f="needs">Needs you ${live.filter(needs).length}</button></div>${stageHeader()}<span></span></div>
   ${REPOS.map(repo).join("")}
 </main>`;
 // Usage and Loop are always open on a wide page and fold to their summary line on a phone.
-document.querySelectorAll("details.panel").forEach((d) => { d.open = matchMedia("(min-width: 701px)").matches; });
+const wide = matchMedia("(min-width: 701px)");
+const syncPanels = () => document.querySelectorAll("details.panel").forEach((d) => {
+  d.open = wide.matches;
+  d.querySelector("summary").tabIndex = wide.matches ? -1 : 0;
+});
+syncPanels();
+wide.addEventListener("change", syncPanels);
+// `?filter=needs` starts on the sessions that want something from you.
+const setFilter = (f) => {
+  document.body.classList.toggle("only-needs", f === "needs");
+  document.querySelectorAll(".chip.filter").forEach((b) => b.setAttribute("aria-pressed", b.dataset.f === f));
+};
+document.querySelectorAll(".chip.filter").forEach((b) => { b.onclick = () => setFilter(b.dataset.f); });
+setFilter(new URLSearchParams(location.search).get("filter") === "needs" ? "needs" : "all");
+// A log opens at its newest entry.
+const toEnd = (card) => { const log = card.querySelector(".log"); log.scrollTop = log.scrollHeight; };
+document.querySelectorAll(".card.open").forEach(toEnd);
 // The expand button is the control; a click anywhere else on the row is a
 // pointer shortcut to it, so no interactive element sits inside another.
 document.querySelectorAll(".card-main").forEach((el) => {
   const btn = el.querySelector(".expand");
-  btn.onclick = (e) => { e.stopPropagation(); btn.setAttribute("aria-expanded", el.parentElement.classList.toggle("open")); };
+  btn.onclick = (e) => { e.stopPropagation(); btn.setAttribute("aria-expanded", el.parentElement.classList.toggle("open")); toEnd(el.parentElement); };
   el.onclick = (e) => { if (!e.target.closest("a, button")) btn.click(); };
 });
 
