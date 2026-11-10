@@ -18,4 +18,10 @@ for (const [file, q, out] of shots) {
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: path.join(dir, "screenshots", out + ".png"), fullPage: !out.startsWith("a-pipeline-expanded") });
 }
+const m = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true });
+for (const [q, out] of [["", "b-stepper-mobile-collapsed"], ["?open=s3", "b-stepper-mobile-expanded"]]) {
+  await m.goto("file://" + path.join(dir, "b-stepper-list.html") + q);
+  await m.waitForLoadState("networkidle");
+  await m.screenshot({ path: path.join(dir, "screenshots", out + ".png"), fullPage: true });
+}
 await browser.close();

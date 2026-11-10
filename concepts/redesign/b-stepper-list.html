@@ -54,6 +54,33 @@
 .kv dd { margin: 0; }
 .bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; display: flex; }
 .bar i { display: block; }
+
+@media (max-width: 700px) {
+  .topbar { padding: 12px 16px; gap: 12px; }
+  .topbar .nav, .topbar .search { display: none; }
+  .page { padding: 18px 16px 40px; }
+  .page-head h1 { font-size: 26px; }
+  .status { flex-wrap: nowrap; overflow-x: auto; margin-inline: -16px; padding: 0 16px 4px; }
+  .status .pill { flex: none; }
+  .status .grow { display: none; }
+  .status .btn { flex: none; }
+  .panels, .actions { grid-template-columns: 1fr; }
+  .loop { grid-template-columns: 1fr 1fr; }
+  .inline { flex-wrap: wrap; }
+  .inline input { min-width: 0; flex-basis: 100%; }
+  .actions .inline select { flex: 1; }
+  .card-main { grid-template-columns: 1fr auto; gap: 12px; padding: 14px; }
+  .card-main .stepper { grid-column: 1 / -1; grid-row: 2; }
+  .step .lbl { display: none; }
+  .card-main .stepper { min-width: 0; }
+  .step { min-width: 0; }
+  .step:not(:last-child)::after { min-width: 4px; }
+  .step:not(:last-child)::after { margin: 0 4px; }
+  .card h3 { font-size: 14px; word-break: break-word; }
+  .card.open .detail { grid-template-columns: 1fr; padding: 14px; }
+  .log-row { grid-template-columns: 52px 18px 1fr; padding-inline: 10px; }
+  .log-row .tool-call { word-break: break-all; }
+}
 </style>
 </head>
 <body>
