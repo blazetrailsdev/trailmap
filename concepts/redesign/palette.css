@@ -2,36 +2,36 @@
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
-  --terracotta: #c2603f;
-  --terracotta-soft: #f3ddd2;
-  --forest: #2f5d46;
-  --forest-soft: #d8e6dc;
-  --mustard: #d4a72c;
-  --mustard-soft: #f6e9c3;
-  --soil: #5a3e2b;
-  --sand: #e9dcc4;
-  --clay: #b9a088;
-  --cream: #faf5ec;
-  /* primary-button fill: white text needs 4.5:1, terracotta gives 4.17:1 */
-  --action: #b0532f;
+  --terracotta: #e0452a;
+  --terracotta-soft: #fde4dc;
+  --forest: #166534;
+  --forest-soft: #dcf5e3;
+  --mustard: #f2b705;
+  --mustard-soft: #fdf0c2;
+  --soil: #2a1f1a;
+  --sand: #e6ddd0;
+  --clay: #a8a29e;
+  --cream: #fbf8f3;
+  /* primary-button fill: white text needs 4.5:1, terracotta gives 4.16:1 */
+  --action: #c7391f;
 
   --bg: var(--cream);
-  --surface: #fffdf8;
-  --surface-2: #f4ecde;
+  --surface: #ffffff;
+  --surface-2: #f3eee6;
   --line: var(--sand);
-  --ink: #2b211a;
-  --ink-2: #6b5a4c;
-  --ink-3: #7a6756;
+  --ink: #1c1512;
+  --ink-2: #5c4f45;
+  --ink-3: #74665a;
   --shadow: 0 1px 2px rgba(90, 62, 43, 0.05);
   --topbar-h: 56px;
 
-  /* one hue per stage */
-  --st-drafting: #8f7660;
-  --st-self: #a37b10;
+  /* one hue per stage, far enough apart to tell at a glance: slate, amber, vermilion, blue, green, violet */
+  --st-drafting: #64748b;
+  --st-self: #c2710c;
   --st-ringo: var(--terracotta);
-  --st-ci: #8a6d3b;
-  --st-ready: #5f8f62;
-  --st-merged: var(--forest);
+  --st-ci: #2563eb;
+  --st-ready: #15963f;
+  --st-merged: #7c3aed;
 
   --font: "Inter", system-ui, sans-serif;
   --display: "Fraunces", Georgia, serif;

@@ -13,8 +13,6 @@ points at `#`; the markup is not meant to be copied into `app/` as is.
   layout below 700px. ⌘K is the only shortcut, and it means search:
   Broadcast and Spawn are buttons with no key of their own, and are also
   rows in the palette. No key is wired in the mockup, ⌘K included.
-- `c-soil-dark.html`: a dark variant. Sessions sit in a rail grouped by stage,
-  next to a detail panel.
 
 Shared pieces: `palette.css` (tokens, the stepper, the log), `common.js`
 (render helpers and stage icons) and `data.js` (sessions and per-session logs).
