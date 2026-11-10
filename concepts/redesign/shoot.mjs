@@ -22,4 +22,10 @@ for (const [q, out] of [["", "b-stepper-mobile-collapsed"], ["?open=s3", "b-step
   await m.waitForLoadState("networkidle");
   await m.screenshot({ path: path.join(dir, "screenshots", out + ".png"), fullPage: true });
 }
+await page.goto("file://" + path.join(dir, "b-stepper-list.html?search=1"));
+await page.waitForLoadState("networkidle");
+await page.screenshot({ path: path.join(dir, "screenshots", "b-search-desktop.png") });
+await m.goto("file://" + path.join(dir, "b-stepper-list.html?search=1"));
+await m.waitForLoadState("networkidle");
+await m.screenshot({ path: path.join(dir, "screenshots", "b-search-mobile.png") });
 await browser.close();

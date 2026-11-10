@@ -100,6 +100,37 @@
   .log-row { grid-template-columns: 52px 18px 1fr; padding-inline: 10px; }
   .log-row .tool-call { word-break: break-all; }
 }
+
+.search-btn { display: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); place-items: center; }
+.cmdk-scrim { position: fixed; inset: 0; background: rgba(43,33,26,.32); backdrop-filter: blur(2px); z-index: 20; }
+.cmdk { position: fixed; top: 96px; left: 50%; translate: -50% 0; width: 680px; max-height: 70vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 24px 60px rgba(43,33,26,.28); z-index: 21; overflow: hidden; }
+.cmdk-input { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.cmdk-input svg { color: var(--terracotta); flex: none; }
+.cmdk-input input { flex: 1; border: 0; outline: 0; background: transparent; font: inherit; font-size: 17px; color: var(--ink); }
+.kbd { font-family: var(--mono); font-size: 11px; color: var(--ink-3); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; background: var(--surface-2); }
+.cmdk-scopes { display: flex; gap: 6px; padding: 10px 18px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.cmdk-scopes .chip.on { background: var(--soil); color: var(--cream); }
+.cmdk-body { overflow-y: auto; padding: 6px 8px 10px; }
+.cmdk-group { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); padding: 12px 10px 6px; }
+.cmdk-item { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center; padding: 8px 10px; border-radius: 10px; }
+.cmdk-item.on { background: color-mix(in srgb, var(--terracotta) 12%, var(--surface)); box-shadow: inset 3px 0 0 var(--terracotta); }
+.cmdk-item .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, var(--c, var(--clay)) 18%, var(--surface)); color: var(--c, var(--soil)); }
+.cmdk-item b { font-weight: 600; font-size: 13.5px; display: block; }
+.cmdk-item mark { background: var(--mustard-soft); color: inherit; border-radius: 3px; padding: 0 1px; }
+.cmdk-item small { color: var(--ink-3); font-size: 12px; }
+.cmdk-item .right { font-size: 12px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; }
+.cmdk-foot { display: flex; gap: 16px; padding: 10px 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-3); background: var(--surface-2); }
+@media (max-width: 700px) {
+  .search-btn { display: grid; }
+  .cmdk { inset: 0; top: 0; translate: none; left: 0; width: auto; max-height: none; border-radius: 0; border: 0; }
+  .cmdk-input { padding: 12px 16px; }
+  .cmdk-input .kbd { display: none; }
+  .cmdk-input .cancel { color: var(--terracotta); font-weight: 600; }
+  .cmdk-foot { display: none; }
+  .cmdk-item { padding: 10px; }
+  .cmdk-item .right .kbd, .cmdk-item .right .chip { display: none; }
+}
+@media (min-width: 701px) { .cmdk-input .cancel { display: none; } }
 </style>
 </head>
 <body>
@@ -190,6 +221,38 @@ document.getElementById("app").innerHTML = topbar() + `
 </main>`;
 const st = document.createElement("style"); st.textContent = stepperCss; document.head.append(st);
 document.querySelectorAll(".card-main").forEach((el) => el.onclick = () => el.parentElement.classList.toggle("open"));
+if (new URLSearchParams(location.search).has("search")) {
+  const q = "interceptor";
+  const hl = (t) => t.replace(new RegExp(q, "gi"), (m) => `<mark>${m}</mark>`);
+  const ic = (k) => STAGE_ICONS[k];
+  const sv = (d) => `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const item = (o, on) => `<div class="cmdk-item ${on ? "on" : ""} ${o.stage ? "stage-" + o.stage : ""}"><span class="ico">${o.icon}</span><div><b>${hl(o.title)}</b><small>${o.sub}</small></div><span class="right">${o.right || ""}${on ? '<span class="kbd">↵</span>' : ""}</span></div>`;
+  const groups = [
+    ["Sessions", [
+      { stage: "ringo", icon: ic("ringo"), title: "actionmailer-preview-interceptors", sub: "trails · Reviewer convergence · 3 of 5 findings converged", right: stageChip("ringo") },
+    ]],
+    ["Stories", [
+      { icon: sv('<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6"/>'), title: "actionmailer-preview-interceptors", sub: "RFC 0188 · in-progress · trails#9958" },
+      { icon: sv('<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6"/>'), title: "actionmailer-preview-register-interceptor-string-arm", sub: "RFC 0188 · in-progress · bundled" },
+      { icon: sv('<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6"/>'), title: "actionmailer-delivery-interceptor-class-names", sub: "RFC 0188 · ready · unclaimed" },
+    ]],
+    ["Pull requests", [
+      { stage: "ringo", icon: ic("merged"), title: "feat(actionmailer): preview interceptors", sub: "trails#9958 · draft · 506 LOC", right: "2h" },
+      { stage: "merged", icon: ic("merged"), title: "feat(actionmailer): register_interceptor accepts a class name", sub: "trails#9811 · merged", right: "4d" },
+    ]],
+    ["Actions", [
+      { icon: sv('<path d="M4 12h12M12 6l6 6-6 6"/>'), title: "Message session · actionmailer-preview-interceptors", sub: "Type into its pane" },
+      { icon: sv('<path d="M12 5v14M5 12h14"/>'), title: "Spawn a session for “interceptor”", sub: "trails · manual spawn" },
+    ]],
+  ];
+  let first = true;
+  document.body.insertAdjacentHTML("beforeend", `<div class="cmdk-scrim"></div><div class="cmdk" role="dialog">
+    <div class="cmdk-input">${sv('<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>')}<input value="${q}" autofocus><span class="kbd">esc</span><span class="cancel">Cancel</span></div>
+    <div class="cmdk-scopes"><span class="chip on">All</span><span class="chip">Sessions 1</span><span class="chip">Stories 3</span><span class="chip">PRs 2</span><span class="chip">trails</span><span class="chip">trailmap</span><span class="chip">tasks</span></div>
+    <div class="cmdk-body">${groups.map(([g, items]) => `<div class="cmdk-group">${g}</div>${items.map((o) => { const h = item(o, first); first = false; return h; }).join("")}`).join("")}</div>
+    <div class="cmdk-foot"><span><span class="kbd">↑</span> <span class="kbd">↓</span> move</span><span><span class="kbd">↵</span> open</span><span><span class="kbd">⌘</span> <span class="kbd">↵</span> message session</span><span><span class="kbd">tab</span> scope</span></div>
+  </div>`);
+}
 </script>
 </body>
 </html>
