@@ -42,6 +42,14 @@
 .card-main { display: grid; grid-template-columns: minmax(260px, 1.1fr) minmax(480px, 2fr) 110px; gap: 24px; align-items: center; padding: 16px 20px; cursor: pointer; }
 .card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
 .meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--ink-2); font-size: 12.5px; }
+.stories { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.story { font-size: 13px; color: var(--ink-2); text-decoration: none; border-bottom: 1px dotted var(--clay); }
+.story:hover { color: var(--terracotta); border-color: var(--terracotta); }
+.story.lead { font-size: 15px; font-weight: 600; color: var(--ink); flex: 0 0 100%; border: 0; word-break: break-word; }
+.batch { font-size: 11px; font-weight: 600; color: var(--soil); background: var(--soil-soft); padding: 1px 7px; border-radius: 99px; }
+.pr-link { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--forest); text-decoration: none; background: var(--forest-soft); padding: 2px 8px; border-radius: 6px; }
+.pr-link:hover { background: var(--forest); color: #fff; }
+.pr-link.none { color: var(--ink-3); background: var(--surface-2); }
 .note { color: var(--ink-2); font-size: 12.5px; margin-top: 6px; }
 .right { text-align: right; color: var(--ink-3); font-size: 12px; }
 .caret { display: inline-block; transition: transform .2s; margin-left: 6px; }
@@ -86,6 +94,7 @@
 <body>
 <div id="app"></div>
 <script>
+const storyList = (s) => s.stories || [s.story];
 const side = (s) => `
   <div class="side">
     <h4>Session</h4>
@@ -157,8 +166,8 @@ document.getElementById("app").innerHTML = topbar() + `
     <article class="card stage-${s.stage} ${openId === s.id ? "open" : ""}">
       <div class="card-main">
         <div>
-          <h3>${s.story}</h3>
-          <div class="meta">${stageChip(s.stage)} ${prLink(s)} <span>${s.pkg}</span></div>
+          <div class="meta" style="margin-bottom:6px">${stageChip(s.stage)} ${s.pr ? `<a class="pr-link" href="#" onclick="event.stopPropagation()">↗ trails#${s.pr}</a>` : `<span class="pr-link none">no PR yet</span>`} <span>${s.pkg}</span></div>
+          <div class="stories">${storyList(s).map((id, i) => `<a href="#" class="story${i === 0 ? " lead" : ""}" onclick="event.stopPropagation()">${id}</a>`).join("")}${storyList(s).length > 1 ? `<span class="batch">bundle · ${storyList(s).length} stories</span>` : ""}</div>
           <div class="note">${s.note}</div>
         </div>
         ${stepper(s.stage)}
