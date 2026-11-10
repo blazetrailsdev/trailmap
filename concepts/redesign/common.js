@@ -13,7 +13,7 @@ window.topbar = (active = "Fleet") => `
   </header>`;
 
 window.stageChip = (k) => `<span class="chip stage stage-${k}"><span class="dot"></span>${stageOf(k).label}</span>`;
-window.prLink = (s) => (s.pr ? `<a class="mono" href="#">trails#${s.pr}</a>` : `<span class="mono muted">no PR yet</span>`);
+window.prLink = (s) => (s.pr ? `<a class="mono" href="#">${s.repo}#${s.pr}</a>` : `<span class="mono muted">no PR yet</span>`);
 
 window.stepper = (k, { compact = false } = {}) => {
   const cur = stageIdx(k);

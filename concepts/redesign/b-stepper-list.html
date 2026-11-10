@@ -35,6 +35,9 @@
 .inline input, .inline select { font: inherit; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--ink); }
 .inline input { flex: 1; }
 .section-head { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; }
+.section-head { margin-top: 28px; }
+.stagebar { display: flex; gap: 3px; margin-left: auto; }
+.stagebar i { width: 18px; height: 6px; border-radius: 3px; background: var(--c); }
 .section-head h2 { font-family: var(--display); font-size: 22px; margin: 0; }
 .filters { display: flex; gap: 8px; margin-bottom: 14px; }
 .sessions { display: flex; flex-direction: column; gap: 12px; }
@@ -94,6 +97,7 @@
 <body>
 <div id="app"></div>
 <script>
+const REPOS = ["trails", "trailmap", "tasks"];
 const storyList = (s) => s.stories || [s.story];
 const side = (s) => `
   <div class="side">
@@ -161,12 +165,13 @@ document.getElementById("app").innerHTML = topbar() + `
     <div class="panel"><h2>Manual spawn <small><a href="#">poke 1 stalled agent</a></small></h2>
       <div class="inline"><select><option>trails</option><option>trailmap</option><option>tasks</option></select><input placeholder="Enter a task for Claude…"><button class="btn primary" style="background:var(--forest);border-color:var(--forest)">Spawn</button></div></div>
   </div>
-  <div class="section-head"><h2>Sessions</h2><span class="muted">trails · ${SESSIONS.length} sessions</span></div>
-  <section class="sessions">${SESSIONS.map((s) => `
+  ${REPOS.map((repo) => { const list = SESSIONS.filter((s) => s.repo === repo).sort((a, b) => stageIdx(a.stage) - stageIdx(b.stage)); return `
+  <div class="section-head"><h2>${repo}</h2><span class="muted">${list.length} sessions · ${list.filter((s) => s.stage !== "merged").length} in flight</span><span class="stagebar">${list.map((s) => `<i class="stage-${s.stage}"></i>`).join("")}</span></div>
+  <section class="sessions">${list.map((s) => `
     <article class="card stage-${s.stage} ${openId === s.id ? "open" : ""}">
       <div class="card-main">
         <div>
-          <div class="meta" style="margin-bottom:6px">${stageChip(s.stage)} ${s.pr ? `<a class="pr-link" href="#" onclick="event.stopPropagation()">↗ trails#${s.pr}</a>` : `<span class="pr-link none">no PR yet</span>`} <span>${s.pkg}</span></div>
+          <div class="meta" style="margin-bottom:6px">${stageChip(s.stage)} ${s.pr ? `<a class="pr-link" href="#" onclick="event.stopPropagation()">↗ ${s.repo}#${s.pr}</a>` : `<span class="pr-link none">no PR yet</span>`} <span>${s.pkg}</span></div>
           <div class="stories">${storyList(s).map((id, i) => `<a href="#" class="story${i === 0 ? " lead" : ""}" onclick="event.stopPropagation()">${id}</a>`).join("")}${storyList(s).length > 1 ? `<span class="batch">bundle · ${storyList(s).length} stories</span>` : ""}</div>
           <div class="note">${s.note}</div>
         </div>
@@ -178,7 +183,7 @@ document.getElementById("app").innerHTML = topbar() + `
         ${side(s)}
       </div>
     </article>`).join("")}
-  </section>
+  </section>`; }).join("")}
 </main>`;
 const st = document.createElement("style"); st.textContent = stepperCss; document.head.append(st);
 document.querySelectorAll(".card-main").forEach((el) => el.onclick = () => el.parentElement.classList.toggle("open"));
