@@ -24,8 +24,8 @@
   --shadow: 0 1px 2px rgba(90, 62, 43, 0.06), 0 6px 18px rgba(90, 62, 43, 0.07);
 
   /* one hue per stage */
-  --st-drafting: var(--clay);
-  --st-self: var(--mustard);
+  --st-drafting: #8f7660;
+  --st-self: #a37b10;
   --st-ringo: var(--terracotta);
   --st-ci: #8a6d3b;
   --st-ready: #5f8f62;
