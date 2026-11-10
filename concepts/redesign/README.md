@@ -10,9 +10,9 @@ points at `#`; the markup is not meant to be copied into `app/` as is.
   question, a failed check, a Merge button) and shows its stage's progress;
   `?filter=needs` keeps only those cards. `?open=<id>` opens one card
   (`?open=s3`), and `?search=1` shows the ⌘K palette. It has a full-bleed
-  layout below 700px. ⌘K means search and nothing else: Broadcast and Spawn
-  are proposed as the single keys B and N (new session), live when focus is outside a field.
-  No key is wired in the mockup, ⌘K included.
+  layout below 700px. ⌘K is the only shortcut, and it means search:
+  Broadcast and Spawn are buttons with no key of their own, and are also
+  rows in the palette. No key is wired in the mockup, ⌘K included.
 - `c-soil-dark.html`: a dark variant. Sessions sit in a rail grouped by stage,
   next to a detail panel.
 

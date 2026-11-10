@@ -125,7 +125,7 @@ details.panel:not([open]) h2 { margin: 0; }
   .page { padding: 16px 16px 40px; }
   .fleet-head { gap: 10px; }
   .fleet-head h1 { font-size: 26px; flex: 1; }
-  .fleet-head .grow, .fleet-head .kbd { display: none; }
+  .fleet-head .grow { display: none; }
   .pills { order: 3; flex: 0 0 100%; }
   .panels { grid-template-columns: 1fr; gap: 8px; margin-inline: -16px; }
   .panel { border-radius: 0; border-inline: 0; box-shadow: none; }
@@ -240,8 +240,8 @@ document.getElementById("app").innerHTML = topbar() + `
       <span class="pill warn"><span class="led"></span>codex · 2</span>
     </div>
     <span class="grow"></span>
-    <button class="btn sm">Broadcast <span class="kbd">B</span></button>
-    <button class="btn sm">Spawn <span class="kbd">N</span></button>
+    <button class="btn sm">Broadcast</button>
+    <button class="btn sm">Spawn</button>
   </div>
   <div class="panels">
     <div class="panel">
