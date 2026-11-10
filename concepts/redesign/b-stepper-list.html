@@ -13,11 +13,11 @@
 .pill.warn .led { background: var(--mustard); }
 .status .grow { flex: 1; }
 .btn.danger { border-color: var(--terracotta); color: var(--terracotta); }
-.panels { display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px; margin-bottom: 14px; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); }
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; align-items: stretch; }
+.panel { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); }
 .panel h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .panel h2 small { font-weight: 400; color: var(--ink-3); }
-.stack { display: flex; flex-direction: column; gap: 14px; }
+.ask:last-child { margin-bottom: 0; }
 .ask { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--mustard-soft); margin-bottom: 8px; align-items: center; }
 .ask q { display: block; color: var(--ink); font-size: 13px; margin-top: 2px; }
 .ask q::before, .ask q::after { content: ""; }
@@ -30,7 +30,6 @@
 .loop input[type=number] { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; width: 100%; }
 .toggle { width: 38px; height: 22px; border-radius: 99px; background: var(--forest); position: relative; margin-top: 3px; }
 .toggle::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
 .inline { display: flex; gap: 8px; align-items: center; }
 .inline input, .inline select { font: inherit; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--ink); }
 .inline input { flex: 1; }
@@ -75,11 +74,10 @@
   .status .pill { flex: none; }
   .status .grow { display: none; }
   .status .btn { flex: none; }
-  .panels, .actions { grid-template-columns: 1fr; }
+  .panels { grid-template-columns: 1fr; }
   .loop { grid-template-columns: 1fr 1fr; }
   .inline { flex-wrap: wrap; }
   .inline input { min-width: 0; flex-basis: 100%; }
-  .actions .inline select { flex: 1; }
   .card-main { grid-template-columns: 1fr auto; gap: 12px; padding: 14px; }
   .card-main .stepper { grid-column: 1 / -1; grid-row: 2; }
   .step .lbl { display: none; }
@@ -130,23 +128,20 @@ document.getElementById("app").innerHTML = topbar() + `
     <button class="btn danger">Pause all</button>
   </div>
   <div class="panels">
-    <div class="stack">
       <div class="panel">
         <h2>Agents waiting on you <small>2 questions</small></h2>
         <div class="ask"><div><span class="mono">zeitwerk-eager-load-namespace</span><q>MariaDB shard 2 red twice on an unrelated test. Rerun, or file a flake?</q></div><button class="btn">Reply</button></div>
         <div class="ask"><div><span class="mono">actionmailer-preview-interceptors</span><q>Finding 5 asks for a scoped skip. OK to add, or converge?</q></div><button class="btn">Reply</button></div>
       </div>
       <div class="panel">
-        <h2>CI fixer <small>main is red</small></h2>
-        <div class="fixer"><span class="chip stage stage-ringo"><span class="dot"></span>fixing</span><span>Worker on <span class="mono">ar-mariadb-shard-flake-3c1e</span> · spawn loop paused · 12m</span></div>
-      </div>
-    </div>
-    <div class="stack">
-      <div class="panel">
         <h2>Usage <small>resets in 2h 14m</small></h2>
         <div class="usage-row"><span>Claude</span><div class="meter"><i style="width:62%;background:var(--forest)"></i></div><span class="muted">62% · week</span></div>
         <div class="usage-row"><span>Session</span><div class="meter"><i style="width:81%;background:var(--mustard)"></i></div><span class="muted">81% · 5h</span></div>
         <div class="usage-row" style="margin:0"><span>Codex</span><div class="meter"><i style="width:34%;background:var(--clay)"></i></div><span class="muted">34% · week</span></div>
+      </div>
+      <div class="panel">
+        <h2>CI fixer <small>main is red</small></h2>
+        <div class="fixer"><span class="chip stage stage-ringo"><span class="dot"></span>fixing</span><span>Worker on <span class="mono">ar-mariadb-shard-flake-3c1e</span> · spawn loop paused · 12m</span></div>
       </div>
       <div class="panel">
         <h2>Loop <small>last spawn 6m ago · next in 4m</small></h2>
@@ -157,9 +152,6 @@ document.getElementById("app").innerHTML = topbar() + `
           <label>Bundle<span>&nbsp;</span><span class="toggle"></span></label>
         </div>
       </div>
-    </div>
-  </div>
-  <div class="actions">
     <div class="panel"><h2>Broadcast to agents <small>typed into each pane</small></h2>
       <div class="inline"><input placeholder="e.g. main is red, rebase before you push again"><button class="btn">all</button><button class="btn">CI red</button></div></div>
     <div class="panel"><h2>Manual spawn <small><a href="#">poke 1 stalled agent</a></small></h2>
