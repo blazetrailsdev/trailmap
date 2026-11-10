@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concept B · Stepper list</title>
+<link rel="stylesheet" href="palette.css">
+<script src="data.js"></script><script src="common.js"></script>
+<style>
+.summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 22px; }
+.sum { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; border-top: 4px solid var(--c); }
+.sum b { font-family: var(--display); font-size: 26px; display: block; }
+.sum span { color: var(--ink-2); font-size: 12px; }
+.filters { display: flex; gap: 8px; margin-bottom: 14px; }
+.sessions { display: flex; flex-direction: column; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; border-left: 5px solid var(--c); }
+.card-main { display: grid; grid-template-columns: minmax(260px, 1.1fr) minmax(480px, 2fr) 110px; gap: 24px; align-items: center; padding: 16px 20px; cursor: pointer; }
+.card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--ink-2); font-size: 12.5px; }
+.note { color: var(--ink-2); font-size: 12.5px; margin-top: 6px; }
+.right { text-align: right; color: var(--ink-3); font-size: 12px; }
+.caret { display: inline-block; transition: transform .2s; margin-left: 6px; }
+.card.open .caret { transform: rotate(90deg); }
+.detail { display: none; border-top: 1px solid var(--line); padding: 16px 20px 20px; background: linear-gradient(var(--cream), var(--surface)); }
+.card.open .detail { display: grid; grid-template-columns: 1fr 280px; gap: 20px; }
+.side h4, .detail h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.kv { display: grid; grid-template-columns: 90px 1fr; gap: 6px 10px; font-size: 13px; margin-bottom: 16px; }
+.kv dt { color: var(--ink-3); }
+.kv dd { margin: 0; }
+.bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; display: flex; }
+.bar i { display: block; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const counts = Object.fromEntries(STAGES.map((s) => [s.key, SESSIONS.filter((x) => x.stage === s.key).length]));
+const side = (s) => `
+  <div class="side">
+    <h4>Session</h4>
+    <dl class="kv">
+      <dt>Story</dt><dd class="mono">${s.story}</dd>
+      <dt>RFC</dt><dd>${s.rfc}</dd>
+      <dt>PR</dt><dd>${prLink(s)} <span class="chip">draft</span></dd>
+      <dt>Package</dt><dd>${s.pkg}</dd>
+      <dt>Diff</dt><dd>${s.loc} / 700 LOC</dd>
+    </dl>
+    <h4>Reviewer convergence</h4>
+    <div class="bar"><i style="width:60%;background:var(--forest)"></i><i style="width:20%;background:var(--terracotta)"></i></div>
+    <p class="muted" style="font-size:12px;margin:6px 0 16px">3 converged · 1 in progress · 1 open</p>
+    <div style="display:flex;gap:8px"><button class="btn">Open pane</button><button class="btn">View PR</button></div>
+  </div>`;
+document.getElementById("app").innerHTML = topbar() + `
+<main class="page">
+  <div class="page-head">
+    <div><h1>Sessions</h1><p>${SESSIONS.length} agent sessions · ${SESSIONS.filter((s) => s.stage !== "merged").length} in flight</p></div>
+    <button class="btn primary">+ New session</button>
+  </div>
+  <section class="summary">${STAGES.map((s) => `<div class="sum stage-${s.key}"><b>${counts[s.key]}</b><span>${s.label}</span></div>`).join("")}</section>
+  <div class="filters"><span class="chip" style="background:var(--soil);color:var(--cream)">All</span><span class="chip">Mine</span><span class="chip">Needs me</span><span class="chip">activerecord</span></div>
+  <section class="sessions">${SESSIONS.map((s) => `
+    <article class="card stage-${s.stage} ${openId === s.id ? "open" : ""}">
+      <div class="card-main">
+        <div>
+          <h3>${s.story}</h3>
+          <div class="meta">${stageChip(s.stage)} ${prLink(s)} <span>${s.pkg}</span></div>
+          <div class="note">${s.note}</div>
+        </div>
+        ${stepper(s.stage)}
+        <div class="right">${s.age} ago<span class="caret">›</span><br>${s.loc} LOC</div>
+      </div>
+      <div class="detail">
+        <div><h4>Session log</h4>${renderLog()}${renderComposer(s)}</div>
+        ${side(s)}
+      </div>
+    </article>`).join("")}
+  </section>
+</main>`;
+const st = document.createElement("style"); st.textContent = stepperCss; document.head.append(st);
+document.querySelectorAll(".card-main").forEach((el) => el.onclick = () => el.parentElement.classList.toggle("open"));
+</script>
+</body>
+</html>

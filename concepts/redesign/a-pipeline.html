@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concept A · Pipeline board</title>
+<link rel="stylesheet" href="palette.css">
+<script src="data.js"></script><script src="common.js"></script>
+<style>
+.board { display: grid; grid-template-columns: repeat(6, minmax(200px, 1fr)); gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); }
+.col { border-right: 1px solid var(--line); min-height: 520px; display: flex; flex-direction: column; }
+.col:last-child { border-right: 0; }
+.col-head { padding: 14px 14px 12px; position: relative; background: color-mix(in srgb, var(--c) 12%, var(--surface)); border-bottom: 3px solid var(--c); }
+.col-head .n { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.col-head h2 { margin: 2px 0 0; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; }
+.col-head h2 span { font-family: var(--display); color: var(--c); }
+.col-head:not(.last)::after { content: ""; position: absolute; right: -9px; top: 50%; translate: 0 -50%; width: 16px; height: 16px; background: inherit; border-top: 1px solid var(--line); border-right: 1px solid var(--line); rotate: 45deg; z-index: 2; }
+.col-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; cursor: pointer; transition: box-shadow .15s; }
+.tile:hover, .tile.sel { box-shadow: 0 0 0 2px var(--c), var(--shadow); }
+.tile h3 { font-size: 13px; margin: 0 0 6px; font-weight: 600; word-break: break-word; }
+.tile .row { display: flex; justify-content: space-between; color: var(--ink-3); font-size: 11.5px; }
+.tile .note { font-size: 12px; color: var(--ink-2); margin: 6px 0; }
+.prog { height: 5px; background: var(--surface-2); border-radius: 9px; overflow: hidden; margin-top: 6px; }
+.prog i { display: block; height: 100%; background: var(--c); }
+.empty { color: var(--ink-3); font-size: 12px; text-align: center; padding: 18px 0; border: 1.5px dashed var(--line); border-radius: 12px; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 560px; background: var(--surface); border-left: 1px solid var(--line); box-shadow: -16px 0 40px rgba(90,62,43,.16); padding: 22px 24px; overflow-y: auto; display: none; }
+.drawer.on { display: block; }
+.scrim { position: fixed; inset: 0; background: rgba(43,33,26,.18); display: none; }
+.scrim.on { display: block; }
+.drawer h2 { font-family: var(--display); margin: 8px 0 4px; font-size: 22px; }
+.drawer .log { max-height: 380px; }
+.drawer section { margin-top: 18px; }
+.drawer h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const tile = (s) => `
+  <div class="tile stage-${s.stage} ${openId === s.id ? "sel" : ""}" data-id="${s.id}">
+    <h3>${s.story}</h3>
+    <div class="row"><span>${prLink(s)}</span><span>${s.age}</span></div>
+    <div class="note">${s.note}</div>
+    ${s.ringo ? `<div class="row"><span>findings</span><span>${s.ringo.done}/${s.ringo.total}</span></div><div class="prog"><i style="width:${(100 * s.ringo.done) / s.ringo.total}%"></i></div>` : ""}
+    ${s.ci ? `<div class="row"><span>checks</span><span>${s.ci.pass}✓ ${s.ci.fail}✗ ${s.ci.run}…</span></div><div class="prog"><i style="width:${(100 * s.ci.pass) / (s.ci.pass + s.ci.fail + s.ci.run)}%"></i></div>` : ""}
+    <div class="row" style="margin-top:6px"><span class="chip">${s.pkg}</span><span>${s.loc} LOC</span></div>
+  </div>`;
+const drawer = (s) => !s ? "" : `
+  <div class="scrim on"></div>
+  <aside class="drawer on stage-${s.stage}">
+    <div style="display:flex;justify-content:space-between;align-items:center">${stageChip(s.stage)}<button class="btn">Close ✕</button></div>
+    <h2>${s.story}</h2>
+    <div class="muted">${prLink(s)} · ${s.branch} · RFC ${s.rfc}</div>
+    <section>${stepper(s.stage, { compact: true })}</section>
+    <section><h4>Session log</h4>${renderLog()}</section>
+    <section>${renderComposer(s)}</section>
+  </aside>`;
+document.getElementById("app").innerHTML = topbar() + `
+<main class="page">
+  <div class="page-head">
+    <div><h1>Session pipeline</h1><p>Every agent session, by stage. Click a card to open its log.</p></div>
+    <div style="display:flex;gap:8px"><button class="btn">Filter</button><button class="btn primary">+ New session</button></div>
+  </div>
+  <section class="board">${STAGES.map((st, i) => {
+    const items = SESSIONS.filter((s) => s.stage === st.key);
+    return `<div class="col stage-${st.key}">
+      <div class="col-head ${i === STAGES.length - 1 ? "last" : ""}"><div class="n">0${i + 1}</div><h2>${st.label}<span>${items.length}</span></h2></div>
+      <div class="col-body">${items.map(tile).join("") || `<div class="empty">nothing here</div>`}</div>
+    </div>`;
+  }).join("")}</section>
+</main>` + drawer(SESSIONS.find((s) => s.id === openId));
+const css = document.createElement("style"); css.textContent = stepperCss; document.head.append(css);
+document.querySelectorAll(".tile").forEach((t) => t.onclick = () => location.search = "?open=" + t.dataset.id);
+document.querySelectorAll(".scrim, .drawer .btn:not(.primary)").forEach((t) => t.onclick = () => location.search = "");
+</script>
+</body>
+</html>

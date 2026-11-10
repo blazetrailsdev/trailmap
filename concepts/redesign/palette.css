@@ -1,0 +1,91 @@
+/* trailmap redesign concepts: shared palette + primitives. Static mockups only. */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --terracotta: #c2603f;
+  --terracotta-soft: #f3ddd2;
+  --forest: #2f5d46;
+  --forest-soft: #d8e6dc;
+  --mustard: #d4a72c;
+  --mustard-soft: #f6e9c3;
+  --soil: #5a3e2b;
+  --soil-soft: #e7dacd;
+  --sand: #e9dcc4;
+  --clay: #b9a088;
+  --cream: #faf5ec;
+
+  --bg: var(--cream);
+  --surface: #fffdf8;
+  --surface-2: #f4ecde;
+  --line: #e4d6c1;
+  --ink: #2b211a;
+  --ink-2: #6b5a4c;
+  --ink-3: #9a8775;
+  --shadow: 0 1px 2px rgba(90, 62, 43, 0.06), 0 6px 18px rgba(90, 62, 43, 0.07);
+
+  /* one hue per stage */
+  --st-drafting: var(--clay);
+  --st-self: var(--mustard);
+  --st-ringo: var(--terracotta);
+  --st-ci: #8a6d3b;
+  --st-ready: #5f8f62;
+  --st-merged: var(--forest);
+
+  --font: "Inter", system-ui, sans-serif;
+  --display: "Fraunces", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+
+.topbar { display: flex; align-items: center; gap: 24px; padding: 14px 32px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.brand { font-family: var(--display); font-weight: 650; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+.brand-mark { width: 26px; height: 26px; border-radius: 8px; background: conic-gradient(var(--terracotta) 0 25%, var(--mustard) 0 50%, var(--forest) 0 75%, var(--soil) 0); }
+.nav { display: flex; gap: 4px; }
+.nav a { text-decoration: none; padding: 6px 12px; border-radius: 999px; color: var(--ink-2); font-weight: 500; }
+.nav a.on { background: var(--surface-2); color: var(--ink); }
+.topbar .spacer { flex: 1; }
+.search { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; color: var(--ink-3); width: 260px; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--soil); color: var(--cream); display: grid; place-items: center; font-weight: 600; font-size: 12px; }
+
+.page { padding: 28px 32px 48px; max-width: 1440px; margin: 0 auto; }
+.page-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.page-head h1 { font-family: var(--display); font-weight: 650; font-size: 32px; margin: 0; letter-spacing: -0.01em; }
+.page-head p { margin: 4px 0 0; color: var(--ink-2); }
+
+.btn { font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 14px; border-radius: 10px; cursor: pointer; }
+.btn.primary { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.mono { font-family: var(--mono); font-size: 12px; }
+.muted { color: var(--ink-2); }
+
+.stage-drafting { --c: var(--st-drafting); }
+.stage-self { --c: var(--st-self); }
+.stage-ringo { --c: var(--st-ringo); }
+.stage-ci { --c: var(--st-ci); }
+.stage-ready { --c: var(--st-ready); }
+.stage-merged { --c: var(--st-merged); }
+.chip.stage { color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); }
+
+/* session log */
+.log { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; max-height: 300px; overflow-y: auto; padding: 10px 0; font-size: 13px; }
+.log-row { display: grid; grid-template-columns: 64px 20px 1fr; gap: 8px; padding: 4px 14px; align-items: start; }
+.log-row time { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); padding-top: 2px; }
+.log-row .ic { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; background: var(--clay); margin-top: 1px; }
+.log-row.tool .ic { background: var(--soil); }
+.log-row.say .ic { background: var(--forest); }
+.log-row.user .ic { background: var(--terracotta); }
+.log-row.warn .ic { background: var(--mustard); color: var(--ink); }
+.log-row .tool-call { font-family: var(--mono); font-size: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; display: inline-block; }
+.log-row.transition { background: color-mix(in srgb, var(--c, var(--forest)) 10%, transparent); border-block: 1px dashed color-mix(in srgb, var(--c, var(--forest)) 40%, transparent); margin: 4px 0; padding-block: 6px; }
+.log-row.transition .ic { background: var(--c, var(--forest)); }
+.log-row.transition b { color: var(--c); }
+
+.composer { display: flex; gap: 8px; align-items: flex-end; margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px; }
+.composer textarea { flex: 1; resize: none; border: 0; outline: 0; background: transparent; font: inherit; color: var(--ink); min-height: 40px; padding: 6px; }
+.composer .hint { font-size: 11.5px; color: var(--ink-3); padding: 0 6px 8px; }
