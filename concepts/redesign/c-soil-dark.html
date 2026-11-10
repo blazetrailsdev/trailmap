@@ -8,7 +8,7 @@
 <style>
 :root {
   --bg: #1d1510; --surface: #271c15; --surface-2: #31241b; --line: #45342a;
-  --ink: #f3e9da; --ink-2: #c7b39c; --ink-3: #8f7a66;
+  --ink: #f3e9da; --ink-2: #c7b39c; --ink-3: #a08a75;
   --terracotta: #de7a56; --mustard: #e6bd4a; --forest: #6fa57f; --clay: #b9a088;
   --st-ci: #c99a5b; --st-ready: #93c07f;
   --shadow: 0 8px 28px rgba(0,0,0,.35);
@@ -26,6 +26,7 @@ body { background: radial-gradient(1200px 500px at 80% -10%, #3a2618 0%, transpa
 .item b { font-weight: 500; font-size: 13.5px; display: block; }
 .item small { color: var(--ink-3); }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; box-shadow: var(--shadow); align-self: start; position: sticky; top: 20px; }
+.step .lbl { font-size: 11px; white-space: normal; line-height: 1.2; max-width: 70px; }
 .panel h1 { font-family: var(--display); font-size: 26px; margin: 10px 0 4px; }
 .panel .log { max-height: 360px; background: #1f1712; }
 .panel .composer { background: var(--surface-2); }
@@ -47,14 +48,14 @@ const panel = sel ? `
   <div class="panel stage-${sel.stage}">
     <div style="display:flex;justify-content:space-between">${stageChip(sel.stage)}<span class="muted">${sel.age} ago</span></div>
     <h1>${sel.story}</h1>
-    <div class="muted">${prLink(sel)} · <span class="mono">${sel.branch}</span> · ${sel.pkg}</div>
+    <div class="muted">${prLink(sel)} · <span class="mono">${sel.branch}</span></div>
     <div style="margin-top:18px">${stepper(sel.stage)}</div>
     <div class="tiles">
-      <div class="t"><small>Findings</small><b>3 / 5</b></div>
+      <div class="t"><small>Findings</small><b>${sel.ringo ? `${sel.ringo.done} / ${sel.ringo.total}` : "—"}</b></div>
       <div class="t"><small>Diff</small><b>${sel.loc} LOC</b></div>
-      <div class="t"><small>Checks</small><b>—</b></div>
+      <div class="t"><small>Checks</small><b>${sel.ci ? `${sel.ci.pass} / ${sel.ci.pass + sel.ci.fail + sel.ci.run}` : "—"}</b></div>
     </div>
-    ${renderLog()}
+    ${renderLog(sel)}
     ${renderComposer(sel)}
   </div>` : `
   <div class="panel idle">
@@ -69,13 +70,12 @@ document.getElementById("app").innerHTML = topbar() + `
       <div class="group stage-${st.key}"><h2>${st.label}</h2>
       ${SESSIONS.filter((s) => s.stage === st.key).map((s) => `
         <div class="item stage-${s.stage} ${s.id === openId ? "sel" : ""}" data-id="${s.id}">
-          <span class="bead"></span><div><b>${s.story}</b><small>${s.pr ? "trails#" + s.pr : "no PR"} · ${s.note}</small></div><small>${s.age}</small>
+          <span class="bead"></span><div><b>${s.story}</b><small>${s.pr ? `${s.repo}#${s.pr}` : "no PR"} · ${s.note}</small></div><small>${s.age}</small>
         </div>`).join("")}</div>`).join("")}
     </nav>
     ${panel}
   </div>
 </main>`;
-const css = document.createElement("style"); css.textContent = stepperCss; document.head.append(css);
 document.querySelectorAll(".item").forEach((t) => t.onclick = () => location.search = "?open=" + t.dataset.id);
 </script>
 </body>

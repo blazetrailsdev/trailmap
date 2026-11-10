@@ -1,5 +1,5 @@
-// Screenshots every concept/state: node concepts/redesign/shoot.mjs (needs playwright resolvable).
-import { chromium } from "playwright";
+// Screenshots every concept and state. See README.md for running it.
+const { chromium } = await import(process.env.PLAYWRIGHT_PATH ?? "playwright");
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 const dir = path.dirname(fileURLToPath(import.meta.url));

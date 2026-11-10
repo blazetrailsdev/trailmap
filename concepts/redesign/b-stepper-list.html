@@ -2,135 +2,135 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Concept B · Fleet stepper</title>
+<title>Concept B · Fleet</title>
 <link rel="stylesheet" href="palette.css">
 <script src="data.js"></script><script src="common.js"></script>
 <style>
-.status { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
-.pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; font-weight: 500; }
-.pill .led { width: 8px; height: 8px; border-radius: 50%; background: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb, var(--forest) 20%, transparent); }
-.pill.bad .led { background: var(--terracotta); box-shadow: 0 0 0 3px color-mix(in srgb, var(--terracotta) 20%, transparent); }
+/* header: title, connection pills, the two rare actions */
+.fleet-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+.fleet-head h1 { font-family: var(--display); font-weight: 650; font-size: 30px; margin: 0 6px 0 0; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; font-weight: 500; }
+.pill .led { width: 8px; height: 8px; border-radius: 50%; background: var(--forest); }
 .pill.warn .led { background: var(--mustard); }
-.status .grow { flex: 1; }
-.btn.danger { border-color: var(--terracotta); color: var(--terracotta); }
-.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; align-items: stretch; }
+.fleet-head .grow { flex: 1; }
+
+/* top panels: one two-column grid, rows share height */
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
 .panel { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); }
-.panel h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.panel h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .panel h2 small { font-weight: 400; color: var(--ink-3); }
-.ask:last-child { margin-bottom: 0; }
-.ask { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--mustard-soft); margin-bottom: 8px; align-items: center; }
-.ask q { display: block; color: var(--ink); font-size: 13px; margin-top: 2px; }
-.ask q::before, .ask q::after { content: ""; }
+.ask { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 9px 12px; border-radius: 12px; background: var(--mustard-soft); align-items: center; }
+.ask + .ask { margin-top: 8px; }
+.ask a { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.ask p { margin: 2px 0 0; font-size: 13px; }
 .fixer { display: flex; gap: 12px; align-items: center; font-size: 13px; padding: 10px 12px; border-radius: 12px; background: var(--terracotta-soft); }
-.usage-row { display: grid; grid-template-columns: 70px 1fr 80px; gap: 10px; align-items: center; font-size: 12.5px; margin-bottom: 8px; }
+.fixer b { color: var(--terracotta); white-space: nowrap; }
+.usage-row { display: grid; grid-template-columns: 120px 1fr 40px; gap: 10px; align-items: center; font-size: 12.5px; }
+.usage-row + .usage-row { margin-top: 8px; }
+.usage-row span:last-child { text-align: right; color: var(--ink-2); }
 .meter { height: 9px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
 .meter i { display: block; height: 100%; border-radius: 99px; }
-.loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.loop { display: grid; grid-template-columns: repeat(3, 1fr) auto auto; gap: 10px; align-items: end; }
 .loop label { font-size: 11.5px; color: var(--ink-3); display: flex; flex-direction: column; gap: 4px; }
-.loop input[type=number] { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; width: 100%; }
-.toggle { width: 38px; height: 22px; border-radius: 99px; background: var(--forest); position: relative; margin-top: 3px; }
+.loop input { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; width: 100%; }
+.toggle { width: 38px; height: 22px; border-radius: 99px; background: var(--forest); position: relative; margin-bottom: 6px; }
 .toggle::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
-.inline { display: flex; gap: 8px; align-items: center; }
-.inline input, .inline select { font: inherit; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--ink); }
-.inline input { flex: 1; }
-.section-head { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; }
-.section-head { margin-top: 28px; }
-.stagebar { display: flex; gap: 3px; margin-left: auto; }
-.stagebar i { width: 18px; height: 6px; border-radius: 3px; background: var(--c); }
-.step .lbl { display: none; }
-.step:not(:last-child)::after { margin: 0 6px; }
-.stage-header { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr) 110px; gap: 24px; padding: 8px 20px 10px 25px; position: sticky; top: 0; z-index: 3; background: var(--bg); }
+.btn.danger { border-color: var(--terracotta); color: var(--terracotta); }
+.btn.sm { padding: 5px 10px; font-size: 12.5px; }
+
+/* one sticky stage header for the whole list */
+.list-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr) 64px; gap: 24px; }
+.stage-header { position: sticky; top: 0; z-index: 3; background: var(--bg); padding: 10px 20px 10px 25px; border-bottom: 1px solid var(--line); }
 .stepper.header .step::after { visibility: hidden; }
-.stepper.header .node { background: color-mix(in srgb, var(--c) 18%, var(--surface)); border-color: transparent; color: var(--c); }
-.stepper.header .hl { font-size: 11px; font-weight: 600; color: var(--c); line-height: 1.2; white-space: normal; max-width: 80px; }
-.section-head h2 { font-family: var(--display); font-size: 22px; margin: 0; }
-.filters { display: flex; gap: 8px; margin-bottom: 14px; }
-.sessions { display: flex; flex-direction: column; gap: 12px; }
+.stepper.header .node { background: color-mix(in srgb, var(--c) 30%, var(--surface)); border: 0; color: var(--ink); }
+.stepper.header .hl { font-size: 11px; font-weight: 600; color: var(--ink-2); line-height: 1.2; white-space: normal; max-width: 80px; }
+.step .lbl { display: none; }
+
+.repo { margin-top: 22px; }
+.repo-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; }
+.repo-head h2 { font-family: var(--display); font-size: 22px; margin: 0; }
+.sessions { display: flex; flex-direction: column; gap: 10px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; border-left: 5px solid var(--c); }
-.card-main { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr) 110px; gap: 24px; align-items: center; padding: 16px 20px; cursor: pointer; }
-.card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
-.meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--ink-2); font-size: 12.5px; }
-.stories { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
-.story { font-size: 13px; color: var(--ink-2); text-decoration: none; border-bottom: 1px dotted var(--clay); }
-.story:hover { color: var(--terracotta); border-color: var(--terracotta); }
-.story.lead { font-size: 15px; font-weight: 600; color: var(--ink); flex: 0 0 100%; border: 0; word-break: break-word; }
-.batch { font-size: 11px; font-weight: 600; color: var(--soil); background: var(--soil-soft); padding: 1px 7px; border-radius: 99px; }
+.card-main { align-items: center; padding: 14px 20px; cursor: pointer; }
+.card-main:focus-visible { outline: 2px solid var(--terracotta); outline-offset: -2px; }
 .pr-link { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--forest); text-decoration: none; background: var(--forest-soft); padding: 2px 8px; border-radius: 6px; }
-.pr-link:hover { background: var(--forest); color: #fff; }
-.pr-link.none { color: var(--ink-3); background: var(--surface-2); }
-.note { color: var(--ink-2); font-size: 12.5px; margin-top: 6px; }
-.right { text-align: right; color: var(--ink-3); font-size: 12px; }
-.caret { display: inline-block; transition: transform .2s; margin-left: 6px; }
-.card.open .caret { transform: rotate(90deg); }
-.detail { display: none; border-top: 1px solid var(--line); padding: 16px 20px 20px; background: linear-gradient(var(--cream), var(--surface)); }
-.card.open .detail { display: grid; grid-template-columns: 1fr 280px; gap: 20px; }
-.side h4, .detail h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
-.kv { display: grid; grid-template-columns: 90px 1fr; gap: 6px 10px; font-size: 13px; margin-bottom: 16px; }
+.pr-link.none { color: var(--ink-2); background: var(--surface-2); }
+.stories { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 6px 0 4px; }
+.story { font-size: 13px; color: var(--ink-2); text-decoration: none; border-bottom: 1px dotted var(--ink-3); }
+.story.lead { font-size: 15px; font-weight: 600; color: var(--ink); flex: 0 0 100%; border: 0; word-break: break-word; }
+.note { color: var(--ink-2); font-size: 12.5px; }
+.now-label { display: none; }
+.age { text-align: right; color: var(--ink-3); font-size: 12px; }
+.detail { display: none; border-top: 1px solid var(--line); padding: 16px 20px 20px; }
+.card.open .detail { display: grid; grid-template-columns: 1fr 240px; gap: 20px; }
+.detail h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.kv { display: grid; grid-template-columns: 60px 1fr; gap: 6px 10px; font-size: 13px; margin: 0 0 16px; }
 .kv dt { color: var(--ink-3); }
-.kv dd { margin: 0; }
-.bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; display: flex; }
+.kv dd { margin: 0; word-break: break-all; }
+.bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; display: flex; margin-bottom: 6px; }
 .bar i { display: block; }
+.side p { font-size: 12px; color: var(--ink-2); margin: 0 0 14px; }
+.merged-line { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 10px 20px; border: 1px dashed var(--line); border-radius: 12px; font-size: 12.5px; color: var(--ink-2); }
+.merged-line b { color: var(--forest); font-weight: 600; }
 
-@media (max-width: 700px) {
-  .topbar { padding: 12px 16px; gap: 12px; }
-  .topbar .nav, .topbar .search { display: none; }
-  .page { padding: 18px 16px 40px; }
-  .page-head h1 { font-size: 26px; }
-  .status { flex-wrap: nowrap; overflow-x: auto; margin-inline: -16px; padding: 0 16px 4px; }
-  .status .pill { flex: none; }
-  .status .grow { display: none; }
-  .status .btn { flex: none; }
-  .stage-header { display: none; }
-  .panels { grid-template-columns: 1fr; gap: 8px; margin-inline: -16px; }
-  .panel { border-radius: 0; border-inline: 0; box-shadow: none; }
-  .sessions { margin-inline: -16px; gap: 8px; }
-  .card { border-radius: 0; border-right: 0; box-shadow: none; }
-  .loop { grid-template-columns: 1fr 1fr; }
-  .inline { flex-wrap: wrap; }
-  .inline input { min-width: 0; flex-basis: 100%; }
-  .card-main { grid-template-columns: 1fr auto; gap: 12px; padding: 14px; }
-  .card-main .stepper { grid-column: 1 / -1; grid-row: 2; }
-  .step .lbl { display: none; }
-  .card-main .stepper { min-width: 0; }
-  .step { min-width: 0; }
-  .step:not(:last-child)::after { min-width: 4px; }
-  .step:not(:last-child)::after { margin: 0 4px; }
-  .card h3 { font-size: 14px; word-break: break-word; }
-  .card.open .detail { grid-template-columns: 1fr; padding: 14px; }
-  .log-row { grid-template-columns: 52px 18px 1fr; padding-inline: 10px; }
-  .log-row .tool-call { word-break: break-all; }
-}
-
+/* ⌘K palette */
 .search-btn { display: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); place-items: center; }
 .cmdk-scrim { position: fixed; inset: 0; background: rgba(43,33,26,.32); backdrop-filter: blur(2px); z-index: 20; }
 .cmdk { position: fixed; top: 96px; left: 50%; translate: -50% 0; width: 680px; max-height: 70vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 24px 60px rgba(43,33,26,.28); z-index: 21; overflow: hidden; }
 .cmdk-input { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .cmdk-input svg { color: var(--terracotta); flex: none; }
 .cmdk-input input { flex: 1; border: 0; outline: 0; background: transparent; font: inherit; font-size: 17px; color: var(--ink); }
-.kbd { font-family: var(--mono); font-size: 11px; color: var(--ink-3); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; background: var(--surface-2); }
+.kbd { font-family: var(--mono); font-size: 11px; color: var(--ink-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; background: var(--surface-2); }
 .cmdk-scopes { display: flex; gap: 6px; padding: 10px 18px; border-bottom: 1px solid var(--line); overflow-x: auto; }
 .cmdk-scopes .chip.on { background: var(--soil); color: var(--cream); }
 .cmdk-body { overflow-y: auto; padding: 6px 8px 10px; }
 .cmdk-group { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); padding: 12px 10px 6px; }
 .cmdk-item { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center; padding: 8px 10px; border-radius: 10px; }
 .cmdk-item.on { background: color-mix(in srgb, var(--terracotta) 12%, var(--surface)); box-shadow: inset 3px 0 0 var(--terracotta); }
-.cmdk-item .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, var(--c, var(--clay)) 18%, var(--surface)); color: var(--c, var(--soil)); }
+.cmdk-item .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, var(--c, var(--clay)) 25%, var(--surface)); color: var(--ink); }
 .cmdk-item b { font-weight: 600; font-size: 13.5px; display: block; }
 .cmdk-item mark { background: var(--mustard-soft); color: inherit; border-radius: 3px; padding: 0 1px; }
 .cmdk-item small { color: var(--ink-3); font-size: 12px; }
 .cmdk-item .right { font-size: 12px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; }
 .cmdk-foot { display: flex; gap: 16px; padding: 10px 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-3); background: var(--surface-2); }
+.cmdk-input .cancel { display: none; }
+
 @media (max-width: 700px) {
+  .topbar { padding: 12px 16px; gap: 12px; }
+  .topbar .nav, .topbar .search { display: none; }
   .search-btn { display: grid; }
-  .cmdk { inset: 0; top: 0; translate: none; left: 0; width: auto; max-height: none; border-radius: 0; border: 0; }
+  .page { padding: 16px 16px 40px; }
+  .fleet-head { gap: 10px; }
+  .fleet-head h1 { font-size: 26px; flex: 1; }
+  .fleet-head .grow { display: none; }
+  .pills { order: 3; flex: 0 0 100%; }
+  .panels { grid-template-columns: 1fr; gap: 8px; margin-inline: -16px; }
+  .panel { border-radius: 0; border-inline: 0; box-shadow: none; }
+  .ask p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .fixer { flex-wrap: wrap; gap: 4px 12px; }
+  .usage-row { grid-template-columns: 110px 1fr 36px; }
+  .loop { grid-template-columns: 1fr 1fr 1fr; }
+  .loop .btn { grid-column: 2 / -1; }
+  .stage-header { display: none; }
+  .sessions { margin-inline: -16px; gap: 8px; }
+  .merged-line { border-radius: 0; border-inline: 0; }
+  .card { border-radius: 0; border-right: 0; box-shadow: none; }
+  .card-main { grid-template-columns: 1fr auto; gap: 10px; padding: 14px; }
+  .card-main .stepper { grid-column: 1 / -1; grid-row: 2; }
+  .now-label { display: block; grid-column: 1 / -1; grid-row: 3; margin-top: -4px; font-size: 12px; font-weight: 600; color: var(--ink); }
+  .now-label::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-right: 6px; }
+  .card.open .detail { grid-template-columns: 1fr; padding: 14px; }
+  .log-row { grid-template-columns: 52px 18px 1fr; padding-inline: 10px; }
+  .log-row .tool-call { word-break: break-all; }
+  .cmdk { inset: 0; translate: none; width: auto; max-height: none; border-radius: 0; border: 0; }
   .cmdk-input { padding: 12px 16px; }
   .cmdk-input .kbd { display: none; }
-  .cmdk-input .cancel { color: var(--terracotta); font-weight: 600; }
+  .cmdk-input .cancel { display: inline; color: var(--terracotta); font-weight: 600; }
   .cmdk-foot { display: none; }
   .cmdk-item { padding: 10px; }
   .cmdk-item .right .kbd, .cmdk-item .right .chip { display: none; }
 }
-@media (min-width: 701px) { .cmdk-input .cancel { display: none; } }
 </style>
 </head>
 <body>
@@ -138,116 +138,136 @@
 <script>
 const REPOS = ["trails", "trailmap", "tasks"];
 const storyList = (s) => s.stories || [s.story];
+const live = SESSIONS.filter((s) => s.stage !== "merged");
+
+const progress = (s) => {
+  if (s.ringo) {
+    const { done, total } = s.ringo;
+    return `<h4>Reviewer convergence</h4><div class="bar"><i style="width:${(100 * done) / total}%;background:var(--st-ringo)"></i></div><p>${done} of ${total} findings converged</p>`;
+  }
+  if (s.ci) {
+    const { pass, fail, run } = s.ci, n = pass + fail + run;
+    return `<h4>Checks</h4><div class="bar"><i style="width:${(100 * pass) / n}%;background:var(--st-ready)"></i><i style="width:${(100 * fail) / n}%;background:var(--terracotta)"></i></div><p>${pass} passed · ${fail} failed · ${run} running</p>`;
+  }
+  return "";
+};
 const side = (s) => `
   <div class="side">
-    <h4>Session</h4>
     <dl class="kv">
-      <dt>Story</dt><dd class="mono">${s.story}</dd>
-      <dt>RFC</dt><dd>${s.rfc}</dd>
-      <dt>PR</dt><dd>${prLink(s)} <span class="chip">draft</span></dd>
-      <dt>Package</dt><dd>${s.pkg}</dd>
-      <dt>Diff</dt><dd>${s.loc} / 700 LOC</dd>
+      <dt>RFC</dt><dd>${s.rfc || "—"}</dd>
+      <dt>Branch</dt><dd class="mono">${s.branch}</dd>
+      <dt>PR</dt><dd>${s.pr ? prState(s) : "not opened"}</dd>
     </dl>
-    <h4>Reviewer convergence</h4>
-    <div class="bar"><i style="width:60%;background:var(--forest)"></i><i style="width:20%;background:var(--terracotta)"></i></div>
-    <p class="muted" style="font-size:12px;margin:6px 0 16px">3 converged · 1 in progress · 1 open</p>
-    <div style="display:flex;gap:8px"><button class="btn">Open pane</button><button class="btn">View PR</button></div>
+    <h4>Diff</h4><div class="bar"><i style="width:${(100 * s.loc) / 700}%;background:var(--soil)"></i></div><p>${s.loc} of 700 LOC</p>
+    ${progress(s)}
+    <button class="btn sm">Open pane</button>
   </div>`;
+
+const card = (s) => `
+  <article class="card stage-${s.stage} ${openId === s.id ? "open" : ""}" id="${s.id}">
+    <div class="card-main list-grid" role="button" tabindex="0" aria-expanded="${openId === s.id}">
+      <div>
+        ${s.pr ? `<a class="pr-link" href="#">↗ ${s.repo}#${s.pr}</a>` : `<span class="pr-link none">no PR yet</span>`}
+        <div class="stories">${storyList(s).map((id, i) => `<a href="#" class="story${i === 0 ? " lead" : ""}">${id}</a>`).join("")}</div>
+        <div class="note">${s.note}</div>
+      </div>
+      ${stepper(s.stage)}
+      <span class="now-label">${stageOf(s.stage).label}</span>
+      <div class="age">${s.age}</div>
+    </div>
+    <div class="detail">
+      <div><h4>Session log</h4>${renderLog(s)}${renderComposer(s)}</div>
+      ${side(s)}
+    </div>
+  </article>`;
+
+const repo = (name) => {
+  const list = SESSIONS.filter((s) => s.repo === name).sort((a, b) => stageIdx(a.stage) - stageIdx(b.stage));
+  const active = list.filter((s) => s.stage !== "merged"), merged = list.filter((s) => s.stage === "merged");
+  return `<section class="repo">
+    <div class="repo-head"><h2>${name}</h2><span class="muted">${active.length} active</span></div>
+    <div class="sessions">${active.map(card).join("")}
+    ${merged.length ? `<div class="merged-line"><b>Merged today · ${merged.length}</b>${merged.map((s) => `<a class="mono" href="#">${s.repo}#${s.pr}</a> <span>${s.story}</span>`).join("")}</div>` : ""}</div>
+  </section>`;
+};
+
 document.getElementById("app").innerHTML = topbar() + `
 <main class="page">
-  <div class="page-head">
-    <div><h1>Fleet</h1><p>Open PRs, panes, spawns and CI, live from ringo · ${SESSIONS.filter((s) => s.stage !== "merged").length} sessions in flight</p></div>
-  </div>
-  <div class="status">
-    <span class="pill"><span class="led"></span>events</span>
-    <span class="pill"><span class="led"></span>tmux</span>
-    <span class="pill bad"><span class="led"></span>main CI · AR MariaDB (2/3)</span>
-    <span class="pill"><span class="led"></span>usage scraper ⟳</span>
-    <span class="pill"><span class="led"></span>claude · 7 live</span>
-    <span class="pill warn"><span class="led"></span>codex · 2 live</span>
+  <div class="fleet-head">
+    <h1>Fleet</h1>
+    <div class="pills">
+      <span class="pill"><span class="led"></span>events</span>
+      <span class="pill"><span class="led"></span>tmux</span>
+      <span class="pill"><span class="led"></span>usage scraper</span>
+      <span class="pill"><span class="led"></span>claude · ${live.length - 2}</span>
+      <span class="pill warn"><span class="led"></span>codex · 2</span>
+    </div>
     <span class="grow"></span>
-    <button class="btn danger">Pause all</button>
+    <button class="btn sm">Broadcast <span class="kbd">⌘K</span></button>
+    <button class="btn sm">Spawn <span class="kbd">⌘K</span></button>
   </div>
   <div class="panels">
-      <div class="panel">
-        <h2>Agents waiting on you <small>2 questions</small></h2>
-        <div class="ask"><div><span class="mono">zeitwerk-eager-load-namespace</span><q>MariaDB shard 2 red twice on an unrelated test. Rerun, or file a flake?</q></div><button class="btn">Reply</button></div>
-        <div class="ask"><div><span class="mono">actionmailer-preview-interceptors</span><q>Finding 5 asks for a scoped skip. OK to add, or converge?</q></div><button class="btn">Reply</button></div>
+    <div class="panel">
+      <h2>Waiting on you <small>2</small></h2>
+      <div class="ask"><div><a href="?open=t2#t2">ingest-owned-fields-guard-closed-reason →</a><p>Should closed-reason be DB-owned too, or stay in markdown?</p></div><button class="btn sm">Reply</button></div>
+      <div class="ask"><div><a href="?open=s3#s3">actionmailer-preview-interceptors →</a><p>Finding 5 asks for a scoped skip. OK to add, or converge?</p></div><button class="btn sm">Reply</button></div>
+    </div>
+    <div class="panel">
+      <h2>Usage <small>5h window resets in 2h 14m</small></h2>
+      <div class="usage-row"><span>Claude · week</span><div class="meter"><i style="width:62%;background:var(--forest)"></i></div><span>62%</span></div>
+      <div class="usage-row"><span>Claude · 5h window</span><div class="meter"><i style="width:81%;background:var(--mustard)"></i></div><span>81%</span></div>
+      <div class="usage-row"><span>Codex · week</span><div class="meter"><i style="width:34%;background:var(--clay)"></i></div><span>34%</span></div>
+    </div>
+    <div class="panel">
+      <h2>CI fixer <small>12m</small></h2>
+      <div class="fixer"><b>main is red</b><span>AR MariaDB (2/3) · worker on <span class="mono">ar-mariadb-shard-flake-3c1e</span> · spawning paused</span></div>
+    </div>
+    <div class="panel">
+      <h2>Loop <small>next spawn in 4m</small></h2>
+      <div class="loop">
+        <label>Live cap<input type="number" value="14"></label>
+        <label>Queue cap<input type="number" value="4"></label>
+        <label>Every (min)<input type="number" value="10"></label>
+        <label>Bundle<span class="toggle"></span></label>
+        <button class="btn sm danger">Pause all</button>
       </div>
-      <div class="panel">
-        <h2>Usage <small>resets in 2h 14m</small></h2>
-        <div class="usage-row"><span>Claude</span><div class="meter"><i style="width:62%;background:var(--forest)"></i></div><span class="muted">62% · week</span></div>
-        <div class="usage-row"><span>Session</span><div class="meter"><i style="width:81%;background:var(--mustard)"></i></div><span class="muted">81% · 5h</span></div>
-        <div class="usage-row" style="margin:0"><span>Codex</span><div class="meter"><i style="width:34%;background:var(--clay)"></i></div><span class="muted">34% · week</span></div>
-      </div>
-      <div class="panel">
-        <h2>CI fixer <small>main is red</small></h2>
-        <div class="fixer"><span class="chip stage stage-ringo"><span class="dot"></span>fixing</span><span>Worker on <span class="mono">ar-mariadb-shard-flake-3c1e</span> · spawn loop paused · 12m</span></div>
-      </div>
-      <div class="panel">
-        <h2>Loop <small>last spawn 6m ago · next in 4m</small></h2>
-        <div class="loop">
-          <label>Live cap <span class="muted">7 now</span><input type="number" value="8"></label>
-          <label>Queue cap <span class="muted">3 open</span><input type="number" value="4"></label>
-          <label>Interval (min)<span>&nbsp;</span><input type="number" value="10"></label>
-          <label>Bundle<span>&nbsp;</span><span class="toggle"></span></label>
-        </div>
-      </div>
-    <div class="panel"><h2>Broadcast to agents <small>typed into each pane</small></h2>
-      <div class="inline"><input placeholder="e.g. main is red, rebase before you push again"><button class="btn">all</button><button class="btn">CI red</button></div></div>
-    <div class="panel"><h2>Manual spawn <small><a href="#">poke 1 stalled agent</a></small></h2>
-      <div class="inline"><select><option>trails</option><option>trailmap</option><option>tasks</option></select><input placeholder="Enter a task for Claude…"><button class="btn primary" style="background:var(--forest);border-color:var(--forest)">Spawn</button></div></div>
+    </div>
   </div>
-  ${REPOS.map((repo) => { const list = SESSIONS.filter((s) => s.repo === repo).sort((a, b) => stageIdx(a.stage) - stageIdx(b.stage)); return `
-  <div class="section-head"><h2>${repo}</h2><span class="muted">${list.length} sessions · ${list.filter((s) => s.stage !== "merged").length} in flight</span><span class="stagebar">${list.map((s) => `<i class="stage-${s.stage}"></i>`).join("")}</span></div>
-  <div class="stage-header"><span></span>${stageHeader()}<span></span></div>
-  <section class="sessions">${list.map((s) => `
-    <article class="card stage-${s.stage} ${openId === s.id ? "open" : ""}">
-      <div class="card-main">
-        <div>
-          <div class="meta" style="margin-bottom:6px">${stageChip(s.stage)} ${s.pr ? `<a class="pr-link" href="#" onclick="event.stopPropagation()">↗ ${s.repo}#${s.pr}</a>` : `<span class="pr-link none">no PR yet</span>`} <span>${s.pkg}</span></div>
-          <div class="stories">${storyList(s).map((id, i) => `<a href="#" class="story${i === 0 ? " lead" : ""}" onclick="event.stopPropagation()">${id}</a>`).join("")}${storyList(s).length > 1 ? `<span class="batch">bundle · ${storyList(s).length} stories</span>` : ""}</div>
-          <div class="note">${s.note}</div>
-        </div>
-        ${stepper(s.stage)}
-        <div class="right">${s.age} ago<span class="caret">›</span><br>${s.loc} LOC</div>
-      </div>
-      <div class="detail">
-        <div><h4>Session log</h4>${renderLog()}${renderComposer(s)}</div>
-        ${side(s)}
-      </div>
-    </article>`).join("")}
-  </section>`; }).join("")}
+  <div class="stage-header list-grid"><span></span>${stageHeader()}<span></span></div>
+  ${REPOS.map(repo).join("")}
 </main>`;
-const st = document.createElement("style"); st.textContent = stepperCss; document.head.append(st);
-document.querySelectorAll(".card-main").forEach((el) => el.onclick = () => el.parentElement.classList.toggle("open"));
+document.querySelectorAll(".card-main").forEach((el) => {
+  const toggle = () => el.setAttribute("aria-expanded", el.parentElement.classList.toggle("open"));
+  el.onclick = (e) => { if (!e.target.closest("a")) toggle(); };
+  el.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
+});
+
 if (new URLSearchParams(location.search).has("search")) {
   const q = "interceptor";
   const hl = (t) => t.replace(new RegExp(q, "gi"), (m) => `<mark>${m}</mark>`);
-  const ic = (k) => STAGE_ICONS[k];
   const sv = (d) => `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const doc = sv('<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6"/>');
   const item = (o, on) => `<div class="cmdk-item ${on ? "on" : ""} ${o.stage ? "stage-" + o.stage : ""}"><span class="ico">${o.icon}</span><div><b>${hl(o.title)}</b><small>${o.sub}</small></div><span class="right">${o.right || ""}${on ? '<span class="kbd">↵</span>' : ""}</span></div>`;
   const groups = [
-    ["Sessions", [
-      { stage: "ringo", icon: ic("ringo"), title: "actionmailer-preview-interceptors", sub: "trails · Reviewer convergence · 3 of 5 findings converged", right: stageChip("ringo") },
-    ]],
+    ["Sessions", [{ stage: "ringo", icon: STAGE_ICONS.ringo, title: "actionmailer-preview-interceptors", sub: "trails · Reviewer convergence · 3 of 5 findings", right: stageChip("ringo") }]],
     ["Stories", [
-      { icon: sv('<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6"/>'), title: "actionmailer-preview-interceptors", sub: "RFC 0188 · in-progress · trails#9958" },
-      { icon: sv('<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6"/>'), title: "actionmailer-preview-register-interceptor-string-arm", sub: "RFC 0188 · in-progress · bundled" },
-      { icon: sv('<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6"/>'), title: "actionmailer-delivery-interceptor-class-names", sub: "RFC 0188 · ready · unclaimed" },
+      { icon: doc, title: "actionmailer-preview-interceptors", sub: "RFC 0188 · in progress · trails#9958" },
+      { icon: doc, title: "actionmailer-preview-register-interceptor-string-arm", sub: "RFC 0188 · in progress · same bundle" },
+      { icon: doc, title: "actionmailer-delivery-interceptor-class-names", sub: "RFC 0188 · ready · unclaimed" },
     ]],
     ["Pull requests", [
-      { stage: "ringo", icon: ic("merged"), title: "feat(actionmailer): preview interceptors", sub: "trails#9958 · draft · 506 LOC", right: "2h" },
-      { stage: "merged", icon: ic("merged"), title: "feat(actionmailer): register_interceptor accepts a class name", sub: "trails#9811 · merged", right: "4d" },
+      { stage: "ringo", icon: STAGE_ICONS.merged, title: "feat(actionmailer): preview interceptors", sub: "trails#9958 · draft", right: "2h" },
+      { stage: "merged", icon: STAGE_ICONS.merged, title: "feat(actionmailer): register_interceptor accepts a class name", sub: "trails#9811 · merged", right: "4d" },
     ]],
     ["Actions", [
-      { icon: sv('<path d="M4 12h12M12 6l6 6-6 6"/>'), title: "Message session · actionmailer-preview-interceptors", sub: "Type into its pane" },
-      { icon: sv('<path d="M12 5v14M5 12h14"/>'), title: "Spawn a session for “interceptor”", sub: "trails · manual spawn" },
+      { icon: sv('<path d="M4 12h12M12 6l6 6-6 6"/>'), title: "Message actionmailer-preview-interceptors", sub: "Typed into its pane" },
+      { icon: sv('<path d="M12 5v14M5 12h14"/>'), title: "Spawn a session for “interceptor”", sub: "Pick the repo next" },
+      { icon: sv('<path d="M4 10v4h4l6 5V5L8 10z"/>'), title: "Broadcast “interceptor” to all agents", sub: "Typed into every live pane" },
     ]],
   ];
   let first = true;
-  document.body.insertAdjacentHTML("beforeend", `<div class="cmdk-scrim"></div><div class="cmdk" role="dialog">
-    <div class="cmdk-input">${sv('<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>')}<input value="${q}" autofocus><span class="kbd">esc</span><span class="cancel">Cancel</span></div>
+  document.body.insertAdjacentHTML("beforeend", `<div class="cmdk-scrim"></div><div class="cmdk" role="dialog" aria-label="Search">
+    <div class="cmdk-input">${sv('<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>')}<input value="${q}" aria-label="Search"><span class="kbd">esc</span><span class="cancel">Cancel</span></div>
     <div class="cmdk-scopes"><span class="chip on">All</span><span class="chip">Sessions 1</span><span class="chip">Stories 3</span><span class="chip">PRs 2</span><span class="chip">trails</span><span class="chip">trailmap</span><span class="chip">tasks</span></div>
     <div class="cmdk-body">${groups.map(([g, items]) => `<div class="cmdk-group">${g}</div>${items.map((o) => { const h = item(o, first); first = false; return h; }).join("")}`).join("")}</div>
     <div class="cmdk-foot"><span><span class="kbd">↑</span> <span class="kbd">↓</span> move</span><span><span class="kbd">↵</span> open</span><span><span class="kbd">⌘</span> <span class="kbd">↵</span> message session</span><span><span class="kbd">tab</span> scope</span></div>
