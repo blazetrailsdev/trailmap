@@ -6,7 +6,8 @@ points at `#`; the markup is not meant to be copied into `app/` as is.
 - `b-stepper-list.html`: the Fleet page redesign, and the preferred direction.
   The Fleet panels sit on top, then sessions grouped by repo and ordered by
   stage, each with a six-stage stepper. A card expands to its session log,
-  message composer and details. `?open=<id>` opens one card (`?open=s3`), and
+  message composer and details. A card flags what it needs from you (a
+  question, a failed check, a Merge button) and shows its stage's progress. `?open=<id>` opens one card (`?open=s3`), and
   `?search=1` shows the ⌘K palette. It has a full-bleed layout below 700px.
 - `c-soil-dark.html`: a dark variant. Sessions sit in a rail grouped by stage,
   next to a detail panel.
