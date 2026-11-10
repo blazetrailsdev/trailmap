@@ -2,14 +2,40 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Concept B · Stepper list</title>
+<title>Concept B · Fleet stepper</title>
 <link rel="stylesheet" href="palette.css">
 <script src="data.js"></script><script src="common.js"></script>
 <style>
-.summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 22px; }
-.sum { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; border-top: 4px solid var(--c); }
-.sum b { font-family: var(--display); font-size: 26px; display: block; }
-.sum span { color: var(--ink-2); font-size: 12px; }
+.status { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; font-weight: 500; }
+.pill .led { width: 8px; height: 8px; border-radius: 50%; background: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb, var(--forest) 20%, transparent); }
+.pill.bad .led { background: var(--terracotta); box-shadow: 0 0 0 3px color-mix(in srgb, var(--terracotta) 20%, transparent); }
+.pill.warn .led { background: var(--mustard); }
+.status .grow { flex: 1; }
+.btn.danger { border-color: var(--terracotta); color: var(--terracotta); }
+.panels { display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px; margin-bottom: 14px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); }
+.panel h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.panel h2 small { font-weight: 400; color: var(--ink-3); }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.ask { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--mustard-soft); margin-bottom: 8px; align-items: center; }
+.ask q { display: block; color: var(--ink); font-size: 13px; margin-top: 2px; }
+.ask q::before, .ask q::after { content: ""; }
+.fixer { display: flex; gap: 12px; align-items: center; font-size: 13px; padding: 10px 12px; border-radius: 12px; background: var(--terracotta-soft); }
+.usage-row { display: grid; grid-template-columns: 70px 1fr 80px; gap: 10px; align-items: center; font-size: 12.5px; margin-bottom: 8px; }
+.meter { height: 9px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 99px; }
+.loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.loop label { font-size: 11.5px; color: var(--ink-3); display: flex; flex-direction: column; gap: 4px; }
+.loop input[type=number] { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; width: 100%; }
+.toggle { width: 38px; height: 22px; border-radius: 99px; background: var(--forest); position: relative; margin-top: 3px; }
+.toggle::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+.inline { display: flex; gap: 8px; align-items: center; }
+.inline input, .inline select { font: inherit; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--ink); }
+.inline input { flex: 1; }
+.section-head { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; }
+.section-head h2 { font-family: var(--display); font-size: 22px; margin: 0; }
 .filters { display: flex; gap: 8px; margin-bottom: 14px; }
 .sessions { display: flex; flex-direction: column; gap: 12px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; border-left: 5px solid var(--c); }
@@ -33,7 +59,6 @@
 <body>
 <div id="app"></div>
 <script>
-const counts = Object.fromEntries(STAGES.map((s) => [s.key, SESSIONS.filter((x) => x.stage === s.key).length]));
 const side = (s) => `
   <div class="side">
     <h4>Session</h4>
@@ -52,11 +77,55 @@ const side = (s) => `
 document.getElementById("app").innerHTML = topbar() + `
 <main class="page">
   <div class="page-head">
-    <div><h1>Sessions</h1><p>${SESSIONS.length} agent sessions · ${SESSIONS.filter((s) => s.stage !== "merged").length} in flight</p></div>
-    <button class="btn primary">+ New session</button>
+    <div><h1>Fleet</h1><p>Open PRs, panes, spawns and CI, live from ringo · ${SESSIONS.filter((s) => s.stage !== "merged").length} sessions in flight</p></div>
   </div>
-  <section class="summary">${STAGES.map((s) => `<div class="sum stage-${s.key}"><b>${counts[s.key]}</b><span>${s.label}</span></div>`).join("")}</section>
-  <div class="filters"><span class="chip" style="background:var(--soil);color:var(--cream)">All</span><span class="chip">Mine</span><span class="chip">Needs me</span><span class="chip">activerecord</span></div>
+  <div class="status">
+    <span class="pill"><span class="led"></span>events</span>
+    <span class="pill"><span class="led"></span>tmux</span>
+    <span class="pill bad"><span class="led"></span>main CI · AR MariaDB (2/3)</span>
+    <span class="pill"><span class="led"></span>usage scraper ⟳</span>
+    <span class="pill"><span class="led"></span>claude · 7 live</span>
+    <span class="pill warn"><span class="led"></span>codex · 2 live</span>
+    <span class="grow"></span>
+    <button class="btn danger">Pause all</button>
+  </div>
+  <div class="panels">
+    <div class="stack">
+      <div class="panel">
+        <h2>Agents waiting on you <small>2 questions</small></h2>
+        <div class="ask"><div><span class="mono">zeitwerk-eager-load-namespace</span><q>MariaDB shard 2 red twice on an unrelated test. Rerun, or file a flake?</q></div><button class="btn">Reply</button></div>
+        <div class="ask"><div><span class="mono">actionmailer-preview-interceptors</span><q>Finding 5 asks for a scoped skip. OK to add, or converge?</q></div><button class="btn">Reply</button></div>
+      </div>
+      <div class="panel">
+        <h2>CI fixer <small>main is red</small></h2>
+        <div class="fixer"><span class="chip stage stage-ringo"><span class="dot"></span>fixing</span><span>Worker on <span class="mono">ar-mariadb-shard-flake-3c1e</span> · spawn loop paused · 12m</span></div>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="panel">
+        <h2>Usage <small>resets in 2h 14m</small></h2>
+        <div class="usage-row"><span>Claude</span><div class="meter"><i style="width:62%;background:var(--forest)"></i></div><span class="muted">62% · week</span></div>
+        <div class="usage-row"><span>Session</span><div class="meter"><i style="width:81%;background:var(--mustard)"></i></div><span class="muted">81% · 5h</span></div>
+        <div class="usage-row" style="margin:0"><span>Codex</span><div class="meter"><i style="width:34%;background:var(--clay)"></i></div><span class="muted">34% · week</span></div>
+      </div>
+      <div class="panel">
+        <h2>Loop <small>last spawn 6m ago · next in 4m</small></h2>
+        <div class="loop">
+          <label>Live cap <span class="muted">7 now</span><input type="number" value="8"></label>
+          <label>Queue cap <span class="muted">3 open</span><input type="number" value="4"></label>
+          <label>Interval (min)<span>&nbsp;</span><input type="number" value="10"></label>
+          <label>Bundle<span>&nbsp;</span><span class="toggle"></span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="actions">
+    <div class="panel"><h2>Broadcast to agents <small>typed into each pane</small></h2>
+      <div class="inline"><input placeholder="e.g. main is red, rebase before you push again"><button class="btn">all</button><button class="btn">CI red</button></div></div>
+    <div class="panel"><h2>Manual spawn <small><a href="#">poke 1 stalled agent</a></small></h2>
+      <div class="inline"><select><option>trails</option><option>trailmap</option><option>tasks</option></select><input placeholder="Enter a task for Claude…"><button class="btn primary" style="background:var(--forest);border-color:var(--forest)">Spawn</button></div></div>
+  </div>
+  <div class="section-head"><h2>Sessions</h2><span class="muted">trails · ${SESSIONS.length} sessions</span></div>
   <section class="sessions">${SESSIONS.map((s) => `
     <article class="card stage-${s.stage} ${openId === s.id ? "open" : ""}">
       <div class="card-main">

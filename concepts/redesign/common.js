@@ -3,10 +3,10 @@ window.openId = new URLSearchParams(location.search).get("open");
 window.stageIdx = (k) => STAGES.findIndex((s) => s.key === k);
 window.stageOf = (k) => STAGES[stageIdx(k)];
 
-window.topbar = (active = "Sessions") => `
+window.topbar = (active = "Fleet") => `
   <header class="topbar">
     <div class="brand"><span class="brand-mark"></span>trailmap</div>
-    <nav class="nav">${["Sessions", "Stories", "Parity", "Deploys", "Panes"].map((n) => `<a href="#" class="${n === active ? "on" : ""}">${n}</a>`).join("")}</nav>
+    <nav class="nav">${["Fleet", "Stories", "Parity", "Deploys", "Panes"].map((n) => `<a href="#" class="${n === active ? "on" : ""}">${n}</a>`).join("")}</nav>
     <div class="spacer"></div>
     <div class="search">Search sessions, stories, PRs…  ⌘K</div>
     <div class="avatar">DM</div>
