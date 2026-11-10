@@ -10,7 +10,8 @@ points at `#`; the markup is not meant to be copied into `app/` as is.
   question, a failed check, a Merge button) and shows its stage's progress;
   `?filter=needs` keeps only those cards. `?open=<id>` opens one card
   (`?open=s3`), and `?search=1` shows the ⌘K palette. It has a full-bleed
-  layout below 700px.
+  layout below 700px. ⌘K means search and nothing else: Broadcast and Spawn
+  are the single keys B and S, live when focus is outside a field.
 - `c-soil-dark.html`: a dark variant. Sessions sit in a rail grouped by stage,
   next to a detail panel.
 
