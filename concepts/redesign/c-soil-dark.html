@@ -34,10 +34,14 @@ body { background: radial-gradient(1200px 500px at 80% -10%, #3a2618 0%, transpa
 .t { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
 .t small { color: var(--ink-3); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
 .t b { font-family: var(--display); font-size: 20px; }
-.idle { text-align: center; padding: 60px 20px; color: var(--ink-2); }
-.funnel { display: flex; gap: 4px; margin: 26px auto 0; max-width: 560px; height: 140px; align-items: end; }
-.funnel div { flex: 1; background: var(--c); border-radius: 8px 8px 3px 3px; position: relative; opacity: .9; }
-.funnel div span { position: absolute; bottom: -22px; left: 0; right: 0; font-size: 11px; color: var(--ink-3); }
+.idle { text-align: center; padding: 48px 20px 56px; color: var(--ink-2); }
+.funnel { display: flex; gap: 6px; margin: 26px auto 0; max-width: 560px; height: 160px; align-items: end; }
+.funnel > div { height: 100%; display: flex; flex-direction: column; justify-content: end; gap: 6px; flex: 1; }
+.funnel i { display: block; background: var(--c); border-radius: 8px 8px 3px 3px; }
+.funnel span { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.step.now .node { color: var(--bg); }
+.item { color: inherit; text-decoration: none; }
+.item:focus-visible { outline: 2px solid var(--terracotta); outline-offset: -2px; }
 </style>
 </head>
 <body>
@@ -61,7 +65,7 @@ const panel = sel ? `
   <div class="panel idle">
     <h1 style="color:var(--ink)">Pick a session</h1>
     <p>${SESSIONS.length} sessions across ${STAGES.length} stages. Select one to read its log and send it a message.</p>
-    <div class="funnel">${STAGES.map((s) => { const n = SESSIONS.filter((x) => x.stage === s.key).length; return `<div class="stage-${s.key}" style="height:${20 + n * 45}%"><span>${s.short} · ${n}</span></div>`; }).join("")}</div>
+    <div class="funnel">${(() => { const counts = STAGES.map((s) => SESSIONS.filter((x) => x.stage === s.key).length), max = Math.max(...counts); return STAGES.map((s, i) => `<div class="stage-${s.key}"><i style="height:${Math.round((120 * counts[i]) / max)}px"></i><span>${s.short} · ${counts[i]}</span></div>`).join(""); })()}</div>
   </div>`;
 document.getElementById("app").innerHTML = topbar() + `
 <main class="page">
@@ -69,14 +73,13 @@ document.getElementById("app").innerHTML = topbar() + `
     <nav class="rail">${STAGES.map((st) => `
       <div class="group stage-${st.key}"><h2>${st.label}</h2>
       ${SESSIONS.filter((s) => s.stage === st.key).map((s) => `
-        <div class="item stage-${s.stage} ${s.id === openId ? "sel" : ""}" data-id="${s.id}">
+        <a class="item stage-${s.stage} ${s.id === openId ? "sel" : ""}" href="?open=${s.id}"${s.id === openId ? ' aria-current="true"' : ""}>
           <span class="bead"></span><div><b>${s.story}</b><small>${s.pr ? `${s.repo}#${s.pr}` : "no PR"} · ${s.note}</small></div><small>${s.age}</small>
-        </div>`).join("")}</div>`).join("")}
+        </a>`).join("")}</div>`).join("")}
     </nav>
     ${panel}
   </div>
 </main>`;
-document.querySelectorAll(".item").forEach((t) => t.onclick = () => location.search = "?open=" + t.dataset.id);
 </script>
 </body>
 </html>

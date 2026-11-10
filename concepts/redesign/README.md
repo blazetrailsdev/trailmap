@@ -16,9 +16,15 @@ Shared pieces: `palette.css` (tokens, the stepper, the log), `common.js`
 
 ## Screenshots
 
-`shoot.mjs` regenerates `screenshots/` at 1440×900 and 390×844. trailmap does
-not install Playwright, so point the script at any copy of the package:
+`shoot.mjs` writes every concept and state to `screenshots/` (gitignored, or
+`SHOTS_DIR`) at 1440×900 and 390×844. At 390px it checks that `innerWidth` is
+390 and `scrollWidth` does not exceed it in every state, and exits 1 if not.
+The PR's copies live on the `screenshots/pr-136` branch, outside the diff.
+
+trailmap does not install Playwright, so point the script at any copy of it,
+with its Chromium installed (`npx playwright install chromium`):
 
     PLAYWRIGHT_PATH=/path/to/node_modules/playwright/index.mjs node concepts/redesign/shoot.mjs
 
-Playwright's Chromium must already be installed (`npx playwright install chromium`).
+The fonts load from Google Fonts. Offline, the pages fall back to system
+fonts, and the screenshots will not match.

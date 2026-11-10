@@ -9,15 +9,16 @@
   --mustard: #d4a72c;
   --mustard-soft: #f6e9c3;
   --soil: #5a3e2b;
-  --soil-soft: #e7dacd;
   --sand: #e9dcc4;
   --clay: #b9a088;
   --cream: #faf5ec;
+  /* primary-button fill: white text needs 4.5:1, terracotta gives 4.17:1 */
+  --action: #b0532f;
 
   --bg: var(--cream);
   --surface: #fffdf8;
   --surface-2: #f4ecde;
-  --line: #e4d6c1;
+  --line: var(--sand);
   --ink: #2b211a;
   --ink-2: #6b5a4c;
   --ink-3: #7a6756;
@@ -57,7 +58,9 @@ a { color: inherit; }
 .page-head p { margin: 4px 0 0; color: var(--ink-2); }
 
 .btn { font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 14px; border-radius: 10px; cursor: pointer; }
-.btn.primary { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
+.btn.primary { background: var(--action); border-color: var(--action); color: #fff; }
+.search-btn { display: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); place-items: center; }
+@media (max-width: 700px) { .search-btn { display: grid; } }
 
 .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
 .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }

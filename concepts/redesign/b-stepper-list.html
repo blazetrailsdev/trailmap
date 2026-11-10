@@ -34,7 +34,7 @@
 .loop { display: grid; grid-template-columns: repeat(3, 1fr) auto auto; gap: 10px; align-items: end; }
 .loop label { font-size: 11.5px; color: var(--ink-3); display: flex; flex-direction: column; gap: 4px; }
 .loop input { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; width: 100%; }
-.toggle { width: 38px; height: 22px; border-radius: 99px; background: var(--forest); position: relative; margin-bottom: 6px; }
+.toggle { width: 38px; height: 22px; border-radius: 99px; background: var(--forest); position: relative; margin-bottom: 6px; border: 0; padding: 0; cursor: pointer; }
 .toggle::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
 .btn.danger { border-color: var(--terracotta); color: var(--terracotta); }
 .btn.sm { padding: 5px 10px; font-size: 12.5px; }
@@ -53,7 +53,10 @@
 .sessions { display: flex; flex-direction: column; gap: 10px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; border-left: 5px solid var(--c); }
 .card-main { align-items: center; padding: 14px 20px; cursor: pointer; }
-.card-main:focus-visible { outline: 2px solid var(--terracotta); outline-offset: -2px; }
+.expand { font: inherit; background: none; border: 0; padding: 2px 4px; color: var(--ink-3); font-size: 12px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; border-radius: 6px; }
+.expand::after { content: "›"; transition: transform .15s; }
+.card.open .expand::after { transform: rotate(90deg); }
+.expand:focus-visible, .toggle:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
 .pr-link { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--forest); text-decoration: none; background: var(--forest-soft); padding: 2px 8px; border-radius: 6px; }
 .pr-link.none { color: var(--ink-2); background: var(--surface-2); }
 .stories { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 6px 0 4px; }
@@ -75,7 +78,6 @@
 .merged-line b { color: var(--forest); font-weight: 600; }
 
 /* ⌘K palette */
-.search-btn { display: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); place-items: center; }
 .cmdk-scrim { position: fixed; inset: 0; background: rgba(43,33,26,.32); backdrop-filter: blur(2px); z-index: 20; }
 .cmdk { position: fixed; top: 96px; left: 50%; translate: -50% 0; width: 680px; max-height: 70vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 24px 60px rgba(43,33,26,.28); z-index: 21; overflow: hidden; }
 .cmdk-input { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
@@ -99,7 +101,6 @@
 @media (max-width: 700px) {
   .topbar { padding: 12px 16px; gap: 12px; }
   .topbar .nav, .topbar .search { display: none; }
-  .search-btn { display: grid; }
   .page { padding: 16px 16px 40px; }
   .fleet-head { gap: 10px; }
   .fleet-head h1 { font-size: 26px; flex: 1; }
@@ -165,7 +166,7 @@ const side = (s) => `
 
 const card = (s) => `
   <article class="card stage-${s.stage} ${openId === s.id ? "open" : ""}" id="${s.id}">
-    <div class="card-main list-grid" role="button" tabindex="0" aria-expanded="${openId === s.id}">
+    <div class="card-main list-grid">
       <div>
         ${s.pr ? `<a class="pr-link" href="#">↗ ${s.repo}#${s.pr}</a>` : `<span class="pr-link none">no PR yet</span>`}
         <div class="stories">${storyList(s).map((id, i) => `<a href="#" class="story${i === 0 ? " lead" : ""}">${id}</a>`).join("")}</div>
@@ -173,9 +174,9 @@ const card = (s) => `
       </div>
       ${stepper(s.stage)}
       <span class="now-label">${stageOf(s.stage).label}</span>
-      <div class="age">${s.age}</div>
+      <div class="age"><button class="expand" aria-expanded="${openId === s.id}" aria-controls="${s.id}-detail" aria-label="Session details for ${s.story}">${s.age}</button></div>
     </div>
-    <div class="detail">
+    <div class="detail" id="${s.id}-detail">
       <div><h4>Session log</h4>${renderLog(s)}${renderComposer(s)}</div>
       ${side(s)}
     </div>
@@ -228,7 +229,7 @@ document.getElementById("app").innerHTML = topbar() + `
         <label>Live cap<input type="number" value="14"></label>
         <label>Queue cap<input type="number" value="4"></label>
         <label>Every (min)<input type="number" value="10"></label>
-        <label>Bundle<span class="toggle"></span></label>
+        <label>Bundle<button class="toggle" role="switch" aria-checked="true" aria-label="Bundle mode"></button></label>
         <button class="btn sm danger">Pause all</button>
       </div>
     </div>
@@ -236,10 +237,12 @@ document.getElementById("app").innerHTML = topbar() + `
   <div class="stage-header list-grid"><span></span>${stageHeader()}<span></span></div>
   ${REPOS.map(repo).join("")}
 </main>`;
+// The expand button is the control; a click anywhere else on the row is a
+// pointer shortcut to it, so no interactive element sits inside another.
 document.querySelectorAll(".card-main").forEach((el) => {
-  const toggle = () => el.setAttribute("aria-expanded", el.parentElement.classList.toggle("open"));
-  el.onclick = (e) => { if (!e.target.closest("a")) toggle(); };
-  el.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
+  const btn = el.querySelector(".expand");
+  btn.onclick = (e) => { e.stopPropagation(); btn.setAttribute("aria-expanded", el.parentElement.classList.toggle("open")); };
+  el.onclick = (e) => { if (!e.target.closest("a, button")) btn.click(); };
 });
 
 if (new URLSearchParams(location.search).has("search")) {

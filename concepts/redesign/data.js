@@ -53,8 +53,8 @@ window.logFor = (s) => {
   const rows = [{ t: _t(8, 30), k: "sys", text: `Session started in worktree <span class='mono'>${s.branch}</span>` }];
   stories.forEach((id, i) => rows.push({ t: _t(8, 31 + i), k: "tool", tool: `tasks claim ${id}` }));
   rows.push({ t: _t(8, 40), k: "say", text: s.note });
-  if (at >= 1) rows.push({ t: _t(9, 5), k: "transition", stage: "self", text: "Moved to <b>Self review</b>" }, { t: _t(9, 12), k: "tool", tool: "pnpm parity:api:calls", ok: "0 new mismatches" });
-  if (at >= 2) rows.push({ t: _t(9, 30), k: "tool", tool: `gh pr create --draft  →  ${s.repo}#${s.pr}` }, { t: _t(9, 31), k: "transition", stage: "ringo", text: "Moved to <b>Reviewer convergence</b> · Ringo spawned a reviewer" });
+  if (at >= 1) rows.push({ t: _t(9, 2), k: "tool", tool: `gh pr create --draft  →  ${s.repo}#${s.pr}` }, { t: _t(9, 5), k: "transition", stage: "self", text: "Moved to <b>Self review</b>" }, { t: _t(9, 12), k: "tool", tool: "pnpm parity:api:calls", ok: "0 new mismatches" });
+  if (at >= 2) rows.push({ t: _t(9, 31), k: "transition", stage: "ringo", text: "Moved to <b>Reviewer convergence</b> · Ringo spawned a reviewer" });
   if (s.ringo) rows.push({ t: _t(10, 2), k: "sys", text: `Review received: ${s.ringo.total} findings, ${s.ringo.done} converged so far` });
   if (at >= 3) rows.push({ t: _t(10, 40), k: "transition", stage: "ci", text: "Moved to <b>Getting CI green</b> · review converged" });
   if (s.ci && s.ci.fail) rows.push({ t: _t(11, 5), k: "warn", text: `${s.ci.fail} check failed, rerunning` });
