@@ -6,17 +6,19 @@ points at `#`; the markup is not meant to be copied into `app/` as is.
 - `b-stepper-list.html`: the dashboard, redesigned from the Fleet page, with no
   page title. The Usage and Loop panels sit on top; the CI fixer is a marked,
   labeled session row, first in its repo. Below the panels come the sessions,
-  grouped by repo and ordered by stage, each with a six-stage stepper. A card
-  expands to its session log, message composer and details. A session's
+  grouped by repo and ordered by stage, each with a six-stage stepper. At
+  Reviewer convergence the stepper's line branches into a loop that shows the
+  agent and the reviewer, whose turn it is, the round, and what each is doing.
+  A card expands to its session log, message composer and details. A session's
   question is answered in its own row (options, or a free answer); a row also
   flags a failed check, offers Merge and shows its stage's progress. A session
   whose agent is idle short of the next stage is stalled: its row shows the
-  evidence and one button that messages the agent ("Mark it ready?"); `?filter=needs`
-  keeps only those cards. `?open=<id>` opens one card (`?open=s3`), and
-  `?search=1` shows the ⌘K palette. It has a full-bleed layout below 700px. ⌘K
-  is the only shortcut, and it means search: Broadcast and Spawn are buttons
-  with no key of their own, and are also rows in the palette. No key is wired
-  in the mockup, ⌘K included.
+  evidence and one button that messages the agent ("Mark it ready?");
+  `?filter=needs` keeps only those cards. `?open=<id>` opens one card
+  (`?open=s3`), and `?search=1` shows the ⌘K palette. It has a full-bleed
+  layout below 700px. ⌘K is the only shortcut, and it means search: Broadcast
+  and Spawn are buttons with no key of their own, and are also rows in the
+  palette. No key is wired in the mockup, ⌘K included.
 
 Shared pieces: `palette.css` (tokens, the stepper, the log), `common.js`
 (render helpers and stage icons) and `data.js` (sessions and per-session logs).

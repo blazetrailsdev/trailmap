@@ -27,11 +27,28 @@ window.STAGE_ICONS = {
   merged: _svg('<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 7v10M6 8c0 3 5 4 10 4"/>'),
 };
 window.stageHeader = () => `<ol class="stepper header">${STAGES.map((s) => `<li class="step stage-${s.key}"><span class="node">${STAGE_ICONS[s.key]}</span><span class="hl">${s.label}</span></li>`).join("")}</ol>`;
-window.stepper = (k) => {
+// At Reviewer convergence the line branches into a loop: the agent on top, the
+// reviewer below, the one whose turn it is filled in, with what each is doing.
+window.reviewLoop = (r) => {
+  const sat = (who, y, letter) => `<g class="sat ${r.turn === who ? "on" : ""}"><circle cx="24" cy="${y}" r="7"/><text x="24" y="${y + 3}" text-anchor="middle">${letter}</text></g>`;
+  const lbl = (who, pos, name, text) => `<span class="rv-lbl ${pos} ${r.turn === who ? "on" : ""}"><b>${name}</b> ${text}</span>`;
+  return `<span class="rv" role="img" aria-label="Review round ${r.round}. Agent: ${r.agent}. Reviewer: ${r.reviewer}.">
+    ${lbl("agent", "top", "Agent", r.agent)}
+    <svg viewBox="0 0 48 48" width="62" height="62" aria-hidden="true">
+      <circle class="ring" cx="24" cy="24" r="17"/>
+      <circle class="run ${r.turn}" cx="24" cy="24" r="17"/>
+      <path class="dir" d="M5.2 21.5 7 26l2.6-4.1M42.8 26.5 41 22l-2.6 4.1"/>
+      ${sat("agent", 7, "A")}${sat("reviewer", 41, "R")}
+      <text class="round" x="24" y="27.5" text-anchor="middle">${r.round}</text>
+    </svg>
+    ${lbl("reviewer", "bottom", "Reviewer", r.reviewer)}
+  </span>`;
+};
+window.stepper = (k, session) => {
   const cur = stageIdx(k);
   return `<ol class="stepper" aria-label="Stage: ${stageOf(k).label}">${STAGES.map((s, i) => {
     const st = i < cur ? "done" : i === cur ? "now" : "todo";
-    return `<li class="step ${st} stage-${s.key}"><span class="node" title="${s.label}">${STAGE_ICONS[s.key]}</span><span class="lbl">${s.label}</span></li>`;
+    return `<li class="step ${st} stage-${s.key}">${st === "now" && s.key === "ringo" && session && session.review ? reviewLoop(session.review) : `<span class="node" title="${s.label}">${STAGE_ICONS[s.key]}</span>`}<span class="lbl">${s.label}</span></li>`;
   }).join("")}</ol>`;
 };
 

@@ -244,7 +244,7 @@ const card = (s) => `
         <div class="stories">${storyList(s).map((id, i) => `<a href="#" class="story${i === 0 ? " lead" : ""}">${id}</a>`).join("")}</div>
         <div class="note">${s.note}</div>
       </div>
-      ${stepper(s.stage)}
+      ${stepper(s.stage, s)}
       <span class="now-label">${stageOf(s.stage).label}${s.stage === "ready" ? "" : `<span class="prog-m"> · ${progText(s)}</span>`}</span>
       <div class="meta">${s.stage === "ready" ? `<button class="btn sm primary">Merge</button>` : `<span class="prog">${progText(s)}</span>`}<button class="expand" aria-expanded="${openId === s.id}" aria-controls="${s.id}-detail" aria-label="Session details for ${s.story}">${s.age}</button></div>
     </div>${ask(s)}${stalled(s)}
