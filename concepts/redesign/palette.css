@@ -1,0 +1,162 @@
+/* trailmap redesign concepts: shared palette + primitives. Static mockups only. */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --terracotta: #e0452a;
+  --terracotta-soft: #fde4dc;
+  --forest: #166534;
+  --forest-soft: #dcf5e3;
+  --mustard: #f2b705;
+  --mustard-soft: #fdf0c2;
+  --soil: #2a1f1a;
+  --sand: #e6ddd0;
+  --clay: #a8a29e;
+  --cream: #fbf8f3;
+  /* primary-button fill: white text needs 4.5:1, terracotta gives 4.16:1 */
+  --action: #c7391f;
+
+  --bg: var(--cream);
+  --surface: #ffffff;
+  --surface-2: #f3eee6;
+  --line: var(--sand);
+  --ink: #1c1512;
+  --ink-2: #5c4f45;
+  --ink-3: #74665a;
+  --shadow: 0 1px 2px rgba(90, 62, 43, 0.05);
+  /* glyphs drawn on a stage mark: white on the light marks, the background on the dark ones */
+  --on-mark: #fff;
+  /* destructive text and borders: the action red in light, the brighter vermilion in dark */
+  --danger-text: var(--action);
+  --topbar-h: 56px;
+
+  /* one hue per stage, far enough apart to tell at a glance: slate, amber, vermilion, blue, green, violet */
+  --st-drafting: #64748b;
+  --st-self: #c2710c;
+  --st-ringo: var(--terracotta);
+  --st-ci: #2563eb;
+  --st-ready: #15963f;
+  --st-merged: #7c3aed;
+
+  --font: "Inter", system-ui, sans-serif;
+  --display: "Fraunces", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* dark: common.js sets data-theme from the system setting, or from ?theme=dark|light */
+:root[data-theme="dark"] {
+  --terracotta: #ff6a4d;
+  --terracotta-soft: #3d1d16;
+  --forest: #4ade80;
+  --forest-soft: #12301d;
+  --mustard-soft: #3a2e0e;
+  --soil: #f3ece4;
+  --clay: #6b6058;
+  --cream: #16110e;
+  --surface: #1f1814;
+  --surface-2: #2a211b;
+  --line: #3a2f27;
+  --ink: #f3ece4;
+  --ink-2: #cbbfb3;
+  --ink-3: #a69689;
+  --on-mark: var(--bg);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --st-drafting: #94a3b8;
+  --st-self: #f59e0b;
+  --st-ci: #60a5fa;
+  --st-ready: #34c06a;
+  --st-merged: #a78bfa;
+  --danger-text: var(--terracotta);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+
+/* the bar stays put and the page scrolls under it */
+.topbar { position: sticky; top: 0; z-index: 5; height: var(--topbar-h); display: flex; align-items: center; gap: 24px; padding: 0 32px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: saturate(1.4) blur(14px); }
+.brand { font-family: var(--display); font-weight: 650; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+.brand-mark { width: 26px; height: 26px; border-radius: 8px; background: conic-gradient(var(--terracotta) 0 25%, var(--mustard) 0 50%, var(--forest) 0 75%, var(--soil) 0); }
+.nav { display: flex; gap: 4px; }
+.nav a { text-decoration: none; padding: 5px 11px; border-radius: 8px; color: var(--ink-2); font-weight: 500; font-size: 13.5px; transition: background .12s, color .12s; }
+.nav a:hover { color: var(--ink); background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.nav a.on { background: var(--surface-2); color: var(--ink); }
+.topbar .spacer { flex: 1; }
+.search { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: color-mix(in srgb, var(--surface-2) 70%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px 5px 11px; color: var(--ink-3); width: 280px; font-size: 13px; }
+.kbd { font-family: var(--mono); font-size: 11px; color: var(--ink-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; background: var(--surface-2); }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--soil); color: var(--cream); display: grid; place-items: center; font-weight: 600; font-size: 12px; }
+
+.page { padding: 28px 32px 48px; max-width: 1440px; margin: 0 auto; }
+
+.btn { font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 7px 13px; border-radius: 8px; cursor: pointer; box-shadow: var(--shadow); transition: background .12s, border-color .12s; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary:hover { background: color-mix(in srgb, var(--action) 90%, #000); }
+.btn:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+.btn.primary { background: var(--action); border-color: var(--action); color: #fff; }
+.search-btn { display: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); place-items: center; }
+@media (max-width: 700px) { .search-btn { display: grid; } }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.mono { font-family: var(--mono); font-size: 12px; }
+.muted { color: var(--ink-2); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.stage-drafting { --c: var(--st-drafting); }
+.stage-self { --c: var(--st-self); }
+.stage-ringo { --c: var(--st-ringo); }
+.stage-ci { --c: var(--st-ci); }
+.stage-ready { --c: var(--st-ready); }
+.stage-merged { --c: var(--st-merged); }
+/* a stage color used as text is mixed 70/30 with ink, so it reads at 4.5:1 on the background and its own tint */
+.chip.stage { color: color-mix(in srgb, var(--c) 70%, var(--ink)); background: color-mix(in srgb, var(--c) 16%, transparent); }
+
+/* session log */
+.log { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; max-height: 300px; overflow-y: auto; padding: 10px 0; font-size: 13px; }
+.log-row { display: grid; grid-template-columns: 64px 20px 1fr; gap: 8px; padding: 4px 14px; align-items: start; }
+.log-row time { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); padding-top: 2px; }
+.log-row .ic { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: var(--on-mark); background: var(--ink-3); margin-top: 1px; }
+.log-row.tool .ic { background: var(--soil); }
+.log-row.say .ic { background: var(--forest); }
+.log-row.user .ic { background: var(--action); color: #fff; }
+.log-row.warn .ic { background: var(--mustard); color: var(--ink); }
+.log-row .tool-call { font-family: var(--mono); font-size: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; display: inline-block; }
+.log-row.transition { background: color-mix(in srgb, var(--c, var(--forest)) 10%, transparent); border-block: 1px dashed color-mix(in srgb, var(--c, var(--forest)) 40%, transparent); margin: 4px 0; padding-block: 6px; }
+.log-row.transition .ic { background: var(--c, var(--forest)); }
+.log-row.transition b { color: color-mix(in srgb, var(--c) 70%, var(--ink)); }
+
+.composer { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px; transition: border-color .12s, box-shadow .12s; }
+.composer:focus-within { border-color: var(--action); box-shadow: 0 0 0 3px color-mix(in srgb, var(--action) 18%, transparent); }
+.composer textarea { flex: 1; resize: none; border: 0; outline: 0; background: transparent; font: inherit; color: var(--ink); min-height: 40px; padding: 6px; }
+
+/* stage stepper: each stage keeps its own color for node and the line leading out of it */
+.stepper { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; }
+.step { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.step:not(:last-child)::after { content: ""; flex: 1; height: 1.5px; margin: 0 6px; min-width: 4px; border-radius: 2px; background: repeating-linear-gradient(90deg, var(--line) 0 4px, transparent 4px 7px); }
+.step.done:not(:last-child)::after { background: var(--c); }
+.step .node { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; flex: none; background: transparent; border: 1.5px dashed var(--ink-3); color: var(--ink-3); }
+.step.done .node { background: color-mix(in srgb, var(--c) 30%, var(--surface)); border: 1.5px solid var(--c); color: var(--ink); }
+.step.now .node { background: var(--c); border: 1.5px solid var(--c); color: var(--on-mark); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 25%, transparent); }
+.step.now .lbl { color: var(--ink); font-weight: 600; }
+
+/* review loop: the stepper's line branches into a ring at Reviewer convergence */
+.rv { position: relative; flex: none; width: 62px; height: 62px; margin: 0 -8px 0 -19px; }
+.rv svg { display: block; overflow: visible; }
+.rv .ring { fill: var(--surface); stroke: color-mix(in srgb, var(--c) 35%, var(--surface)); stroke-width: 2; }
+.rv .run { fill: none; stroke: var(--c); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 26 81; transform-origin: 24px 24px; animation: rv-turn 2.4s linear infinite; }
+.rv .dir { fill: none; stroke: var(--c); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.rv .sat circle { fill: var(--surface); stroke: var(--c); stroke-width: 1.5; }
+.rv .sat text { font: 700 8px var(--font); fill: var(--ink); }
+.rv .sat.on circle { fill: var(--c); }
+.rv .sat.on text { fill: var(--on-mark); }
+.rv .round { font: 600 11px var(--font); fill: var(--ink-2); }
+.rv-lbl { position: absolute; left: 50%; translate: -50% 0; white-space: nowrap; font-size: 11px; line-height: 1.3; color: var(--ink-3); }
+.rv-lbl.top { bottom: calc(100% + 3px); }
+.rv-lbl.bottom { top: calc(100% + 3px); }
+.rv-lbl b { font-weight: 600; color: var(--ink-2); }
+.rv-lbl.on, .rv-lbl.on b { color: var(--ink); }
+.stepper:has(.rv) { margin-block: 20px; }
+@keyframes rv-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .rv .run { animation: none; } }
+.step.done .lbl { color: var(--ink-2); }
