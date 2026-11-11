@@ -9,6 +9,7 @@ window.STAGES = [
 ];
 
 window.SESSIONS = [
+  { repo: "trails", id: "f1", fixer: true, stage: "drafting", story: "ar-mariadb-shard-flake", pr: null, branch: "ar-mariadb-shard-flake-3c1e", loc: 38, age: "12m", note: "AR MariaDB Tests (2/3) is red on main · spawning is paused until it is green" },
   { repo: "trails", id: "s1", stage: "drafting", story: "port-relation-or-structurally-compatible", rfc: "0047", pr: null, branch: "relation-or-compat-4a1c", loc: 212, age: "14m", note: "Reading relation/query_methods.rb" },
   { repo: "trails", id: "s2", stories: ["arel-visitor-nodes-cte-materialized", "arel-visitor-nodes-cte-not-materialized", "arel-with-recursive-visitor-arm"], stage: "self", story: "arel-visitor-nodes-cte-materialized", rfc: "0112", pr: 9961, branch: "arel-cte-materialized-77e0", loc: 348, age: "41m", note: "Running parity:api:calls" },
   { repo: "trails", id: "s3", stories: ["actionmailer-preview-interceptors", "actionmailer-preview-register-interceptor-string-arm"], stage: "ringo", story: "actionmailer-preview-interceptors", rfc: "0188", pr: 9958, branch: "mailer-preview-intc-2b9d", loc: 506, age: "2h", note: "Converging finding 4: keep the String arm", ask: { q: "Finding 5 asks for a scoped skip. OK to add, or converge?", options: ["Add the scoped skip", "Converge without it"] }, ringo: { done: 3, total: 5 } },
