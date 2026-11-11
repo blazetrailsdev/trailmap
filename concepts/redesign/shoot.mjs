@@ -16,6 +16,10 @@ const desktop = [
   ["b-stepper-list.html?filter=needs", "b-stepper-needs-you", true],
   ["b-stepper-list.html?search=1", "b-search-desktop", false],
 ];
+const dark = [
+  ["b-stepper-list.html?theme=dark", "b-stepper-dark", true],
+  ["b-stepper-list.html?theme=dark&open=s3", "b-stepper-dark-expanded", true],
+];
 const mobile = [
   ["b-stepper-list.html", "b-stepper-mobile-collapsed", true],
   ["b-stepper-list.html?open=s3", "b-stepper-mobile-expanded", true],
@@ -40,7 +44,7 @@ const shoot = async (page, [file, name, fullPage], checkWidth) => {
 };
 
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-for (const shot of desktop) await shoot(page, shot, false);
+for (const shot of [...desktop, ...dark]) await shoot(page, shot, false);
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true });
 for (const shot of mobile) await shoot(phone, shot, true);
 await browser.close();

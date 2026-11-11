@@ -1,4 +1,5 @@
 // Shared render helpers for the concepts. `?open=<id>` expands a session.
+{ const th = new URLSearchParams(location.search).get("theme"); if (th === "dark" || th === "light") document.documentElement.dataset.theme = th; }
 window.openId = new URLSearchParams(location.search).get("open");
 window.stageIdx = (k) => STAGES.findIndex((s) => s.key === k);
 window.stageOf = (k) => STAGES[stageIdx(k)];

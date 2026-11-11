@@ -20,7 +20,10 @@ points at `#`; the markup is not meant to be copied into `app/` as is.
   and Spawn are buttons with no key of their own, and are also rows in the
   palette. No key is wired in the mockup, ⌘K included.
 
-Shared pieces: `palette.css` (tokens, the stepper, the log), `common.js`
+Dark mode follows the system setting; `?theme=dark` or `?theme=light`
+forces one.
+
+Shared pieces: `palette.css` (tokens for both themes, the stepper, the log), `common.js`
 (render helpers and stage icons) and `data.js` (sessions and per-session logs).
 
 ## Screenshots
