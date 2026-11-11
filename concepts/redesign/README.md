@@ -3,12 +3,12 @@
 Static mockups with fake data. Nothing here is wired to the app, and every link
 points at `#`; the markup is not meant to be copied into `app/` as is.
 
-- `b-stepper-list.html`: the Fleet page redesign, and the preferred direction.
-  The Fleet panels sit on top, then sessions grouped by repo and ordered by
+- `b-stepper-list.html`: the dashboard, redesigned from the Fleet page, with
+  no page title. The CI fixer, Usage and Loop panels sit on top, then sessions grouped by repo and ordered by
   stage, each with a six-stage stepper. A card expands to its session log,
-  message composer and details. A card flags what it needs from you (a
-  question, a failed check, a Merge button) and shows its stage's progress;
-  `?filter=needs` keeps only those cards. `?open=<id>` opens one card
+  message composer and details. A session's question is answered in its own row
+  (options, or a free answer); a row also flags a failed check, offers Merge
+  and shows its stage's progress; `?filter=needs` keeps only those cards. `?open=<id>` opens one card
   (`?open=s3`), and `?search=1` shows the ⌘K palette. It has a full-bleed
   layout below 700px. ⌘K is the only shortcut, and it means search:
   Broadcast and Spawn are buttons with no key of their own, and are also
