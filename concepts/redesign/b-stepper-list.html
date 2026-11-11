@@ -22,8 +22,14 @@
 .panel h2 { margin: 0 0 10px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .panel h2 small { font-weight: 400; color: var(--ink-3); }
 /* a session's question sits in its own row: the question, its options, and a free answer */
-.ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 16px 10px 19px; background: color-mix(in srgb, var(--mustard-soft) 55%, var(--surface)); border-top: 1px solid color-mix(in srgb, var(--mustard) 35%, var(--line)); box-shadow: inset 3px 0 0 var(--mustard); }
-.ask p { margin: 0; font-size: 13.5px; font-weight: 500; flex: 1 1 300px; }
+.ask, .stall { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 16px 10px 19px; background: color-mix(in srgb, var(--mustard-soft) 55%, var(--surface)); border-top: 1px solid color-mix(in srgb, var(--mustard) 35%, var(--line)); box-shadow: inset 3px 0 0 var(--mustard); }
+.ask p, .stall p { margin: 0; font-size: 13.5px; font-weight: 500; flex: 1 1 300px; }
+/* a stalled session: the agent is idle short of the next stage; the strip shows why and offers the prod */
+.stall { background: color-mix(in srgb, var(--surface-2) 70%, var(--surface)); border-top-color: var(--line); box-shadow: inset 3px 0 0 var(--ink-3); }
+.stall p { display: flex; flex-wrap: wrap; gap: 4px 14px; font-weight: 400; color: var(--ink-2); }
+.stall .ok::before { content: "✓ "; color: var(--st-ready); font-weight: 700; }
+.flag.idle { background: var(--surface); border: 1px solid var(--line); }
+.flag.idle::before { background: var(--ink-3); }
 .ask-opts { display: flex; flex-wrap: wrap; gap: 6px; }
 .ask-free { display: flex; gap: 6px; flex: 0 1 300px; }
 .ask-free input { flex: 1; min-width: 0; font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; }
@@ -137,8 +143,8 @@ details.panel:not([open]) h2 { margin: 0; }
   .pills { order: 3; flex: 0 0 100%; }
   .panels { grid-template-columns: 1fr; gap: 8px; margin-inline: -16px; }
   .panel { border-radius: 0; border-inline: 0; }
-  .ask { padding: 12px 14px 12px 17px; }
-  .ask p, .ask-free { flex-basis: 100%; }
+  .ask, .stall { padding: 12px 14px 12px 17px; }
+  .ask p, .stall p, .ask-free { flex-basis: 100%; }
   .usage-row { grid-template-columns: 110px 1fr 36px; }
   .loop { grid-template-columns: 1fr 1fr 1fr; }
   .loop .btn { grid-column: 2 / -1; }
@@ -200,7 +206,28 @@ const ask = (s) => !s.ask ? "" : `
       <div class="ask-opts">${s.ask.options.map((o) => `<button class="btn sm">${o}</button>`).join("")}</div>
       <div class="ask-free"><input type="text" aria-label="Answer in your own words" placeholder="…or answer in your own words"><button class="btn sm primary">Send</button></div>
     </div>`;
-const needs = (s) => s.ask || (s.ci && s.ci.fail) || s.stage === "ready";
+// An idle agent short of the next stage is stalled. Each rule names the evidence and the prod that moves it on.
+const stall = (s) => {
+  if (!s.idle || s.ask) return null;
+  if (s.stage === "drafting") return { why: [], open: ["no PR opened"], prod: "Open the draft PR?" };
+  if (s.stage === "self") return { why: ["self review checks passed"], open: ["no reviewer asked"], prod: "Request review?" };
+  if (s.stage === "ringo") {
+    const left = s.ringo.total - s.ringo.done;
+    return left ? { why: [], open: [`${left} findings open`], prod: "Pick the findings back up?" } : { why: ["all findings converged"], open: [], prod: "Move on to CI?" };
+  }
+  if (s.stage === "ci") {
+    if (s.ci.fail) return { why: [], open: [`${s.ci.fail} check failed`], prod: "Fix the failing check?" };
+    if (!s.ci.run) return { why: ["CI green", "reviews clean"], open: ["PR still a draft"], prod: "Mark it ready?" };
+  }
+  return null;
+};
+const stalled = (s) => { const st = stall(s); return !st ? "" : `
+    <div class="stall" role="group" aria-label="Stalled: ${s.story}">
+      <span class="flag idle">Stalled · idle ${s.idle}</span>
+      <p>${st.why.map((w) => `<span class="ok">${w}</span>`).join("")}${st.open.map((w) => `<span>${w}</span>`).join("")}</p>
+      <button class="btn sm primary" title="Sends this prod to the session's pane">${st.prod}</button>
+    </div>`; };
+const needs = (s) => s.ask || stall(s) || (s.ci && s.ci.fail) || s.stage === "ready";
 const side = (s) => `
   <div class="side">
     <dl class="kv">
@@ -224,7 +251,7 @@ const card = (s) => `
       ${stepper(s.stage)}
       <span class="now-label">${stageOf(s.stage).label}${s.stage === "ready" ? "" : `<span class="prog-m"> · ${progText(s)}</span>`}</span>
       <div class="meta">${s.stage === "ready" ? `<button class="btn sm primary">Merge</button>` : `<span class="prog">${progText(s)}</span>`}<button class="expand" aria-expanded="${openId === s.id}" aria-controls="${s.id}-detail" aria-label="Session details for ${s.story}">${s.age}</button></div>
-    </div>${ask(s)}
+    </div>${ask(s)}${stalled(s)}
     <div class="detail" id="${s.id}-detail">
       <div><h4>Session log</h4>${renderLog(s)}${renderComposer(s)}</div>
       ${side(s)}

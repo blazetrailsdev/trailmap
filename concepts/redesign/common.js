@@ -39,7 +39,7 @@ window.renderLog = (s) => `<div class="log">${logFor(s).map((r) => {
   const ic = { sys: "•", tool: "›", say: "C", user: "D", warn: "!", transition: "→" }[r.k];
   const body = r.tool ? `<span class="tool-call">${r.tool}</span>${r.ok ? ` <span class="chip" style="color:var(--forest)">${r.ok}</span>` : ""}` : r.text;
   return `<div class="log-row ${r.k} ${r.stage ? "stage-" + r.stage : ""}"><time>${r.t}</time><span class="ic">${ic}</span><div>${body}</div></div>`;
-}).join("")}${s.stage === "merged" ? "" : `<div class="log-row sys"><time>now</time><span class="ic">•</span><div class="muted"><i>working…</i></div></div>`}</div>`;
+}).join("")}${s.stage === "merged" ? "" : `<div class="log-row sys"><time>now</time><span class="ic">•</span><div class="muted"><i>${s.idle ? `idle for ${s.idle}` : "working…"}</i></div></div>`}</div>`;
 
 window.renderComposer = (s) => s.stage === "merged" ? "" : `
   <div class="composer">
