@@ -48,7 +48,7 @@
 .loop input { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; width: 100%; }
 .toggle { width: 38px; height: 22px; border-radius: 99px; background: var(--forest); position: relative; margin-bottom: 6px; border: 0; padding: 0; cursor: pointer; }
 .toggle::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
-.btn.danger { border-color: var(--terracotta); color: var(--terracotta); }
+.btn.danger { border-color: var(--danger-text); color: var(--danger-text); }
 .btn.sm { padding: 5px 10px; font-size: 12.5px; }
 
 /* one sticky stage header for the whole list */
@@ -57,7 +57,7 @@
 .stepper.header .step::after { visibility: hidden; }
 .stepper.header .node { background: color-mix(in srgb, var(--c) 30%, var(--surface)); border: 0; color: var(--ink); }
 .stepper.header .hl { font-size: 11px; font-weight: 600; color: var(--ink-2); line-height: 1.2; white-space: normal; max-width: 74px; }
-.step .lbl { display: none; }
+.step .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* a stage not reached yet is a dot: the header names the column, and the current stage stands out */
 .card .step.todo .node { width: 10px; height: 10px; margin: 0 8px; border-style: solid; border-color: var(--clay); }
 .card .step.todo .node svg { display: none; }
@@ -166,7 +166,7 @@ details.panel:not([open]) h2 { margin: 0; }
   .cmdk { inset: 0; translate: none; width: auto; max-height: none; border-radius: 0; border: 0; }
   .cmdk-input { padding: 12px 16px; }
   .cmdk-input .kbd { display: none; }
-  .cmdk-input .cancel { display: inline; color: var(--terracotta); font-weight: 600; }
+  .cmdk-input .cancel { display: inline; color: var(--danger-text); font-weight: 600; }
   .cmdk-foot { display: none; }
   .cmdk-item { padding: 10px; }
   .cmdk-item .right .kbd, .cmdk-item .right .chip { display: none; }
@@ -179,6 +179,7 @@ details.panel:not([open]) h2 { margin: 0; }
 const REPOS = ["trails", "trailmap", "tasks"];
 const storyList = (s) => s.stories || [s.story];
 const live = SESSIONS.filter((s) => s.stage !== "merged");
+const CODEX_LIVE = 2; // fake: how many live sessions run on codex
 
 const progress = (s) => {
   if (s.ringo) {
@@ -272,8 +273,8 @@ document.getElementById("app").innerHTML = topbar() + `
       <span class="pill"><span class="led"></span>events</span>
       <span class="pill"><span class="led"></span>tmux</span>
       <span class="pill"><span class="led"></span>usage scraper</span>
-      <span class="pill"><span class="led"></span>claude · ${live.length - 2}</span>
-      <span class="pill warn"><span class="led"></span>codex · 2</span>
+      <span class="pill"><span class="led"></span>claude · ${live.length - CODEX_LIVE}</span>
+      <span class="pill warn"><span class="led"></span>codex · ${CODEX_LIVE}</span>
     </div>
     <span class="grow"></span>
     <button class="btn sm">Broadcast</button>

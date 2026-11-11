@@ -20,15 +20,15 @@ points at `#`; the markup is not meant to be copied into `app/` as is.
   and Spawn are buttons with no key of their own, and are also rows in the
   palette. No key is wired in the mockup, ⌘K included.
 
-Dark mode follows the system setting; `?theme=dark` or `?theme=light`
-forces one.
+Dark mode follows the system setting (`common.js` sets `data-theme` on
+`<html>`); `?theme=dark` or `?theme=light` forces one.
 
 Shared pieces: `palette.css` (tokens for both themes, the stepper, the log), `common.js`
 (render helpers and stage icons) and `data.js` (sessions and per-session logs).
 
 ## Screenshots
 
-`shoot.mjs` writes every concept and state to `screenshots/` (gitignored, or
+`shoot.mjs` writes every page and state to `screenshots/` (gitignored, or
 `SHOTS_DIR`) at 1440×900 and 390×844. At 390px it checks that `innerWidth` is
 390 and `scrollWidth` does not exceed it in every state, and exits 1 if not.
 The PR's copies live on the `screenshots/pr-136` branch, outside the diff.

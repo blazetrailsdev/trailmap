@@ -1,4 +1,4 @@
-// Screenshots every concept and state, and fails if a phone-width page
+// Screenshots every page and state, and fails if a phone-width page
 // overflows. See README.md for running it.
 const { chromium } = await import(process.env.PLAYWRIGHT_PATH ?? "playwright");
 import { fileURLToPath } from "node:url";
@@ -24,6 +24,7 @@ const mobile = [
   ["b-stepper-list.html", "b-stepper-mobile-collapsed", true],
   ["b-stepper-list.html?open=s3", "b-stepper-mobile-expanded", true],
   ["b-stepper-list.html?search=1", "b-search-mobile", false],
+  ["b-stepper-list.html?theme=dark&open=s3", "b-stepper-mobile-dark", true],
 ];
 
 const browser = await chromium.launch();

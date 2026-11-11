@@ -1,5 +1,11 @@
 // Shared render helpers for the concepts. `?open=<id>` expands a session.
-{ const th = new URLSearchParams(location.search).get("theme"); if (th === "dark" || th === "light") document.documentElement.dataset.theme = th; }
+{
+  const th = new URLSearchParams(location.search).get("theme");
+  const sys = matchMedia("(prefers-color-scheme: dark)");
+  const apply = () => { document.documentElement.dataset.theme = th === "dark" || th === "light" ? th : sys.matches ? "dark" : "light"; };
+  apply();
+  sys.addEventListener("change", apply);
+}
 window.openId = new URLSearchParams(location.search).get("open");
 window.stageIdx = (k) => STAGES.findIndex((s) => s.key === k);
 window.stageOf = (k) => STAGES[stageIdx(k)];
