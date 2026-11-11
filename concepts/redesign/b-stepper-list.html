@@ -206,15 +206,11 @@ const ask = (s) => !s.ask ? "" : `
       <div class="ask-opts">${s.ask.options.map((o) => `<button class="btn sm">${o}</button>`).join("")}</div>
       <div class="ask-free"><input type="text" aria-label="Answer in your own words" placeholder="…or answer in your own words"><button class="btn sm primary">Send</button></div>
     </div>`;
-// An idle agent short of the next stage is stalled. Each rule names the evidence and the prod that moves it on.
+// An idle agent short of the next stage is stalled. Each rule names the evidence and the prod, which is a message to the agent.
 const stall = (s) => {
   if (!s.idle || s.ask) return null;
-  if (s.stage === "drafting") return { why: [], open: ["no PR opened"], prod: "Open the draft PR?" };
   if (s.stage === "self") return { why: ["self review checks passed"], open: ["no reviewer asked"], prod: "Request review?" };
-  if (s.stage === "ringo") {
-    const left = s.ringo.total - s.ringo.done;
-    return left ? { why: [], open: [`${left} findings open`], prod: "Pick the findings back up?" } : { why: ["all findings converged"], open: [], prod: "Move on to CI?" };
-  }
+  if (s.stage === "ringo" && s.ringo.done === s.ringo.total) return { why: ["all findings converged"], open: [], prod: "Move on to CI?" };
   if (s.stage === "ci") {
     if (s.ci.fail) return { why: [], open: [`${s.ci.fail} check failed`], prod: "Fix the failing check?" };
     if (!s.ci.run) return { why: ["CI green", "reviews clean"], open: ["PR still a draft"], prod: "Mark it ready?" };
@@ -225,7 +221,7 @@ const stalled = (s) => { const st = stall(s); return !st ? "" : `
     <div class="stall" role="group" aria-label="Stalled: ${s.story}">
       <span class="flag idle">Stalled · idle ${s.idle}</span>
       <p>${st.why.map((w) => `<span class="ok">${w}</span>`).join("")}${st.open.map((w) => `<span>${w}</span>`).join("")}</p>
-      <button class="btn sm primary" title="Sends this prod to the session's pane">${st.prod}</button>
+      <button class="btn sm primary" aria-label="Message the agent: ${st.prod}" title="Sends this as a message to the agent">${st.prod}</button>
     </div>`; };
 const needs = (s) => s.ask || stall(s) || (s.ci && s.ci.fail) || s.stage === "ready";
 const side = (s) => `

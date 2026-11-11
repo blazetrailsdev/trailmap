@@ -11,7 +11,7 @@ points at `#`; the markup is not meant to be copied into `app/` as is.
   question is answered in its own row (options, or a free answer); a row also
   flags a failed check, offers Merge and shows its stage's progress. A session
   whose agent is idle short of the next stage is stalled: its row shows the
-  evidence and one button that prods it on ("Mark it ready?"); `?filter=needs`
+  evidence and one button that messages the agent ("Mark it ready?"); `?filter=needs`
   keeps only those cards. `?open=<id>` opens one card (`?open=s3`), and
   `?search=1` shows the ⌘K palette. It has a full-bleed layout below 700px. ⌘K
   is the only shortcut, and it means search: Broadcast and Spawn are buttons
