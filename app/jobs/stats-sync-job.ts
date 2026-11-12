@@ -30,9 +30,6 @@ function requiredEnv(name: string): string {
 export class StatsSyncJob extends ApplicationJob {
   private failedStage: string | null = null;
 
-  // Temporary: trails does not type this on Base (limits-concurrency-typed-on-activejob-base).
-  declare static limitsConcurrency: (options: { key: string; duration: Duration }) => void;
-
   static {
     // A sync can outlive its retries' waits; a second one would race the first.
     this.limitsConcurrency({ key: "stats_sync", duration: Duration.hours(23) });
