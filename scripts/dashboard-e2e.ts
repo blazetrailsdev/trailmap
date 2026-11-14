@@ -14,7 +14,8 @@ import { env, exit, getFs, getHttpAsync } from "@blazetrails/ruby-compat";
 import { STYLESHEET, boxRules, collisionsInList } from "./class-collisions.ts";
 
 const APP = String(env.E2E_APP);
-const PR = { owner: "o", repo: "r", pr: 7, title: "A pull request", branch: "a-branch" };
+// Passing CI and no reviewer: Ready to merge, the one stage whose row carries merge.
+const PR = { owner: "o", repo: "r", pr: 7, title: "A pull request", branch: "a-branch", ciStatus: "success" };
 const ENVELOPE = {
   // #8's reviewer is pinned and its pane gone, so its `+` is a respawn.
   prs: [PR, { ...PR, pr: 8, pane: "%4" }],

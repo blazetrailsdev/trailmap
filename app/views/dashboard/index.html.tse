@@ -4,12 +4,7 @@
      inline <script> so the page needs no inline JavaScript. -->
 <div id="fleetConfig" hidden data-socket-path="<%= socketPath %>" data-control-path="<%= controlPath %>" data-reviewers-path="<%= reviewersPath %>" data-read-path="<%= readPath %>"></div>
 
-<div class="page-header">
-  <h1 class="page-title">Fleet</h1>
-  <div class="page-subhead">
-    <span class="muted">Open PRs, panes, spawns and CI, live from ringo.</span>
-  </div>
-</div>
+<h1 class="sr-only">Dashboard</h1>
 
 <% if (!relayConfigured) { %>
   <div class="card ci-fixer paused">
@@ -25,14 +20,53 @@
   </div>
 <% } %>
 
-<div class="status-group" title="Connection status">
-  <span class="pill" id="eventsPill" title="Dashboard event stream"><span class="connected off" id="eventsDot"></span><span class="ico">&#128225;</span><span class="label">events</span></span>
-  <span class="pill" id="tmuxPill" title="tmux socket to agent panes"><span class="connected off" id="tmuxDot"></span><span class="ico">&#128421;</span><span class="label">tmux</span></span>
-  <span id="mainCIPills"></span>
-  <button type="button" class="pill" id="watchPill" data-action="refresh-usage" title="claude.ai usage scraper (local browser watch)" style="display:none"><span class="connected off" id="watchDot"></span><span class="ico">&#128202;</span><span class="label">usage scraper</span><span class="action">&#10227;</span></button>
-  <span class="pill" id="pullFailPill" style="display:none"><span class="connected off" id="pullFailDot"></span><span class="ico">&#11015;</span><span class="label" id="pullFailLabel">pull failed</span></span>
-  <span id="agentPills"></span>
-  <button type="button" class="btn btn-red btn-sm" id="pauseBtn" data-action="pause" data-paused="false" title="Hold every agent's next prompt in the usage queue, or release them" style="display:none">Pause</button>
+<div class="fleet-header">
+  <div class="status-group" title="Connection status">
+    <span class="pill" id="eventsPill" title="Dashboard event stream"><span class="connected off" id="eventsDot"></span><span class="label">events</span></span>
+    <span class="pill" id="tmuxPill" title="tmux socket to agent panes"><span class="connected off" id="tmuxDot"></span><span class="label">tmux</span></span>
+    <span id="mainCIPills"></span>
+    <button type="button" class="pill" id="watchPill" data-action="refresh-usage" title="claude.ai usage scraper (local browser watch)" style="display:none"><span class="connected off" id="watchDot"></span><span class="label">usage scraper</span><span class="action">&#10227;</span></button>
+    <span class="pill" id="pullFailPill" style="display:none"><span class="connected off" id="pullFailDot"></span><span class="label" id="pullFailLabel">pull failed</span></span>
+    <span id="agentPills"></span>
+  </div>
+  <input type="search" id="fleetSearch" class="ctl" placeholder="Search sessions" aria-label="Search sessions" disabled>
+  <button type="button" id="fleetSearchBtn" class="btn btn-sm" aria-label="Search" title="Search sessions" disabled>&#9906;</button>
+  <a class="btn btn-sm" href="#broadcastPanel">Broadcast</a>
+  <a class="btn btn-green btn-sm" href="#spawnPanel">Spawn</a>
+</div>
+
+<div class="top-pair">
+<div class="card usage-group" id="usageGroup" style="display:none">
+  <div class="card-head"><span class="card-title">Usage</span></div>
+  <div class="usage-bar" id="usageBar" style="display:none"></div>
+  <div class="usage-bar" id="codexUsageBar" style="display:none"></div>
+</div>
+
+<div class="card" id="spawnLoopPanel">
+  <div class="card-head">
+    <span class="card-title">Loop</span>
+    <span class="field-note loop-paused" data-why="pause">paused: the usage queue is holding every prompt</span>
+    <span class="field-note loop-paused" data-why="loop">paused: the loop is stopped</span>
+    <span class="card-head" id="slControls"></span>
+    <button type="button" class="btn btn-red btn-sm" id="pauseBtn" data-action="pause" data-paused="false" title="Hold every agent's next prompt in the usage queue, or release them" style="display:none;margin-left:auto">Pause</button>
+  </div>
+  <div class="card-row">
+    <label class="field">Live cap <span class="field-note" id="slLiveNow"></span>
+      <input id="slLiveCap" class="ctl num" type="number" min="1">
+    </label>
+    <label class="field">Queue cap <span class="field-note" id="slOpenNow"></span>
+      <input id="slQueueCap" class="ctl num" type="number" min="1">
+    </label>
+    <label class="field" title="Minutes between ticks (min 1)">Interval (min)
+      <input id="slStagger" class="ctl num" type="number" min="1" step="1">
+    </label>
+    <label class="field" title="Bundle mode: each tick spawns ONE worker for the whole next-bundle (a PR closing several stories). Off: one worker per single story.">Bundle
+      <input id="slBundle" type="checkbox">
+    </label>
+    <span class="field-note" id="slLastSpawn"></span>
+  </div>
+  <div id="slBundleList" class="bundle-list" style="display:none"></div>
+</div>
 </div>
 
 <div id="queueSection" class="card" style="display:none"></div>
@@ -53,36 +87,7 @@
   <div id="ciFixerBody"></div>
 </div>
 
-<div class="card usage-group" id="usageGroup" style="display:none">
-  <div class="card-head"><span class="card-title">Usage</span></div>
-  <div class="usage-bar" id="usageBar" style="display:none"></div>
-  <div class="usage-bar" id="codexUsageBar" style="display:none"></div>
-</div>
-
-<div class="card" id="spawnLoopPanel">
-  <div class="card-head">
-    <span class="card-title">Loop</span>
-    <span class="card-head" id="slControls"></span>
-  </div>
-  <div class="card-row">
-    <label class="field">Live cap <span class="field-note" id="slLiveNow"></span>
-      <input id="slLiveCap" class="ctl num" type="number" min="1">
-    </label>
-    <label class="field">Queue cap <span class="field-note" id="slOpenNow"></span>
-      <input id="slQueueCap" class="ctl num" type="number" min="1">
-    </label>
-    <label class="field" title="Minutes between ticks (min 1)">Interval (min)
-      <input id="slStagger" class="ctl num" type="number" min="1" step="1">
-    </label>
-    <label class="field" title="Bundle mode: each tick spawns ONE worker for the whole next-bundle (a PR closing several stories). Off: one worker per single story.">Bundle
-      <input id="slBundle" type="checkbox">
-    </label>
-    <span class="field-note" id="slLastSpawn"></span>
-  </div>
-  <div id="slBundleList" class="bundle-list" style="display:none"></div>
-</div>
-
-<div class="card">
+<div class="card" id="broadcastPanel">
   <div class="card-head bcast">
     <span class="field-note" title="Typed into each agent's pane exactly as if you had typed it there">&#128227; Broadcast to agents</span>
     <input id="bcastMsg" class="ctl" type="text" placeholder="e.g. main is red — rebase before you push again">

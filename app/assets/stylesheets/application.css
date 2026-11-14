@@ -534,11 +534,30 @@ ul { margin: 0 0 10px 20px; }
  * what gives the page a light theme it did not have.
  */
 
-/* Connection pills: events, tmux, per-repo main CI, pull failures, agents. */
+/* A screen reader's heading, on a page whose top is a header row instead (RFC 0232). */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* The dashboard's header row: connection dots, search, Broadcast and Spawn. */
+.fleet-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+#fleetSearch { width: 220px; margin-left: auto; }
+#fleetSearchBtn { display: none; }
+@media (max-width: 700px) {
+  #fleetSearch { display: none; }
+  #fleetSearchBtn { display: inline-flex; margin-left: auto; }
+}
+
+/* Usage and Loop, side by side, one above the other on a narrow screen. */
+.top-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 16px; }
+.loop-paused { display: none; color: var(--yellow-ink); }
+#spawnLoopPanel:has(#pauseBtn[data-paused="true"]) .loop-paused[data-why="pause"],
+#spawnLoopPanel:has(#slToggle:enabled[data-enabled="false"]) .loop-paused[data-why="loop"] { display: inline; }
+
+/* Connection dots, each with its label: events, tmux, per-repo main CI, pull failures, agents. */
 .status-group {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-  padding: 6px 8px; margin-bottom: 16px;
-  border: 1px solid var(--border); border-radius: 6px;
   font-size: 11px; color: var(--muted);
 }
 .status-group .pill {
@@ -556,7 +575,6 @@ ul { margin: 0 0 10px 20px; }
 .connected.stale { background: var(--yellow); }
 /* The scraper pill is a control: a button that looks like its neighbours. */
 .status-group button.pill { border: 0; font: inherit; color: inherit; cursor: pointer; }
-.status-group #pauseBtn { order: 2; margin-left: auto; }
 .status-group .pill .action { margin-left: 2px; color: var(--muted); }
 .ico { font-size: 12px; line-height: 1; display: inline-flex; align-items: center; }
 
@@ -678,6 +696,35 @@ ul { margin: 0 0 10px 20px; }
 .rmeta { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .raside { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .raside .aside-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/*
+ * A session row (RFC 0232): a 3px edge in its stage's colour and a stepper
+ * where the status icon was. A passed stage is a filled disc, the current one
+ * the same with a ring, and one still to come a small dot.
+ */
+.row.session-drafting { border-left: 3px solid var(--st-drafting); }
+.row.session-self { border-left: 3px solid var(--st-self); }
+.row.session-ringo { border-left: 3px solid var(--st-ringo); }
+.row.session-ci { border-left: 3px solid var(--st-ci); }
+.row.session-ready { border-left: 3px solid var(--st-ready); }
+.row.session-merged { border-left: 3px solid var(--st-merged); }
+.stepper { flex: none; display: inline-flex; align-items: center; gap: 4px; padding-top: 2px; }
+.step { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; color: var(--on-mark); }
+.step.todo { width: 6px; height: 6px; margin: 0 6px; background: var(--line); }
+.step.current { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink-3); }
+.st-drafting { background: var(--st-drafting); }
+.st-self { background: var(--st-self); }
+.st-ringo { background: var(--st-ringo); }
+.st-ci { background: var(--st-ci); }
+.st-ready { background: var(--st-ready); }
+.st-merged { background: var(--st-merged); }
+.prlink { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+.check-failed { color: var(--red); font-size: 12px; font-weight: 600; }
+.raside .figure, .raside .age { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) {
+  .row[class*="session-"] { flex-wrap: wrap; }
+  .row[class*="session-"] .stepper { width: 100%; }
+}
 
 /*
  * The row controls. Each posts to ringo; see `controlRequest` in

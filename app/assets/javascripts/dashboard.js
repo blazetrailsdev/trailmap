@@ -28,7 +28,6 @@ import {
   mainCITitle,
   pauseButton,
   pokeButton,
-  prRow,
   queueCard,
   redPanes,
   reconnectDelay,
@@ -39,9 +38,9 @@ import {
   repoSectionsKey,
   reviewersPollOutcome,
   sectionId,
+  sessionCard,
   spawnLoopControls,
   spawnLoopView,
-  spawnRow,
   strandedAgents,
   usageScraperPill,
   visibleSpawns,
@@ -118,11 +117,12 @@ function renderRepoSections(prs, spawns) {
 
   sections.forEach((section) => {
     const id = sectionId(section.name);
-    byId(id + "-spawnsSection").style.display = section.spawns.length ? "" : "none";
-    byId(id + "-spawns").innerHTML = section.spawns.map((s) => spawnRow(s, fixers)).join("");
-    byId(id + "-prs").innerHTML = section.prs.length
-      ? section.prs.map((pr) => prRow(pr, fixers, Date.now(), reviewers, queue)).join("")
-      : '<div class="list-empty">No open PRs.</div>';
+    const now = Date.now();
+    byId(id + "-sessions").innerHTML =
+      section.spawns.map((s) => sessionCard(s, fixers, now, reviewers, queue)).join("") +
+      (section.prs.length
+        ? section.prs.map((pr) => sessionCard(pr, fixers, now, reviewers, queue)).join("")
+        : '<div class="list-empty">No open PRs.</div>');
   });
 
   // The heading button outlives the rows (the scaffold is rebuilt only when
@@ -151,7 +151,7 @@ function updateMainCI(failures) {
     }
     pill.innerHTML =
       '<span class="connected on" style="background:var(--red)"></span>' +
-      '<span class="ico">🏗️</span><span class="label"></span>';
+      '<span class="label"></span>';
     pill.querySelector(".label").textContent = group.repo + " CI: " + group.items.length;
     host.appendChild(pill);
   });
@@ -181,8 +181,7 @@ function updateAgents(agents) {
       pill = document.createElement("span");
       pill.className = "pill";
       pill.id = "agentPill-" + a.name;
-      pill.innerHTML = '<span class="connected off"></span><span class="ico"></span><span class="label"></span>';
-      pill.querySelector(".ico").textContent = a.icon || "🎼";
+      pill.innerHTML = '<span class="connected off"></span><span class="label"></span>';
       pill.querySelector(".label").textContent = a.name;
       host.appendChild(pill);
     }

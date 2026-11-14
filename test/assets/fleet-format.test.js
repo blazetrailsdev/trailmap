@@ -28,7 +28,6 @@ import {
   paneDot,
   paneHref,
   paneLine,
-  prRow,
   reconnectDelay,
   pullFailLabel,
   pullFailReason,
@@ -45,9 +44,11 @@ import {
   rfcSpawnRow,
   row,
   sectionId,
+  sessionCard,
+  stageFigure,
+  stepper,
   spawnLoopControls,
   spawnLoopView,
-  spawnRow,
   statusClass,
   timeAgo,
   visibleSpawns,
@@ -203,8 +204,8 @@ describe("paneLine", () => {
 
     expect(paneLine("💪", "%214", "working")).toContain(link);
     expect(paneLine("📋", "%214", "idle")).toContain(link);
-    expect(prRow({ owner: "o", repo: "r", pr: 1, pane: "%214" })).toContain(link);
-    expect(spawnRow({ pane: "%214", task: "t" })).toContain(link);
+    expect(sessionCard({ owner: "o", repo: "r", pr: 1, pane: "%214" })).toContain(link);
+    expect(sessionCard({ pane: "%214", task: "t" })).toContain(link);
     expect(rfcSpawnRow({ pane: "%214", rfc: "0136-trailmap" })).toContain(link);
   });
 
@@ -507,14 +508,14 @@ describe("reviewerLine before an answer has arrived", () => {
   });
 });
 
-describe("prRow's pane mini-table", () => {
+describe("sessionCard's pane mini-table", () => {
   const pr = { owner: "blazetrailsdev", repo: "trailmap", pr: 47, pane: "%214", paneStatus: "working" };
   const reviewers = reviewersByKey([
     { owner: "blazetrailsdev", repo: "trailmap", pr: 47, agent: "claude", pane_id: "%215", pane_status: "idle" },
   ]);
 
   it("puts the reviewer's pane under the worker's, in that order", () => {
-    const row = prRow(pr, [], Date.now(), reviewers);
+    const row = sessionCard(pr, [], Date.now(), reviewers);
 
     expect(row).toContain('href="/panes/214"');
     expect(row).toContain('href="/panes/215"');
@@ -525,7 +526,7 @@ describe("prRow's pane mini-table", () => {
   // one is an action that no longer exists, the other is information, and who
   // reviewed a PR is most wanted while reading the merge. ringo keeps it too.
   it("keeps the reviewer row on a merged PR, where the merge button goes", () => {
-    const row = prRow({ ...pr, merged: true }, [], Date.now(), reviewers);
+    const row = sessionCard({ ...pr, merged: true }, [], Date.now(), reviewers);
 
     expect(row).toContain('href="/panes/215"');
     expect(row).toContain(">claude</span>");
@@ -533,18 +534,18 @@ describe("prRow's pane mini-table", () => {
   });
 
   it("carries no reviewer line at all until the list has been answered", () => {
-    const unanswered = prRow(pr, [], Date.now(), null);
+    const unanswered = sessionCard(pr, [], Date.now(), null);
 
     expect(unanswered).toContain('href="/panes/214"');
     expect(unanswered).not.toContain("📋");
     expect(unanswered).not.toContain("pcell unassigned");
     // The default is the unanswered one: a caller that knows nothing about
     // reviewers must not make the page claim there are none.
-    expect(prRow(pr, [], Date.now())).toBe(unanswered);
+    expect(sessionCard(pr, [], Date.now())).toBe(unanswered);
   });
 
   it("shows the reviewer even on a PR with no worker pane of its own", () => {
-    const row = prRow({ ...pr, pane: undefined, paneStatus: undefined }, [], Date.now(), reviewers);
+    const row = sessionCard({ ...pr, pane: undefined, paneStatus: undefined }, [], Date.now(), reviewers);
 
     expect(row).not.toContain('href="/panes/214"');
     expect(row).toContain('href="/panes/215"');
@@ -939,24 +940,30 @@ describe("the spawn loop's controls", () => {
 });
 
 describe("the row controls", () => {
-  const pr = { owner: "o", repo: "r", pr: 7, title: "t", nextAction: "ready to merge" };
+  const pr = { owner: "o", repo: "r", pr: 7, title: "t", ciStatus: "success" };
 
-  it("offers merge on an open PR, after its status", () => {
-    const html = prRow(pr, [], NOW);
+  it("offers merge on a Ready to merge PR, in place of the figure", () => {
+    const html = sessionCard(pr, [], NOW);
 
     expect(html).toContain('<button class="act merge" data-action="merge" data-owner="o" data-repo="r" data-pr="7"');
-    expect(html.indexOf("status-ready-to-merge")).toBeLessThan(html.indexOf('data-action="merge"'));
+    expect(html).not.toContain('class="figure"');
+  });
+
+  it("offers merge on no other stage", () => {
+    expect(sessionCard({ ...pr, ciStatus: "failure" }, [], NOW)).not.toContain('data-action="merge"');
+    expect(sessionCard({ ...pr, draft: true }, [], NOW)).not.toContain('data-action="merge"');
+    expect(sessionCard({ ...pr, openFindings: 1 }, [], NOW)).not.toContain('data-action="merge"');
   });
 
   it("drops merge once the PR has merged", () => {
-    expect(prRow({ ...pr, merged: true }, [], NOW)).not.toContain('data-action="merge"');
+    expect(sessionCard({ ...pr, merged: true }, [], NOW)).not.toContain('data-action="merge"');
   });
 
   it("offers dismiss on a failed spawn and on no other", () => {
     const spawn = { story_id: "a-story", branch: "a-story-1f2e", status: "failed", error: "boom" };
 
-    expect(spawnRow(spawn, [], NOW)).toContain('data-action="dismiss" data-branch="a-story-1f2e"');
-    expect(spawnRow({ ...spawn, status: "spawned" }, [], NOW)).not.toContain("data-action");
+    expect(sessionCard(spawn, [], NOW)).toContain('data-action="dismiss" data-branch="a-story-1f2e"');
+    expect(sessionCard({ ...spawn, status: "spawned" }, [], NOW)).not.toContain("data-action");
   });
 
   it("offers the fixer lever only while a red is recorded", () => {
@@ -979,7 +986,7 @@ describe("the row controls", () => {
   });
 });
 
-describe("prRow", () => {
+describe("sessionCard, for a PR", () => {
   const base = {
     owner: "blazetrailsdev",
     repo: "trails",
@@ -991,88 +998,97 @@ describe("prRow", () => {
     paneStatus: "working",
   };
 
-  it("links GitHub and shows the workflow status", () => {
-    const html = prRow(base, [], NOW);
+  it("links GitHub, and shows the stage by its stepper rather than a chip", () => {
+    const html = sessionCard(base, [], NOW);
 
-    expect(html).toContain('href="https://github.com/blazetrailsdev/trails/pull/4021"');
-    expect(html).toContain('<span class="status status-waiting-for-ci">waiting for CI</span>');
+    expect(html).toContain('<a class="prlink" href="https://github.com/blazetrailsdev/trails/pull/4021" target="_blank">#4021</a>');
+    expect(html).toContain('aria-label="Stage: Getting CI green"');
+    expect(html).toContain('class="row session-ci"');
+    expect(html).not.toContain("waiting for CI");
     expect(html).toContain("<code>%214</code>");
   });
 
+  it("shows the note and how long ago it changed", () => {
+    const html = sessionCard({ ...base, lastAction: "pushed <fix>", lastTime: minutesAgo(6) }, [], NOW);
+
+    expect(html).toContain("pushed &lt;fix&gt;");
+    expect(html).toContain('<span class="age">6m ago</span>');
+  });
+
+  it("flags a failed check beside the PR link", () => {
+    const html = sessionCard({ ...base, ciStatus: "failure" }, [], NOW);
+
+    expect(html).toContain('<span class="check-failed">check failed</span>');
+    expect(html.indexOf("prlink")).toBeLessThan(html.indexOf("check-failed"));
+    expect(sessionCard({ ...base, ciStatus: "pending" }, [], NOW)).not.toContain("check-failed");
+  });
+
   it("shows this PR's own CI rollup, next to its title", () => {
-    expect(prRow({ ...base, ciStatus: "failure" }, [], NOW)).toContain("ci-failure");
-    expect(prRow({ ...base, ciStatus: "success" }, [], NOW)).toContain("ci-success");
+    expect(sessionCard({ ...base, ciStatus: "failure" }, [], NOW)).toContain("ci-failure");
+    expect(sessionCard({ ...base, ciStatus: "success" }, [], NOW)).toContain("ci-success");
   });
 
   it("omits the rollup, rather than guessing, when CI has not reported", () => {
-    expect(prRow(base, [], NOW)).not.toContain("ci-icon");
+    expect(sessionCard(base, [], NOW)).not.toContain("ci-icon");
   });
 
   it("puts the rollup between the title and the labels, as ringo does", () => {
-    const html = prRow({ ...base, ciStatus: "success", labels: ["actionview"] }, [], NOW);
+    const html = sessionCard({ ...base, ciStatus: "success", labels: ["actionview"] }, [], NOW);
 
     expect(html.indexOf("</a>")).toBeLessThan(html.indexOf("ci-icon"));
     expect(html.indexOf("ci-icon")).toBeLessThan(html.indexOf('class="label"'));
   });
 
-  it("lets a limit-reached pane override the workflow status", () => {
-    const html = prRow({ ...base, paneStatus: "limit" }, [], NOW);
-
-    expect(html).toContain("limit reached");
-    expect(html).not.toContain("waiting for CI");
+  it("says when a pane has reached its limit or waits for an answer", () => {
+    expect(sessionCard({ ...base, paneStatus: "limit" }, [], NOW)).toContain("limit reached");
+    expect(sessionCard({ ...base, paneStatus: "waiting" }, [], NOW)).toContain("waiting for answer");
+    expect(sessionCard(base, [], NOW)).not.toContain('class="status');
   });
 
-  it("lets a waiting pane override it too, and turns the icon yellow", () => {
-    const html = prRow({ ...base, paneStatus: "waiting" }, [], NOW);
-
-    expect(html).toContain("waiting for answer");
-    expect(html).toContain('class="ricon waiting"');
-  });
-
-  it("uses the merge glyph once merged, and the muted one while draft", () => {
-    expect(prRow({ ...base, merged: true }, [], NOW)).toContain('class="ricon merged"');
-    expect(prRow({ ...base, draft: true }, [], NOW)).toContain('class="ricon draft"');
+  it("is Merged once merged, and Self review while a draft awaits review", () => {
+    expect(sessionCard({ ...base, merged: true }, [], NOW)).toContain('aria-label="Stage: Merged"');
+    expect(sessionCard({ ...base, draft: true }, [], NOW)).toContain('aria-label="Stage: Self review"');
   });
 
   it("prefers merged over draft — a merged PR is not a draft any more", () => {
-    expect(prRow({ ...base, merged: true, draft: true }, [], NOW)).toContain('class="ricon merged"');
+    expect(sessionCard({ ...base, merged: true, draft: true }, [], NOW)).toContain("session-merged");
   });
 
   it("badges the row when the in-flight CI fixer owns this PR", () => {
     const fixers = [{ owner: "blazetrailsdev", repo: "trails", pr: 4021 }];
 
-    expect(prRow(base, fixers, NOW)).toContain("label-fixer");
-    expect(prRow(base, [], NOW)).not.toContain("label-fixer");
+    expect(sessionCard(base, fixers, NOW)).toContain("label-fixer");
+    expect(sessionCard(base, [], NOW)).not.toContain("label-fixer");
   });
 
   it("shows a merge conflict and the PR's labels", () => {
-    const html = prRow({ ...base, mergeConflict: true, labels: ["actionview"] }, [], NOW);
+    const html = sessionCard({ ...base, mergeConflict: true, labels: ["actionview"] }, [], NOW);
 
     expect(html).toContain('<span class="conflict">conflict</span>');
     expect(html).toContain('<span class="label">actionview</span>');
   });
 
   it("omits the counters entirely when there is nothing to count", () => {
-    expect(prRow(base, [], NOW)).not.toContain("cycles");
+    expect(sessionCard(base, [], NOW)).not.toContain("cycles");
   });
 
   it("singularises one comment", () => {
-    expect(prRow({ ...base, commentCount: 1 }, [], NOW)).toContain("1 comment &middot;");
-    expect(prRow({ ...base, commentCount: 3 }, [], NOW)).toContain("3 comments &middot;");
+    expect(sessionCard({ ...base, commentCount: 1 }, [], NOW)).toContain("1 comment &middot;");
+    expect(sessionCard({ ...base, commentCount: 3 }, [], NOW)).toContain("3 comments &middot;");
   });
 
   it("falls back to owner/repo#pr when the PR has no title yet", () => {
-    expect(prRow({ ...base, title: "" }, [], NOW)).toContain("blazetrailsdev/trails#4021");
+    expect(sessionCard({ ...base, title: "" }, [], NOW)).toContain("blazetrailsdev/trails#4021");
   });
 
   it("escapes a PR title rather than rendering it", () => {
-    const html = prRow({ ...base, title: "<img onerror=x>" }, [], NOW);
+    const html = sessionCard({ ...base, title: "<img onerror=x>" }, [], NOW);
 
     expect(html).not.toContain("<img");
   });
 });
 
-describe("spawnRow", () => {
+describe("sessionCard, for a spawn", () => {
   const base = {
     story_id: "move-tracker-state",
     title: "Move tracker state",
@@ -1083,39 +1099,69 @@ describe("spawnRow", () => {
     pane_status: "working",
   };
 
-  it("links the story show page and says it is waiting for a PR", () => {
-    const html = spawnRow(base, [], NOW);
+  it("links the story show page and says it has no PR yet", () => {
+    const html = sessionCard(base, [], NOW);
 
     expect(html).toContain('href="/story/move-tracker-state"');
-    expect(html).toContain("waiting for PR");
-    expect(html).toContain("spawned 6m ago via loop");
+    expect(html).toContain("no PR yet");
+    expect(html).toContain("spawned via loop");
+    expect(html).toContain('<span class="age">6m ago</span>');
+    expect(html).toContain('aria-label="Stage: Drafting"');
   });
 
   it("says only `failed` for a failed spawn, and names the error", () => {
-    const html = spawnRow({ ...base, status: "failed", error: "worktree exists" }, [], NOW);
+    const html = sessionCard({ ...base, status: "failed", error: "worktree exists" }, [], NOW);
 
     expect(html).toContain("status-failed");
     expect(html).toContain("worktree exists");
-    expect(html).toContain('class="ricon failed"');
+    expect(html).toContain('class="row session-drafting spawn failed"');
     // The pane is gone, so its last status is stale and must not be reported.
-    expect(html).not.toContain("waiting for PR");
-    expect(html).not.toContain("status-spawned");
+    expect(sessionCard({ ...base, status: "failed", pane_status: "waiting" }, [], NOW)).not.toContain("waiting for answer");
   });
 
-  it("lets a live pane's limit or waiting state override `waiting for PR`", () => {
-    expect(spawnRow({ ...base, pane_status: "limit" }, [], NOW)).not.toContain("waiting for PR");
-    expect(spawnRow({ ...base, pane_status: "waiting" }, [], NOW)).toContain("waiting for answer");
+  it("says when a live pane has reached its limit or waits for an answer", () => {
+    expect(sessionCard({ ...base, pane_status: "limit" }, [], NOW)).toContain("limit reached");
+    expect(sessionCard({ ...base, pane_status: "waiting" }, [], NOW)).toContain("waiting for answer");
   });
 
   it("badges a spawn the CI fixer owns", () => {
-    expect(spawnRow(base, [{ story_id: "move-tracker-state" }], NOW)).toContain("label-fixer");
+    expect(sessionCard(base, [{ story_id: "move-tracker-state" }], NOW)).toContain("label-fixer");
   });
 
   it("hands a grooming agent to the RFC row instead", () => {
-    const html = spawnRow({ ...base, kind: "rfc-refine", story_id: "0136-trailmap" }, [], NOW);
+    const html = sessionCard({ ...base, kind: "rfc-refine", story_id: "0136-trailmap" }, [], NOW);
 
     expect(html).toContain('href="/rfc/0136-trailmap"');
-    expect(html).not.toContain("waiting for PR");
+    expect(html).not.toContain("no PR yet");
+  });
+});
+
+describe("stepper", () => {
+  it("draws passed and current stages with their icons, and one still to come as a dot", () => {
+    const html = stepper("ringo");
+
+    expect(html).toContain('aria-label="Stage: Reviewer convergence"');
+    expect(html.match(/class="step st-/g)).toHaveLength(3);
+    expect(html.match(/class="step todo"><\/span>/g)).toHaveLength(3);
+    expect(html.match(/ current"/g)).toHaveLength(1);
+    expect(html).toContain('class="step st-ringo current"');
+  });
+
+  it("marks every step on a merged session", () => {
+    expect(stepper("merged")).not.toContain("todo");
+  });
+});
+
+describe("stageFigure", () => {
+  it("counts open findings in review, and cycles once they are converged", () => {
+    expect(stageFigure({ openFindings: 2 }, "ringo")).toBe("2 open findings");
+    expect(stageFigure({ openFindings: 0, reviewCycles: 1 }, "ringo")).toBe("1 review cycle");
+  });
+
+  it("gives the CI rollup while getting CI green, and nothing it cannot measure", () => {
+    expect(stageFigure({ ciStatus: "pending" }, "ci")).toBe("CI running");
+    expect(stageFigure({}, "ci")).toBe("");
+    expect(stageFigure({}, "drafting")).toBe("");
   });
 });
 
@@ -1215,8 +1261,7 @@ describe("repoSectionScaffold", () => {
     const html = repoSectionScaffold(repoSections([], []));
 
     expect(html).toContain('<h2 class="repo-heading">blazetrailsdev/trails ');
-    expect(html).toContain('id="repo-blazetrailsdev-trails-spawnsSection" style="display:none"');
-    expect(html).toContain('id="repo-blazetrailsdev-trails-prs"');
+    expect(html).toContain('<div class="listbox" id="repo-blazetrailsdev-trails-sessions"></div>');
   });
 
   it("escapes a repo name rather than stripping or trusting it", () => {
@@ -1315,12 +1360,12 @@ describe("the queue", () => {
   ];
 
   it("renders under its PR row, with a button that sends that one", () => {
-    const html = prRow(pr, [], NOW, null, queue);
+    const html = sessionCard(pr, [], NOW, null, queue);
     expect(html.match(/class="queued-row"/g)).toHaveLength(1);
     expect(html.indexOf("queued-row")).toBeGreaterThan(html.indexOf("rtitle"));
     expect(html).toContain("CI failure");
     expect(html).toContain('data-action="send-one" data-pr="7"');
-    expect(prRow(pr, [], NOW, null)).not.toContain("queued-row");
+    expect(sessionCard(pr, [], NOW, null)).not.toContain("queued-row");
   });
 
   it("appends only that PR's notifications to the row it is given", () => {
@@ -1593,11 +1638,11 @@ describe("a pending pane cleanup", () => {
   });
 
   it("draws the pill and a cancel control on the PR row", () => {
-    const html = prRow(pr, [], now);
+    const html = sessionCard(pr, [], now);
     expect(html).toContain("closing in 45s");
     expect(html).toContain('data-action="cancel-cleanup" data-pane="%12"');
     expect(cleanupControl({ ...pr, teardownAt: "2026-10-28T11:59:30Z" }, now)).toContain("closing in 0s");
-    expect(prRow({ ...pr, teardownAt: "0001-01-01T00:00:00Z" }, [], now)).not.toContain("cancel-cleanup");
+    expect(sessionCard({ ...pr, teardownAt: "0001-01-01T00:00:00Z" }, [], now)).not.toContain("cancel-cleanup");
   });
 
   it("posts the pane to /cancel-cleanup and reports kept or too late", () => {
