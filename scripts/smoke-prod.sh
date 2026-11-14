@@ -517,7 +517,7 @@ healthy() {
   can _events 200 application/json '{"events":[{"at":"t","verb":"claim","story":"a"}]}'
   can _graphs_parity_data 200 application/json "$parity"
   can _ 200 text/html "${html}trailmap</h1>"
-  can _dashboard 200 text/html "${html}Fleet</h1>"
+  can _dashboard 200 text/html "${html}Dashboard</h1>"
   can _rfcs 200 text/html "${html}RFCs</h1>"
   can _backlog 200 text/html "${html}Backlog</h1>"
   can _graphs_parity 200 text/html "${html}Parity over time</h1>"
