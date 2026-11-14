@@ -291,7 +291,7 @@ tier2() {
   fi
 
   page tier2.page-home "/" "trailmap"
-  page tier2.page-dashboard "/dashboard" "Dashboard"
+  page tier2.page-dashboard "/dashboard" "Dashboard" "" '<h1 class="sr-only">Dashboard</h1>'
   page tier2.page-rfcs "/rfcs" "RFCs"
   page tier2.page-backlog "/backlog" "Backlog"
   page tier2.page-graphs-parity "/graphs/parity" "Parity over time"
@@ -517,7 +517,7 @@ healthy() {
   can _events 200 application/json '{"events":[{"at":"t","verb":"claim","story":"a"}]}'
   can _graphs_parity_data 200 application/json "$parity"
   can _ 200 text/html "${html}trailmap</h1>"
-  can _dashboard 200 text/html "${html}Dashboard</h1>"
+  can _dashboard 200 text/html '<main class="site-main"><h1 class="sr-only">Dashboard</h1>'
   can _rfcs 200 text/html "${html}RFCs</h1>"
   can _backlog 200 text/html "${html}Backlog</h1>"
   can _graphs_parity 200 text/html "${html}Parity over time</h1>"
@@ -587,7 +587,7 @@ TASKS
   expect "a dead listener fails tier 0" 0 1 tier0.up-loopback
 
   healthy
-  can public 200 text/html '<h1>Fleet</h1>'
+  can public 200 text/html '<h1 class="sr-only">Dashboard</h1>'
   expect "a dashboard served without SSO is named" 1 1 tier1.public-vhost-redirects
 
   healthy
