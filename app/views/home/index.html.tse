@@ -6,7 +6,7 @@ ready queue, read and written in one place.</p>
 <div class="box">
   <div class="box-row"><a href="<%= rfcsPath() %>">RFCs</a> — every RFC and its stories.</div>
   <div class="box-row"><a href="<%= backlogPath() %>">Backlog</a> — the ready queue, in rank order.</div>
-  <div class="box-row"><a href="<%= dashboardPath() %>">Fleet</a> — open PRs, panes, spawns and CI, live from ringo.</div>
+  <div class="box-row"><a href="<%= dashboardPath() %>">Dashboard</a> — open PRs, panes, spawns and CI, live from ringo.</div>
 </div>
 
 <h2>Owners</h2>

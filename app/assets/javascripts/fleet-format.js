@@ -860,49 +860,6 @@ export function rfcSpawnRow(s, now = Date.now()) {
   });
 }
 
-/** One pre-PR worker, as a GitHub-issue-style list row. */
-export function spawnRow(s, fixers = [], now = Date.now()) {
-  if (s.kind) return rfcSpawnRow(s, now);
-  const failed = s.status === "failed";
-
-  // A failed spawn says only that. Nothing overrides it: the pane is gone, so
-  // its last status is stale, and "waiting for PR" would be a lie.
-  let label;
-  if (failed) {
-    label = '<span class="status status-failed">failed</span>';
-  } else {
-    label =
-      paneOverridePill(s.pane_status) ||
-      '<span class="status status-spawned">spawned</span> <span class="' +
-        statusClass("waiting for PR") + '">waiting for PR</span>';
-  }
-
-  const url = "/story/" + encodeURIComponent(s.story_id);
-  const meta = ['<a href="' + url + '"><code>' + esc(s.story_id) + "</code></a>"];
-  if (s.branch) meta.push("<code>" + esc(s.branch) + "</code>");
-  if (s.at) meta.push("spawned " + timeAgo(s.at, now) + (s.source ? " via " + esc(s.source) : ""));
-  if (failed && s.error) meta.push('<span style="color:var(--red)">' + esc(s.error) + "</span>");
-
-  return row({
-    icon: "issue",
-    iconCls: failed ? "failed" : s.pane_status === "waiting" ? "waiting" : "",
-    title:
-      '<a class="rtitle" href="' + url + '">' + esc(s.title || s.story_id) + "</a>" +
-      (isFixerStory(fixers, s.story_id) ? " " + FIXER_BADGE : "") + label,
-    meta: meta.join(" &middot; "),
-    aside:
-      failed && s.branch
-        ? control("dismiss", { branch: s.branch }, {
-            cls: "spawn-dismiss",
-            title: "Dismiss this failed spawn",
-            label: "&times;",
-          })
-        : "",
-    panes: paneLine(WORK_EMOJI, s.pane, s.pane_status, s.pane_input),
-    cls: " spawn" + (failed ? " failed" : ""),
-  });
-}
-
 /**
  * Whether a PR's row shows the cancel-cleanup control. Not with no pane, no
  * cleanup — Go's zero time, `0001-01-01T00:00:00Z` — or a deadline more than a
@@ -922,61 +879,6 @@ export function cleanupControl(pr, now = Date.now()) {
     '<span class="status" title="Pane cleanup pending">closing in ' + seconds + "s</span>" +
     control("cancel-cleanup", { pane: pr.pane }, { cls: "act", title: "Keep this pane open", label: "cancel cleanup" })
   );
-}
-
-/** One PR row. */
-export function prRow(pr, fixers = [], now = Date.now(), reviewers = null, queue = []) {
-  const url = "https://github.com/" + pr.owner + "/" + pr.repo + "/pull/" + pr.pr;
-  const labels =
-    (isFixerPR(fixers, pr) ? FIXER_BADGE + " " : "") +
-    (pr.mergeConflict ? '<span class="conflict">conflict</span> ' : "") +
-    (pr.labels || []).map((l) => '<span class="label">' + esc(l) + "</span>").join("");
-  const statusPill =
-    paneOverridePill(pr.paneStatus) ||
-    '<span class="' + statusClass(pr.nextAction) + '">' + esc(pr.nextAction || "") + "</span>";
-
-  const meta = ['<a href="' + url + '" target="_blank">#' + pr.pr + "</a>"];
-  if (pr.branch) meta.push("<code>" + esc(pr.branch) + "</code>");
-  if (pr.commentCount || pr.reviewCycles) {
-    meta.push(
-      (pr.commentCount || 0) + " comment" + (pr.commentCount === 1 ? "" : "s") +
-      " &middot; " + (pr.reviewCycles || 0) + " cycles",
-    );
-  }
-  if (pr.lastAction) meta.push(esc(pr.lastAction));
-  if (pr.lastTime) meta.push(timeAgo(pr.lastTime, now));
-
-  // Mirror GitHub's glyphs: git-merge purple once merged, a muted PR icon for
-  // a draft, yellow while waiting on an answer, green open otherwise.
-  const merged = !!pr.merged;
-  const draft = !merged && !!pr.draft;
-  return queuedUnder(pr, queue, row({
-    icon: merged ? "merge" : "pr",
-    iconCls: merged ? "merged" : draft ? "draft" : pr.paneStatus === "waiting" ? "waiting" : "",
-    title:
-      '<a class="rtitle" href="' + url + '" target="_blank">' +
-      esc(pr.title || pr.owner + "/" + pr.repo + "#" + pr.pr) + "</a>" +
-      ciIcon(pr.ciStatus) + labels,
-    meta: meta.join(" &middot; "),
-    // A merged PR lingers while its worker pane tears down; the merged glyph
-    // says so and the now-pointless button goes.
-    aside:
-      statusPill +
-      cleanupControl(pr, now) +
-      (merged
-        ? ""
-        : control("merge", { owner: pr.owner, repo: pr.repo, pr: pr.pr }, {
-            cls: "act merge",
-            title: "Merge PR",
-            label: "merge",
-          })),
-    // The worker's pane, and under it the reviewer's. The merge BUTTON goes
-    // when the PR is merged, because the action is gone; the reviewer stays,
-    // because it is information -- and who reviewed a PR is most wanted while
-    // reading the merge. ringo renders it unconditionally too
-    // (`dashboard.go:1335`).
-    panes: workerLine(pr) + reviewerLine(pr, reviewers),
-  }));
 }
 
 /**
@@ -1010,6 +912,127 @@ export function sessionStage(row, reviewers = null, reported = null) {
   if (row.draft && !(row.reviewCycles > 0)) return "self";
   if (!row.draft && row.ciStatus === "success") return "ready";
   return "ci";
+}
+
+
+const STEP = (body) => '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' + body + "</svg>";
+const LINE = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+
+/** Each stage's mark: pencil, magnifier, converging arrows, CI loop, flag, merge (RFC 0232). */
+export const STAGE_ICONS = {
+  drafting: STEP('<path ' + LINE + ' d="M10.5 2.5l3 3L6 13H3v-3z"></path>'),
+  self: STEP('<circle ' + LINE + ' cx="7" cy="7" r="4.5"></circle><path ' + LINE + ' d="M10.5 10.5l3.5 3.5"></path>'),
+  ringo: STEP('<path ' + LINE + ' d="M1 8h5M4 5l3 3-3 3M15 8h-5M12 5l-3 3 3 3"></path>'),
+  ci: STEP('<path ' + LINE + ' d="M13 8a5 5 0 1 1-1.5-3.5M13 2v3h-3"></path>'),
+  ready: STEP('<path ' + LINE + ' d="M3.5 14.5V2h9l-2 3 2 3h-9"></path>'),
+  merged: STEP('<circle ' + LINE + ' cx="4" cy="3" r="1.5"></circle><circle ' + LINE + ' cx="4" cy="13" r="1.5"></circle><circle ' + LINE + ' cx="12" cy="9" r="1.5"></circle><path ' + LINE + ' d="M4 4.5v7M4 5c0 3 3 4 6.5 4"></path>'),
+};
+
+/**
+ * The six steps, left to right: a stage already passed is a filled disc with
+ * its icon, the current one the same with a ring, and one still to come a
+ * small dot, so the current stage is the loudest mark in the row.
+ */
+export function stepper(stage) {
+  const at = STAGES.findIndex(([id]) => id === stage);
+  return (
+    '<span class="stepper" role="img" aria-label="Stage: ' + STAGES[at][1] + '">' +
+    STAGES.map(([id], i) =>
+      i > at
+        ? '<span class="step todo"></span>'
+        : '<span class="step st-' + id + (i === at ? " current" : "") + '">' + STAGE_ICONS[id] + "</span>",
+    ).join("") +
+    "</span>"
+  );
+}
+
+/**
+ * The one progress figure for the current stage, or ''. The envelope carries
+ * no LOC, findings total or check counts yet, so the figure says what it does
+ * carry: open findings and review cycles in review, the CI rollup in CI.
+ */
+export function stageFigure(row, stage) {
+  if (stage === "ringo") {
+    if ((row.openFindings || 0) > 0) return plural(row.openFindings, "open finding");
+    return row.reviewCycles ? plural(row.reviewCycles, "review cycle") : "";
+  }
+  if (stage === "ci") return CI_TITLES[row.ciStatus] || "";
+  return "";
+}
+
+/**
+ * One session: a PR row or a spawn row from the envelope, with its stage's
+ * stepper and edge. Stage is not repeated as a chip; a pane in `limit` or
+ * `waiting` still says so, because the stage does not. Merge sits on Ready to
+ * merge rows only, in place of the figure. Grooming agents never open a PR,
+ * so they keep their own row.
+ */
+export function sessionCard(s, fixers = [], now = Date.now(), reviewers = null, queue = []) {
+  if (s.kind) return rfcSpawnRow(s, now);
+  const isPR = s.pr != null;
+  const stage = sessionStage(s, reviewers);
+  const failed = !isPR && s.status === "failed";
+  const prUrl = isPR ? "https://github.com/" + s.owner + "/" + s.repo + "/pull/" + s.pr : "";
+  const titleUrl = isPR ? prUrl : "/story/" + encodeURIComponent(s.story_id);
+  const ext = isPR ? ' target="_blank"' : "";
+  const fixer = isPR ? isFixerPR(fixers, s) : isFixerStory(fixers, s.story_id);
+  const paneStatus = isPR ? s.paneStatus : s.pane_status;
+
+  const lead =
+    (isPR
+      ? '<a class="prlink" href="' + prUrl + '" target="_blank">#' + s.pr + "</a>"
+      : '<span class="muted">no PR yet</span>') +
+    (isPR && s.ciStatus === "failure" ? '<span class="check-failed">check failed</span>' : "");
+  const title =
+    lead +
+    '<a class="rtitle" href="' + titleUrl + '"' + ext + ">" +
+    esc(s.title || (isPR ? s.owner + "/" + s.repo + "#" + s.pr : s.story_id)) + "</a>" +
+    (isPR ? ciIcon(s.ciStatus) : "") +
+    (fixer ? FIXER_BADGE + " " : "") +
+    (s.mergeConflict ? '<span class="conflict">conflict</span> ' : "") +
+    (s.labels || []).map((l) => '<span class="label">' + esc(l) + "</span>").join("") +
+    (failed ? '<span class="status status-failed">failed</span>' : paneOverridePill(paneStatus) || "");
+
+  const meta = [];
+  if (!isPR) meta.push('<a href="' + titleUrl + '"><code>' + esc(s.story_id) + "</code></a>");
+  if (s.branch) meta.push("<code>" + esc(s.branch) + "</code>");
+  if (s.commentCount || s.reviewCycles) {
+    meta.push(
+      (s.commentCount || 0) + " comment" + (s.commentCount === 1 ? "" : "s") +
+      " &middot; " + (s.reviewCycles || 0) + " cycles",
+    );
+  }
+  if (isPR && s.lastAction) meta.push(esc(s.lastAction));
+  if (!isPR && s.source) meta.push("spawned via " + esc(s.source));
+  if (failed && s.error) meta.push('<span style="color:var(--red)">' + esc(s.error) + "</span>");
+
+  const figure =
+    stage === "ready"
+      ? control("merge", { owner: s.owner, repo: s.repo, pr: s.pr }, { cls: "act merge", title: "Merge PR", label: "merge" })
+      : '<span class="figure">' + stageFigure(s, stage) + "</span>";
+  const when = isPR ? s.lastTime : s.at;
+  const aside =
+    '<div class="aside-top">' + figure +
+    (isPR ? cleanupControl(s, now) : "") +
+    (failed && s.branch
+      ? control("dismiss", { branch: s.branch }, { cls: "spawn-dismiss", title: "Dismiss this failed spawn", label: "&times;" })
+      : "") +
+    "</div>" +
+    (when ? '<span class="age">' + timeAgo(when, now) + "</span>" : "");
+
+  const html =
+    '<div class="row session-' + stage + (isPR ? "" : " spawn") + (failed ? " failed" : "") + '">' +
+    stepper(stage) +
+    '<div class="rmain"><div class="titleline">' + title + "</div>" +
+    '<div class="rmeta">' + meta.join(" &middot; ") + "</div>" +
+    // The worker's pane, and under it the reviewer's, which stays on a merged
+    // PR: who reviewed it is most wanted while reading the merge
+    // (ringo, `dashboard.go:1335`).
+    '<div class="panes">' +
+    (isPR ? workerLine(s) + reviewerLine(s, reviewers) : paneLine(WORK_EMOJI, s.pane, s.pane_status, s.pane_input)) +
+    "</div></div>" +
+    '<div class="raside">' + aside + "</div></div>";
+  return isPR ? queuedUnder(s, queue, html) : html;
 }
 
 // ---------------------------------------------------------------------------
@@ -1362,8 +1385,8 @@ export const repoOf = (pr) => (pr.owner ? pr.owner + "/" : "") + (pr.repo || "")
 export const sectionId = (name) => "repo-" + name.replace(/[^a-zA-Z0-9]+/g, "-");
 
 /**
- * The scaffolding for one frame's sections: a heading, a spawns box (hidden
- * until that repo has spawns) and a PR box, per repo.
+ * The scaffolding for one frame's sections: a heading and one surface per
+ * repo, which its spawns and PRs share as rows.
  *
  * Built here rather than in the wiring so it is the LAST piece of markup with
  * no test. It is rebuilt only when the repo set changes, so an ordinary
@@ -1386,9 +1409,7 @@ export function repoSectionScaffold(sections) {
             })
           : "") +
         "</h2>" +
-        '<div class="listbox" id="' + id + '-spawnsSection" style="display:none">' +
-        '<div id="' + id + '-spawns"></div></div>' +
-        '<div class="listbox"><div id="' + id + '-prs"></div></div>'
+        '<div class="listbox" id="' + id + '-sessions"></div>'
       );
     })
     .join("");

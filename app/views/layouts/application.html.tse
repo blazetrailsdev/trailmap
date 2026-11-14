@@ -23,7 +23,7 @@
     <nav class="nav-links">
       <a href="<%= rfcsPath() %>">RFCs</a>
       <a href="<%= backlogPath() %>">Backlog</a>
-      <a href="<%= dashboardPath() %>">Fleet</a>
+      <a href="<%= dashboardPath() %>">Dashboard</a>
       <a href="<%= parityGraphPath() %>">Parity</a>
       <a href="<%= packagesPath() %>">Packages</a>
       <a href="<%= auditsPath() %>">Audits</a>

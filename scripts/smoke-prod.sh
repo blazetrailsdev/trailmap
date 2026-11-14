@@ -291,7 +291,7 @@ tier2() {
   fi
 
   page tier2.page-home "/" "trailmap"
-  page tier2.page-dashboard "/dashboard" "Fleet"
+  page tier2.page-dashboard "/dashboard" "Dashboard"
   page tier2.page-rfcs "/rfcs" "RFCs"
   page tier2.page-backlog "/backlog" "Backlog"
   page tier2.page-graphs-parity "/graphs/parity" "Parity over time"
