@@ -979,6 +979,39 @@ export function prRow(pr, fixers = [], now = Date.now(), reviewers = null, queue
   }));
 }
 
+/**
+ * The six stages a session moves through, in order. `sessionStage` returns
+ * one of these ids; the card's stepper draws them left to right.
+ */
+export const STAGES = [
+  ["drafting", "Drafting"],
+  ["self", "Self review"],
+  ["ringo", "Reviewer convergence"],
+  ["ci", "Getting CI green"],
+  ["ready", "Ready to merge"],
+  ["merged", "Merged"],
+];
+
+/**
+ * Where a session is in its work: RFC 0232's decision list, checked top to
+ * bottom, first match wins, and the last rule matches everything.
+ *
+ * `row` is a PR row (it carries `pr`) or a spawn row (it does not).
+ * `reviewers` is the map `reviewersByKey` builds; an entry for the PR means
+ * a reviewer is assigned. `reported` is the stage the agent reported for its
+ * story, and it refines a spawn with no PR only: every other rule rests on
+ * PR facts, which outrank anything an agent says about itself.
+ */
+export function sessionStage(row, reviewers = null, reported = null) {
+  if (row.merged) return "merged";
+  if (row.pr == null) return reported === "self" ? "self" : "drafting";
+  const assigned = !!(reviewers && reviewers[reviewerKey(row.owner, row.repo, row.pr)]);
+  if (assigned || (row.openFindings || 0) > 0) return "ringo";
+  if (row.draft && !(row.reviewCycles > 0)) return "self";
+  if (!row.draft && row.ciStatus === "success") return "ready";
+  return "ci";
+}
+
 // ---------------------------------------------------------------------------
 // The queue, and the stalled and the stranded
 // ---------------------------------------------------------------------------
