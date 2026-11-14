@@ -1,7 +1,8 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { getFs } from "@blazetrails/ruby-compat";
+import { STYLESHEET } from "../../scripts/class-collisions.ts";
 
-const css = readFileSync(new URL("../../app/assets/stylesheets/application.css", import.meta.url), "utf8");
+const css = await getFs().readFile(STYLESHEET, "utf8");
 
 function block(selector: string): Record<string, string> {
   const at = css.indexOf(selector + " {");
