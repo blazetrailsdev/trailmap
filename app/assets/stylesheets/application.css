@@ -800,8 +800,9 @@ ul { margin: 0 0 10px 20px; }
 .ring-side.turn { background: var(--st-ringo); }
 .ring-line {
   position: absolute; left: 50%; transform: translateX(-50%); max-width: 150px;
-  font-size: 10.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 10.5px; color: var(--ink-2); white-space: nowrap;
 }
+.ring-line b { font-weight: 600; color: var(--ink); }
 .agent-line { bottom: calc(100% + 6px); }
 .reviewer-line { top: calc(100% + 6px); }
 .session-stage:has(.ring) { padding: 16px 0; }
@@ -842,6 +843,7 @@ ul { margin: 0 0 10px 20px; }
 /* An expanded live session's terminal: its worker pane, as /panes/:id draws it, shorter. */
 .terminal-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .detail-log .terminal { height: 420px; min-height: 0; margin: 6px 0 8px; }
+.detail-log .events .log { max-height: 140px; margin-bottom: 8px; }
 .log { max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .log-row { display: grid; grid-template-columns: 44px 56px minmax(0, 1fr); gap: 8px; padding: 5px 10px; font-size: 12.5px; }
 .log-row + .log-row { border-top: 1px solid var(--line); }

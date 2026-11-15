@@ -1,7 +1,8 @@
 require "minitest/mock"
 
 # A stand-in for ringo: `Fleet::Relay.get` answers from `answers`, a map of
-# path to [code, body], and a 502 proxy page for any other path. Every path
+# path to [code, body] (a path without a query answers for any query on
+# it, as a ringo that ignores the query does), and a 502 proxy page for any other path. Every path
 # asked is pushed onto `asked`. `Fleet::Relay.get_bounded` answers the same,
 # with a nil body past its limit, `get_head` with the body's first `limit`
 # bytes, and `get_tail` with the body's last `limit`
@@ -14,7 +15,7 @@ module StandInRingo
     relay = lambda do |url, timeout:|
       path = url.delete_prefix(base)
       asked << path
-      code, body = answers.fetch(path, PROXY_PAGE)
+      code, body = answers.fetch(path) { answers.fetch(path.split("?").first, PROXY_PAGE) }
       ringo_response(code, body)
     end
     bounded = lambda do |url, timeout:, limit:|

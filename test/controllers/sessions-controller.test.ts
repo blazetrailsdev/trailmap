@@ -53,7 +53,7 @@ beforeAll(async () => {
   const http = await getHttpAsync();
   ringo = http.createServer((req, res) => {
     asked.push(req.url ?? "");
-    if (req.url === "/api/sessions") {
+    if (req.url?.split("?")[0] === "/api/sessions") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(ARCHIVES));
     } else if (req.url === "/api/sessions/timeline?owner=blazetrailsdev&repo=trails&pr=9001") {
@@ -184,6 +184,7 @@ describe("SessionsController#show", () => {
     const response = await get("show", { owner: "blazetrailsdev", repo: "trails", pr: "9001" });
 
     expect(response.status).toBe(200);
+    expect(asked).toContain("/api/sessions?owner=blazetrailsdev&repo=trails&pr=9001");
     const body = response.body;
     expect(body).toContain("blazetrailsdev/trails#9001");
     expect(body).toContain("1 archived pane(s)");

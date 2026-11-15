@@ -222,7 +222,9 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
     // A live card shows its pane's terminal, polled through the screen relay;
     // the stand-in says pane %4 has exited, and the card says so too.
     after: `document.querySelector('#s-pr-o-r-8 .composer textarea').value === "" && ` +
-      `document.querySelector('#s-pr-o-r-8 [data-terminal-notice="%4"]').textContent === "This pane has exited."` },
+      `document.querySelector('#s-pr-o-r-8 [data-terminal-notice="%4"]').textContent === "This pane has exited." && ` +
+      // The sent line shows in the events beneath the terminal.
+      `[...document.querySelectorAll('#s-pr-o-r-8 .events .log-you .log-text')].some((t) => t.textContent === "please rebase")` },
   { name: "pause", on: byId("pauseBtn"), post: ["/pause", { paused: true }],
     after: `!b.disabled && b.textContent === "Resume" && b.dataset.paused === "true"` },
   { name: "refresh usage from the scraper pill", on: byId("watchPill"), post: ["/refresh-usage", null],
