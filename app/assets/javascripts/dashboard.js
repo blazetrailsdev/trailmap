@@ -1044,7 +1044,7 @@ function renderSpawnLoop(state) {
   byId("slNext").title = view.nextTitle;
   byId("slSkip").style.display = view.skip ? "" : "none";
   byId("slBundleList").innerHTML = view.bundleList;
-  byId("slBundleList").style.display = view.bundleList ? "" : "none";
+  byId("slBundleFold").style.display = view.bundleList ? "" : "none";
   byId("loopSummary").textContent = view.enabled ? view.next : "paused";
 }
 

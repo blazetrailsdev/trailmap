@@ -52,7 +52,6 @@ import {
   barColor,
   claudeUsage,
   codexUsage,
-  dayMarkers,
   drainStatus,
   formatClockLabel,
   formatResetLabel,
@@ -879,6 +878,9 @@ describe("usageSummary", () => {
     expect(usageSummary({ sessionPercent: 81, weeklyPercent: 62 })).toBe("session 81% · week 62%");
     expect(usageSummary({ sessionPercent: 140, manualPause: true })).toBe("session 100% · paused");
     expect(usageSummary({})).toBe("");
+    expect(usageSummary({ manualPause: true, queueSize: 3 })).toBe("paused · 3 queued");
+    const now = Date.parse("2026-11-15T12:00:00Z");
+    expect(usageSummary({ weeklyPercent: 5, lastCheckTime: "2026-11-15T11:58:00Z" }, now)).toBe("week 5% · updated 2m ago");
   });
 });
 
@@ -1173,12 +1175,8 @@ describe("the usage helpers", () => {
     expect([formatResetLabel("soon", 0, noon), formatClockLabel("", 0, noon)]).toEqual(["soon", "?"]);
   });
 
-  it("measures how much of the week is gone, and ticks each local midnight of it", () => {
+  it("measures how much of the week is gone", () => {
     expect([weeklyResetsAt, noon - HOUR, 0].map((at) => weekElapsedPercent("", at, noon))).toEqual([50, 100, 0]);
-    // Half gone at Tuesday noon: the week began Saturday at midnight.
-    const html = dayMarkers("", weeklyResetsAt, noon);
-    expect(html.match(/<span>(..)<\/span>/g).map((s) => s.slice(6, 8))).toEqual(["Su", "Mo", "Tu", "We", "Th", "Fr"]);
-    expect(html).toContain('style="left:' + (24 / 168) * 100 + '%"><span>Su');
   });
 
   it("takes the reset from the epoch over the label, and counts the hours to it", () => {
@@ -1194,34 +1192,33 @@ describe("the usage helpers", () => {
     expect(paceText(50, -20)).toBe("50% of week elapsed (1d 10h under)");
   });
 
-  it("draws Claude's session, per-model and weekly bars, the pause and the extra balance", () => {
+  it("draws Claude's week, session and per-model rows, each a label, a meter and its percent", () => {
     const html = claudeUsage(
       {
         sessionPercent: 90, sessionResetsAt: new Date(2026, 8, 8, 14, 0).getTime(),
-        weeklyPercent: 70, weeklyResetsAt, paused: true, queueSize: 2,
+        weeklyPercent: 70, weeklyResetsAt,
         weeklyModels: [{ name: "<b>Sonnet", percent: 140 }],
         extraLimit: 50, extraBalance: 1.5, extraSpent: 3, extraEnabled: true,
-        lastCheckTime: new Date(noon - 120000).toISOString(),
       },
       noon,
     );
-    expect(html).toContain("updated 2m ago");
-    expect(html).toContain("Session (2:00 PM)");
-    expect(html).toContain('class="bar-fill red" style="width:90%"');
-    expect(html).toContain("MANUAL PAUSE (2 queued)");
-    expect(html).toContain('&lt;b&gt;Sonnet</div><div class="bar-container"><div class="bar-fill red" style="width:100%"');
-    expect(html).toContain('class="bar-fill red" style="width:70%"></div><div class="bar-marker" style="left:50%">');
+    expect(html.match(/class="usage-row"/g)).toHaveLength(3);
+    expect(html).toContain('<span>Claude · week</span><span class="meter"><i class="bar-fill red" style="width:70%"></i></span><span>70%</span>');
     expect(html).toContain("50% of week elapsed (1d 10h ahead)");
-    expect(html).toContain('$3.00 spent &middot; <span style="color:var(--red)">$1.50 balance</span> &middot; $50 limit');
+    expect(html).toContain('<div class="usage-row" title="resets 2:00 PM"><span>Claude · session</span>');
+    expect(html).toContain("<span>&lt;b&gt;Sonnet · week</span>");
+    expect(html).toContain('style="width:100%"></i></span><span>100%</span>');
+    expect(html).toContain('<div class="usage-note">Extra usage on · $3.00 spent · $1.50 balance · $50 limit</div>');
+    expect(claudeUsage({ extraEnabled: false, extraLimit: 50 }, noon)).not.toContain("Extra usage");
   });
 
   it("drops a window Codex did not report, and says so when it reported neither", () => {
-    const weekly = codexUsage({ sessionPercent: -1, weeklyPercent: 40, weeklyResetsAt, planType: "pro" }, noon);
-    expect(weekly).not.toContain("Session (");
-    expect(weekly).toContain('<span class="usage-meta">pro</span>');
-    expect(weekly).toContain("<span>50% of week elapsed</span>");
-    expect(codexUsage({ sessionPercent: 10, weeklyPercent: 40, planType: "<pro>" }, noon)).toContain("<span> &middot; &lt;pro&gt;</span>");
-    expect(codexUsage({ sessionPercent: -1, weeklyPercent: -1 }, noon)).toContain("No limits reported yet");
+    const weekly = codexUsage({ sessionPercent: -1, weeklyPercent: 40, weeklyResetsAt }, noon);
+    expect(weekly).not.toContain("Codex · session");
+    expect(weekly).toContain("<span>Codex · week</span>");
+    expect(weekly).toContain("50% of week elapsed");
+    expect(codexUsage({ sessionPercent: 10, weeklyPercent: 40 }, noon).match(/class="usage-row"/g)).toHaveLength(2);
+    expect(codexUsage({ sessionPercent: -1, weeklyPercent: -1 }, noon)).toContain("no limits reported yet");
     // A scraper with nothing yet sends no percents: zero, not "NaN%".
     expect(claudeUsage({}, noon)).not.toMatch(/NaN|undefined/);
   });

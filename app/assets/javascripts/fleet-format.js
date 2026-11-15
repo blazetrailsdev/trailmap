@@ -1101,21 +1101,6 @@ export function weekElapsedPercent(weeklyResets, at, now = Date.now()) {
   return Math.min(100, Math.round((Math.max(0, WEEK_HOURS - left) / WEEK_HOURS) * 100));
 }
 
-/** A tick and a two-letter day at each local midnight of the usage week. */
-export function dayMarkers(weeklyResets, at, now = Date.now()) {
-  const left = hoursUntilReset(weeklyResets, at, now);
-  const start = now - (WEEK_HOURS - (left === null ? WEEK_HOURS : left)) * HOUR;
-  const midnight = new Date(start);
-  midnight.setHours(24, 0, 0, 0);
-  const first = (midnight.getTime() - start) / HOUR;
-  let out = "";
-  for (let d = 0; d < 7 && first + d * 24 < WEEK_HOURS; d++) {
-    const day = DAYS[new Date(midnight.getTime() + d * 24 * HOUR).getDay()].slice(0, 2);
-    out += '<span class="day-marker" style="left:' + ((first + d * 24) / WEEK_HOURS) * 100 + '%"><span>' + day + "</span></span>";
-  }
-  return out;
-}
-
 /** "42% of week elapsed (1d 3h ahead)": how far usage is from the week's pace. */
 export function paceText(elapsed, diff) {
   const hours = Math.round((Math.abs(diff) / 100) * WEEK_HOURS);
@@ -1125,103 +1110,63 @@ export function paceText(elapsed, diff) {
 
 const clamp = (percent) => Math.max(0, Math.min(100, Number(percent) || 0));
 
-/** One labelled bar. `week` is the pace marker and day ticks of a weekly one. */
-function usageBar({ label, percent, color, left, right = "", week = "" }) {
+/**
+ * One meter row, as in the mockup: a label, a thin bar and its percent. What
+ * a wider panel used to print beside the bar (when it resets, the week's
+ * pace) is the row's tooltip.
+ */
+function usageRow(label, percent, color, title = "") {
   return (
-    '<div class="usage-col"><div class="usage-col-label">' + label + "</div>" +
-    '<div class="bar-container' + (week ? " week" : "") + '">' +
-    '<div class="bar-fill ' + color + '" style="width:' + clamp(percent) + '%"></div>' + week + "</div>" +
-    '<div class="bar-label"><span>' + left + "</span>" + right + "</div></div>"
+    '<div class="usage-row"' + (title ? ' title="' + esc(title) + '"' : "") + "><span>" + esc(label) + "</span>" +
+    '<span class="meter"><i class="bar-fill ' + color + '" style="width:' + clamp(percent) + '%"></i></span>' +
+    "<span>" + clamp(percent) + "%</span></div>"
   );
 }
 
-const usageHead = (agent, meta) =>
-  '<div class="usage-head"><span class="usage-agent">' + agent + '</span><span class="usage-meta">' + esc(meta) + "</span></div>";
-
-function weeklyBar(u, now, right) {
+function weekRow(agent, u, now) {
   const elapsed = weekElapsedPercent(u.weeklyResets, u.weeklyResetsAt, now);
   const diff = clamp(u.weeklyPercent) - elapsed;
-  return usageBar({
-    label: "Weekly (" + esc(formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now)) + ")",
-    percent: u.weeklyPercent,
-    color: weeklyPaceColor(diff),
-    left: clamp(u.weeklyPercent) + "%",
-    right: right(elapsed, diff),
-    week: '<div class="bar-marker" style="left:' + elapsed + '%"></div>' + dayMarkers(u.weeklyResets, u.weeklyResetsAt, now),
-  });
+  const title = "resets " + formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now) + " · " + paceText(elapsed, diff);
+  return usageRow(agent + " · week", u.weeklyPercent, weeklyPaceColor(diff), title);
 }
 
-function sessionBar(u, now, right) {
-  return usageBar({
-    label: "Session (" + esc(formatClockLabel(u.sessionResets, u.sessionResetsAt, now)) + ")",
-    percent: u.sessionPercent,
-    color: barColor(u.sessionPercent),
-    left: clamp(u.sessionPercent) + "%",
-    right,
-  });
-}
+const sessionRow = (agent, u, now) =>
+  usageRow(agent + " · session", u.sessionPercent, barColor(clamp(u.sessionPercent)), "resets " + formatClockLabel(u.sessionResets, u.sessionResetsAt, now));
 
 /** The Usage panel's one-line summary, which is all a folded panel shows on a phone. */
-export function usageSummary(u) {
+export function usageSummary(u, now = Date.now()) {
   const parts = [];
   if (u.sessionPercent != null) parts.push("session " + clamp(u.sessionPercent) + "%");
   if (u.weeklyPercent != null) parts.push("week " + clamp(u.weeklyPercent) + "%");
-  if (u.manualPause) parts.push("paused");
+  if (u.manualPause) parts.push("paused" + (u.queueSize ? " · " + Number(u.queueSize) + " queued" : ""));
+  if (u.lastCheckTime) parts.push("updated " + timeAgo(u.lastCheckTime, now));
   return parts.join(" · ");
 }
 
-/** The Claude block, from ringo's `/usage-status` (`renderUsage`). */
+/**
+ * Claude's rows, from ringo's `/usage-status` (`renderUsage`): the week, the
+ * session window and each model's week. Extra usage gets a line only while
+ * it is on, since then it is spending.
+ */
 export function claudeUsage(u, now = Date.now()) {
-  const models = (u.weeklyModels || [])
-    .map((m) =>
-      usageBar({
-        label: esc(m.name) + (m.resets ? " (resets " + esc(formatResetLabel(m.resets, m.resetsAt, now)) + ")" : ""),
-        percent: m.percent,
-        color: barColor(clamp(m.percent)),
-        left: clamp(m.percent) + "%",
-      }),
-    )
-    .join("");
   const money = (n) => "$" + (Number(n) || 0).toFixed(2);
-  const balance = Number(u.extraBalance) || 0;
-  const extra =
-    u.extraLimit > 0 || u.extraBalance > 0
-      ? '<div class="usage-extra">Extra usage: ' +
-        (u.extraEnabled ? '<span style="color:var(--green)">ON</span>' : "<span>OFF</span>") +
-        " &middot; " + money(u.extraSpent) + " spent &middot; " +
-        '<span style="color:var(--' + (balance < 2 ? "red" : balance < 5 ? "yellow" : "green") + ')">' +
-        money(balance) + " balance</span> &middot; $" + Number(u.extraLimit) + " limit</div>"
-      : "";
-  return (
-    usageHead("Claude", u.lastCheckTime ? "updated " + timeAgo(u.lastCheckTime, now) : "") +
-    '<div class="usage-cols">' +
-    sessionBar(u, now, u.paused ? '<span style="color:var(--red)">MANUAL PAUSE (' + Number(u.queueSize) + " queued)</span>" : "") +
-    '<div class="usage-col">' + models + "</div></div>" +
-    weeklyBar(u, now, (elapsed, diff) =>
-      '<span style="color:var(--' + (diff > 0 ? "yellow" : "green") + ')">' + paceText(elapsed, diff) + "</span>",
-    ) +
-    extra
+  const models = (u.weeklyModels || []).map((m) =>
+    usageRow(m.name + " · week", m.percent, barColor(clamp(m.percent)), m.resets ? "resets " + formatResetLabel(m.resets, m.resetsAt, now) : ""),
   );
+  const extra = u.extraEnabled
+    ? '<div class="usage-note">Extra usage on · ' + money(u.extraSpent) + " spent · " + money(u.extraBalance) + " balance · $" + (Number(u.extraLimit) || 0) + " limit</div>"
+    : "";
+  return weekRow("Claude", u, now) + sessionRow("Claude", u, now) + models.join("") + extra;
 }
 
 /**
- * The Codex block, from `/codex-usage-status` (`renderCodexUsage`). A percent
- * below zero is a window Codex did not report, and that bar goes; with both
- * gone the block says so, and the plan name moves up to the header.
+ * Codex's rows, from `/codex-usage-status` (`renderCodexUsage`). A percent
+ * below zero is a window Codex did not report, and its row goes; with both
+ * gone one line says so.
  */
 export function codexUsage(u, now = Date.now()) {
-  const hasSession = u.sessionPercent >= 0;
-  const hasWeekly = u.weeklyPercent >= 0;
-  const updated = u.lastUpdated ? "updated " + timeAgo(u.lastUpdated, now) : "";
-  const cols =
-    (hasSession ? sessionBar(u, now, u.planType ? "<span> &middot; " + esc(u.planType) + "</span>" : "") : "") +
-    (hasWeekly ? weeklyBar(u, now, (elapsed) => "<span>" + elapsed + "% of week elapsed</span>") : "");
-  return (
-    usageHead("Codex", !hasSession && u.planType ? [u.planType, updated].filter(Boolean).join(" · ") : updated) +
-    (cols
-      ? '<div class="usage-cols">' + cols + "</div>"
-      : '<div class="usage-col-label">No limits reported yet — Codex only publishes them while a session is running.</div>')
-  );
+  const rows = (u.weeklyPercent >= 0 ? weekRow("Codex", u, now) : "") + (u.sessionPercent >= 0 ? sessionRow("Codex", u, now) : "");
+  return rows || '<div class="usage-note">Codex · no limits reported yet; it publishes them only while a session runs.</div>';
 }
 
 // ---------------------------------------------------------------------------

@@ -44,26 +44,32 @@
     <span class="field-note loop-paused" data-why="pause">paused: the usage queue is holding every prompt</span>
     <span class="field-note loop-paused" data-why="loop">paused: the loop is stopped</span>
   </summary>
-  <div class="card-head">
-    <span class="card-head" id="slControls"></span>
-    <button type="button" class="btn btn-red btn-sm" id="pauseBtn" data-action="pause" data-paused="false" title="Hold every agent's next prompt in the usage queue, or release them" style="display:none;margin-left:auto">Pause</button>
-  </div>
-  <div class="card-row">
-    <label class="field">Live cap <span class="field-note" id="slLiveNow"></span>
+  <!-- As in the mockup: the caps, the interval, the bundle switch and Pause
+       on one row; the loop's own buttons and timing on a quiet line under it;
+       the next bundle's stories folded away. -->
+  <div class="loop-row">
+    <label class="field"><span>Live cap <span class="field-note" id="slLiveNow"></span></span>
       <input id="slLiveCap" class="ctl num" type="number" min="1">
     </label>
-    <label class="field">Queue cap <span class="field-note" id="slOpenNow"></span>
+    <label class="field"><span>Queue cap <span class="field-note" id="slOpenNow"></span></span>
       <input id="slQueueCap" class="ctl num" type="number" min="1">
     </label>
-    <label class="field" title="Minutes between ticks (min 1)">Interval (min)
+    <label class="field" title="Minutes between ticks (min 1)">Every (min)
       <input id="slStagger" class="ctl num" type="number" min="1" step="1">
     </label>
     <label class="field" title="Bundle mode: each tick spawns ONE worker for the whole next-bundle (a PR closing several stories). Off: one worker per single story.">Bundle
-      <input id="slBundle" type="checkbox">
+      <input id="slBundle" class="switch" type="checkbox" role="switch">
     </label>
+    <button type="button" class="btn btn-red btn-sm" id="pauseBtn" data-action="pause" data-paused="false" title="Hold every agent's next prompt in the usage queue, or release them" style="display:none">Pause</button>
+  </div>
+  <div class="loop-line">
+    <span class="loop-controls" id="slControls"></span>
     <span class="field-note" id="slLastSpawn"></span>
   </div>
-  <div id="slBundleList" class="bundle-list" style="display:none"></div>
+  <details class="bundle-fold" id="slBundleFold" style="display:none">
+    <summary class="field-note">Stories in the next bundle</summary>
+    <div id="slBundleList" class="bundle-list"></div>
+  </details>
   <div class="card-head">
     <button class="btn btn-red btn-sm" id="pokeBtn" data-action="poke" data-panes="" title="Send &quot;keep going&quot; to every red (API-error / stuck-retry) agent" style="display:none">poke stalled agents</button>
     <% [ [ "codex", "Codex" ], [ "claude", "Claude" ] ].each do |from, name| %>
