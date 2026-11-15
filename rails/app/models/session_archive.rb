@@ -72,6 +72,7 @@ class SessionArchive
       # Go encodes an empty archive's nil slice as `null`.
       (rows || []).map { |row| from_row(row) }
     end
+    private :listed
 
     # ringo's `/api/sessions/status`: the archive's mode note and its unclaimed
     # pane captures, NO_STATUS when ringo cannot say (unset, down, or older
