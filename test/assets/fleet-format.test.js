@@ -1219,6 +1219,10 @@ describe("the usage helpers", () => {
     expect(weekly).toContain("50% of week elapsed");
     expect(codexUsage({ sessionPercent: 10, weeklyPercent: 40 }, noon).match(/class="usage-row"/g)).toHaveLength(2);
     expect(codexUsage({ sessionPercent: -1, weeklyPercent: -1 }, noon)).toContain("no limits reported yet");
+    // The plan, which the old header printed, is in each row's tooltip, escaped.
+    expect(codexUsage({ sessionPercent: 10, weeklyPercent: -1, planType: "<pro>" }, noon)).toContain(' · &lt;pro&gt; plan"><span>Codex · session</span>');
+    expect(codexUsage({ sessionPercent: -1, weeklyPercent: -1, planType: "plus" }, noon)).toContain("Codex (plus) · no limits reported yet");
+    expect(claudeUsage({ weeklyPercent: 5 }, noon)).not.toContain(" plan");
     // A scraper with nothing yet sends no percents: zero, not "NaN%".
     expect(claudeUsage({}, noon)).not.toMatch(/NaN|undefined/);
   });

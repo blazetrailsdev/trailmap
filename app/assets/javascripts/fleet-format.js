@@ -1123,15 +1123,18 @@ function usageRow(label, percent, color, title = "") {
   );
 }
 
+/** A row's tooltip, after its own facts: the plan, where the agent reports one (Codex does). */
+const withPlan = (title, u) => (u.planType ? title + " · " + u.planType + " plan" : title);
+
 function weekRow(agent, u, now) {
   const elapsed = weekElapsedPercent(u.weeklyResets, u.weeklyResetsAt, now);
   const diff = clamp(u.weeklyPercent) - elapsed;
   const title = "resets " + formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now) + " · " + paceText(elapsed, diff);
-  return usageRow(agent + " · week", u.weeklyPercent, weeklyPaceColor(diff), title);
+  return usageRow(agent + " · week", u.weeklyPercent, weeklyPaceColor(diff), withPlan(title, u));
 }
 
 const sessionRow = (agent, u, now) =>
-  usageRow(agent + " · session", u.sessionPercent, barColor(clamp(u.sessionPercent)), "resets " + formatClockLabel(u.sessionResets, u.sessionResetsAt, now));
+  usageRow(agent + " · session", u.sessionPercent, barColor(clamp(u.sessionPercent)), withPlan("resets " + formatClockLabel(u.sessionResets, u.sessionResetsAt, now), u));
 
 /** The Usage panel's one-line summary, which is all a folded panel shows on a phone. */
 export function usageSummary(u, now = Date.now()) {
@@ -1166,7 +1169,7 @@ export function claudeUsage(u, now = Date.now()) {
  */
 export function codexUsage(u, now = Date.now()) {
   const rows = (u.weeklyPercent >= 0 ? weekRow("Codex", u, now) : "") + (u.sessionPercent >= 0 ? sessionRow("Codex", u, now) : "");
-  return rows || '<div class="usage-note">Codex · no limits reported yet; it publishes them only while a session runs.</div>';
+  return rows || '<div class="usage-note">Codex' + (u.planType ? " (" + esc(u.planType) + ")" : "") + " · no limits reported yet; it publishes them only while a session runs.</div>";
 }
 
 // ---------------------------------------------------------------------------
