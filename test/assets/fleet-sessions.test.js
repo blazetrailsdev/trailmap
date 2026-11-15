@@ -22,6 +22,7 @@ import {
   orderSessions,
   prRef,
   reportedStage,
+  reviewLines,
   reviewRing,
   reviewTurn,
   sessionCard,
@@ -313,6 +314,25 @@ describe("the review loop", () => {
 
     expect(html).toContain('aria-label="Review round 3. Agent: pushed &lt;fix&gt;. Reviewer: reviewing."');
     expect(html).toContain('<span class="ring-round">3</span>');
+  });
+
+  it("writes each line for its column: who acts and a short verb", () => {
+    const at = (paneStatus, reviewCycles, entry) => reviewLines({ ...PR, paneStatus, reviewCycles, lastAction: "Claude review #1 (6 comments)" }, entry);
+
+    expect(at("working", 0, null)).toEqual({ agent: "working", reviewer: "none" });
+    expect(at("working", 2, { pane_id: "%9", pane_status: "idle" })).toEqual({ agent: "fixing", reviewer: "%9 waiting" });
+    expect(at("idle", 1, { pane_id: "%9", pane_status: "working" })).toEqual({ agent: "waiting", reviewer: "%9 reviewing" });
+    expect(at("idle", 1, { pane_id: "%9", review_owed: true })).toEqual({ agent: "waiting", reviewer: "%9 owes review" });
+    expect(at("idle", 1, { review_owed: true })).toEqual({ agent: "waiting", reviewer: "no pane" });
+    expect(at("idle", 1, { pane_id: "%9" })).toEqual({ agent: "idle", reviewer: "%9 waiting" });
+  });
+
+  it("keeps ringo's last action in the tooltip, not the line", () => {
+    const html = reviewRing({ ...PR, paneStatus: "idle", reviewCycles: 1, lastAction: "Claude review #1 (6 comments)" }, { pane_id: "%9", pane_status: "working" });
+
+    expect(html).toContain('title="Review round 1. Agent: Claude review #1 (6 comments). Reviewer: reviewing."');
+    expect(html).toContain('<span class="ring-line agent-line"><b>Agent</b> waiting</span>');
+    expect(html).toContain('<span class="ring-line reviewer-line"><b>Reviewer</b> %9 reviewing</span>');
   });
 
   it("stands in for the icon at Reviewer convergence and nowhere else", () => {
@@ -642,6 +662,22 @@ describe("sessionDetail / sessionGroups, directly", () => {
     expect(html).toContain('<span class="fg2">$ pnpm test</span></pre>');
     expect(html).not.toContain("Session log");
     expect(html).toContain('href="/panes/214">Open pane</a>');
+  });
+
+  it("draws a live session's events beside its terminal, the operator's own lines among them", () => {
+    const key = sessionKey(PR);
+    const log = new Map([[key, [
+      { key, at: "2026-11-15T10:00:00Z", kind: "event", text: "CI failed" },
+      { key, at: "2026-11-15T10:01:00Z", kind: "you", text: "please rebase" },
+    ]]]);
+    const html = sessionDetail(PR, context({ log }), null);
+
+    expect(html).toContain('data-terminal="%214"');
+    expect(html).toContain("<h4>Events</h4>");
+    expect(html).toContain('<div class="log-row log-you"');
+    expect(html).toContain("please rebase");
+    expect(html).toContain("CI failed");
+    expect(html.indexOf("data-terminal")).toBeLessThan(html.indexOf("<h4>Events</h4>"));
   });
 
   it("draws a merged session's detail with its session log, not a terminal", () => {

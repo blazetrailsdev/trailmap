@@ -17,12 +17,18 @@ const CLOSED: SessionArchiveRow = {
 
 let ringo: HttpServer;
 let base = "";
+let sent: { url: string; bytes: number }[] = [];
 
 beforeAll(async () => {
   const http = await getHttpAsync();
   ringo = http.createServer((req, res) => {
+    const url = new URL(req.url ?? "/", "http://ringo");
+    const pr = url.searchParams.get("pr");
+    const rows = [OPEN, CLOSED].filter((row) => pr === null || (row.owner === url.searchParams.get("owner") && row.repo === url.searchParams.get("repo") && row.pr === Number(pr)));
+    const body = url.pathname === "/api/sessions" ? JSON.stringify(rows) : "not json";
+    sent.push({ url: req.url ?? "", bytes: body.length });
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(req.url === "/api/sessions" ? JSON.stringify([OPEN, CLOSED]) : "not json");
+    res.end(body);
   });
   await new Promise<void>((resolve) => ringo.listen(0, "127.0.0.1", () => resolve()));
   const address = ringo.address();
@@ -57,6 +63,13 @@ describe("SessionArchive", () => {
   it("forPr filters to one PR", async () => {
     setEnv("RINGO_BASE", base);
     expect((await SessionArchive.forPr({ owner: "o", repo: "r", pr: 2 })).map((a) => a.pane)).toEqual(["%2"]);
+  });
+
+  it("forPr asks ringo for one PR, and is sent one PR's bytes", async () => {
+    setEnv("RINGO_BASE", base);
+    sent = [];
+    await SessionArchive.forPr({ owner: "o", repo: "r", pr: 2 });
+    expect(sent).toEqual([{ url: "/api/sessions?owner=o&repo=r&pr=2", bytes: JSON.stringify([CLOSED]).length }]);
   });
 
   it("reads Go's zero time as open", () => {

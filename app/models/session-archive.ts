@@ -168,11 +168,16 @@ export class SessionArchive extends Model {
    * then closed ones most recently closed first. The order is ringo's, kept.
    */
   static async all(): Promise<SessionArchive[]> {
+    return this.listed("");
+  }
+
+  /** `/api/sessions` with `query`, which an older ringo ignores. */
+  private static async listed(query: string): Promise<SessionArchive[]> {
     const base = await Setting.ringoBase();
     if (base === null) throw new SessionArchiveUnavailable("no ringo origin is configured", 503);
     let response: Response;
     try {
-      response = await fetch(`${base}/api/sessions`, { signal: AbortSignal.timeout(SESSIONS_TIMEOUT_MS) });
+      response = await fetch(`${base}/api/sessions${query}`, { signal: AbortSignal.timeout(SESSIONS_TIMEOUT_MS) });
     } catch (error) {
       const failure = ringoFailure(error, SESSIONS_TIMEOUT_MS);
       throw new SessionArchiveUnavailable(failure.plain, failure.status);
@@ -227,9 +232,14 @@ export class SessionArchive extends Model {
     }
   }
 
-  /** ringo's `ForPR`: every archive recorded against one PR, one per pane. */
+  /**
+   * ringo's `ForPR`: every archive recorded against one PR, one per pane.
+   * ringo is asked for that PR alone, so it sends one PR's rows; the filter
+   * here stays for a ringo that ignores the query and sends them all.
+   */
   static async forPr({ owner, repo, pr }: { owner: string; repo: string; pr: number }): Promise<SessionArchive[]> {
-    return (await this.all()).filter((a) => a.owner === owner && a.repo === repo && a.pr === pr);
+    const query = new URLSearchParams({ owner, repo, pr: String(pr) });
+    return (await this.listed(`?${query}`)).filter((a) => a.owner === owner && a.repo === repo && a.pr === pr);
   }
 
   get transcripts(): ArchivedTranscriptRow[] {

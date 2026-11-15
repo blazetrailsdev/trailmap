@@ -50,10 +50,15 @@ class SessionArchive
 
     # Every archive in ringo's `List` order, kept.
     def all
+      listed("")
+    end
+
+    # `/api/sessions` with `query`, which an older ringo ignores.
+    def listed(query)
       base = Setting.ringo_base
       raise Unavailable.new("no ringo origin is configured", 503) if base.nil?
       begin
-        response = Fleet::Relay.get("#{base}/api/sessions", timeout: TIMEOUT)
+        response = Fleet::Relay.get("#{base}/api/sessions#{query}", timeout: TIMEOUT)
       rescue Fleet::Relay::Failure => e
         raise Unavailable.new(e.plain, e.status)
       end
@@ -97,8 +102,10 @@ class SessionArchive
     end
 
     # ringo's `ForPR`: every archive recorded against one PR, one per pane.
+    # ringo is asked for that PR alone, so it sends one PR's rows; the filter
+    # here stays for a ringo that ignores the query and sends them all.
     def for_pr(owner:, repo:, pr:)
-      all.select { |a| a.owner == owner && a.repo == repo && a.pr == pr }
+      listed("?#{{ owner: owner, repo: repo, pr: pr }.to_query}").select { |a| a.owner == owner && a.repo == repo && a.pr == pr }
     end
   end
 

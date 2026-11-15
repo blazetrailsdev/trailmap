@@ -53,7 +53,7 @@ beforeAll(async () => {
   const http = await getHttpAsync();
   ringo = http.createServer((req, res) => {
     asked.push(req.url ?? "");
-    if (req.url === "/api/sessions") {
+    if (req.url?.split("?")[0] === "/api/sessions") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(ARCHIVES));
     } else if (req.url === "/api/sessions/timeline?owner=blazetrailsdev&repo=trails&pr=9001") {

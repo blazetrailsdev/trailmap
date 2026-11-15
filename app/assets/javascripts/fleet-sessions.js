@@ -247,7 +247,7 @@ export function reviewTurn(workerStatus, entry) {
   return "agent";
 }
 
-/** What the reviewer is doing, from its entry. */
+/** What the reviewer is doing, from its entry: the long form, for the ring's label. */
 function reviewerDoing(entry) {
   if (!entry) return "no reviewer";
   if (entry.pane_status === "working") return "reviewing";
@@ -256,27 +256,45 @@ function reviewerDoing(entry) {
 }
 
 /**
+ * The two lines around the ring, written for the stepper column: who acts and
+ * a short verb. The agent works ("fixing" once a round has passed), waits on
+ * an owed review, or idles; the reviewer, named by its pane, reviews, owes
+ * one, or waits. ringo's last-action text is too long for it and goes in the
+ * ring's tooltip instead.
+ */
+export function reviewLines(s, entry) {
+  const turn = reviewTurn(s.paneStatus, entry);
+  const agent = s.paneStatus === "working" ? (s.reviewCycles ? "fixing" : "working") : turn === "reviewer" ? "waiting" : "idle";
+  let reviewer = "none";
+  if (entry) {
+    const verb = entry.pane_status === "working" ? "reviewing" : entry.review_owed ? (entry.pane_id ? "owes review" : "no pane") : "waiting";
+    reviewer = (entry.pane_id ? entry.pane_id + " " : "") + verb;
+  }
+  return { agent, reviewer };
+}
+
+/**
  * The review loop at Reviewer convergence: a ring in place of the stage icon,
  * the agent on top and the reviewer below, the one whose turn it is filled,
- * the round in the middle, and a line for what each side is doing. It spins
- * only while a side is working.
+ * the round in the middle, and a short line for what each side is doing. It
+ * spins only while a side is working.
  */
 export function reviewRing(s, entry) {
   const turn = reviewTurn(s.paneStatus, entry);
   const working = s.paneStatus === "working" || !!(entry && entry.pane_status === "working");
-  const agentLine = s.lastAction || (s.paneStatus === "working" ? "working" : "idle");
-  const reviewerLine = reviewerDoing(entry);
+  const agentLong = s.lastAction || (s.paneStatus === "working" ? "working" : "idle");
   const round = s.reviewCycles || 0;
-  const label = "Review round " + round + ". Agent: " + agentLine + ". Reviewer: " + reviewerLine + ".";
+  const label = "Review round " + round + ". Agent: " + agentLong + ". Reviewer: " + reviewerDoing(entry) + ".";
+  const lines = reviewLines(s, entry);
   return (
-    '<span class="ring' + (working ? " spinning" : "") + '" role="img" aria-label="' + esc(label) + '">' +
-    '<span class="ring-line agent-line">' + esc(agentLine) + "</span>" +
+    '<span class="ring' + (working ? " spinning" : "") + '" role="img" aria-label="' + esc(label) + '" title="' + esc(label) + '">' +
+    '<span class="ring-line agent-line"><b>Agent</b> ' + esc(lines.agent) + "</span>" +
     '<span class="ring-body">' +
     '<span class="ring-side top' + (turn === "agent" ? " turn" : "") + '"></span>' +
     '<span class="ring-round">' + round + "</span>" +
     '<span class="ring-side bottom' + (turn === "reviewer" ? " turn" : "") + '"></span>' +
     "</span>" +
-    '<span class="ring-line reviewer-line">' + esc(reviewerLine) + "</span>" +
+    '<span class="ring-line reviewer-line"><b>Reviewer</b> ' + esc(lines.reviewer) + "</span>" +
     "</span>"
   );
 }
@@ -486,7 +504,12 @@ const PR_URL = (s) => "https://github.com/" + s.owner + "/" + s.repo + "/pull/" 
 const storyLink = (story, cls) =>
   '<a class="' + cls + '" href="/story/' + encodeURIComponent(story.id) + '" title="' + esc(story.id) + '">' + esc(story.title || story.id) + "</a>";
 
-/** The expanded card: the session log, a message box, and the controls and facts the collapsed one leaves out. */
+/**
+ * The expanded card: the session log, a message box, and the controls and
+ * facts the collapsed one leaves out. A live session shows its terminal, with
+ * the log beneath it as a short strip of events: stage changes, PR events and
+ * what the operator sent.
+ */
 export function sessionDetail(s, ctx, lead) {
   const key = sessionKey(s);
   const live = !!paneOf(s) && !s.merged && s.status !== "failed";
@@ -515,7 +538,7 @@ export function sessionDetail(s, ctx, lead) {
   const queued = isPR(s) ? queuedUnder(s, ctx.queue, "") : "";
   return (
     '<div class="detail" id="' + key + '-detail">' +
-    '<div class="detail-log">' + (live && href ? terminalHtml(paneOf(s), ctx.screens && ctx.screens.get(paneOf(s))) : "<h4>Session log</h4>" + logHtml(s, ctx)) + composer + "</div>" +
+    '<div class="detail-log">' + (live && href ? terminalHtml(paneOf(s), ctx.screens && ctx.screens.get(paneOf(s))) + '<h4>Events</h4><div class="events">' + logHtml(s, ctx) + "</div>" : "<h4>Session log</h4>" + logHtml(s, ctx)) + composer + "</div>" +
     '<div class="detail-side">' + side + queued + "</div>" +
     "</div>"
   );

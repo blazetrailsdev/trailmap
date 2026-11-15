@@ -1,4 +1,4 @@
-import { htmlSafe } from "@blazetrails/activesupport";
+import { htmlSafe, toI } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.ts";
 import { SessionArchive, SessionArchiveUnavailable } from "../models/session-archive.ts";
 import { Setting } from "../models/setting.ts";
@@ -81,8 +81,7 @@ export function transcriptSteps(tr: Transcript): SessionStep[] {
  * positive and capped at `SESSION_STEPS_LIMIT`, else the default.
  */
 export function stepsLimit(param: unknown): number {
-  const leading = /^\s*([+-]?[0-9]+)/.exec(String(param ?? ""));
-  const n = leading ? parseInt(leading[1]!, 10) : 0;
+  const n = toI(String(param ?? ""));
   return n > 0 ? Math.min(n, SESSION_STEPS_LIMIT) : SESSION_STEPS_LIMIT;
 }
 
