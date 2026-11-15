@@ -23,9 +23,10 @@ beforeAll(async () => {
   const http = await getHttpAsync();
   ringo = http.createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://ringo");
-    const pr = url.searchParams.get("pr");
+    const deaf = url.pathname.startsWith("/deaf/");
+    const pr = deaf ? null : url.searchParams.get("pr");
     const rows = [OPEN, CLOSED].filter((row) => pr === null || (row.owner === url.searchParams.get("owner") && row.repo === url.searchParams.get("repo") && row.pr === Number(pr)));
-    const body = url.pathname === "/api/sessions" ? JSON.stringify(rows) : "not json";
+    const body = url.pathname.replace(/^\/deaf/, "") === "/api/sessions" ? JSON.stringify(rows) : "not json";
     sent.push({ url: req.url ?? "", bytes: body.length });
     res.writeHead(200, { "content-type": "application/json" });
     res.end(body);
@@ -70,6 +71,13 @@ describe("SessionArchive", () => {
     sent = [];
     await SessionArchive.forPr({ owner: "o", repo: "r", pr: 2 });
     expect(sent).toEqual([{ url: "/api/sessions?owner=o&repo=r&pr=2", bytes: JSON.stringify([CLOSED]).length }]);
+  });
+
+  it("forPr filters a ringo that ignores the query to one PR", async () => {
+    setEnv("RINGO_BASE", `${base}/deaf`);
+    sent = [];
+    expect((await SessionArchive.forPr({ owner: "o", repo: "r", pr: 2 })).map((a) => a.pane)).toEqual(["%2"]);
+    expect(sent[0]!.bytes).toBe(JSON.stringify([OPEN, CLOSED]).length);
   });
 
   it("reads Go's zero time as open", () => {

@@ -184,6 +184,7 @@ describe("SessionsController#show", () => {
     const response = await get("show", { owner: "blazetrailsdev", repo: "trails", pr: "9001" });
 
     expect(response.status).toBe(200);
+    expect(asked).toContain("/api/sessions?owner=blazetrailsdev&repo=trails&pr=9001");
     const body = response.body;
     expect(body).toContain("blazetrailsdev/trails#9001");
     expect(body).toContain("1 archived pane(s)");

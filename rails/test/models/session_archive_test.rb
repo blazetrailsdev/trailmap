@@ -46,9 +46,9 @@ class SessionArchiveTest < ActiveSupport::TestCase
 
   test "for_pr asks ringo for one PR, and is sent one PR's bytes" do
     asked = []
-    answers = { "/api/sessions?owner=o&pr=2&repo=r" => [ 200, [ CLOSED ].to_json ] }
+    answers = { "/api/sessions?owner=o&repo=r&pr=2" => [ 200, [ CLOSED ].to_json ] }
     with_ringo(answers, asked: asked) { assert_equal [ "%2" ], SessionArchive.for_pr(owner: "o", repo: "r", pr: 2).map(&:pane) }
-    assert_equal [ "/api/sessions?owner=o&pr=2&repo=r" ], asked
+    assert_equal [ "/api/sessions?owner=o&repo=r&pr=2" ], asked
   end
 
   test "reads Go's zero time as open" do
