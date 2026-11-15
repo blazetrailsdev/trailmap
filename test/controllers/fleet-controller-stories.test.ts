@@ -9,7 +9,7 @@ import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { FleetController } from "../../app/controllers/fleet-controller.ts";
-import { FLEET_STORIES_MAX_HITS } from "../../app/models/concerns/fleet-stories.ts";
+import { FLEET_STORIES_MAX_HITS, FleetStories, storiesForIds, storiesForPrs, storiesMatching } from "../../app/models/concerns/fleet-stories.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
 beforeAll(async () => {
@@ -95,5 +95,16 @@ describe("FleetController#stories, searched", () => {
 
   it("answers nothing for a phrase too short to search", async () => {
     expect((await get({ q: "b" })).json()).toEqual([]);
+  });
+});
+
+describe("FleetStories, directly", () => {
+  it("answers each read without a request", async () => {
+    expect((await storiesForPrs(["trails#9811"]))["trails#9811"]!.map((s) => s.id)).toEqual(["delivery-class-names"]);
+    expect(await storiesForPrs([])).toEqual({});
+    expect((await storiesForIds(["drafting-alone"]))["drafting-alone"]!.stage).toBe("self");
+    expect(await storiesForIds(["nope"])).toEqual({ nope: null });
+    expect((await storiesMatching("class names")).map((s) => s.id)).toEqual(["delivery-class-names"]);
+    expect(FleetStories.storiesMatching).toBe(storiesMatching);
   });
 });

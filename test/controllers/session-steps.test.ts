@@ -6,7 +6,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { getHttpAsync, setEnv, type HttpServer } from "@blazetrails/ruby-compat";
-import { SessionsController, stepsPage, type SessionStep } from "../../app/controllers/sessions-controller.ts";
+import { SessionsController, stepsPage, transcriptSteps, type SessionStep } from "../../app/controllers/sessions-controller.ts";
 import type { SessionArchiveRow } from "../../app/models/session-archive.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -133,5 +133,23 @@ describe("stepsPage", () => {
     expect(stepsPage(all, null, 200)).toHaveLength(200);
     expect(stepsPage(all, 50, 200).map((s) => s.i)).toEqual(Array.from({ length: 50 }, (_, k) => 49 - k));
     expect(stepsPage(all, 0, 200)).toEqual([]);
+  });
+});
+
+describe("transcriptSteps", () => {
+  it("lists each prompt then its steps, leaving thinking out", () => {
+    const steps = transcriptSteps({
+      Turns: [{ Prompt: "go", At: "t0", Steps: [
+        { Kind: "thinking", At: "t1", Text: "hmm", Tool: null },
+        { Kind: "text", At: "t2", Text: "done", Tool: null },
+        { Kind: "tool", At: "t3", Text: "", Tool: { Name: "Bash", Summary: "ls", IsError: true } },
+      ] }],
+    } as never);
+
+    expect(steps).toEqual([
+      { i: 0, at: "t0", kind: "user", text: "go" },
+      { i: 1, at: "t2", kind: "text", text: "done" },
+      { i: 2, at: "t3", kind: "tool", text: "ls", tool: "Bash", error: true },
+    ]);
   });
 });

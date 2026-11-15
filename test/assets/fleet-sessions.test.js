@@ -25,6 +25,8 @@ import {
   reviewRing,
   reviewTurn,
   sessionCard,
+  sessionDetail,
+  sessionGroups,
   sessionKey,
   sessionList,
   sessionNeeds,
@@ -626,5 +628,23 @@ describe("the filter", () => {
     expect(filterFrom("")).toBe("all");
     expect(filterUrl("https://t/dashboard?x=1", "needs")).toBe("/dashboard?x=1&filter=needs");
     expect(filterUrl("https://t/dashboard?filter=needs", "all")).toBe("/dashboard");
+  });
+});
+
+describe("sessionDetail / sessionGroups, directly", () => {
+  it("draws the detail for a session with its log, facts and Open pane link", () => {
+    const html = sessionDetail(PR, context(), null);
+
+    expect(html.startsWith('<div class="detail" id="' + sessionKey(PR) + '-detail">')).toBe(true);
+    expect(html).toContain("Session log");
+    expect(html).toContain('href="/panes/214">Open pane</a>');
+  });
+
+  it("splits each repo's rows into active ones and merged ones, spawns first", () => {
+    const merged = { ...PR, pr: 1, merged: true };
+    const [group] = sessionGroups(repoSections([PR, merged], [SPAWN]));
+
+    expect(group.rows).toEqual([SPAWN, PR]);
+    expect(group.merged).toEqual([merged]);
   });
 });

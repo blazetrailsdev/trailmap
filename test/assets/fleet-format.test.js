@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  CI_TITLES,
+  paneOverridePill,
+  plural,
   CLEAR_FAILED_ID,
   anyFailedSpawn,
   cleanupControl,
@@ -1286,5 +1289,22 @@ describe("a pending pane cleanup", () => {
     expect(late.text).toBe("too late");
     expect(late.title).toBe("no cleanup pending");
     expect(controlOutcome(request, { error: "offline" }, "cancel cleanup").text).toBe("err");
+  });
+});
+
+describe("the helpers the session list shares", () => {
+  it("pluralises a count", () => {
+    expect(plural(1, "cycle")).toBe("1 cycle");
+    expect(plural(2, "cycle")).toBe("2 cycles");
+  });
+
+  it("names each CI state in words", () => {
+    expect(CI_TITLES).toEqual({ success: "CI passing", failure: "CI failing", pending: "CI running" });
+  });
+
+  it("overrides the row with a pane at its limit or waiting, and nothing else", () => {
+    expect(paneOverridePill("limit")).toContain("limit reached");
+    expect(paneOverridePill("waiting")).toContain("waiting for answer");
+    expect(paneOverridePill("working")).toBeNull();
   });
 });

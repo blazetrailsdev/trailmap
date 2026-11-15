@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PALETTE_GROUP_MAX,
+  PALETTE_KINDS,
   highlight,
   matchScore,
   paletteActions,
@@ -163,5 +164,11 @@ describe("scopeChips", () => {
     expect(html).toContain('data-kind="all" aria-pressed="false">All</button>');
     expect(html).toContain('data-kind="pr" aria-pressed="true">Pull requests 2</button>');
     expect(html).toContain('data-repo="blazetrailsdev/trails" aria-pressed="false">trails</button>');
+  });
+});
+
+describe("PALETTE_KINDS", () => {
+  it("orders the groups sessions, stories, PRs, actions", () => {
+    expect(PALETTE_KINDS.map(([kind]) => kind)).toEqual(["session", "story", "pr", "action"]);
   });
 });
