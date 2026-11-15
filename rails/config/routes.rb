@@ -24,6 +24,10 @@ Rails.application.routes.draw do
   post "fleet/control/*path", to: "fleet#control", format: false
   get "fleet/reviewers", to: "fleet#reviewers", as: :fleet_reviewers
   get "fleet/read/:name", to: "fleet#read", as: :fleet_read
+  # RFC 0232's two reads of trailmap's own data: a session's stories, from
+  # the tasks database, and its log, from the session archive.
+  get "fleet/stories", to: "fleet#stories", as: :fleet_stories
+  get "fleet/transcript", to: "sessions#steps", as: :fleet_transcript
 
   get "panes/:id", to: "panes#show", as: :pane
   get "fleet/pane/:id/screen", to: "fleet#screen", as: :fleet_pane_screen

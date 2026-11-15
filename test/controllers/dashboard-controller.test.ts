@@ -39,8 +39,9 @@ describe("DashboardController", () => {
     const body = await index();
 
     expect(body).toContain('id="repoSections"');
-    expect(body).toContain('id="ciFixerPanel"');
-    for (const id of ["queueSection", "askBody", "usageBar", "codexUsageBar", "pokeBtn", "drainCodexStatus", "drainClaudeField"]) {
+    expect(body).not.toContain('id="ciFixerPanel"');
+    expect(body).not.toContain('id="askPanel"');
+    for (const id of ["queueSection", "filterChips", "stageNames", "palette", "paletteInput", "bcastAll", "spawn", "usageBar", "codexUsageBar", "pokeBtn", "drainCodexStatus", "drainClaudeField"]) {
       expect(body).toContain(`id="${id}"`);
     }
     expect(body).toContain('id="mainCIPills"');

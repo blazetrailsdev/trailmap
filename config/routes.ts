@@ -66,6 +66,10 @@ Trails.application!.routes().draw(function () {
   // Usage, relayed questions and drain progress: ringo answers these outside
   // the stream too. `:name` is a key of `FLEET_READS`, not a ringo path.
   this.get("fleet/read/:name", { to: "fleet#read", as: "fleet_read" });
+  // RFC 0232's two reads of trailmap's own data: a session's stories, from
+  // the tasks database, and its log, from the session archive.
+  this.get("fleet/stories", { to: "fleet#stories", as: "fleet_stories" });
+  this.get("fleet/transcript", { to: "sessions#steps", as: "fleet_transcript" });
 
   // One agent's tmux pane, live and read-only: the page, and the relay it
   // polls for ringo's capture of the screen. `:id` is the pane id without its

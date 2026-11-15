@@ -1,0 +1,1 @@
+../../../app/assets/javascripts/fleet-sessions.js

@@ -18,6 +18,7 @@
   --ink-2: #5c4f45;
   --ink-3: #74665a;
   --action: #c7391f;
+  --on-action: #ffffff;
   --soil: #2a1f1a;
   --on-mark: #ffffff;
   --st-drafting: #64748b;
@@ -591,19 +592,6 @@ ul { margin: 0 0 10px 20px; }
    on the shell's tokens. */
 .queued { color: var(--yellow-ink); font-size: 12px; }
 .queued-row { padding: 5px 16px 5px 40px; font-size: 12px; border-top: 1px solid var(--border); background: var(--surface); }
-.ask-panel { border-left: 3px solid var(--purple); }
-.ask-q { padding: 12px 0; border-top: 1px solid var(--border); }
-.ask-q:first-child { border-top: none; padding-top: 0; }
-.ask-who { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
-.ask-text { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
-.ask-hdr { font-size: 11px; text-transform: uppercase; color: var(--purple); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-right: 6px; }
-.ask-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.ask-opt { border: 1px solid var(--border); background: var(--surface); color: var(--fg); border-radius: 6px; padding: 5px 11px; font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
-.ask-opt:hover { border-color: var(--purple); }
-.ask-opt:disabled { opacity: 0.6; cursor: default; }
-.ask-opt .d { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; max-width: 320px; }
-.ask-free { display: flex; gap: 6px; }
-.ask-free input { flex: 1; }
 .usage-bar + .usage-bar { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; }
 .usage-bar.stale { opacity: 0.7; }
 .usage-bar.stale .bar-fill { background: var(--muted); }
@@ -625,25 +613,17 @@ ul { margin: 0 0 10px 20px; }
 .bar-label { display: flex; justify-content: space-between; }
 
 /*
- * The CI-fixer card carries the fixer's yellow left edge -- and a RED one while
- * the spawn loop is paused on a red main, which is the state the whole card
- * exists to make unmissable.
+ * The notices above the header (no ringo origin, a failing trails pin) wear
+ * the old fixer card's yellow edge, red when they block.
  */
 .ci-fixer { border-left: 3px solid var(--yellow); }
 .ci-fixer.paused { border-left-color: var(--red); }
-.fixer-repo { padding: 10px 0; border-top: 1px solid var(--border); }
-.fixer-repo:first-child { border-top: none; padding-top: 0; }
-.fixer-repo:last-child { padding-bottom: 0; }
-.fixer-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12px; }
-.fixer-line + .fixer-line { margin-top: 6px; }
-.fixer-repo-name { font-weight: 600; color: var(--fg); }
 .fixer-checks { color: var(--red); }
-.fixer-meta { color: var(--muted); }
 .fixer-phase { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
 .fixer-phase.red, .fixer-phase.paused { background: var(--red-bg); color: var(--red); }
 .fixer-phase.recovering, .fixer-phase.fixing { background: var(--yellow-bg); color: var(--yellow-ink); }
 
-/* Manual spawn. */
+/* Controls. */
 .ctl {
   background: var(--surface); color: var(--fg);
   border: 1px solid var(--border); border-radius: 6px;
@@ -667,15 +647,6 @@ ul { margin: 0 0 10px 20px; }
 .bundle-list .bl-row { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; color: var(--muted); }
 .bundle-list .bl-row a { color: inherit; text-decoration: none; }
 .bundle-list .bl-loc { opacity: 0.6; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.spawn-form { display: flex; gap: 8px; align-items: stretch; }
-.spawn-form textarea.ctl { flex: 1; resize: vertical; min-height: 32px; max-height: 200px; line-height: 1.5; }
-
-/* Per-repo sections: a heading, an optional spawns box, then the PR box. */
-.repo-heading {
-  font-size: 14px; color: var(--muted); margin: 20px 0 6px;
-  font-weight: 600; text-transform: lowercase; letter-spacing: 0.3px;
-}
-.listbox { border: 1px solid var(--border); border-radius: 6px; background: var(--bg); overflow: hidden; margin-bottom: 8px; }
 .list-empty { padding: 16px; color: var(--muted); }
 
 /* One row -- a PR, a pre-PR spawn, or a grooming agent. */
@@ -698,32 +669,247 @@ ul { margin: 0 0 10px 20px; }
 .raside .aside-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
 /*
- * A session row (RFC 0232): a 3px edge in its stage's colour and a stepper
- * where the status icon was. A passed stage is a filled disc, the current one
- * the same with a ring, and one still to come a small dot.
+ * The session list (RFC 0232). One stage header pinned over the list, and
+ * each repo one surface whose sessions are rows divided by a hairline, each
+ * with a 3px edge in its stage's colour. The header and every row share
+ * `.list-grid`'s columns, so the header's stage names sit over the steppers.
  */
-.row.session-drafting { border-left: 3px solid var(--st-drafting); }
-.row.session-self { border-left: 3px solid var(--st-self); }
-.row.session-ringo { border-left: 3px solid var(--st-ringo); }
-.row.session-ci { border-left: 3px solid var(--st-ci); }
-.row.session-ready { border-left: 3px solid var(--st-ready); }
-.row.session-merged { border-left: 3px solid var(--st-merged); }
-.stepper { flex: none; display: inline-flex; align-items: center; gap: 4px; padding-top: 2px; }
-.step { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; color: var(--on-mark); }
-.step.todo { width: 6px; height: 6px; margin: 0 6px; background: var(--line); }
-.step.current { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink-3); }
+.session-drafting { --c: var(--st-drafting); }
+.session-self { --c: var(--st-self); }
+.session-ringo { --c: var(--st-ringo); }
+.session-ci { --c: var(--st-ci); }
+.session-ready { --c: var(--st-ready); }
+.session-merged { --c: var(--st-merged); }
+.list-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px 132px; gap: 20px; align-items: center; }
+.stage-header.list-grid {
+  position: sticky; top: 49px; z-index: 5; padding: 10px 16px 10px 19px; margin-top: 8px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px;
+  border: 0; background: var(--surface-2); color: var(--ink-2); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; flex: none;
+}
+.chip[aria-pressed="true"] { background: var(--soil); color: var(--bg); }
+.chip:focus-visible, .expand:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+.stepper { display: grid; grid-template-columns: repeat(6, 1fr); align-items: center; justify-items: center; }
+.step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.node {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+  border-radius: 50%; color: var(--on-mark);
+}
+.node.todo { width: 8px; height: 8px; background: var(--line); }
+.node.current { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--c, var(--ink-3)); }
 .st-drafting { background: var(--st-drafting); }
 .st-self { background: var(--st-self); }
 .st-ringo { background: var(--st-ringo); }
 .st-ci { background: var(--st-ci); }
 .st-ready { background: var(--st-ready); }
 .st-merged { background: var(--st-merged); }
-.prlink { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
-.check-failed { color: var(--red); font-size: 12px; font-weight: 600; }
-.raside .figure, .raside .age { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.stage-names .node { width: 20px; height: 20px; }
+.stage-name { font-size: 10.5px; font-weight: 600; color: var(--ink-2); line-height: 1.2; text-align: center; max-width: 58px; overflow-wrap: normal; }
+
+.repo { margin-top: 20px; }
+.repo-head { display: flex; align-items: center; gap: 8px; margin: 0 0 8px 2px; }
+.repo-head h2 { font-size: 14px; font-weight: 600; margin: 0; padding: 0; border: 0; }
+.repo-head .muted { font-size: 12px; font-variant-numeric: tabular-nums; }
+.sessions { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.session { box-shadow: inset 3px 0 0 var(--c, var(--line)); }
+.session + .session, .session + .merged-line, .list-empty + .merged-line { border-top: 1px solid var(--line); }
+.session.fixer { background: color-mix(in srgb, var(--red-bg) 55%, var(--surface)); box-shadow: inset 3px 0 0 var(--action); }
+.session.failed { background: var(--red-bg); }
+.list-grid.session-main { padding: 12px 16px 12px 19px; cursor: pointer; }
+.list-grid.session-main:hover, .session.open > .list-grid.session-main { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.session-info { min-width: 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pr-link {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--green);
+  background: color-mix(in srgb, var(--green) 12%, var(--surface)); padding: 1px 8px; border-radius: 6px;
+}
+.pr-link.none { color: var(--ink-2); background: var(--surface-2); }
+.flag {
+  display: inline-flex; align-items: center; gap: 6px; padding: 1px 9px; border-radius: 999px; white-space: nowrap;
+  font-size: 12px; font-weight: 600; color: var(--ink); background: color-mix(in srgb, var(--yellow) 28%, var(--surface));
+}
+.flag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); }
+.flag.bad { background: color-mix(in srgb, var(--action) 16%, var(--surface)); }
+.flag.bad::before { background: var(--action); }
+.flag.kind { background: var(--action); color: var(--on-action); }
+.flag.kind::before { content: none; }
+.flag.idle { background: var(--surface); border: 1px solid var(--line); }
+.flag.idle::before { background: var(--ink-3); }
+.stories { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 6px 0 4px; min-width: 0; }
+.story { font-size: 13px; color: var(--ink-2); border-bottom: 1px dotted var(--ink-3); overflow-wrap: anywhere; }
+.story:hover { text-decoration: none; color: var(--ink); }
+.story.lead { flex: 0 0 100%; font-size: 14.5px; font-weight: 600; color: var(--ink); border: 0; }
+.session-note { color: var(--ink-2); font-size: 12.5px; overflow-wrap: anywhere; }
+.bad { color: var(--red); }
+.check-failed { white-space: nowrap; }
+.session-stage { min-width: 0; }
+.now-label { display: none; }
+.meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.figure { font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
+.expand {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px; border: 0; border-radius: 6px;
+  background: none; color: var(--ink-3); font: inherit; font-size: 12px; cursor: pointer;
+}
+.expand::after { content: "›"; transition: transform .15s; }
+.expand[aria-expanded="true"]::after { transform: rotate(90deg); }
+
+/* The review loop: a ring in place of the Reviewer convergence icon. */
+.ring { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+.ring-body {
+  position: relative; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+  border-radius: 50%; border: 2px solid var(--st-ringo); color: var(--ink); font-size: 11px; font-weight: 700;
+}
+.ring.spinning .ring-body::after {
+  content: ""; position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid transparent; border-top-color: var(--st-ringo); animation: ring-spin 1.6s linear infinite;
+}
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ring.spinning .ring-body::after { animation: none; } }
+.ring-side {
+  position: absolute; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--st-ringo);
+}
+.ring-side.top { top: -6px; }
+.ring-side.bottom { bottom: -6px; }
+.ring-side.turn { background: var(--st-ringo); }
+.ring-line {
+  position: absolute; left: 50%; transform: translateX(-50%); max-width: 150px;
+  font-size: 10.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.agent-line { bottom: calc(100% + 6px); }
+.reviewer-line { top: calc(100% + 6px); }
+.session-stage:has(.ring) { padding: 16px 0; }
+
+/* A session's question and its stall: strips inside the row they are about. */
+.strip {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 16px 10px 19px;
+  background: color-mix(in srgb, var(--yellow) 12%, var(--surface));
+  border-top: 1px solid color-mix(in srgb, var(--yellow) 35%, var(--line)); box-shadow: inset 3px 0 0 var(--yellow);
+}
+.strip.stall { background: color-mix(in srgb, var(--surface-2) 70%, var(--surface)); border-top-color: var(--line); box-shadow: inset 3px 0 0 var(--ink-3); }
+.ask-text { margin: 0; font-size: 13.5px; font-weight: 500; flex: 1 1 300px; overflow-wrap: anywhere; }
+.ask-hdr { font-size: 11px; text-transform: uppercase; color: var(--ink-3); margin-right: 4px; }
+.ask-who { font-size: 12px; color: var(--ink-3); }
+.ask-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.ask-free { display: flex; gap: 6px; flex: 0 1 320px; min-width: 0; }
+.ask-free input { flex: 1; min-width: 0; }
+.evidence { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; flex: 1 1 260px; font-size: 13px; color: var(--ink-2); }
+.met::before { content: "✓ "; color: var(--st-ready); font-weight: 700; }
+.only-needs .session:not(.needs), .only-needs .merged-line, .only-needs .repo:not(.has-needs), .only-needs .list-empty { display: none; }
+
+/* The Merged line closing a repo's list. */
+.merged-line {
+  display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 9px 16px 9px 19px;
+  font-size: 12.5px; color: var(--ink-2); background: color-mix(in srgb, var(--st-merged) 6%, transparent);
+  box-shadow: inset 3px 0 0 var(--st-merged);
+}
+.merged-line b { color: var(--st-merged); font-weight: 600; }
+.mono { font-family: var(--font-mono); }
+
+/* An expanded session: its log and message box, and the controls beside them. */
+.detail {
+  display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 20px; padding: 16px 16px 18px 19px;
+  border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface-2) 30%, transparent); cursor: auto;
+}
+.detail h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.log-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; margin-bottom: 6px; }
+.log { max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.log-row { display: grid; grid-template-columns: 44px 56px minmax(0, 1fr); gap: 8px; padding: 5px 10px; font-size: 12.5px; }
+.log-row + .log-row { border-top: 1px solid var(--line); }
+.log-empty { grid-column: 1 / -1; }
+.log-at, .log-kind { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.log-text { overflow-wrap: anywhere; white-space: pre-wrap; }
+.log-you .log-kind, .log-user .log-kind { color: var(--action); font-weight: 600; }
+.log-tool .log-text { font-family: var(--font-mono); font-size: 12px; }
+.composer { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; margin-top: 10px; }
+.composer textarea { flex: 1 1 240px; min-width: 0; resize: vertical; }
+.kv { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 6px 10px; font-size: 13px; margin: 0 0 12px; }
+.kv dt { color: var(--ink-3); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.detail-side { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; min-width: 0; }
+.detail-side .panes { align-items: flex-start; }
+
+/* Usage and Loop: details that fold to their summary on a phone. */
+details.fold > summary { list-style: none; cursor: default; }
+details.fold > summary::-webkit-details-marker { display: none; }
+
+/* The ⌘K palette: a modal dialog over the page. */
+.palette {
+  width: min(680px, calc(100vw - 32px)); max-height: 72vh; margin: 96px auto auto; padding: 0;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink);
+  box-shadow: 0 8px 24px rgba(43, 33, 26, .12), 0 32px 80px rgba(43, 33, 26, .24); overflow: hidden;
+}
+.palette[open] { display: flex; flex-direction: column; }
+.palette::backdrop { background: rgba(43, 33, 26, .28); backdrop-filter: blur(6px); }
+.palette-input { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); color: var(--action); }
+.palette-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 17px; color: var(--ink); }
+.palette-cancel { display: none; border: 0; background: none; color: var(--action); font: inherit; font-weight: 600; cursor: pointer; }
+.palette-mode { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 18px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+.palette-mode[hidden], .palette-pane[hidden], .palette-scopes[hidden], .palette-body[hidden] { display: none; }
+.palette-scopes { display: flex; gap: 6px; padding: 10px 18px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.palette-body { overflow-y: auto; padding: 6px 8px 10px; }
+.palette-group { padding: 12px 10px 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.palette-item { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.palette-item.on { background: color-mix(in srgb, var(--action) 12%, var(--surface)); box-shadow: inset 3px 0 0 var(--action); }
+.palette-item .ico { width: 30px; height: 30px; justify-content: center; border-radius: 9px; color: var(--ink); background: color-mix(in srgb, var(--c, var(--ink-3)) 25%, var(--surface)); }
+.palette-text { min-width: 0; }
+.palette-text b { display: block; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-text small { display: block; font-size: 12px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-item mark { background: color-mix(in srgb, var(--yellow) 40%, var(--surface)); color: inherit; border-radius: 3px; }
+.palette-right { font-size: 12px; color: var(--ink-3); }
+.palette-empty { padding: 16px; margin: 0; color: var(--ink-3); }
+.palette-pane { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 18px; }
+.palette-foot { display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-3); background: var(--surface-2); }
+kbd { font-family: var(--font-mono); font-size: 11px; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink-2); }
+.st-c-drafting { --c: var(--st-drafting); }
+.st-c-self { --c: var(--st-self); }
+.st-c-ringo { --c: var(--st-ringo); }
+.st-c-ci { --c: var(--st-ci); }
+.st-c-ready { --c: var(--st-ready); }
+.st-c-merged { --c: var(--st-merged); }
+
+/*
+ * Below 700px: panels and rows edge to edge in one column, the stage header
+ * down to its filter chips, each row naming its stage and figure under its
+ * stepper, strips stacked, and the palette a full-screen sheet.
+ */
 @media (max-width: 700px) {
-  .row[class*="session-"] { flex-wrap: wrap; }
-  .row[class*="session-"] .stepper { width: 100%; }
+  .top-pair { grid-template-columns: minmax(0, 1fr); gap: 8px; margin-inline: -24px; }
+  .top-pair > .card { border-radius: 0; border-inline: 0; margin-bottom: 0; }
+  details.fold > summary { cursor: pointer; }
+  details.fold > summary .field-note::after { content: " ›"; }
+  details.fold[open] > summary { margin-bottom: 8px; }
+  details.fold:not([open]) > summary { margin-bottom: 0; }
+  .top-pair { margin-bottom: 8px; }
+  .stage-header.list-grid { display: block; margin-inline: -24px; padding: 8px 24px; }
+  .stage-header #stageNames { display: none; }
+  .sessions { margin-inline: -24px; border-radius: 0; border-inline: 0; }
+  .list-grid.session-main { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; padding: 14px 14px 14px 17px; }
+  .session-stage { grid-column: 1 / -1; grid-row: 2; }
+  .meta { grid-column: 2; grid-row: 1; align-self: start; }
+  .meta .figure { display: none; }
+  .session-stage:has(.ring) .now-label { margin-top: 0; }
+  .session-stage:has(.ring) { padding-bottom: 0; }
+  .session-stage:has(.ring) .stepper { margin-bottom: 26px; }
+  .now-label { display: block; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--ink); }
+  .now-label::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--c); }
+  .strip { padding: 12px 14px 12px 17px; }
+  .ask-text, .evidence, .ask-free { flex-basis: 100%; }
+  .detail { grid-template-columns: minmax(0, 1fr); padding: 14px; }
+  .log-row { grid-template-columns: 40px 48px minmax(0, 1fr); padding-inline: 8px; }
+  .ring-line { max-width: 40vw; }
+  .palette { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+  .palette-input { padding: 12px 16px; }
+  .palette-input kbd, .palette-foot { display: none; }
+  .palette-cancel { display: inline; }
+}
+@media (max-width: 640px) {
+  .top-pair, .stage-header.list-grid, .sessions { margin-inline: -16px; }
+  .stage-header.list-grid { padding-inline: 16px; }
 }
 
 /*
@@ -731,25 +917,20 @@ ul { margin: 0 0 10px 20px; }
  * fleet-format.js. Small and quiet next to the status pill: they are there for
  * a person watching the page, not the first thing the row says.
  */
-.raside .act {
+.act {
   background: var(--accent); color: var(--on-mark); border: none; border-radius: 6px;
   padding: 2px 8px; font-size: 11px; cursor: pointer;
 }
-.raside .act.merge { background: var(--green); }
-.raside .act:hover { filter: brightness(1.1); }
-.raside .act:disabled { opacity: 0.6; cursor: default; }
+.act:hover { filter: brightness(1.1); }
+.act:disabled { opacity: 0.6; cursor: default; }
 .spawn-dismiss {
   background: var(--surface); color: var(--red); border: 1px solid var(--border);
   border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer;
 }
 .spawn-dismiss:hover { border-color: var(--red); }
 .spawn-dismiss:disabled { opacity: 0.6; cursor: default; }
-.repo-heading .spawn-dismiss { margin-left: 8px; vertical-align: middle; }
 .btn-sm { padding: 2px 8px; font-size: 11px; }
-/* The broadcast box: one line, the message taking what the buttons leave. */
-.bcast { margin-bottom: 0; }
-.bcast input.ctl { flex: 1; min-width: 160px; }
-.bcast .btn.dim { opacity: 0.45; }
+.btn.dim { opacity: 0.45; }
 
 /*
  * The pane mini-table on a row's right edge: the worker's pane and status dot,
@@ -797,15 +978,9 @@ ul { margin: 0 0 10px 20px; }
  * in the status group: those are about a repo's default branch, this is about
  * this pull request's own checks.
  */
-.ci-icon { display: inline-flex; align-items: center; vertical-align: middle; margin-left: 1px; }
-.ci-icon svg { width: 15px; height: 15px; }
-.ci-success svg { fill: var(--green); }
-.ci-failure svg { fill: var(--red); }
-.ci-pending svg { fill: var(--yellow); }
 
 /* Row labels: PR labels, the auto-filed fixer badge, a merge conflict. */
 .label { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 11px; font-weight: 500; background: var(--green-bg); color: var(--green); margin-right: 4px; }
-.label-fixer { background: var(--yellow-bg); color: var(--yellow-ink); font-weight: 600; }
 .conflict { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 11px; font-weight: 500; background: var(--red-bg); color: var(--red); }
 /*
  * Inside a connection pill the label is the pill's own text, not a PR label,

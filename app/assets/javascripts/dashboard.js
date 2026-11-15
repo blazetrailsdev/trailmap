@@ -12,18 +12,16 @@
  */
 import {
   CLEAR_FAILED_ID,
-  activeFixers,
+  DEFAULT_REPO,
+  PALETTE_INPUT,
   anyFailedSpawn,
   broadcastButtons,
-  askCards,
-  askSummary,
   claudeUsage,
+  control,
   codexUsage,
   controlOutcome,
   controlRequest,
   drainStatus,
-  fixerCards,
-  fixerSummary,
   mainCIByRepo,
   mainCITitle,
   pauseButton,
@@ -33,24 +31,48 @@ import {
   reconnectDelay,
   pullFailLabel,
   pullFailTitle,
-  repoSectionScaffold,
   repoSections,
-  repoSectionsKey,
   reviewersPollOutcome,
-  sectionId,
-  sessionCard,
   spawnLoopControls,
   spawnLoopView,
+  stageHeader,
   strandedAgents,
   usageScraperPill,
+  usageSummary,
   visibleSpawns,
 } from "./fleet-format.js";
+import {
+  fixerAnchor,
+  filterChips,
+  filterFrom,
+  filterUrl,
+  frameEvents,
+  frameRows,
+  sessionKey,
+  sessionList,
+  storiesQuery,
+  trackPanes,
+} from "./fleet-sessions.js";
+import {
+  paletteActions,
+  paletteFlat,
+  paletteGroups,
+  paletteHtml,
+  paletteMove,
+  palettePrs,
+  paletteSessions,
+  paletteStories,
+  repoName,
+  scopeChips,
+} from "./fleet-palette.js";
 
 const config = document.getElementById("fleetConfig");
 const socketPath = (config && config.dataset.socketPath) || "/fleet/socket";
 const controlPath = (config && config.dataset.controlPath) || "/fleet/control";
 const reviewersPath = (config && config.dataset.reviewersPath) || "/fleet/reviewers";
 const readPath = (config && config.dataset.readPath) || "/fleet/read";
+const storiesPath = (config && config.dataset.storiesPath) || "/fleet/stories";
+const transcriptPath = (config && config.dataset.transcriptPath) || "/fleet/transcript";
 
 /**
  * Where a control POST goes: trailmap, which forwards it to ringo. `path` is
@@ -75,7 +97,6 @@ function setDot(id, on) {
   byId(id).className = "connected " + (on ? "on" : "off");
 }
 
-let fixers = [];
 /**
  * ringo's reviewer list, keyed `owner/repo#pr`, or NULL for "no answer yet".
  *
@@ -90,50 +111,85 @@ let lastEnvelope = null;
 /** The notifications ringo's usage gate is holding, from the usage poll. */
 let queue = [];
 
-function renderCIFixer(list) {
-  const panel = byId("ciFixerPanel");
-  const shown = activeFixers(list);
-  if (!shown.length) {
-    panel.style.display = "none";
-    return;
+/*
+ * The session list's state beyond the envelope (RFC 0232): what the page has
+ * read from trailmap's own data, and what it has recorded since it loaded.
+ * All of it is the page's, for the page's life; a reload starts it again.
+ */
+const ctx = {
+  now: Date.now(),
+  fixers: [],
+  reviewers: null,
+  queue: [],
+  stories: {},
+  asks: [],
+  panes: new Map(),
+  open: new Set(),
+  log: new Map(),
+  steps: new Map(),
+  since: new Date().toISOString(),
+};
+let filter = filterFrom(window.location.search);
+/** The last frame's rows by key, so the next frame can say what changed. */
+let lastRows = null;
+/** The rows the palette searches: the last frame's sessions, and its PRs. */
+let shownRows = [];
+let shownPrs = [];
+
+/** Record what changed between frames into each session's log. */
+function record(rows) {
+  for (const event of frameEvents(lastRows, rows, ctx)) {
+    if (!ctx.log.has(event.key)) ctx.log.set(event.key, []);
+    ctx.log.get(event.key).push(event);
   }
-  panel.style.display = "";
-  panel.classList.toggle("paused", shown.some((f) => f.paused));
-  byId("ciFixerSummary").textContent = fixerSummary(shown);
-  byId("ciFixerBody").innerHTML = fixerCards(shown);
+  lastRows = frameRows(rows, ctx);
 }
 
-function renderRepoSections(prs, spawns) {
+/*
+ * Every repaint replaces the list's markup, so what the viewer is in the
+ * middle of -- a half-typed answer or message, the field with the cursor, a
+ * log's scroll -- is read off before and put back after.
+ */
+function keepWhileRepainting(host, paint) {
+  const kept = [...host.querySelectorAll("[data-keep]")].map((el) => [el.dataset.keep, el.value]);
+  const focused = document.activeElement && host.contains(document.activeElement) ? document.activeElement.dataset.keep : null;
+  const selection = focused ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+  const scrolls = [...host.querySelectorAll("[data-log]")].map((el) => [el.dataset.log, el.scrollTop, el.scrollHeight - el.scrollTop - el.clientHeight < 4]);
+  paint();
+  for (const [key, value] of kept) {
+    const el = host.querySelector('[data-keep="' + CSS.escape(key) + '"]');
+    if (el) el.value = value;
+  }
+  if (focused) {
+    const el = host.querySelector('[data-keep="' + CSS.escape(focused) + '"]');
+    if (el) {
+      el.focus();
+      if (selection && el.setSelectionRange) el.setSelectionRange(selection[0], selection[1]);
+    }
+  }
+  for (const el of host.querySelectorAll("[data-log]")) {
+    const was = scrolls.find(([key]) => key === el.dataset.log);
+    // A log opens at its newest entry, and stays there while it is followed.
+    el.scrollTop = !was || was[2] ? el.scrollHeight : was[1];
+  }
+}
+
+function renderSessions(prs, spawns) {
+  ctx.now = Date.now();
   const host = byId("repoSections");
   const sections = repoSections(prs, spawns);
-
-  // Rebuild the scaffolding only when the repo SET changes, so an ordinary
-  // refresh does not blow away scroll position or anything open inside it.
-  const wanted = repoSectionsKey(sections);
-  if (host.dataset.repos !== wanted) {
-    host.innerHTML = repoSectionScaffold(sections);
-    host.dataset.repos = wanted;
-  }
-
-  sections.forEach((section) => {
-    const id = sectionId(section.name);
-    const now = Date.now();
-    byId(id + "-sessions").innerHTML =
-      section.spawns.map((s) => sessionCard(s, fixers, now, reviewers, queue)).join("") +
-      (section.prs.length
-        ? section.prs.map((pr) => sessionCard(pr, fixers, now, reviewers, queue)).join("")
-        : '<div class="list-empty">No open PRs.</div>');
+  const clearFailed = control("clear-failed", {}, {
+    cls: "spawn-dismiss", id: CLEAR_FAILED_ID, hidden: !anyFailedSpawn(spawns), title: "Dismiss all failed spawns", label: "clear failed",
   });
-
-  // The heading button outlives the rows (the scaffold is rebuilt only when
-  // the repo set changes), so a click's disabled state would outlive them too:
-  // hiding it is also what makes it usable for the next failure.
-  const clearFailed = byId(CLEAR_FAILED_ID);
-  if (clearFailed) {
-    const failed = anyFailedSpawn(spawns);
-    clearFailed.style.display = failed ? "" : "none";
-    if (!failed) clearFailed.disabled = false;
-  }
+  const list = sessionList(sections, ctx, { [DEFAULT_REPO]: clearFailed });
+  shownRows = list.rows;
+  shownPrs = prs;
+  keepWhileRepainting(host, () => {
+    host.innerHTML = list.html;
+  });
+  host.classList.toggle("only-needs", filter === "needs");
+  byId("filterChips").innerHTML = filterChips(list.active, list.needs, filter);
+  return list.rows;
 }
 
 function updateMainCI(failures) {
@@ -143,11 +199,14 @@ function updateMainCI(failures) {
     const pill = document.createElement("span");
     pill.className = "pill";
     pill.title = mainCITitle(group);
-    // Click opens the first failing check's run page, when we have a URL.
+    // A click goes to the repo's CI fixer row when there is one, else
+    // opens the first failing check's run page, when we have a URL.
     const url = group.items.map((f) => f.url).find(Boolean);
-    if (url) {
+    const fixerRow = document.querySelector('[data-fixer="' + fixerAnchor(group.repo.includes("/") ? group.repo : "") + '"]') ||
+      [...document.querySelectorAll("[data-fixer]")].find((el) => el.dataset.fixer.endsWith("-" + group.repo.replace(/[^a-zA-Z0-9_-]+/g, "-")));
+    if (fixerRow || url) {
       pill.style.cursor = "pointer";
-      pill.onclick = () => window.open(url, "_blank");
+      pill.onclick = () => (fixerRow ? fixerRow.scrollIntoView({ block: "center" }) : window.open(url, "_blank"));
     }
     pill.innerHTML =
       '<span class="connected on" style="background:var(--red)"></span>' +
@@ -212,10 +271,13 @@ function onFrame(event) {
 
 function paint(envelope) {
   const prs = envelope.prs || [];
+  const spawns = visibleSpawns(prs, envelope.spawns || []);
 
-  fixers = envelope.fixers || [];
-  renderCIFixer(fixers);
-  renderRepoSections(prs, visibleSpawns(prs, envelope.spawns || []));
+  ctx.fixers = envelope.fixers || [];
+  ctx.reviewers = reviewers;
+  ctx.panes = trackPanes(ctx.panes, prs, spawns, Date.now());
+  const rows = renderSessions(prs, spawns);
+  record(rows);
 
   // A button that is mid-request keeps what it says until it is reset.
   const poke = pokeButton(redPanes(prs, envelope.spawns, reviewers));
@@ -335,16 +397,43 @@ async function pollReviewers() {
 let nextReviewer = "";
 let audiences = {};
 
-pollReviewers();
-setInterval(pollReviewers, REVIEWERS_POLL_MS);
+/*
+ * Each session's bundle stories, and a spawn's reported stage, from the tasks
+ * database: one request on the reviewer poll's cadence for every PR and spawn
+ * in the last frame. A failed read keeps the last answer; a story attributed
+ * after its PR opened shows on the next poll.
+ */
+let storiesInFlight = false;
 
-// Enter sends to everyone; with Ctrl or Cmd, to the CI-red audience.
-byId("bcastMsg").addEventListener("keydown", (event) => {
-  // Not while an IME is composing: that Enter confirms the composition.
-  if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
-  event.preventDefault();
-  byId(event.metaKey || event.ctrlKey ? "bcastCIRed" : "bcastAll").click();
-});
+async function pollStories() {
+  if (storiesInFlight || !lastEnvelope) return;
+  const query = storiesQuery(lastEnvelope.prs || [], lastEnvelope.spawns || []);
+  if (!query) return;
+  storiesInFlight = true;
+  try {
+    const response = await fetch(storiesPath + "?" + query, { credentials: "same-origin", signal: AbortSignal.timeout(REVIEWERS_POLL_MS) });
+    if (response.ok) {
+      ctx.stories = await response.json();
+      paint(lastEnvelope);
+    }
+  } catch {
+    // The last answer stands.
+  } finally {
+    storiesInFlight = false;
+  }
+}
+
+pollReviewers();
+setInterval(() => {
+  pollReviewers();
+  pollStories();
+}, REVIEWERS_POLL_MS);
+// The first frame names the PRs to ask about; ask as soon as it has.
+const firstStories = setInterval(() => {
+  if (!lastEnvelope) return;
+  clearInterval(firstStories);
+  pollStories();
+}, 250);
 
 // ---------------------------------------------------------------------------
 // Usage and relayed questions -- polled, as ringo's own page fetches them.
@@ -389,7 +478,6 @@ poll("broadcast-targets", REVIEWERS_POLL_MS, (counts) => {
 });
 
 function showUsage(id, html, stale) {
-  byId("usageGroup").style.display = "";
   const block = byId(id);
   block.style.display = "";
   block.classList.toggle("stale", stale);
@@ -406,6 +494,7 @@ const usageStale = (id) => () => byId(id).classList.add("stale");
 
 poll("usage", 60_000, (u) => {
   showUsage("usageBar", claudeUsage(u), !!u.stale);
+  byId("usageSummary").textContent = usageSummary(u);
   const pause = pauseButton(u);
   byId("pauseBtn").style.display = "";
   byId("pauseBtn").textContent = pause.text;
@@ -425,20 +514,23 @@ poll("usage", 60_000, (u) => {
 
 poll("codex-usage", 60_000, (u) => showUsage("codexUsageBar", codexUsage(u), !!u.stale), usageStale("codexUsageBar"));
 
-// Redrawn only when the questions CHANGE: a repaint erases a half-typed answer.
+// Each question is drawn in its session's row, so a change repaints the list.
 let asksShown = "";
 poll("asks", 5_000, (answer) => {
   const pending = answer.pending || [];
-  byId("askPanel").style.display = pending.length ? "" : "none";
   if (asksShown === JSON.stringify(pending)) return;
   asksShown = JSON.stringify(pending);
-  byId("askSummary").textContent = askSummary(pending);
-  byId("askBody").innerHTML = askCards(pending);
+  ctx.asks = pending;
+  if (lastEnvelope) paint(lastEnvelope);
 });
 
-// Enter in a free-text answer is its Send button.
+// Enter in a free-text answer is its Send button; ⌘↵ in a message box is its.
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && event.target instanceof Element && event.target.matches(".ask-free input")) {
+  if (!(event.target instanceof Element) || event.isComposing) return;
+  if (event.key === "Enter" && event.target.matches(".ask-free input")) {
+    event.target.nextElementSibling.click();
+  } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && event.target.matches(".composer textarea")) {
+    event.preventDefault();
     event.target.nextElementSibling.click();
   }
 });
@@ -486,7 +578,7 @@ async function followDrain(request, result) {
 /** POST one control to ringo: `{ ok, text }`, or `{ error }` if nothing answered. */
 async function send(request) {
   try {
-    const response = await fetch(ringoUrl(request.path), {
+    const response = await fetch(request.url || ringoUrl(request.path), {
       method: "POST",
       credentials: "same-origin",
       headers: {
@@ -505,13 +597,15 @@ async function send(request) {
 document.addEventListener("click", async (event) => {
   const button = event.target instanceof Element ? event.target.closest("button[data-action]") : null;
   if (!button || button.disabled) return;
-  // A free-text answer is whatever is in the input beside its button.
-  const data = button.dataset.free ? { ...button.dataset, answer: button.previousElementSibling.value } : button.dataset;
+  // A free-text answer is whatever is in the input beside its button, and a
+  // message is whatever is in the box its button names.
+  let data = button.dataset.free ? { ...button.dataset, answer: button.previousElementSibling.value } : button.dataset;
+  if (button.dataset.source) data = { ...button.dataset, text: byId(button.dataset.source).value };
   const request = controlRequest(button.dataset.action, data, {
     nextReviewer,
     audiences,
-    message: byId("bcastMsg").value,
-    task: byId("task").value,
+    message: byId(PALETTE_INPUT).value,
+    task: byId(PALETTE_INPUT).value,
     repoDir: byId("repo").value,
   });
   if (!request) return;
@@ -552,7 +646,14 @@ document.addEventListener("click", async (event) => {
   if (outcome.note !== undefined) byId("bcastNote").textContent = outcome.note;
   if (outcome.say !== undefined) byId(request.says).textContent = outcome.say;
   if (outcome.clear) byId(outcome.clear).value = "";
-  if (outcome.clearMessage) byId("bcastMsg").value = "";
+  if (outcome.clearMessage) byId(PALETTE_INPUT).value = "";
+  if (outcome.sent) {
+    // What this page typed into a session goes in that session's log.
+    const key = outcome.sent.key || "";
+    if (!ctx.log.has(key)) ctx.log.set(key, []);
+    ctx.log.get(key).push({ key, at: new Date().toISOString(), kind: "you", text: outcome.sent.text });
+    if (lastEnvelope) paint(lastEnvelope);
+  }
   if (outcome.resetAfterMs) {
     setTimeout(() => {
       button.disabled = false;
@@ -560,6 +661,290 @@ document.addEventListener("click", async (event) => {
     }, outcome.resetAfterMs);
   }
 });
+
+// ---------------------------------------------------------------------------
+// The session list's own controls: expand, filter, a log's earlier steps.
+// ---------------------------------------------------------------------------
+
+/** A merged session's transcript, the first page or the one before `before`. */
+async function loadSteps(row, before = null) {
+  const key = sessionKey(row);
+  const params = new URLSearchParams({ owner: row.owner, repo: row.repo, pr: String(row.pr) });
+  if (before !== null) params.set("before", String(before));
+  const was = ctx.steps.get(key);
+  try {
+    const response = await fetch(transcriptPath + "?" + params, { credentials: "same-origin", signal: AbortSignal.timeout(REVIEWERS_POLL_MS) });
+    if (!response.ok) throw new Error((await response.text()).trim() || response.statusText);
+    const page = await response.json();
+    ctx.steps.set(key, { archives: page.archives, steps: [...page.steps, ...(was && before !== null ? was.steps : [])] });
+  } catch (error) {
+    ctx.steps.set(key, { archives: 0, steps: was ? was.steps : [], error: "transcript: " + (error instanceof Error ? error.message : String(error)) });
+  }
+  if (lastEnvelope) paint(lastEnvelope);
+}
+
+function toggleSession(key) {
+  if (ctx.open.has(key)) ctx.open.delete(key);
+  else ctx.open.add(key);
+  // A merged session's archive is complete; a live one's is not written yet
+  // (RFC 0232 open question 2), so only a merged one reads its transcript.
+  const row = shownRows.find((s) => sessionKey(s) === key);
+  if (ctx.open.has(key) && row && row.merged && row.pr != null && !ctx.steps.has(key)) loadSteps(row);
+  if (lastEnvelope) paint(lastEnvelope);
+}
+
+function setFilter(next) {
+  filter = next;
+  window.history.replaceState(null, "", filterUrl(window.location.href, filter));
+  if (lastEnvelope) paint(lastEnvelope);
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) return;
+  const ui = target.closest("[data-ui]");
+  if (!ui) return;
+  switch (ui.dataset.ui) {
+    case "expand":
+      event.stopPropagation();
+      toggleSession(ui.dataset.key);
+      break;
+    // The expand button is the control; a click anywhere else on the row is a
+    // pointer shortcut to it, so no interactive element sits inside another.
+    case "row":
+      if (!target.closest("a, button, input, textarea, select")) toggleSession(ui.dataset.key);
+      break;
+    case "filter":
+      setFilter(ui.dataset.filter);
+      break;
+    case "log-earlier": {
+      const row = shownRows.find((s) => sessionKey(s) === ui.dataset.key);
+      if (row) loadSteps(row, Number(ui.dataset.before));
+      break;
+    }
+    default:
+      break;
+  }
+});
+
+// A log scrolled to its top loads the steps before it.
+document.addEventListener(
+  "scroll",
+  (event) => {
+    const log = event.target instanceof Element && event.target.matches("[data-log]") ? event.target : null;
+    if (!log || log.scrollTop > 0) return;
+    const more = log.parentElement.querySelector('[data-ui="log-earlier"]');
+    if (more && !more.disabled) {
+      more.disabled = true;
+      more.click();
+    }
+  },
+  true,
+);
+
+// ---------------------------------------------------------------------------
+// The ⌘K palette
+// ---------------------------------------------------------------------------
+
+const palette = byId("palette");
+const paletteInput = byId(PALETTE_INPUT);
+const PALETTE_LABELS = {
+  search: "Search sessions, stories and PRs",
+  broadcast: "Message to broadcast to the agents",
+  spawn: "Describe the task for a new session",
+  message: "Message to type into the session's pane",
+};
+let paletteMode = "search";
+let paletteScope = { kind: "all", repo: "" };
+let paletteSelected = 0;
+let paletteStoryHits = [];
+let paletteQuery = 0;
+let paletteShown = [];
+
+function paletteResults() {
+  const query = paletteInput.value;
+  const sessions = paletteSessions(shownRows, ctx, query);
+  return [...sessions, ...paletteStories(paletteStoryHits), ...palettePrs(shownPrs, ctx, query), ...paletteActions(query, sessions[0], audiences)];
+}
+
+function renderPalette() {
+  const searching = paletteMode === "search";
+  byId("paletteResults").hidden = !searching;
+  byId("paletteScopes").hidden = !searching;
+  byId("paletteMode").hidden = searching;
+  paletteInput.setAttribute("aria-label", PALETTE_LABELS[paletteMode]);
+  paletteInput.placeholder = PALETTE_LABELS[paletteMode];
+  for (const pane of palette.querySelectorAll("[data-pane-mode]")) pane.hidden = pane.dataset.paneMode !== paletteMode;
+  if (!searching) return;
+  const results = paletteResults();
+  const repos = [...new Set(shownRows.filter((s) => !s.kind).map(repoName))];
+  byId("paletteScopes").innerHTML = scopeChips(results, paletteScope, repos);
+  const groups = paletteGroups(results, paletteScope);
+  paletteShown = paletteFlat(groups);
+  paletteSelected = paletteMove(paletteSelected, paletteShown.length, "");
+  byId("paletteResults").innerHTML = paletteHtml(groups, paletteSelected, paletteInput.value);
+  paletteInput.setAttribute("aria-activedescendant", paletteShown.length ? "palette-opt-" + paletteSelected : "");
+  const on = byId("palette-opt-" + paletteSelected);
+  if (on) on.scrollIntoView({ block: "nearest" });
+}
+
+/** Open the palette in a mode: search, or one of the actions that replaced the forms. */
+function openPalette(mode, extra = {}) {
+  paletteMode = mode;
+  if (mode === "message") {
+    byId("messageSend").dataset.pane = extra.pane;
+    byId("messageSend").dataset.key = extra.key;
+    byId("paletteModeLabel").textContent = "Message " + extra.title;
+    byId("messageNote").textContent = "";
+  } else if (mode === "broadcast") {
+    byId("paletteModeLabel").textContent = "Broadcast";
+  } else if (mode === "spawn") {
+    byId("paletteModeLabel").textContent = "Spawn a session";
+  }
+  if (!palette.open) palette.showModal();
+  renderPalette();
+  paletteInput.focus();
+}
+
+function closePalette() {
+  if (palette.open) palette.close();
+}
+
+/** Do what a result says: open it, or switch to its action. */
+function pick(result, withMeta) {
+  if (!result) return;
+  if (result.kind === "session") {
+    if (withMeta && result.pane) {
+      paletteInput.value = "";
+      return openPalette("message", result);
+    }
+    closePalette();
+    if (!ctx.open.has(result.key)) toggleSession(result.key);
+    const el = byId(result.key);
+    if (el) el.scrollIntoView({ block: "center" });
+  } else if (result.kind === "action") {
+    if (result.action === "message") {
+      paletteInput.value = "";
+      return openPalette("message", result);
+    }
+    if (result.action === "spawn") return openPalette("spawn");
+    if (result.action === "broadcast") {
+      openPalette("broadcast");
+      if (result.target === "ci-red") byId("bcastCIRed").focus();
+    }
+  } else if (result.href) {
+    closePalette();
+    if (result.kind === "pr") window.open(result.href, "_blank");
+    else window.location.href = result.href;
+  }
+}
+
+/** Stories come from the server: asked for a beat after the typing stops, and only the last answer counts. */
+let storySearch = 0;
+paletteInput.addEventListener("input", () => {
+  if (paletteMode !== "search") return;
+  paletteSelected = 0;
+  renderPalette();
+  clearTimeout(storySearch);
+  const asked = ++paletteQuery;
+  const query = paletteInput.value.trim();
+  if (query.length < 2) {
+    paletteStoryHits = [];
+    return renderPalette();
+  }
+  storySearch = setTimeout(async () => {
+    try {
+      const response = await fetch(storiesPath + "?" + new URLSearchParams({ q: query }), { credentials: "same-origin", signal: AbortSignal.timeout(10_000) });
+      if (!response.ok || asked !== paletteQuery) return;
+      paletteStoryHits = await response.json();
+      renderPalette();
+    } catch {
+      // The browser-side results stand alone.
+    }
+  }, 150);
+});
+
+paletteInput.addEventListener("keydown", (event) => {
+  if (event.isComposing) return;
+  if (paletteMode === "search" && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+    event.preventDefault();
+    paletteSelected = paletteMove(paletteSelected, paletteShown.length, event.key);
+    renderPalette();
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    if (paletteMode === "search") pick(paletteShown[paletteSelected], event.metaKey || event.ctrlKey);
+    // Enter sends to everyone; with Ctrl or Cmd, to the CI-red audience.
+    else if (paletteMode === "broadcast") byId(event.metaKey || event.ctrlKey ? "bcastCIRed" : "bcastAll").click();
+    else if (paletteMode === "spawn") byId("spawn").click();
+    else if (paletteMode === "message") byId("messageSend").click();
+  }
+});
+
+palette.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  // A click on the backdrop is a click on the dialog itself.
+  if (target === palette) return closePalette();
+  const ui = target && target.closest("[data-ui]");
+  if (!ui) return;
+  if (ui.dataset.ui === "palette-pick") pick(paletteShown[Number(ui.dataset.index)], event.metaKey || event.ctrlKey);
+  else if (ui.dataset.ui === "palette-close") closePalette();
+  else if (ui.dataset.ui === "palette-back") {
+    paletteMode = "search";
+    renderPalette();
+    paletteInput.focus();
+  } else if (ui.dataset.ui === "palette-scope") {
+    paletteScope = ui.dataset.repo
+      ? { kind: paletteScope.kind, repo: paletteScope.repo === ui.dataset.repo ? "" : ui.dataset.repo }
+      : { kind: ui.dataset.kind, repo: ui.dataset.kind === "all" ? "" : paletteScope.repo };
+    paletteSelected = 0;
+    renderPalette();
+    paletteInput.focus();
+  }
+});
+
+document.addEventListener("click", (event) => {
+  const opener = event.target instanceof Element ? event.target.closest('[data-ui="palette-open"]') : null;
+  if (!opener) return;
+  event.preventDefault();
+  openPalette(opener.dataset.mode || "search");
+});
+// The header field is a way into the palette: typing into it types there.
+byId("fleetSearch").addEventListener("focus", () => openPalette("search"));
+
+// ⌘K, or Ctrl+K, opens search: the page's only keyboard shortcut.
+document.addEventListener("keydown", (event) => {
+  if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    if (palette.open && paletteMode === "search") closePalette();
+    else openPalette("search");
+  }
+});
+
+// ---------------------------------------------------------------------------
+// The shell: the stage header, and Usage and Loop folding on a phone.
+// ---------------------------------------------------------------------------
+
+byId("stageNames").innerHTML = stageHeader();
+
+/*
+ * Usage and Loop are always open on a wide page, their summary out of the tab
+ * order, and fold to that summary line below 700px, opening on tap. Crossing
+ * 700px either way puts both back.
+ */
+const wide = window.matchMedia("(min-width: 701px)");
+function syncFolds() {
+  for (const fold of document.querySelectorAll("details.fold")) {
+    fold.open = wide.matches;
+    fold.querySelector("summary").tabIndex = wide.matches ? -1 : 0;
+  }
+}
+syncFolds();
+wide.addEventListener("change", syncFolds);
+for (const fold of document.querySelectorAll("details.fold")) {
+  fold.querySelector("summary").addEventListener("click", (event) => {
+    if (wide.matches) event.preventDefault();
+  });
+}
 
 // The spawn loop's settings. ringo keeps the state; the panel shows its last
 // answer, and every control's answer IS the new state.
@@ -588,6 +973,7 @@ function renderSpawnLoop(state) {
   byId("slSkip").style.display = view.skip ? "" : "none";
   byId("slBundleList").innerHTML = view.bundleList;
   byId("slBundleList").style.display = view.bundleList ? "" : "none";
+  byId("loopSummary").textContent = view.enabled ? view.next : "paused";
 }
 
 const loopWritten = (state) => ((loopWrittenAt = performance.now()), renderSpawnLoop(state));

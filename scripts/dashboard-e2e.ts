@@ -34,7 +34,10 @@ const ANSWERS: Record<string, [number, string]> = {
   "/refresh-usage": [200, "{}"],
   "/spawn": [200, "spawned in %5"],
   "/spawnloop/spawn-now": [200, "ok"],
+  "/ask/answer": [200, ""],
 };
+// A question from PR #8's worker pane, answered in that session's row.
+const ASKS = { pending: [{ id: "ask-1", label: "worker", pane: "%4", at: new Date().toISOString(), questions: [{ question: "Rebase or merge?", options: [{ label: "Rebase" }, { label: "Merge" }] }] }] };
 let reviewers: Array<Record<string, unknown>> = [{ ...PR, pr: 8, agent: "copilot" }];
 let ciRed = 1;
 // ringo's usage answer: the pause button and the scraper pill draw from it.
@@ -56,6 +59,7 @@ const READS: Record<string, () => unknown> = {
   "/reviewer/config": () => ({ next_reviewer: "codex" }),
   "/broadcast/targets": () => ({ all: 3, "ci-red": ciRed }),
   "/usage-status": () => usage,
+  "/ask/list": () => ASKS,
 };
 const posts: Array<[string, unknown]> = [];
 const PANE_SCREEN = { exists: true, html: "<span>$ </span>", hash: "h1", cwd: "/w/r", lines: 1, status: "idle" };
@@ -100,6 +104,7 @@ const ringo = (await getHttpAsync()).createServer((req, res) => {
       let [status, text] = ANSWERS[path] ?? [404, "not a ringo endpoint"];
       // ringo types a line into a live pane, and refuses one for a pane that went meanwhile.
       if (path === "/pane/5/send") [status, text] = sent.text === "too late" ? [410, PANE_GONE] : [204, ""];
+      if (path === "/pane/4/send") [status, text] = [204, ""];
       // A setting ringo refuses, by its size; anything else IS the loop's new state.
       if (path === "/spawnloop/config") {
         if (sent.live_cap > 50) [status, text] = [400, "live_cap must be at most 50"];
@@ -132,38 +137,50 @@ async function until<T>(what: string, probe: () => Promise<T | false | null | un
 await until("trailmap to boot", async () => (await fetch(`${APP}/up`)).ok);
 let calls = 0;
 /** Open `path` in a new tab and answer an `evaluate` for it, over the tab's DevTools socket. */
-async function openTab(path: string): Promise<(expression: string) => Promise<unknown>> {
+type Tab = ((expression: string) => Promise<unknown>) & { cdp: (method: string, params: object) => Promise<unknown> };
+async function openTab(path: string): Promise<Tab> {
   const tab = await until("chrome", async () => {
     const opened = await fetch(`${env.E2E_CDP}/json/new?${APP}${path}`, { method: "PUT" });
     return (await opened.json()) as { webSocketDebuggerUrl: string };
   });
   const devtools = new WebSocket(tab.webSocketDebuggerUrl);
   await new Promise((resolve) => devtools.addEventListener("open", resolve));
-  return (expression) => {
+  const cdp = (method: string, params: object): Promise<{ result?: { value: unknown }; exceptionDetails?: unknown }> => {
     const id = ++calls;
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const answer = (event: MessageEvent): void => {
         const message = JSON.parse(String(event.data));
         if (message.id !== id) return;
         devtools.removeEventListener("message", answer);
-        if (message.result.exceptionDetails) reject(new Error(`${expression}: threw in the page`));
-        else resolve(message.result.result.value);
+        resolve(message.result ?? {});
       };
       devtools.addEventListener("message", answer);
-      devtools.send(JSON.stringify({ id, method: "Runtime.evaluate", params: { expression, returnByValue: true } }));
+      devtools.send(JSON.stringify({ id, method, params }));
     });
   };
+  const evaluate = async (expression: string): Promise<unknown> => {
+    const result = await cdp("Runtime.evaluate", { expression, returnByValue: true });
+    if (result.exceptionDetails) throw new Error(`${expression}: threw in the page`);
+    return result.result?.value;
+  };
+  return Object.assign(evaluate, { cdp });
 }
 const evaluate = await openTab("/dashboard");
+/** A real Esc, through the input pipeline: a modal dialog closes only on a trusted key. */
+const pressEscape = async (): Promise<void> => {
+  for (const type of ["keyDown", "keyUp"]) await evaluate.cdp("Input.dispatchKeyEvent", { type, key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+};
 
 const button = (action: string, pr = ""): string =>
   `document.querySelector('button[data-action="${action}"]${pr && `[data-pr="${pr}"]`}')`;
 const byId = (id: string): string => `document.getElementById("${id}")`;
-/** Type a broadcast and press Enter, as the box's own key handler takes it. */
+/** Open the palette on Broadcast, type a message and press Enter, as the palette's key handler takes it. */
 const enter = (ctrlKey: boolean): string =>
-  `${byId("bcastMsg")}.value = " rebase "; ` +
-  `${byId("bcastMsg")}.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", ctrlKey: ${ctrlKey}, bubbles: true }))`;
-const sentNote = `${byId("bcastNote")}.textContent === "sent to 3 panes" && ${byId("bcastMsg")}.value === ""`;
+  `${byId("broadcastBtn")}.click(); ${byId("paletteInput")}.value = " rebase "; ` +
+  `${byId("paletteInput")}.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", ctrlKey: ${ctrlKey}, bubbles: true }))`;
+const sentNote = `${byId("bcastNote")}.textContent === "sent to 3 panes" && ${byId("paletteInput")}.value === ""`;
+/** A session's expand button, by key. */
+const expand = (key: string): string => `document.querySelector('button[data-ui="expand"][data-key="${key}"]')`;
 
 /**
  * `on` is the button; `act` what is done to the page (a click of `on` unless
@@ -190,9 +207,19 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
     after: `b.style.display === "none" && !${byId("bcastAll")}.disabled && ${sentNote}` },
   // ringo answers with what it spawned; the report goes beside the picker,
   // and the task box empties for the next one.
-  { name: "manual spawn", on: byId("spawn"), act: `${byId("task")}.value = " fix the build "; ${byId("spawn")}.click()`,
+  { name: "manual spawn, from the palette", on: byId("spawn"),
+    act: `${byId("spawnBtn")}.click(); ${byId("paletteInput")}.value = " fix the build "; ` +
+      `${byId("paletteInput")}.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))`,
     post: ["/spawn", { repoDir: "/w/r", message: "fix the build" }],
-    after: `!b.disabled && ${byId("spawnStatus")}.textContent === "Spawned: spawned in %5" && ${byId("task")}.value === ""` },
+    after: `!b.disabled && ${byId("spawnStatus")}.textContent === "Spawned: spawned in %5" && ${byId("paletteInput")}.value === "" && (${byId("palette")}.close(), true)` },
+  { name: "answer a question in its session's row, by option",
+    on: `document.querySelector('#s-pr-o-r-8 .strip.ask button[data-answer="Rebase"]')`,
+    post: ["/ask/answer", { id: "ask-1", answer: "Rebase" }], after: `b.textContent === "sent"` },
+  { name: "message a session from its expanded card, by ⌘↵", on: `document.querySelector('#s-pr-o-r-8 .composer button')`,
+    act: `(() => { const box = document.querySelector('#s-pr-o-r-8 .composer textarea'); box.value = "please rebase"; ` +
+      `box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true })); })()`,
+    post: ["/pane/4/send", { text: "please rebase" }],
+    after: `!!document.querySelector('#s-pr-o-r-8 .log-you') && document.querySelector('#s-pr-o-r-8 .composer textarea').value === ""` },
   { name: "pause", on: byId("pauseBtn"), post: ["/pause", { paused: true }],
     after: `!b.disabled && b.textContent === "Resume" && b.dataset.paused === "true"` },
   { name: "refresh usage from the scraper pill", on: byId("watchPill"), post: ["/refresh-usage", null],
@@ -206,13 +233,25 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
     after: `!b && !!document.querySelector('a.pane-link[href="/panes/98"]')` },
 ];
 
-// Both `+` buttons and the live counts on the page means the stream and all three polls have landed.
+// Both rows drawn and the live counts on the page means the stream and all three polls have landed.
 await until("the page to draw", () =>
   evaluate(
-    `!!${button("add-worker")} && !!${button("add-reviewer", "8")} && ${byId("bcastCIRed")}.textContent === "CI red (1)" && ` +
-      `${byId("pauseBtn")}.textContent === "Pause" && ${byId("watchDot")}.className === "connected off"`,
+    `!!${expand("s-pr-o-r-7")} && !!${expand("s-pr-o-r-8")} && ${byId("bcastCIRed")}.textContent === "CI red (1)" && ` +
+      `${byId("pauseBtn")}.textContent === "Pause" && ${byId("watchDot")}.className === "connected off" && ` +
+      `!!document.querySelector('#s-pr-o-r-8 .strip.ask')`,
   ),
 );
+
+// The pane controls live in the expanded card: expand both, by click and by Enter.
+await evaluate(`${expand("s-pr-o-r-7")}.click(); true`);
+await until("PR #7 to expand", () => evaluate(`${expand("s-pr-o-r-7")}.getAttribute("aria-expanded") === "true" && !!${button("add-worker")}`));
+await evaluate(`${expand("s-pr-o-r-7")}.click(); true`);
+await until("PR #7 to collapse", () => evaluate(`${expand("s-pr-o-r-7")}.getAttribute("aria-expanded") === "false" && !${button("add-worker")}`));
+await evaluate(`${expand("s-pr-o-r-7")}.click(); document.querySelector('#s-pr-o-r-8 .session-main .stories').click(); true`);
+await until("both rows expanded, the second by a click on the row", () =>
+  evaluate(`!!${button("add-worker")} && !!${button("add-reviewer", "8")} && !!document.querySelector('#s-pr-o-r-8 .composer')`),
+);
+console.log("ok  expand and collapse, and every pane control in the expanded card");
 
 // The loop's toggle cannot know which way to go until ringo has said whether
 // the loop runs: it is held, and says why, until the first read answers.
@@ -228,12 +267,39 @@ await until("the loop's toggle once ringo answered", () =>
 console.log("ok  spawn loop, the toggle waits for ringo's first answer");
 
 // An empty message sends nothing and puts the cursor in the box.
-await evaluate(`${byId("bcastMsg")}.value = "  "; ${byId("bcastMsg")}.blur(); ${byId("bcastAll")}.click(); true`);
+await evaluate(`${byId("broadcastBtn")}.click(); ${byId("paletteInput")}.value = "  "; ${byId("paletteInput")}.blur(); ${byId("bcastAll")}.click(); true`);
 await new Promise((resolve) => setTimeout(resolve, 300));
-if (posts.length > 0 || !(await evaluate(`document.activeElement === ${byId("bcastMsg")}`))) {
+if (posts.length > 0 || !(await evaluate(`document.activeElement === ${byId("paletteInput")}`))) {
   throw new Error("dashboard-e2e: an empty broadcast did not focus the message box");
 }
+await evaluate(`${byId("palette")}.close(); true`);
 console.log("ok  broadcast, empty message focuses the box");
+
+// ⌘K opens search, the top result is selected, ↓ moves, Esc closes.
+await evaluate(`document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true })); true`);
+await until("the palette to open on ⌘K", () => evaluate(`${byId("palette")}.open && document.activeElement === ${byId("paletteInput")}`));
+await evaluate(`${byId("paletteInput")}.value = "pull"; ${byId("paletteInput")}.dispatchEvent(new Event("input")); true`);
+await until("results, the top one selected", () =>
+  evaluate(`!!document.querySelector('#palette-opt-0[aria-selected="true"] mark') && document.querySelectorAll(".palette-item").length > 1`),
+);
+await evaluate(`${byId("paletteInput")}.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })); true`);
+await until("↓ to move the selection", () => evaluate(`document.querySelector('#palette-opt-1').getAttribute("aria-selected") === "true"`));
+await pressEscape();
+await until("Esc to close the palette", () => evaluate(`!${byId("palette")}.open`));
+console.log("ok  palette, ⌘K opens it, ↓ moves, Esc closes");
+
+// Needs you keeps the rows that want something, and the URL says so.
+await evaluate(`document.querySelector('[data-filter="needs"]').click(); true`);
+await until("the Needs you filter", () =>
+  evaluate(
+    `location.search === "?filter=needs" && ${byId("repoSections")}.classList.contains("only-needs") && ` +
+      `document.querySelector('[data-filter="needs"]').getAttribute("aria-pressed") === "true" && ` +
+      `getComputedStyle(document.querySelector('#s-pr-o-r-7')).display !== "none"`,
+  ),
+);
+await evaluate(`document.querySelector('[data-filter="all"]').click(); true`);
+await until("All again", () => evaluate(`location.search === "" && !${byId("repoSections")}.classList.contains("only-needs")`));
+console.log("ok  Needs you filter, chip and URL");
 
 // A declined confirm sends nothing and leaves the button as it was.
 await evaluate(`window.alert = () => {}; window.confirm = () => false; ${button("merge")}.click(); true`);
@@ -332,6 +398,23 @@ await until("an exited pane's box to be disabled", () =>
 );
 console.log("ok  pane message, disabled once the pane has exited");
 
+// At a phone's width the page never scrolls sideways: collapsed, with a card
+// expanded (both PR rows are), and with the palette open.
+await evaluate.cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+const narrow = `innerWidth === 390 && document.documentElement.scrollWidth === 390`;
+await until("390px wide, cards expanded, no sideways scroll", () => evaluate(narrow));
+// One at a time: each click repaints the list, so a second button from the same query is a dead node.
+await until("390px wide, collapsed, no sideways scroll", () =>
+  evaluate(`(() => { const open = document.querySelector('button[data-ui="expand"][aria-expanded="true"]'); if (open) { open.click(); return false; } return ${narrow}; })()`),
+);
+await evaluate(`${byId("fleetSearchBtn")}.click(); true`);
+await until("390px wide, palette open as a sheet, no sideways scroll", () =>
+  evaluate(`${byId("palette")}.open && ${byId("palette")}.getBoundingClientRect().width === 390 && ${narrow}`),
+);
+await evaluate(`${byId("palette")}.close(); true`);
+await evaluate.cdp("Emulation.clearDeviceMetricsOverride", {});
+console.log("ok  390px: no horizontal scroll collapsed, expanded, or with the palette open");
+
 // The class lists the page drew at run time, against the source scan's rule
 // (test/assets/class-collisions.test.ts): rows, cards and toggled classes included.
 const rules = boxRules(await getFs().readFile(STYLESHEET, "utf8"));
@@ -341,5 +424,5 @@ if (drawn.length < 50 || collided.length) {
   throw new Error(`dashboard-e2e: ${drawn.length} class lists drawn, colliding: ${collided.join(", ") || "none"}`);
 }
 console.log(`ok  ${drawn.length} drawn class lists, none wearing two boxes`);
-console.log(`dashboard-e2e: ${CASES.length + 9} cases — every control posts what ringo expects and says what happened`);
+console.log(`dashboard-e2e: ${CASES.length + 13} cases — every control posts what ringo expects and says what happened`);
 exit(0);
