@@ -231,9 +231,6 @@ function unassignedLine(label, role, lead, button) {
   );
 }
 
-export const FIXER_BADGE =
-  '<span class="label label-fixer" title="Auto-filed fixer for a red main">fixer</span>';
-
 /** Whether the in-flight CI fixer is the worker on this story / this PR. */
 export const isFixerStory = (fixers, id) => !!id && (fixers || []).some((f) => f.story_id === id);
 export const isFixerPR = (fixers, pr) =>
@@ -261,75 +258,6 @@ export function fixerPhase(f) {
   if (f.paused) return "paused";
   if (f.story_id) return "fixing";
   return "red";
-}
-
-export function fixerSummary(list) {
-  if (list.some((f) => f.paused)) return "spawn loop paused — waiting on main to recover";
-  return list.length === 1 ? "main is red" : list.length + " repos red";
-}
-
-/** One card per red repo. */
-export function fixerCards(list) {
-  return list
-    .map((f) => {
-      const repo = f.owner + "/" + f.repo;
-      const phase = fixerPhase(f);
-      const rows = [];
-
-      let head =
-        '<span class="fixer-repo-name">' + esc(repo) + "</span>" +
-        '<span class="fixer-phase ' + phase + '">' + phase + "</span>";
-      if ((f.consecutive_red || 0) > 1) {
-        head += '<span class="fixer-meta">' + f.consecutive_red + "&times; consecutive red</span>";
-      }
-      rows.push('<div class="fixer-line">' + head + "</div>");
-
-      if ((f.checks && f.checks.length) || f.red_sha) {
-        let line = '<span class="fixer-meta">red:</span> ';
-        if (f.checks && f.checks.length) {
-          line += '<span class="fixer-checks">' + f.checks.map(esc).join(", ") + "</span>";
-        }
-        if (f.red_sha) {
-          const sha = "<code>" + esc(f.red_sha.slice(0, 8)) + "</code>";
-          line += f.red_url ? ' <a href="' + esc(f.red_url) + '" target="_blank">' + sha + "</a>" : " " + sha;
-        }
-        rows.push('<div class="fixer-line">' + line + "</div>");
-      }
-
-      const links = [];
-      if (f.story_id) {
-        links.push('<a href="/story/' + encodeURIComponent(f.story_id) + '"><code>' + esc(f.story_id) + "</code></a>");
-      }
-      if (f.pr) {
-        links.push('<a href="https://github.com/' + esc(repo) + "/pull/" + f.pr + '" target="_blank">#' + f.pr + "</a>");
-      }
-      if (links.length) {
-        rows.push('<div class="fixer-line"><span class="fixer-meta">fixer:</span> ' + links.join(" ") + "</div>");
-      }
-
-      if (f.awaiting_rebase && f.awaiting_rebase.length) {
-        const prs = f.awaiting_rebase
-          .map((n) => '<a href="https://github.com/' + esc(repo) + "/pull/" + n + '" target="_blank">#' + n + "</a>")
-          .join(" ");
-        rows.push('<div class="fixer-line"><span class="fixer-meta">awaiting rebase:</span> ' + prs + "</div>");
-      }
-      // The manual lever for a wedged coordinator: a fixer that finished
-      // unseen dedupes away every replacement, leaving a red main with no
-      // worker on it. Offered only while a red is actually recorded.
-      if (f.red_sha) {
-        rows.push(
-          '<div class="fixer-line">' +
-            control("respawn-fixer", { owner: f.owner, repo: f.repo }, {
-              cls: "btn btn-sm",
-              title: "Discard the tracked fixer story and spawn a fresh worker for this red",
-              label: f.story_id ? "respawn fixer" : "spawn fixer",
-            }) +
-            "</div>",
-        );
-      }
-      return '<div class="fixer-repo">' + rows.join("") + "</div>";
-    })
-    .join("");
 }
 
 // ---------------------------------------------------------------------------
@@ -416,7 +344,7 @@ export function controlRequest(action, data, page = {}) {
     case "broadcast": {
       const message = (page.message || "").trim();
       // ringo puts the cursor in the box: that is what says why nothing went.
-      if (!message) return { focus: "bcastMsg" };
+      if (!message) return { focus: PALETTE_INPUT };
       const count = (page.audiences || {})[data.target] || 0;
       // `note` is where a broadcast reports: on the box, not on its button.
       if (!count) return { note: "no agents in that group" };
@@ -538,6 +466,24 @@ export function controlRequest(action, data, page = {}) {
       const errorAlert = (message) => "Failed to send answer: " + message;
       return { path: "/ask/answer", body: { id: data.id, answer }, done: "sent", refresh: "asks", failureAlert: (text) => text, errorAlert };
     }
+    // A line typed into a session's pane, from its card's message box, a
+    // stall's prod or the palette: `POST fleet/pane/:id/send`, which is not
+    // under the control prefix, so it names its own `url`.
+    case "pane-send": {
+      const id = /^%([0-9]{1,10})$/.exec(String(data.pane || ""));
+      const text = String(data.text || "").trim();
+      if (!id || !text) return null;
+      return {
+        path: "/pane/" + id[1] + "/send",
+        url: "/fleet/pane/" + id[1] + "/send",
+        body: { text },
+        pane: true,
+        key: data.key || "",
+        says: data.says,
+        saying: "sending…",
+        clears: data.clears || "",
+      };
+    }
     case "clear-failed":
       return { path: "/spawnloop/dismiss-failed", body: null, quiet: true };
     // The manual spawn card. Its report goes beside the repo picker
@@ -550,7 +496,7 @@ export function controlRequest(action, data, page = {}) {
         body: { repoDir: page.repoDir || "", message },
         says: "spawnStatus",
         saying: "Spawning...",
-        clears: "task",
+        clears: PALETTE_INPUT,
       };
     }
     default:
@@ -563,7 +509,7 @@ function parsed(text) {
   try { return JSON.parse(text) || {}; } catch { return {}; }
 }
 
-const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
+export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
 
 /**
  * What the button shows once its request has settled. `result` is
@@ -599,6 +545,11 @@ export function controlOutcome(request, result, label) {
   const outcome = { disabled: succeeded || (!request.quiet && !!request.resetAfterMs) };
   if (answered && request.refresh) outcome.refresh = request.refresh;
   if (request.quiet) return outcome;
+  // A pane message reports beside its box, and a sent one goes in the log.
+  if (request.pane) {
+    if (!succeeded) return { disabled: false, say: answered ? result.text : result.error };
+    return { disabled: false, say: "sent", clear: request.clears || undefined, sent: { key: request.key, text: request.body.text } };
+  }
   if (request.says) {
     if (!succeeded) return { disabled: false, say: "Error: " + (answered ? result.text : result.error) };
     return { disabled: false, say: "Spawned: " + result.text, clear: request.clears };
@@ -745,6 +696,9 @@ function broadcastSent(text) {
   };
 }
 
+/** The palette's one input: a search, a broadcast's message, a spawn's task or a pane message. */
+export const PALETTE_INPUT = "paletteInput";
+
 /** The broadcast box's buttons, every one of which a send holds. */
 export const BROADCAST_BUTTONS = ["bcastAll", "bcastCIRed"];
 
@@ -796,26 +750,7 @@ export const ICONS = {
   merge: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218ZM4.25 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8.5-4a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"></path></svg>',
 };
 
-/*
- * The CI rollup for ONE PR, shown right after its title: green check, red x,
- * yellow dot. A different signal from the main-CI pills in the status group,
- * which are about a repo's default branch -- this one says whether the checks
- * on this pull request are passing, and it is the only place the page says so.
- * Fill comes from the `.ci-<status>` rules.
- */
-const CI_ICONS = {
-  success: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 16A8 8 0 1 1 8 0a8 8 0 0 1 0 16Zm3.78-9.72a.75.75 0 0 0-1.06-1.06L6.75 9.19 5.28 7.72a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l4.5-4.5Z"></path></svg>',
-  failure: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.343 13.657A8 8 0 1 1 13.658 2.343 8 8 0 0 1 2.343 13.657ZM6.03 4.97a.751.751 0 0 0-1.042.018.751.751 0 0 0-.018 1.042L6.94 8 4.97 9.97a.749.749 0 0 0 .326 1.275.749.749 0 0 0 .734-.215L8 9.06l1.97 1.97a.749.749 0 0 0 1.275-.326.749.749 0 0 0-.215-.734L9.06 8l1.97-1.97a.749.749 0 0 0-.326-1.275.749.749 0 0 0-.734.215L8 6.94Z"></path></svg>',
-  pending: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle></svg>',
-};
-
-const CI_TITLES = { success: "CI passing", failure: "CI failing", pending: "CI running" };
-
-/** '' for a PR whose checks have not reported, rather than a neutral glyph. */
-export function ciIcon(status) {
-  if (!status || !CI_ICONS[status]) return "";
-  return '<span class="ci-icon ci-' + status + '" title="' + CI_TITLES[status] + '">' + CI_ICONS[status] + "</span>";
-}
+export const CI_TITLES = { success: "CI passing", failure: "CI failing", pending: "CI running" };
 
 /** The one row shape every list on this page uses. */
 export function row({ icon, iconCls, title, meta, aside, panes, cls }) {
@@ -836,7 +771,7 @@ export function row({ icon, iconCls, title, meta, aside, panes, cls }) {
  * say, because both mean the row is not moving and the reason is not the one
  * the workflow status would give.
  */
-function paneOverridePill(paneStatus) {
+export function paneOverridePill(paneStatus) {
   if (paneStatus === "limit") return '<span class="' + statusClass("limit reached") + '">limit reached</span>';
   if (paneStatus === "waiting") return '<span class="' + statusClass("waiting for answer") + '">waiting for answer</span>';
   return null;
@@ -933,18 +868,35 @@ export const STAGE_ICONS = {
  * its icon, the current one the same with a ring, and one still to come a
  * small dot, so the current stage is the loudest mark in the row.
  */
-export function stepper(stage) {
+export function stepper(stage, mark = "") {
   const at = STAGES.findIndex(([id]) => id === stage);
   return (
     '<span class="stepper" role="img" aria-label="Stage: ' + STAGES[at][1] + '">' +
-    STAGES.map(([id], i) =>
-      i > at
-        ? '<span class="step todo"></span>'
-        : '<span class="step st-' + id + (i === at ? " current" : "") + '">' + STAGE_ICONS[id] + "</span>",
+    STAGES.map(([id], i) => {
+      if (i > at) return '<span class="step"><span class="node todo"></span></span>';
+      if (i === at && mark) return '<span class="step done">' + mark + "</span>";
+      return '<span class="step done"><span class="node st-' + id + (i === at ? " current" : "") + '">' + STAGE_ICONS[id] + "</span></span>";
+    }).join("") +
+    "</span>"
+  );
+}
+
+/**
+ * The one stage header above the list: each stage's icon and name, in
+ * columns that line up with the cards' steppers.
+ */
+export function stageHeader() {
+  return (
+    '<span class="stepper stage-names" aria-hidden="true">' +
+    STAGES.map(([id, name]) =>
+      '<span class="step"><span class="node st-' + id + '">' + STAGE_ICONS[id] + '</span><span class="stage-name">' + name + "</span></span>",
     ).join("") +
     "</span>"
   );
 }
+
+/** A stage's name, for a phone's row that names its current stage under the stepper. */
+export const stageName = (stage) => (STAGES.find(([id]) => id === stage) || ["", ""])[1];
 
 /**
  * The one progress figure for the current stage, or ''. The envelope carries
@@ -958,81 +910,6 @@ export function stageFigure(row, stage) {
   }
   if (stage === "ci") return CI_TITLES[row.ciStatus] || "";
   return "";
-}
-
-/**
- * One session: a PR row or a spawn row from the envelope, with its stage's
- * stepper and edge. Stage is not repeated as a chip; a pane in `limit` or
- * `waiting` still says so, because the stage does not. Merge sits on Ready to
- * merge rows only, in place of the figure. Grooming agents never open a PR,
- * so they keep their own row.
- */
-export function sessionCard(s, fixers = [], now = Date.now(), reviewers = null, queue = []) {
-  if (s.kind) return rfcSpawnRow(s, now);
-  const isPR = s.pr != null;
-  const stage = sessionStage(s, reviewers);
-  const failed = !isPR && s.status === "failed";
-  const prUrl = isPR ? "https://github.com/" + s.owner + "/" + s.repo + "/pull/" + s.pr : "";
-  const titleUrl = isPR ? prUrl : "/story/" + encodeURIComponent(s.story_id);
-  const ext = isPR ? ' target="_blank"' : "";
-  const fixer = isPR ? isFixerPR(fixers, s) : isFixerStory(fixers, s.story_id);
-  const paneStatus = isPR ? s.paneStatus : s.pane_status;
-
-  const lead =
-    (isPR
-      ? '<a class="prlink" href="' + prUrl + '" target="_blank">#' + s.pr + "</a>"
-      : '<span class="muted">no PR yet</span>') +
-    (isPR && s.ciStatus === "failure" ? '<span class="check-failed">check failed</span>' : "");
-  const title =
-    lead +
-    '<a class="rtitle" href="' + titleUrl + '"' + ext + ">" +
-    esc(s.title || (isPR ? s.owner + "/" + s.repo + "#" + s.pr : s.story_id)) + "</a>" +
-    (isPR ? ciIcon(s.ciStatus) : "") +
-    (fixer ? FIXER_BADGE + " " : "") +
-    (s.mergeConflict ? '<span class="conflict">conflict</span> ' : "") +
-    (s.labels || []).map((l) => '<span class="label">' + esc(l) + "</span>").join("") +
-    (failed ? '<span class="status status-failed">failed</span>' : paneOverridePill(paneStatus) || "");
-
-  const meta = [];
-  if (!isPR) meta.push('<a href="' + titleUrl + '"><code>' + esc(s.story_id) + "</code></a>");
-  if (s.branch) meta.push("<code>" + esc(s.branch) + "</code>");
-  if (s.commentCount || s.reviewCycles) {
-    meta.push(
-      (s.commentCount || 0) + " comment" + (s.commentCount === 1 ? "" : "s") +
-      " &middot; " + (s.reviewCycles || 0) + " cycles",
-    );
-  }
-  if (isPR && s.lastAction) meta.push(esc(s.lastAction));
-  if (!isPR && s.source) meta.push("spawned via " + esc(s.source));
-  if (failed && s.error) meta.push('<span style="color:var(--red)">' + esc(s.error) + "</span>");
-
-  const figure =
-    stage === "ready"
-      ? control("merge", { owner: s.owner, repo: s.repo, pr: s.pr }, { cls: "act merge", title: "Merge PR", label: "merge" })
-      : '<span class="figure">' + stageFigure(s, stage) + "</span>";
-  const when = isPR ? s.lastTime : s.at;
-  const aside =
-    '<div class="aside-top">' + figure +
-    (isPR ? cleanupControl(s, now) : "") +
-    (failed && s.branch
-      ? control("dismiss", { branch: s.branch }, { cls: "spawn-dismiss", title: "Dismiss this failed spawn", label: "&times;" })
-      : "") +
-    "</div>" +
-    (when ? '<span class="age">' + timeAgo(when, now) + "</span>" : "");
-
-  const html =
-    '<div class="row session-' + stage + (isPR ? "" : " spawn") + (failed ? " failed" : "") + '">' +
-    stepper(stage) +
-    '<div class="rmain"><div class="titleline">' + title + "</div>" +
-    '<div class="rmeta">' + meta.join(" &middot; ") + "</div>" +
-    // The worker's pane, and under it the reviewer's, which stays on a merged
-    // PR: who reviewed it is most wanted while reading the merge
-    // (ringo, `dashboard.go:1335`).
-    '<div class="panes">' +
-    (isPR ? workerLine(s) + reviewerLine(s, reviewers) : paneLine(WORK_EMOJI, s.pane, s.pane_status, s.pane_input)) +
-    "</div></div>" +
-    '<div class="raside">' + aside + "</div></div>";
-  return isPR ? queuedUnder(s, queue, html) : html;
 }
 
 // ---------------------------------------------------------------------------
@@ -1128,43 +1005,9 @@ export function drainStatus(d) {
  * into inline `onclick` JavaScript; a `data-` attribute is only an attribute.
  */
 
-export const askSummary = (pending) => plural(pending.length, "agent") + " blocked, waiting for an answer";
-
 /** A picked option sends its label, under its question when several were asked. */
 export function askAnswer(ask, question, label) {
   return (ask.questions || []).length > 1 ? question.question + " → " + label : label;
-}
-
-export function askCards(pending, now = Date.now()) {
-  return pending
-    .map((a) => {
-      const questions = (a.questions || [])
-        .map((q) => {
-          const options = (q.options || [])
-            .map((o) =>
-              control("answer-ask", { id: a.id, answer: askAnswer(a, q, o.label) }, {
-                cls: "ask-opt",
-                title: "Answer with this option",
-                label: esc(o.label) + (o.description ? '<span class="d">' + esc(o.description) + "</span>" : ""),
-              }),
-            )
-            .join("");
-          return (
-            '<div class="ask-text">' + (q.header ? '<span class="ask-hdr">' + esc(q.header) + "</span> " : "") +
-            esc(q.question) + "</div>" + (options ? '<div class="ask-opts">' + options + "</div>" : "")
-          );
-        })
-        .join("");
-      return (
-        '<div class="ask-q"><div class="ask-who"><strong>' + esc(a.label) + "</strong>" +
-        (a.pane ? "<code>" + esc(a.pane) + "</code>" : "") +
-        "<span>" + timeAgo(a.at, now) + "</span></div>" + questions +
-        '<div class="ask-free"><input type="text" class="ctl" placeholder="…or answer in your own words">' +
-        control("answer-ask", { id: a.id, free: 1 }, { cls: "btn btn-sm", title: "Send your own answer", label: "Send" }) +
-        "</div></div>"
-      );
-    })
-    .join("");
 }
 
 // ---------------------------------------------------------------------------
@@ -1258,21 +1101,6 @@ export function weekElapsedPercent(weeklyResets, at, now = Date.now()) {
   return Math.min(100, Math.round((Math.max(0, WEEK_HOURS - left) / WEEK_HOURS) * 100));
 }
 
-/** A tick and a two-letter day at each local midnight of the usage week. */
-export function dayMarkers(weeklyResets, at, now = Date.now()) {
-  const left = hoursUntilReset(weeklyResets, at, now);
-  const start = now - (WEEK_HOURS - (left === null ? WEEK_HOURS : left)) * HOUR;
-  const midnight = new Date(start);
-  midnight.setHours(24, 0, 0, 0);
-  const first = (midnight.getTime() - start) / HOUR;
-  let out = "";
-  for (let d = 0; d < 7 && first + d * 24 < WEEK_HOURS; d++) {
-    const day = DAYS[new Date(midnight.getTime() + d * 24 * HOUR).getDay()].slice(0, 2);
-    out += '<span class="day-marker" style="left:' + ((first + d * 24) / WEEK_HOURS) * 100 + '%"><span>' + day + "</span></span>";
-  }
-  return out;
-}
-
 /** "42% of week elapsed (1d 3h ahead)": how far usage is from the week's pace. */
 export function paceText(elapsed, diff) {
   const hours = Math.round((Math.abs(diff) / 100) * WEEK_HOURS);
@@ -1282,94 +1110,66 @@ export function paceText(elapsed, diff) {
 
 const clamp = (percent) => Math.max(0, Math.min(100, Number(percent) || 0));
 
-/** One labelled bar. `week` is the pace marker and day ticks of a weekly one. */
-function usageBar({ label, percent, color, left, right = "", week = "" }) {
+/**
+ * One meter row, as in the mockup: a label, a thin bar and its percent. What
+ * a wider panel used to print beside the bar (when it resets, the week's
+ * pace) is the row's tooltip.
+ */
+function usageRow(label, percent, color, title = "") {
   return (
-    '<div class="usage-col"><div class="usage-col-label">' + label + "</div>" +
-    '<div class="bar-container' + (week ? " week" : "") + '">' +
-    '<div class="bar-fill ' + color + '" style="width:' + clamp(percent) + '%"></div>' + week + "</div>" +
-    '<div class="bar-label"><span>' + left + "</span>" + right + "</div></div>"
+    '<div class="usage-row"' + (title ? ' title="' + esc(title) + '"' : "") + "><span>" + esc(label) + "</span>" +
+    '<span class="meter"><i class="bar-fill ' + color + '" style="width:' + clamp(percent) + '%"></i></span>' +
+    "<span>" + clamp(percent) + "%</span></div>"
   );
 }
 
-const usageHead = (agent, meta) =>
-  '<div class="usage-head"><span class="usage-agent">' + agent + '</span><span class="usage-meta">' + esc(meta) + "</span></div>";
+/** A row's tooltip, after its own facts: the plan, where the agent reports one (Codex does). */
+const withPlan = (title, u) => (u.planType ? title + " · " + u.planType + " plan" : title);
 
-function weeklyBar(u, now, right) {
+function weekRow(agent, u, now) {
   const elapsed = weekElapsedPercent(u.weeklyResets, u.weeklyResetsAt, now);
   const diff = clamp(u.weeklyPercent) - elapsed;
-  return usageBar({
-    label: "Weekly (" + esc(formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now)) + ")",
-    percent: u.weeklyPercent,
-    color: weeklyPaceColor(diff),
-    left: clamp(u.weeklyPercent) + "%",
-    right: right(elapsed, diff),
-    week: '<div class="bar-marker" style="left:' + elapsed + '%"></div>' + dayMarkers(u.weeklyResets, u.weeklyResetsAt, now),
-  });
+  const title = "resets " + formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now) + " · " + paceText(elapsed, diff);
+  return usageRow(agent + " · week", u.weeklyPercent, weeklyPaceColor(diff), withPlan(title, u));
 }
 
-function sessionBar(u, now, right) {
-  return usageBar({
-    label: "Session (" + esc(formatClockLabel(u.sessionResets, u.sessionResetsAt, now)) + ")",
-    percent: u.sessionPercent,
-    color: barColor(u.sessionPercent),
-    left: clamp(u.sessionPercent) + "%",
-    right,
-  });
-}
+const sessionRow = (agent, u, now) =>
+  usageRow(agent + " · session", u.sessionPercent, barColor(clamp(u.sessionPercent)), withPlan("resets " + formatClockLabel(u.sessionResets, u.sessionResetsAt, now), u));
 
-/** The Claude block, from ringo's `/usage-status` (`renderUsage`). */
-export function claudeUsage(u, now = Date.now()) {
-  const models = (u.weeklyModels || [])
-    .map((m) =>
-      usageBar({
-        label: esc(m.name) + (m.resets ? " (resets " + esc(formatResetLabel(m.resets, m.resetsAt, now)) + ")" : ""),
-        percent: m.percent,
-        color: barColor(clamp(m.percent)),
-        left: clamp(m.percent) + "%",
-      }),
-    )
-    .join("");
-  const money = (n) => "$" + (Number(n) || 0).toFixed(2);
-  const balance = Number(u.extraBalance) || 0;
-  const extra =
-    u.extraLimit > 0 || u.extraBalance > 0
-      ? '<div class="usage-extra">Extra usage: ' +
-        (u.extraEnabled ? '<span style="color:var(--green)">ON</span>' : "<span>OFF</span>") +
-        " &middot; " + money(u.extraSpent) + " spent &middot; " +
-        '<span style="color:var(--' + (balance < 2 ? "red" : balance < 5 ? "yellow" : "green") + ')">' +
-        money(balance) + " balance</span> &middot; $" + Number(u.extraLimit) + " limit</div>"
-      : "";
-  return (
-    usageHead("Claude", u.lastCheckTime ? "updated " + timeAgo(u.lastCheckTime, now) : "") +
-    '<div class="usage-cols">' +
-    sessionBar(u, now, u.paused ? '<span style="color:var(--red)">MANUAL PAUSE (' + Number(u.queueSize) + " queued)</span>" : "") +
-    '<div class="usage-col">' + models + "</div></div>" +
-    weeklyBar(u, now, (elapsed, diff) =>
-      '<span style="color:var(--' + (diff > 0 ? "yellow" : "green") + ')">' + paceText(elapsed, diff) + "</span>",
-    ) +
-    extra
-  );
+/** The Usage panel's one-line summary, which is all a folded panel shows on a phone. */
+export function usageSummary(u, now = Date.now()) {
+  const parts = [];
+  if (u.sessionPercent != null) parts.push("session " + clamp(u.sessionPercent) + "%");
+  if (u.weeklyPercent != null) parts.push("week " + clamp(u.weeklyPercent) + "%");
+  if (u.manualPause) parts.push("paused" + (u.queueSize ? " · " + Number(u.queueSize) + " queued" : ""));
+  if (u.lastCheckTime) parts.push("updated " + timeAgo(u.lastCheckTime, now));
+  return parts.join(" · ");
 }
 
 /**
- * The Codex block, from `/codex-usage-status` (`renderCodexUsage`). A percent
- * below zero is a window Codex did not report, and that bar goes; with both
- * gone the block says so, and the plan name moves up to the header.
+ * Claude's rows, from ringo's `/usage-status` (`renderUsage`): the week, the
+ * session window and each model's week. Extra usage gets a line only while
+ * it is on, since then it is spending.
+ */
+export function claudeUsage(u, now = Date.now()) {
+  const money = (n) => "$" + (Number(n) || 0).toFixed(2);
+  const models = (u.weeklyModels || []).map((m) =>
+    usageRow(m.name + " · week", m.percent, barColor(clamp(m.percent)), m.resets ? "resets " + formatResetLabel(m.resets, m.resetsAt, now) : ""),
+  );
+  const extra = u.extraEnabled
+    ? '<div class="usage-note">Extra usage on · ' + money(u.extraSpent) + " spent · " + money(u.extraBalance) + " balance · $" + (Number(u.extraLimit) || 0) + " limit</div>"
+    : "";
+  return weekRow("Claude", u, now) + sessionRow("Claude", u, now) + models.join("") + extra;
+}
+
+/**
+ * Codex's rows, from `/codex-usage-status` (`renderCodexUsage`). A percent
+ * below zero is a window Codex did not report, and its row goes; with both
+ * gone one line says so.
  */
 export function codexUsage(u, now = Date.now()) {
-  const hasSession = u.sessionPercent >= 0;
-  const hasWeekly = u.weeklyPercent >= 0;
-  const updated = u.lastUpdated ? "updated " + timeAgo(u.lastUpdated, now) : "";
-  const cols =
-    (hasSession ? sessionBar(u, now, u.planType ? "<span> &middot; " + esc(u.planType) + "</span>" : "") : "") +
-    (hasWeekly ? weeklyBar(u, now, (elapsed) => "<span>" + elapsed + "% of week elapsed</span>") : "");
-  return (
-    usageHead("Codex", !hasSession && u.planType ? [u.planType, updated].filter(Boolean).join(" · ") : updated) +
-    (cols
-      ? '<div class="usage-cols">' + cols + "</div>"
-      : '<div class="usage-col-label">No limits reported yet — Codex only publishes them while a session is running.</div>')
-  );
+  const rows = (u.weeklyPercent >= 0 ? weekRow("Codex", u, now) : "") + (u.sessionPercent >= 0 ? sessionRow("Codex", u, now) : "");
+  return rows || '<div class="usage-note">Codex' + (u.planType ? " (" + esc(u.planType) + ")" : "") + " · no limits reported yet; it publishes them only while a session runs.</div>";
 }
 
 // ---------------------------------------------------------------------------
@@ -1381,41 +1181,6 @@ export const DEFAULT_REPO = "blazetrailsdev/trails";
 
 /** Rows have carried owner and repo separately since before there were two. */
 export const repoOf = (pr) => (pr.owner ? pr.owner + "/" : "") + (pr.repo || "");
-
-export const sectionId = (name) => "repo-" + name.replace(/[^a-zA-Z0-9]+/g, "-");
-
-/**
- * The scaffolding for one frame's sections: a heading and one surface per
- * repo, which its spawns and PRs share as rows.
- *
- * Built here rather than in the wiring so it is the LAST piece of markup with
- * no test. It is rebuilt only when the repo set changes, so an ordinary
- * refresh does not blow away scroll position or anything open inside it --
- * which is what `repoSectionsKey` is compared against.
- */
-export function repoSectionScaffold(sections) {
-  return sections
-    .map(({ name }) => {
-      const id = sectionId(name);
-      return (
-        '<h2 class="repo-heading">' + esc(name) +
-        (name === DEFAULT_REPO
-          ? " " + control("clear-failed", {}, {
-              cls: "spawn-dismiss",
-              id: CLEAR_FAILED_ID,
-              hidden: true,
-              title: "Dismiss all failed spawns",
-              label: "clear failed",
-            })
-          : "") +
-        "</h2>" +
-        '<div class="listbox" id="' + id + '-sessions"></div>'
-      );
-    })
-    .join("");
-}
-
-export const repoSectionsKey = (sections) => sections.map((s) => s.name).join(" ");
 
 /**
  * Drop a spawn whose branch already has a real PR row -- the PR row takes over.

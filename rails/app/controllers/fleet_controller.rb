@@ -7,7 +7,10 @@ class FleetController < ApplicationController
   REVIEWERS_TIMEOUT = 5
   MESSAGE_TIMEOUT = 5
 
-  before_action :require_ringo, except: %i[control message]
+  before_action :require_ringo, except: %i[control message stories]
+
+  # A PR ref as the tasks database writes `stories.pr`: `repo#N`.
+  PR_REF = /\A[A-Za-z0-9_.-]+#[0-9]{1,10}\z/
 
   # `GET /fleet/socket`, a WebSocket handshake. The handshake must name this
   # site as its origin, as Action Cable requires of its own.
@@ -64,6 +67,26 @@ class FleetController < ApplicationController
     relay_read(Fleet::READS[name] + (name == "drain-status" && agent.match?(/\A[a-z]+\z/) ? "?agent=#{agent}" : ""))
   end
 
+  # `GET /fleet/stories`: `?pr[]=repo%23N` or `?story[]=<id>` to their stories
+  # (one map, keyed by ref or id), or `?q=` for the palette's search.
+  def stories
+    no_store
+    if params.key?(:q)
+      phrase = Search.phrase(params[:q])
+      return render json: phrase.nil? ? [] : FleetStories.matching(phrase)
+    end
+    refs = list_param(:pr)
+    ids = list_param(:story)
+    if refs.size + ids.size > FleetStories::MAX_REFS
+      return render plain: "at most #{FleetStories::MAX_REFS} refs per request", status: :bad_request
+    end
+    bad = refs.find { |ref| !ref.match?(PR_REF) }
+    return render plain: "not a PR ref: #{bad}", status: :bad_request if bad
+    answer = FleetStories.for_prs(refs)
+    FleetStories.for_ids(ids).each { |id, story| answer[id] = story ? [ story ] : [] }
+    render json: answer
+  end
+
   # `GET /fleet/pane/<n>/screen[?have=<hash>]`
   def screen
     id = params[:id].to_s
@@ -104,6 +127,10 @@ class FleetController < ApplicationController
     end
   rescue Fleet::Relay::Failure => e
     render plain: e.plain, status: e.status
+  end
+
+  def list_param(name)
+    Array(params[name]).select { |v| v.is_a?(String) && !v.empty? }.uniq
   end
 
   def pane_gone?(text)

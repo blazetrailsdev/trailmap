@@ -40,6 +40,7 @@ const FILLS: [string, string][] = [
   ["on-mark", "purple"],
   ["on-mark", "ink-3"],
   ["on-yellow", "yellow"],
+  ["on-action", "action"],
   ["yellow-ink", "yellow-bg"],
   ["green", "green-bg"],
   ["red", "red-bg"],

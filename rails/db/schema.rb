@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_10_30_000009) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_14_000010) do
   create_table "events", force: :cascade do |t|
     t.string "at", null: false
     t.string "verb", null: false
@@ -100,6 +100,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_30_000009) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "updated_on"
+    t.string "stage"
     t.index ["rfc_id", "status"], name: "index_stories_on_rfc_id_and_status"
     t.index ["status"], name: "index_stories_on_status"
   end

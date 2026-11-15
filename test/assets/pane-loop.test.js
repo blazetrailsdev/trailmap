@@ -26,6 +26,16 @@ describe("pane loop", () => {
     expect(fetchScreen).toHaveBeenCalledTimes(2);
   });
 
+  it("asks nothing once stopped, even with a poll already armed", async () => {
+    const { fetchScreen, loop } = harness();
+    loop.start();
+    await vi.advanceTimersByTimeAsync(0);
+    loop.stop();
+    loop.pollNow();
+    await vi.advanceTimersByTimeAsync(POLL_MS * 5);
+    expect(fetchScreen).toHaveBeenCalledTimes(1);
+  });
+
   it("asks nothing while the tab is hidden", async () => {
     const { page, fetchScreen, loop } = harness();
     loop.start();

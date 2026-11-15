@@ -721,6 +721,5 @@ The host crontab runs the tasks repo's `scripts/track-trails-cron.sh` hourly at
 `pnpm trails:track` through the login shell, and a failed run opens or comments on
 the "trails tracking is failing" issue in blazetrailsdev/tasks. After every run it
 writes `pnpm trails:status` to `trails-status.txt` beside `tasks.db`
-(`<tasks checkout>/.git/`, blazetrailsdev/tasks#328). That directory is already in
-this app's storage mount, and `/dashboard` shows the file (`TrailsTracking.status`),
-red once it holds an `ERROR:` line. No file, no card.
+(`<tasks checkout>/.git/`, blazetrailsdev/tasks#328). trailmap does not read
+it.

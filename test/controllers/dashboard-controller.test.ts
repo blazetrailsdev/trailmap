@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { ActionController } from "@blazetrails/actionpack";
-import { env, getFs, setEnv } from "@blazetrails/ruby-compat";
+import { setEnv } from "@blazetrails/ruby-compat";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { DashboardController } from "../../app/controllers/dashboard-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
@@ -39,8 +39,9 @@ describe("DashboardController", () => {
     const body = await index();
 
     expect(body).toContain('id="repoSections"');
-    expect(body).toContain('id="ciFixerPanel"');
-    for (const id of ["queueSection", "askBody", "usageBar", "codexUsageBar", "pokeBtn", "drainCodexStatus", "drainClaudeField"]) {
+    expect(body).not.toContain('id="ciFixerPanel"');
+    expect(body).not.toContain('id="askPanel"');
+    for (const id of ["queueSection", "filterChips", "stageNames", "palette", "paletteInput", "bcastAll", "spawn", "usageBar", "codexUsageBar", "pokeBtn", "drainCodexStatus", "drainClaudeField"]) {
       expect(body).toContain(`id="${id}"`);
     }
     expect(body).toContain('id="mainCIPills"');
@@ -87,28 +88,6 @@ describe("DashboardController", () => {
       expect(body).not.toContain("btwhooks.web");
     } finally {
       setEnv("RINGO_BASE", undefined);
-    }
-  });
-
-  it("shows the trails tracking status beside tasks.db, red once it escalates", async () => {
-    const fs = getFs();
-    const dir = await fs.mkdtemp!("/tmp/trailmap-dashboard-");
-    const was = env.TASKS_DATABASE;
-    setEnv("TASKS_DATABASE", `${dir}/tasks.db`);
-    try {
-      expect(await index()).not.toContain("trails tracking");
-
-      await fs.writeFile!(`${dir}/trails-status.txt`, "pin        6bf0fbd\nbehind     2757 commits\n");
-      let body = await index();
-      expect(body).toContain('<div class="card trails-tracking">');
-      expect(body).toContain("behind     2757 commits");
-
-      await fs.writeFile!(`${dir}/trails-status.txt`, "pin        6bf0fbd\n\nERROR: held for 231h\n");
-      body = await index();
-      expect(body).toContain('<div class="card trails-tracking ci-fixer paused">');
-    } finally {
-      setEnv("TASKS_DATABASE", was);
-      await fs.rm!(dir, { recursive: true, force: true });
     }
   });
 

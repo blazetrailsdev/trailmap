@@ -4,7 +4,7 @@ import { SessionArchive, SessionArchiveUnavailable } from "../models/session-arc
 import { Setting } from "../models/setting.ts";
 import { archivePathProblem, readBounded, type BoundedRead } from "../../lib/archive-read.ts";
 import { ringoFailure } from "../../lib/ringo-failure.ts";
-import { parseTranscript, renderPaneLog } from "../../lib/ringo-core.ts";
+import { parseTranscript, renderPaneLog, type Transcript } from "../../lib/ringo-core.ts";
 
 /**
  * How long ringo has to hand over one archive file. Longer than the index's:
@@ -40,6 +40,60 @@ export const TRANSCRIPT_MAX_BYTES = 4 << 20;
 
 /** The steps one transcript page draws, ringo's `ParseTranscript(src, 20000)`. */
 export const TRANSCRIPT_MAX_STEPS = 20_000;
+
+/** The most steps one `fleet/transcript` page answers, and the default. */
+export const SESSION_STEPS_LIMIT = 200;
+
+/** One entry of a session's log as `fleet/transcript` answers it. */
+export interface SessionStep {
+  /** Its place in the whole transcript, oldest 0: what `?before=` names. */
+  i: number;
+  at: string;
+  kind: "user" | "text" | "tool" | "note";
+  text: string;
+  tool?: string;
+  error?: boolean;
+}
+
+/**
+ * A parsed transcript as one list, oldest first: each turn's prompt as a user
+ * entry, then its steps. Thinking is left out: it is the agent's, not the log's.
+ */
+export function transcriptSteps(tr: Transcript): SessionStep[] {
+  const steps: SessionStep[] = [];
+  const push = (step: Omit<SessionStep, "i">): void => void steps.push({ i: steps.length, ...step });
+  for (const turn of tr.Turns ?? []) {
+    if (turn.Prompt && turn.Prompt.trim() !== "") push({ at: turn.At, kind: "user", text: turn.Prompt });
+    for (const step of turn.Steps ?? []) {
+      if (step.Kind === "thinking") continue;
+      if (step.Kind === "tool" && step.Tool) {
+        push({ at: step.At, kind: "tool", text: step.Tool.Summary, tool: step.Tool.Name, error: step.Tool.IsError });
+      } else {
+        push({ at: step.At, kind: step.Kind === "note" ? "note" : "text", text: step.Text });
+      }
+    }
+  }
+  return steps;
+}
+
+/**
+ * `?limit=` as Rails' `to_i` reads it: the leading integer, used when it is
+ * positive and capped at `SESSION_STEPS_LIMIT`, else the default.
+ */
+export function stepsLimit(param: unknown): number {
+  const leading = /^\s*([+-]?[0-9]+)/.exec(String(param ?? ""));
+  const n = leading ? parseInt(leading[1]!, 10) : 0;
+  return n > 0 ? Math.min(n, SESSION_STEPS_LIMIT) : SESSION_STEPS_LIMIT;
+}
+
+/**
+ * A page of `steps`, newest first: those before `before` (all, when null), at
+ * most `limit`.
+ */
+export function stepsPage(steps: SessionStep[], before: number | null, limit: number): SessionStep[] {
+  const end = before === null ? steps.length : Math.max(0, Math.min(before, steps.length));
+  return steps.slice(Math.max(0, end - limit), end).reverse();
+}
 
 /** The scrollback rows kept, ringo's `RenderPaneLog(raw, 20000)`. */
 export const PANE_VIEW_MAX_LINES = 20_000;
@@ -137,6 +191,58 @@ export class SessionsController extends ApplicationController {
   }
 
   /**
+   * `GET /fleet/transcript?owner=&repo=&pr=[&before=<i>][&limit=<n>]`: the
+   * dashboard's session log (RFC 0232). The PR's newest worker transcript,
+   * parsed as `transcript` parses it, answered as JSON steps, newest first.
+   *
+   * Keyed by the PR rather than the pane the RFC names: the page knows which
+   * PR a pane works on, from the envelope, and trailmap's own record of it
+   * (`pr_states`) is not written yet. Read per request and never kept.
+   */
+  async steps(): Promise<void> {
+    this.noStore();
+    const owner = String(this.params.get("owner") ?? "");
+    const repo = String(this.params.get("repo") ?? "");
+    const rawPr = String(this.params.get("pr") ?? "");
+    const NAME = /^[A-Za-z0-9_.-]+$/;
+    if (!NAME.test(owner) || !NAME.test(repo) || !/^[1-9][0-9]{0,9}$/.test(rawPr)) {
+      await this.render({ plain: "owner, repo and pr name a pull request", status: 400 });
+      return;
+    }
+    const pr = Number(rawPr);
+    const rawBefore = String(this.params.get("before") ?? "");
+    if (rawBefore !== "" && !/^[0-9]+$/.test(rawBefore)) {
+      await this.render({ plain: "before is a step number", status: 400 });
+      return;
+    }
+    const before = rawBefore === "" ? null : Number(rawBefore);
+    const limit = stepsLimit(this.params.get("limit"));
+    let archives: SessionArchive[];
+    try {
+      archives = await SessionArchive.forPr({ owner, repo, pr });
+    } catch (error) {
+      if (!(error instanceof SessionArchiveUnavailable)) throw error;
+      await this.render({ plain: error.message, status: error.status });
+      return;
+    }
+    const worker = archives
+      .flatMap((a) => a.transcripts)
+      .filter((t) => t.role !== "reviewer")
+      .sort((a, b) => (a.last_at < b.last_at ? 1 : a.last_at > b.last_at ? -1 : 0))[0];
+    if (worker === undefined) {
+      await this.render({ json: { archives: archives.length, path: null, steps: [], total: 0 } });
+      return;
+    }
+    const read = await this._readArchive("/sessions/file", TRANSCRIPT_MAX_BYTES, "head", worker.path);
+    if (read === null) return;
+    const bytes = read.truncated ? read.bytes.subarray(0, read.bytes.lastIndexOf(0x0a) + 1) : read.bytes;
+    const steps = transcriptSteps(await parseTranscript(bytes, TRANSCRIPT_MAX_STEPS));
+    await this.render({
+      json: { archives: archives.length, path: worker.path, steps: stepsPage(steps, before, limit), total: steps.length },
+    });
+  }
+
+  /**
    * ringo's `HandlePaneView`: a pane log replayed to its final scrollback.
    * The bytes are the log tmux writes through ringo's `pipe-pane`; nothing
    * here touches tmux.
@@ -163,8 +269,12 @@ export class SessionsController extends ApplicationController {
    * rendered: a refused path, no ringo, ringo down, or ringo's own refusal
    * (its status and text, as ringo's `http.Error` wrote them).
    */
-  private async _readArchive(path: string, max: number, keep: "head" | "tail"): Promise<BoundedRead | null> {
-    const p = String(this.params.get("p") ?? "");
+  private async _readArchive(
+    path: string,
+    max: number,
+    keep: "head" | "tail",
+    p: string = String(this.params.get("p") ?? ""),
+  ): Promise<BoundedRead | null> {
     const problem = archivePathProblem(p);
     if (problem !== null) {
       await this.render({ plain: problem, status: 400 });

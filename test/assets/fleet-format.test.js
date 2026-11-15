@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  CI_TITLES,
+  paneOverridePill,
+  plural,
   CLEAR_FAILED_ID,
-  DEFAULT_REPO,
   anyFailedSpawn,
   cleanupControl,
+  askAnswer,
+  DEFAULT_REPO,
   cleanupPending,
   control,
   BROADCAST_BUTTONS,
@@ -16,11 +20,8 @@ import {
   WORK_EMOJI,
   activeFixers,
   agentChip,
-  ciIcon,
   esc,
-  fixerCards,
   fixerPhase,
-  fixerSummary,
   isFixerPR,
   isFixerStory,
   mainCIByRepo,
@@ -33,9 +34,7 @@ import {
   pullFailReason,
   pullFailTitle,
   repoOf,
-  repoSectionScaffold,
   repoSections,
-  repoSectionsKey,
   reviewerKey,
   reviewerLine,
   workerLine,
@@ -43,8 +42,6 @@ import {
   reviewersPollOutcome,
   rfcSpawnRow,
   row,
-  sectionId,
-  sessionCard,
   stageFigure,
   stepper,
   spawnLoopControls,
@@ -52,13 +49,9 @@ import {
   statusClass,
   timeAgo,
   visibleSpawns,
-  askAnswer,
-  askCards,
-  askSummary,
   barColor,
   claudeUsage,
   codexUsage,
-  dayMarkers,
   drainStatus,
   formatClockLabel,
   formatResetLabel,
@@ -74,6 +67,10 @@ import {
   hoursUntilReset,
   queuedUnder,
   resetDate,
+  PALETTE_INPUT,
+  stageHeader,
+  stageName,
+  usageSummary,
 } from "../../app/assets/javascripts/fleet-format.js";
 
 import { isPaneId } from "../../config/fleet.ts";
@@ -171,26 +168,6 @@ describe("paneDot", () => {
   });
 });
 
-describe("ciIcon", () => {
-  it("colours the rollup by this PR's own check state", () => {
-    expect(ciIcon("success")).toContain("ci-success");
-    expect(ciIcon("failure")).toContain("ci-failure");
-    expect(ciIcon("pending")).toContain("ci-pending");
-  });
-
-  it("titles each state in words, not just colour", () => {
-    expect(ciIcon("success")).toContain('title="CI passing"');
-    expect(ciIcon("failure")).toContain('title="CI failing"');
-    expect(ciIcon("pending")).toContain('title="CI running"');
-  });
-
-  it("renders nothing when the checks have not reported", () => {
-    expect(ciIcon(undefined)).toBe("");
-    expect(ciIcon("")).toBe("");
-    expect(ciIcon("something-new")).toBe("");
-  });
-});
-
 describe("paneLine", () => {
   it("renders the pane id and its dot", () => {
     const line = paneLine("💪", "%214", "working");
@@ -204,8 +181,6 @@ describe("paneLine", () => {
 
     expect(paneLine("💪", "%214", "working")).toContain(link);
     expect(paneLine("📋", "%214", "idle")).toContain(link);
-    expect(sessionCard({ owner: "o", repo: "r", pr: 1, pane: "%214" })).toContain(link);
-    expect(sessionCard({ pane: "%214", task: "t" })).toContain(link);
     expect(rfcSpawnRow({ pane: "%214", rfc: "0136-trailmap" })).toContain(link);
   });
 
@@ -395,7 +370,7 @@ describe("the broadcast box", () => {
   });
 
   it("sends nothing without a message, and says so for an audience of nobody", () => {
-    expect(controlRequest("broadcast", { target: "all" }, { ...page, message: " " })).toEqual({ focus: "bcastMsg" });
+    expect(controlRequest("broadcast", { target: "all" }, { ...page, message: " " })).toEqual({ focus: "paletteInput" });
     expect(controlRequest("broadcast", { target: "ci-red" }, { ...page, audiences: { all: 3 } })).toEqual({
       note: "no agents in that group",
     });
@@ -508,50 +483,6 @@ describe("reviewerLine before an answer has arrived", () => {
   });
 });
 
-describe("sessionCard's pane mini-table", () => {
-  const pr = { owner: "blazetrailsdev", repo: "trailmap", pr: 47, pane: "%214", paneStatus: "working" };
-  const reviewers = reviewersByKey([
-    { owner: "blazetrailsdev", repo: "trailmap", pr: 47, agent: "claude", pane_id: "%215", pane_status: "idle" },
-  ]);
-
-  it("puts the reviewer's pane under the worker's, in that order", () => {
-    const row = sessionCard(pr, [], Date.now(), reviewers);
-
-    expect(row).toContain('href="/panes/214"');
-    expect(row).toContain('href="/panes/215"');
-    expect(row.indexOf("/panes/214")).toBeLessThan(row.indexOf("/panes/215"));
-  });
-
-  // The merge BUTTON goes when the PR is merged and the reviewer does not:
-  // one is an action that no longer exists, the other is information, and who
-  // reviewed a PR is most wanted while reading the merge. ringo keeps it too.
-  it("keeps the reviewer row on a merged PR, where the merge button goes", () => {
-    const row = sessionCard({ ...pr, merged: true }, [], Date.now(), reviewers);
-
-    expect(row).toContain('href="/panes/215"');
-    expect(row).toContain(">claude</span>");
-    expect(row).not.toContain('data-action="merge"');
-  });
-
-  it("carries no reviewer line at all until the list has been answered", () => {
-    const unanswered = sessionCard(pr, [], Date.now(), null);
-
-    expect(unanswered).toContain('href="/panes/214"');
-    expect(unanswered).not.toContain("📋");
-    expect(unanswered).not.toContain("pcell unassigned");
-    // The default is the unanswered one: a caller that knows nothing about
-    // reviewers must not make the page claim there are none.
-    expect(sessionCard(pr, [], Date.now())).toBe(unanswered);
-  });
-
-  it("shows the reviewer even on a PR with no worker pane of its own", () => {
-    const row = sessionCard({ ...pr, pane: undefined, paneStatus: undefined }, [], Date.now(), reviewers);
-
-    expect(row).not.toContain('href="/panes/214"');
-    expect(row).toContain('href="/panes/215"');
-  });
-});
-
 describe("isFixerStory / isFixerPR", () => {
   const fixers = [{ owner: "blazetrailsdev", repo: "trails", pr: 4022, story_id: "fix-red-main" }];
 
@@ -601,74 +532,6 @@ describe("fixerPhase", () => {
   it("is fixing with a worker on it, and red with none", () => {
     expect(fixerPhase({ story_id: "s" })).toBe("fixing");
     expect(fixerPhase({ consecutive_red: 1 })).toBe("red");
-  });
-});
-
-describe("fixerSummary", () => {
-  it("says the loop is paused whenever any repo has paused it", () => {
-    expect(fixerSummary([{ repo: "a" }, { repo: "b", paused: true }])).toBe(
-      "spawn loop paused — waiting on main to recover",
-    );
-  });
-
-  it("counts repos otherwise, singular and plural", () => {
-    expect(fixerSummary([{ repo: "a" }])).toBe("main is red");
-    expect(fixerSummary([{ repo: "a" }, { repo: "b" }])).toBe("2 repos red");
-  });
-});
-
-describe("fixerCards", () => {
-  const paused = {
-    owner: "blazetrailsdev",
-    repo: "trails",
-    paused: true,
-    consecutive_red: 3,
-    checks: ["test (node 24)", "typecheck"],
-    red_sha: "9f31ca77b1e2",
-    red_url: "https://github.com/blazetrailsdev/trails/actions/runs/1",
-    story_id: "fix-red-main",
-    pr: 4022,
-    awaiting_rebase: [4021, 4018],
-  };
-
-  it("marks the phase and the consecutive-red count", () => {
-    const html = fixerCards([paused]);
-
-    expect(html).toContain('<span class="fixer-phase paused">paused</span>');
-    expect(html).toContain("3&times; consecutive red");
-  });
-
-  it("names the failing checks and links the red commit, truncated to 8", () => {
-    const html = fixerCards([paused]);
-
-    expect(html).toContain("test (node 24), typecheck");
-    expect(html).toContain("<code>9f31ca77</code>");
-    expect(html).toContain('href="https://github.com/blazetrailsdev/trails/actions/runs/1"');
-  });
-
-  it("links the fixer's story and PR, and the PRs waiting on the rebase", () => {
-    const html = fixerCards([paused]);
-
-    expect(html).toContain('href="/story/fix-red-main"');
-    expect(html).toContain('href="https://github.com/blazetrailsdev/trails/pull/4022"');
-    expect(html).toContain('href="https://github.com/blazetrailsdev/trails/pull/4021"');
-    expect(html).toContain('href="https://github.com/blazetrailsdev/trails/pull/4018"');
-  });
-
-  it("omits a line rather than rendering an empty one", () => {
-    const html = fixerCards([{ owner: "o", repo: "r", consecutive_red: 1 }]);
-
-    expect(html).not.toContain("fixer:");
-    expect(html).not.toContain("awaiting rebase:");
-    expect(html).not.toContain("red:");
-    expect(html).not.toContain("consecutive red");
-  });
-
-  it("escapes a check name rather than letting it into the markup", () => {
-    const html = fixerCards([{ owner: "o", repo: "r", checks: ["<img onerror=x>"], consecutive_red: 1 }]);
-
-    expect(html).not.toContain("<img");
-    expect(html).toContain("&lt;img onerror=x&gt;");
   });
 });
 
@@ -761,7 +624,7 @@ describe("controlRequest", () => {
       body: { repoDir: "/w/trails", message: "fix the build" },
       says: "spawnStatus",
       saying: "Spawning...",
-      clears: "task",
+      clears: "paletteInput",
     });
   });
 
@@ -781,7 +644,7 @@ describe("controlOutcome", () => {
     expect(controlOutcome(spawn, { ok: true, text: "spawned %5" }, "Spawn")).toEqual({
       disabled: false,
       say: "Spawned: spawned %5",
-      clear: "task",
+      clear: "paletteInput",
     });
     expect(controlOutcome(spawn, { ok: false, text: "no such repo" }, "Spawn")).toEqual({ disabled: false, say: "Error: no such repo" });
     expect(controlOutcome(spawn, { error: "offline" }, "Spawn")).toEqual({ disabled: false, say: "Error: offline" });
@@ -939,216 +802,85 @@ describe("the spawn loop's controls", () => {
   });
 });
 
-describe("the row controls", () => {
-  const pr = { owner: "o", repo: "r", pr: 7, title: "t", ciStatus: "success" };
-
-  it("offers merge on a Ready to merge PR, in place of the figure", () => {
-    const html = sessionCard(pr, [], NOW);
-
-    expect(html).toContain('<button class="act merge" data-action="merge" data-owner="o" data-repo="r" data-pr="7"');
-    expect(html).not.toContain('class="figure"');
-  });
-
-  it("offers merge on no other stage", () => {
-    expect(sessionCard({ ...pr, ciStatus: "failure" }, [], NOW)).not.toContain('data-action="merge"');
-    expect(sessionCard({ ...pr, draft: true }, [], NOW)).not.toContain('data-action="merge"');
-    expect(sessionCard({ ...pr, openFindings: 1 }, [], NOW)).not.toContain('data-action="merge"');
-  });
-
-  it("drops merge once the PR has merged", () => {
-    expect(sessionCard({ ...pr, merged: true }, [], NOW)).not.toContain('data-action="merge"');
-  });
-
-  it("offers dismiss on a failed spawn and on no other", () => {
-    const spawn = { story_id: "a-story", branch: "a-story-1f2e", status: "failed", error: "boom" };
-
-    expect(sessionCard(spawn, [], NOW)).toContain('data-action="dismiss" data-branch="a-story-1f2e"');
-    expect(sessionCard({ ...spawn, status: "spawned" }, [], NOW)).not.toContain("data-action");
-  });
-
-  it("offers the fixer lever only while a red is recorded", () => {
-    const red = { owner: "o", repo: "r", red_sha: "9f31ca77aa", consecutive_red: 1 };
-
-    expect(fixerCards([red])).toContain('data-action="respawn-fixer" data-owner="o" data-repo="r"');
-    expect(fixerCards([red])).toContain(">spawn fixer</button>");
-    expect(fixerCards([{ ...red, story_id: "fix-red" }])).toContain(">respawn fixer</button>");
-    expect(fixerCards([{ owner: "o", repo: "r", consecutive_red: 1 }])).not.toContain("data-action");
-  });
-
-  it("puts clear-failed on the default repo's heading, hidden until a spawn fails", () => {
-    const html = repoSectionScaffold([{ name: DEFAULT_REPO }, { name: "o/other" }]);
-
-    expect(html.match(/data-action="clear-failed"/g)).toHaveLength(1);
-    expect(html).toContain('id="' + CLEAR_FAILED_ID + '"');
-    expect(html).toContain('style="display:none"');
-    expect(anyFailedSpawn([{ status: "spawned" }])).toBe(false);
-    expect(anyFailedSpawn([{ status: "spawned" }, { status: "failed" }])).toBe(true);
-  });
-});
-
-describe("sessionCard, for a PR", () => {
-  const base = {
-    owner: "blazetrailsdev",
-    repo: "trails",
-    pr: 4021,
-    title: "feat: a thing",
-    branch: "a-thing",
-    nextAction: "waiting for CI",
-    pane: "%214",
-    paneStatus: "working",
-  };
-
-  it("links GitHub, and shows the stage by its stepper rather than a chip", () => {
-    const html = sessionCard(base, [], NOW);
-
-    expect(html).toContain('<a class="prlink" href="https://github.com/blazetrailsdev/trails/pull/4021" target="_blank">#4021</a>');
-    expect(html).toContain('aria-label="Stage: Getting CI green"');
-    expect(html).toContain('class="row session-ci"');
-    expect(html).not.toContain("waiting for CI");
-    expect(html).toContain("<code>%214</code>");
-  });
-
-  it("shows the note and how long ago it changed", () => {
-    const html = sessionCard({ ...base, lastAction: "pushed <fix>", lastTime: minutesAgo(6) }, [], NOW);
-
-    expect(html).toContain("pushed &lt;fix&gt;");
-    expect(html).toContain('<span class="age">6m ago</span>');
-  });
-
-  it("flags a failed check beside the PR link", () => {
-    const html = sessionCard({ ...base, ciStatus: "failure" }, [], NOW);
-
-    expect(html).toContain('<span class="check-failed">check failed</span>');
-    expect(html.indexOf("prlink")).toBeLessThan(html.indexOf("check-failed"));
-    expect(sessionCard({ ...base, ciStatus: "pending" }, [], NOW)).not.toContain("check-failed");
-  });
-
-  it("shows this PR's own CI rollup, next to its title", () => {
-    expect(sessionCard({ ...base, ciStatus: "failure" }, [], NOW)).toContain("ci-failure");
-    expect(sessionCard({ ...base, ciStatus: "success" }, [], NOW)).toContain("ci-success");
-  });
-
-  it("omits the rollup, rather than guessing, when CI has not reported", () => {
-    expect(sessionCard(base, [], NOW)).not.toContain("ci-icon");
-  });
-
-  it("puts the rollup between the title and the labels, as ringo does", () => {
-    const html = sessionCard({ ...base, ciStatus: "success", labels: ["actionview"] }, [], NOW);
-
-    expect(html.indexOf("</a>")).toBeLessThan(html.indexOf("ci-icon"));
-    expect(html.indexOf("ci-icon")).toBeLessThan(html.indexOf('class="label"'));
-  });
-
-  it("says when a pane has reached its limit or waits for an answer", () => {
-    expect(sessionCard({ ...base, paneStatus: "limit" }, [], NOW)).toContain("limit reached");
-    expect(sessionCard({ ...base, paneStatus: "waiting" }, [], NOW)).toContain("waiting for answer");
-    expect(sessionCard(base, [], NOW)).not.toContain('class="status');
-  });
-
-  it("is Merged once merged, and Self review while a draft awaits review", () => {
-    expect(sessionCard({ ...base, merged: true }, [], NOW)).toContain('aria-label="Stage: Merged"');
-    expect(sessionCard({ ...base, draft: true }, [], NOW)).toContain('aria-label="Stage: Self review"');
-  });
-
-  it("prefers merged over draft — a merged PR is not a draft any more", () => {
-    expect(sessionCard({ ...base, merged: true, draft: true }, [], NOW)).toContain("session-merged");
-  });
-
-  it("badges the row when the in-flight CI fixer owns this PR", () => {
-    const fixers = [{ owner: "blazetrailsdev", repo: "trails", pr: 4021 }];
-
-    expect(sessionCard(base, fixers, NOW)).toContain("label-fixer");
-    expect(sessionCard(base, [], NOW)).not.toContain("label-fixer");
-  });
-
-  it("shows a merge conflict and the PR's labels", () => {
-    const html = sessionCard({ ...base, mergeConflict: true, labels: ["actionview"] }, [], NOW);
-
-    expect(html).toContain('<span class="conflict">conflict</span>');
-    expect(html).toContain('<span class="label">actionview</span>');
-  });
-
-  it("omits the counters entirely when there is nothing to count", () => {
-    expect(sessionCard(base, [], NOW)).not.toContain("cycles");
-  });
-
-  it("singularises one comment", () => {
-    expect(sessionCard({ ...base, commentCount: 1 }, [], NOW)).toContain("1 comment &middot;");
-    expect(sessionCard({ ...base, commentCount: 3 }, [], NOW)).toContain("3 comments &middot;");
-  });
-
-  it("falls back to owner/repo#pr when the PR has no title yet", () => {
-    expect(sessionCard({ ...base, title: "" }, [], NOW)).toContain("blazetrailsdev/trails#4021");
-  });
-
-  it("escapes a PR title rather than rendering it", () => {
-    const html = sessionCard({ ...base, title: "<img onerror=x>" }, [], NOW);
-
-    expect(html).not.toContain("<img");
-  });
-});
-
-describe("sessionCard, for a spawn", () => {
-  const base = {
-    story_id: "move-tracker-state",
-    title: "Move tracker state",
-    branch: "move-tracker-state-7712",
-    at: minutesAgo(6),
-    source: "loop",
-    pane: "%251",
-    pane_status: "working",
-  };
-
-  it("links the story show page and says it has no PR yet", () => {
-    const html = sessionCard(base, [], NOW);
-
-    expect(html).toContain('href="/story/move-tracker-state"');
-    expect(html).toContain("no PR yet");
-    expect(html).toContain("spawned via loop");
-    expect(html).toContain('<span class="age">6m ago</span>');
-    expect(html).toContain('aria-label="Stage: Drafting"');
-  });
-
-  it("says only `failed` for a failed spawn, and names the error", () => {
-    const html = sessionCard({ ...base, status: "failed", error: "worktree exists" }, [], NOW);
-
-    expect(html).toContain("status-failed");
-    expect(html).toContain("worktree exists");
-    expect(html).toContain('class="row session-drafting spawn failed"');
-    // The pane is gone, so its last status is stale and must not be reported.
-    expect(sessionCard({ ...base, status: "failed", pane_status: "waiting" }, [], NOW)).not.toContain("waiting for answer");
-  });
-
-  it("says when a live pane has reached its limit or waits for an answer", () => {
-    expect(sessionCard({ ...base, pane_status: "limit" }, [], NOW)).toContain("limit reached");
-    expect(sessionCard({ ...base, pane_status: "waiting" }, [], NOW)).toContain("waiting for answer");
-  });
-
-  it("badges a spawn the CI fixer owns", () => {
-    expect(sessionCard(base, [{ story_id: "move-tracker-state" }], NOW)).toContain("label-fixer");
-  });
-
-  it("hands a grooming agent to the RFC row instead", () => {
-    const html = sessionCard({ ...base, kind: "rfc-refine", story_id: "0136-trailmap" }, [], NOW);
-
-    expect(html).toContain('href="/rfc/0136-trailmap"');
-    expect(html).not.toContain("no PR yet");
-  });
-});
-
 describe("stepper", () => {
   it("draws passed and current stages with their icons, and one still to come as a dot", () => {
     const html = stepper("ringo");
 
     expect(html).toContain('aria-label="Stage: Reviewer convergence"');
-    expect(html.match(/class="step st-/g)).toHaveLength(3);
-    expect(html.match(/class="step todo"><\/span>/g)).toHaveLength(3);
+    expect(html.match(/class="node st-/g)).toHaveLength(3);
+    expect(html.match(/class="node todo"><\/span>/g)).toHaveLength(3);
     expect(html.match(/ current"/g)).toHaveLength(1);
-    expect(html).toContain('class="step st-ringo current"');
+    expect(html).toContain('class="node st-ringo current"');
   });
 
   it("marks every step on a merged session", () => {
     expect(stepper("merged")).not.toContain("todo");
+  });
+});
+
+describe("stepper, with a mark", () => {
+  it("puts the mark in the current step in place of its icon", () => {
+    const html = stepper("ringo", '<span class="ring"></span>');
+
+    expect(html).toContain('<span class="step done"><span class="ring"></span></span>');
+    expect(html).not.toContain(' current"');
+    expect(html.match(/class="node st-/g)).toHaveLength(2);
+  });
+
+  it("marks every step reached as done, so its connector draws solid, and none ahead", () => {
+    const html = stepper("ci");
+
+    expect(html.match(/class="step done"/g)).toHaveLength(4);
+    expect(html.match(/<span class="step"><span class="node todo">/g)).toHaveLength(2);
+  });
+});
+
+describe("stageHeader", () => {
+  it("names all six stages in order, each with its mark, for the columns over the steppers", () => {
+    const html = stageHeader();
+
+    expect(html.match(/class="step"/g)).toHaveLength(6);
+    const names = [...html.matchAll(/class="stage-name">([^<]+)</g)].map((m) => m[1]);
+    expect(names).toEqual(["Drafting", "Self review", "Reviewer convergence", "Getting CI green", "Ready to merge", "Merged"]);
+    expect(stageName("ci")).toBe("Getting CI green");
+    expect(stageName("nope")).toBe("");
+  });
+});
+
+describe("a pane message", () => {
+  it("posts the text to the pane's own send route, not under the control prefix", () => {
+    const request = controlRequest("pane-send", { pane: "%42", text: "  rebase please ", key: "s-pr-o-r-7", says: "note", clears: "box" });
+
+    expect(request).toMatchObject({ path: "/pane/42/send", url: "/fleet/pane/42/send", body: { text: "rebase please" }, says: "note", clears: "box" });
+  });
+
+  it("sends nothing empty, and nothing to a pane id it cannot vouch for", () => {
+    expect(controlRequest("pane-send", { pane: "%42", text: " " })).toBeNull();
+    expect(controlRequest("pane-send", { pane: "42", text: "x" })).toBeNull();
+    expect(controlRequest("pane-send", { pane: "%4/../2", text: "x" })).toBeNull();
+  });
+
+  it("logs a sent line and clears its box; shows ringo's refusal beside it", () => {
+    const request = controlRequest("pane-send", { pane: "%42", text: "go", key: "k", says: "note", clears: "box" });
+
+    expect(controlOutcome(request, { ok: true, text: "" }, "Send")).toEqual({ disabled: false, say: "sent", clear: "box", sent: { key: "k", text: "go" } });
+    expect(controlOutcome(request, { ok: false, text: "pane %42 has exited" }, "Send")).toEqual({ disabled: false, say: "pane %42 has exited" });
+    expect(controlOutcome(request, { error: "offline" }, "Send")).toEqual({ disabled: false, say: "offline" });
+  });
+
+  it("names the palette's one input as where an empty broadcast puts the cursor", () => {
+    expect(PALETTE_INPUT).toBe("paletteInput");
+  });
+});
+
+describe("usageSummary", () => {
+  it("is the one line a folded Usage panel shows", () => {
+    expect(usageSummary({ sessionPercent: 81, weeklyPercent: 62 })).toBe("session 81% · week 62%");
+    expect(usageSummary({ sessionPercent: 140, manualPause: true })).toBe("session 100% · paused");
+    expect(usageSummary({})).toBe("");
+    expect(usageSummary({ manualPause: true, queueSize: 3 })).toBe("paused · 3 queued");
+    const now = Date.parse("2026-11-15T12:00:00Z");
+    expect(usageSummary({ weeklyPercent: 5, lastCheckTime: "2026-11-15T11:58:00Z" }, now)).toBe("week 5% · updated 2m ago");
   });
 });
 
@@ -1180,16 +912,13 @@ describe("rfcSpawnRow", () => {
   });
 });
 
-describe("repoOf / sectionId", () => {
+describe("repoOf", () => {
   it("joins owner and repo, tolerating a row that carries only one", () => {
     expect(repoOf({ owner: "a", repo: "b" })).toBe("a/b");
     expect(repoOf({ repo: "b" })).toBe("b");
     expect(repoOf({})).toBe("");
   });
 
-  it("makes a DOM-safe id out of a repo name", () => {
-    expect(sectionId("blazetrailsdev/trails")).toBe("repo-blazetrailsdev-trails");
-  });
 });
 
 describe("visibleSpawns", () => {
@@ -1253,33 +982,6 @@ describe("repoSections", () => {
 
     expect(sections.find((s) => s.name === DEFAULT_REPO).spawns.map((s) => s.story_id)).toEqual(["b"]);
     expect(sections.find((s) => s.name === "blazetrailsdev/tasks").spawns.map((s) => s.story_id)).toEqual(["a"]);
-  });
-});
-
-describe("repoSectionScaffold", () => {
-  it("gives each repo a heading and the two boxes, spawns hidden until needed", () => {
-    const html = repoSectionScaffold(repoSections([], []));
-
-    expect(html).toContain('<h2 class="repo-heading">blazetrailsdev/trails ');
-    expect(html).toContain('<div class="listbox" id="repo-blazetrailsdev-trails-sessions"></div>');
-  });
-
-  it("escapes a repo name rather than stripping or trusting it", () => {
-    const html = repoSectionScaffold([{ name: "acme/<img onerror=x>" }]);
-
-    expect(html).not.toContain("<img");
-    expect(html).toContain("&lt;img onerror=x&gt;");
-  });
-});
-
-describe("repoSectionsKey", () => {
-  it("changes only when the repo SET does, so a refresh reuses the nodes", () => {
-    const one = repoSections([{ owner: "blazetrailsdev", repo: "tasks", pr: 1 }], []);
-    const two = repoSections([{ owner: "blazetrailsdev", repo: "tasks", pr: 2 }], []);
-    const three = repoSections([{ owner: "blazetrailsdev", repo: "trailmap", pr: 1 }], []);
-
-    expect(repoSectionsKey(one)).toBe(repoSectionsKey(two));
-    expect(repoSectionsKey(one)).not.toBe(repoSectionsKey(three));
   });
 });
 
@@ -1358,15 +1060,6 @@ describe("the queue", () => {
     { Owner: "o", Repo: "r", PR: 7, Message: "CI failed on o/r#7" },
     { Owner: "o", Repo: "other", PR: 7, Message: "PR has been merged" },
   ];
-
-  it("renders under its PR row, with a button that sends that one", () => {
-    const html = sessionCard(pr, [], NOW, null, queue);
-    expect(html.match(/class="queued-row"/g)).toHaveLength(1);
-    expect(html.indexOf("queued-row")).toBeGreaterThan(html.indexOf("rtitle"));
-    expect(html).toContain("CI failure");
-    expect(html).toContain('data-action="send-one" data-pr="7"');
-    expect(sessionCard(pr, [], NOW, null)).not.toContain("queued-row");
-  });
 
   it("appends only that PR's notifications to the row it is given", () => {
     expect(queuedUnder(pr, queue, "<row>").match(/^<row><div class="queued-row">.*<\/div>$/)).not.toBeNull();
@@ -1449,47 +1142,6 @@ describe("draining stranded reviewers", () => {
   });
 });
 
-describe("the relayed questions", () => {
-  // Markup, and a quote that would close the attribute it is written into.
-  const MARKUP = "<img src=x onerror=alert(1)>";
-  const hostile = MARKUP + 'x" onclick="alert(1)';
-  const second = { question: "Second?", options: [{ label: "Yes" }] };
-  const ask = {
-    id: hostile, label: hostile, pane: hostile, at: minutesAgo(3),
-    questions: [{ header: hostile, question: hostile, options: [{ label: hostile, description: hostile }] }, second],
-  };
-
-  it("escapes every piece of model-authored text, in text and in attributes", () => {
-    const html = askCards([ask], NOW);
-    expect(html).not.toContain("<img");
-    expect(html).not.toContain('" onclick="');
-    // Eleven places: label, pane, header, question, the option's label and
-    // description, the id on both buttons, and the answer's question and label.
-    expect(html.split(esc(hostile)).length - 1).toBe(11);
-  });
-
-  it("renders who is asking, each question's options and a free-text answer", () => {
-    const html = askCards([{ id: "a1", label: "worker", pane: "%9", at: minutesAgo(3), questions: [second] }], NOW);
-    expect(html).toContain("<strong>worker</strong><code>%9</code><span>3m ago</span>");
-    expect(html).toContain('data-action="answer-ask" data-id="a1" data-answer="Yes"');
-    expect(html).toContain('data-action="answer-ask" data-id="a1" data-free="1"');
-    expect(askSummary([ask])).toBe("1 agent blocked, waiting for an answer");
-  });
-
-  it("answers in prose: the label, under its question when there were several", () => {
-    expect(askAnswer(ask, second, "Yes")).toBe("Second? → Yes");
-    expect(askAnswer({ questions: [second] }, second, "Yes")).toBe("Yes");
-  });
-
-  it("posts an option or free text to ringo's relay, and nothing empty", () => {
-    const request = controlRequest("answer-ask", { id: "a1", answer: "  in my own words " });
-    expect([request.path, request.body]).toEqual(["/ask/answer", { id: "a1", answer: "in my own words" }]);
-    expect(controlOutcome(request, { ok: true, text: "" }, "Send")).toEqual({ disabled: true, text: "sent", refresh: "asks" });
-    expect(controlOutcome(request, { ok: false, text: "gone" }, "Send")).toMatchObject({ disabled: false, alert: "gone" });
-    expect(controlRequest("answer-ask", { id: "a1", free: "1", answer: "  " })).toBeNull();
-  });
-});
-
 describe("the usage helpers", () => {
   // Local time, as the labels are: Tuesday 8 September 2026, noon.
   const noon = new Date(2026, 8, 8, 12, 0).getTime();
@@ -1523,12 +1175,8 @@ describe("the usage helpers", () => {
     expect([formatResetLabel("soon", 0, noon), formatClockLabel("", 0, noon)]).toEqual(["soon", "?"]);
   });
 
-  it("measures how much of the week is gone, and ticks each local midnight of it", () => {
+  it("measures how much of the week is gone", () => {
     expect([weeklyResetsAt, noon - HOUR, 0].map((at) => weekElapsedPercent("", at, noon))).toEqual([50, 100, 0]);
-    // Half gone at Tuesday noon: the week began Saturday at midnight.
-    const html = dayMarkers("", weeklyResetsAt, noon);
-    expect(html.match(/<span>(..)<\/span>/g).map((s) => s.slice(6, 8))).toEqual(["Su", "Mo", "Tu", "We", "Th", "Fr"]);
-    expect(html).toContain('style="left:' + (24 / 168) * 100 + '%"><span>Su');
   });
 
   it("takes the reset from the epoch over the label, and counts the hours to it", () => {
@@ -1544,34 +1192,37 @@ describe("the usage helpers", () => {
     expect(paceText(50, -20)).toBe("50% of week elapsed (1d 10h under)");
   });
 
-  it("draws Claude's session, per-model and weekly bars, the pause and the extra balance", () => {
+  it("draws Claude's week, session and per-model rows, each a label, a meter and its percent", () => {
     const html = claudeUsage(
       {
         sessionPercent: 90, sessionResetsAt: new Date(2026, 8, 8, 14, 0).getTime(),
-        weeklyPercent: 70, weeklyResetsAt, paused: true, queueSize: 2,
+        weeklyPercent: 70, weeklyResetsAt,
         weeklyModels: [{ name: "<b>Sonnet", percent: 140 }],
         extraLimit: 50, extraBalance: 1.5, extraSpent: 3, extraEnabled: true,
-        lastCheckTime: new Date(noon - 120000).toISOString(),
       },
       noon,
     );
-    expect(html).toContain("updated 2m ago");
-    expect(html).toContain("Session (2:00 PM)");
-    expect(html).toContain('class="bar-fill red" style="width:90%"');
-    expect(html).toContain("MANUAL PAUSE (2 queued)");
-    expect(html).toContain('&lt;b&gt;Sonnet</div><div class="bar-container"><div class="bar-fill red" style="width:100%"');
-    expect(html).toContain('class="bar-fill red" style="width:70%"></div><div class="bar-marker" style="left:50%">');
+    expect(html.match(/class="usage-row"/g)).toHaveLength(3);
+    expect(html).toContain('<span>Claude · week</span><span class="meter"><i class="bar-fill red" style="width:70%"></i></span><span>70%</span>');
     expect(html).toContain("50% of week elapsed (1d 10h ahead)");
-    expect(html).toContain('$3.00 spent &middot; <span style="color:var(--red)">$1.50 balance</span> &middot; $50 limit');
+    expect(html).toContain('<div class="usage-row" title="resets 2:00 PM"><span>Claude · session</span>');
+    expect(html).toContain("<span>&lt;b&gt;Sonnet · week</span>");
+    expect(html).toContain('style="width:100%"></i></span><span>100%</span>');
+    expect(html).toContain('<div class="usage-note">Extra usage on · $3.00 spent · $1.50 balance · $50 limit</div>');
+    expect(claudeUsage({ extraEnabled: false, extraLimit: 50 }, noon)).not.toContain("Extra usage");
   });
 
   it("drops a window Codex did not report, and says so when it reported neither", () => {
-    const weekly = codexUsage({ sessionPercent: -1, weeklyPercent: 40, weeklyResetsAt, planType: "pro" }, noon);
-    expect(weekly).not.toContain("Session (");
-    expect(weekly).toContain('<span class="usage-meta">pro</span>');
-    expect(weekly).toContain("<span>50% of week elapsed</span>");
-    expect(codexUsage({ sessionPercent: 10, weeklyPercent: 40, planType: "<pro>" }, noon)).toContain("<span> &middot; &lt;pro&gt;</span>");
-    expect(codexUsage({ sessionPercent: -1, weeklyPercent: -1 }, noon)).toContain("No limits reported yet");
+    const weekly = codexUsage({ sessionPercent: -1, weeklyPercent: 40, weeklyResetsAt }, noon);
+    expect(weekly).not.toContain("Codex · session");
+    expect(weekly).toContain("<span>Codex · week</span>");
+    expect(weekly).toContain("50% of week elapsed");
+    expect(codexUsage({ sessionPercent: 10, weeklyPercent: 40 }, noon).match(/class="usage-row"/g)).toHaveLength(2);
+    expect(codexUsage({ sessionPercent: -1, weeklyPercent: -1 }, noon)).toContain("no limits reported yet");
+    // The plan, which the old header printed, is in each row's tooltip, escaped.
+    expect(codexUsage({ sessionPercent: 10, weeklyPercent: -1, planType: "<pro>" }, noon)).toContain(' · &lt;pro&gt; plan"><span>Codex · session</span>');
+    expect(codexUsage({ sessionPercent: -1, weeklyPercent: -1, planType: "plus" }, noon)).toContain("Codex (plus) · no limits reported yet");
+    expect(claudeUsage({ weeklyPercent: 5 }, noon)).not.toContain(" plan");
     // A scraper with nothing yet sends no percents: zero, not "NaN%".
     expect(claudeUsage({}, noon)).not.toMatch(/NaN|undefined/);
   });
@@ -1637,14 +1288,6 @@ describe("a pending pane cleanup", () => {
     expect(cleanupPending({ ...pr, teardownAt: "2026-10-28T11:59:00Z" }, now)).toBe(false);
   });
 
-  it("draws the pill and a cancel control on the PR row", () => {
-    const html = sessionCard(pr, [], now);
-    expect(html).toContain("closing in 45s");
-    expect(html).toContain('data-action="cancel-cleanup" data-pane="%12"');
-    expect(cleanupControl({ ...pr, teardownAt: "2026-10-28T11:59:30Z" }, now)).toContain("closing in 0s");
-    expect(sessionCard({ ...pr, teardownAt: "0001-01-01T00:00:00Z" }, [], now)).not.toContain("cancel-cleanup");
-  });
-
   it("posts the pane to /cancel-cleanup and reports kept or too late", () => {
     const request = controlRequest("cancel-cleanup", { pane: "%12" });
     expect(request.path).toBe("/cancel-cleanup");
@@ -1654,5 +1297,22 @@ describe("a pending pane cleanup", () => {
     expect(late.text).toBe("too late");
     expect(late.title).toBe("no cleanup pending");
     expect(controlOutcome(request, { error: "offline" }, "cancel cleanup").text).toBe("err");
+  });
+});
+
+describe("the helpers the session list shares", () => {
+  it("pluralises a count", () => {
+    expect(plural(1, "cycle")).toBe("1 cycle");
+    expect(plural(2, "cycle")).toBe("2 cycles");
+  });
+
+  it("names each CI state in words", () => {
+    expect(CI_TITLES).toEqual({ success: "CI passing", failure: "CI failing", pending: "CI running" });
+  });
+
+  it("overrides the row with a pane at its limit or waiting, and nothing else", () => {
+    expect(paneOverridePill("limit")).toContain("limit reached");
+    expect(paneOverridePill("waiting")).toContain("waiting for answer");
+    expect(paneOverridePill("working")).toBeNull();
   });
 });

@@ -3,6 +3,16 @@ import { ApplicationController } from "./application-controller.ts";
 import { FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash, paneMessageProblem } from "../../config/fleet.ts";
 import { Setting } from "../models/setting.ts";
 import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.ts";
+import {
+  FLEET_STORIES_MAX_REFS,
+  storiesForIds,
+  storiesForPrs,
+  storiesMatching,
+} from "../models/concerns/fleet-stories.ts";
+import { searchPhrase } from "../models/concerns/search.ts";
+
+/** A PR ref as the tasks database writes `stories.pr`: `repo#N`. */
+const PR_REF = /^[A-Za-z0-9_.-]+#[0-9]{1,10}$/;
 
 /**
  * How long ringo has to answer a control. A merge waits on GitHub, so this is
@@ -198,6 +208,47 @@ export class FleetController extends ApplicationController {
     await this._relayRead(FLEET_READS[name] + (name === "drain-status" && /^[a-z]+$/.test(agent) ? `?agent=${agent}` : ""));
   }
 
+  /**
+   * `GET /fleet/stories`, the dashboard's read of the tasks database (RFC
+   * 0232), in three forms:
+   *
+   * - `?pr[]=trails%239958&pr[]=…`: each PR ref to every story whose `pr` it is,
+   *   of any status, `[]` for a ref nothing names.
+   * - `?story[]=<id>&…`: a spawn's story, which has no PR yet, keyed the
+   *   same way (a story id never contains `#`), so the page has one decoder.
+   *   Both forms may be sent together and answer one map.
+   * - `?q=<text>`: at most twenty stories matched on id and title, for the
+   *   palette.
+   *
+   * Lists are `[]` keys, as Rails reads them: the RFC's bare repeated `pr=`
+   * keeps only its last value in a params hash. More than a hundred refs is
+   * a 400.
+   */
+  async stories(): Promise<void> {
+    this.noStore();
+    const q = this.params.get("q");
+    if (q != null) {
+      const phrase = searchPhrase(q);
+      await this.render({ json: phrase === null ? [] : await storiesMatching(phrase) });
+      return;
+    }
+    const refs = listParam(this.params.get("pr"));
+    const ids = listParam(this.params.get("story"));
+    if (refs.length + ids.length > FLEET_STORIES_MAX_REFS) {
+      await this.render({ plain: `at most ${FLEET_STORIES_MAX_REFS} refs per request`, status: 400 });
+      return;
+    }
+    const bad = refs.find((ref) => !PR_REF.test(ref));
+    if (bad !== undefined) {
+      await this.render({ plain: `not a PR ref: ${bad}`, status: 400 });
+      return;
+    }
+    const [byPr, byId] = await Promise.all([storiesForPrs(refs), storiesForIds(ids)]);
+    const answer: Record<string, unknown> = { ...byPr };
+    for (const [id, story] of Object.entries(byId)) answer[id] = story === null ? [] : [story];
+    await this.render({ json: answer });
+  }
+
   private async _relayRead(path: string): Promise<void> {
     const base = await Setting.ringoBase();
     if (base === null) {
@@ -270,6 +321,12 @@ export class FleetController extends ApplicationController {
       await this.render(ringoFailure(error, SCREEN_TIMEOUT_MS));
     }
   }
+}
+
+/** A `[]` param's distinct strings; a lone value counts as a list of one. */
+function listParam(value: unknown): string[] {
+  const list = Array.isArray(value) ? value : value == null ? [] : [value];
+  return [...new Set(list.filter((v): v is string => typeof v === "string" && v !== ""))];
 }
 
 /** Whether ringo's body is its gone-pane answer, `{ "exists": false }`, whatever status it came under. */
