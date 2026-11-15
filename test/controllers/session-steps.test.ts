@@ -6,7 +6,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { getHttpAsync, setEnv, type HttpServer } from "@blazetrails/ruby-compat";
-import { SessionsController, stepsPage, transcriptSteps, type SessionStep } from "../../app/controllers/sessions-controller.ts";
+import { SessionsController, stepsLimit, stepsPage, transcriptSteps, type SessionStep } from "../../app/controllers/sessions-controller.ts";
 import type { SessionArchiveRow } from "../../app/models/session-archive.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -151,5 +151,25 @@ describe("transcriptSteps", () => {
       { i: 1, at: "t2", kind: "text", text: "done" },
       { i: 2, at: "t3", kind: "tool", text: "ls", tool: "Bash", error: true },
     ]);
+  });
+});
+
+describe("SessionsController#steps, parsed as Rails parses it", () => {
+  it("refuses a before or pr that is not plain digits", async () => {
+    for (const before of [" ", "1e2", "0x10", "1.0", "-1"]) expect((await steps({ ...PR, before })).status).toBe(400);
+    for (const pr of ["1e3", "0x1f", "01", "12345678901"]) expect((await steps({ ...PR, pr })).status).toBe(400);
+  });
+
+  it("reads limit like to_i: a positive leading integer, else the default", () => {
+    expect(stepsLimit("-5")).toBe(200);
+    expect(stepsLimit("1.5")).toBe(1);
+    expect(stepsLimit("abc")).toBe(200);
+    expect(stepsLimit("3x")).toBe(3);
+    expect(stepsLimit("999")).toBe(200);
+    expect(stepsLimit(undefined)).toBe(200);
+  });
+
+  it("skips a whitespace-only prompt, as present? does", () => {
+    expect(transcriptSteps({ Turns: [{ Prompt: "  ", At: "t", Steps: [] }] } as never)).toEqual([]);
   });
 });

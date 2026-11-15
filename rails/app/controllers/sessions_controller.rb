@@ -125,11 +125,12 @@ class SessionsController < ApplicationController
     no_store
     owner, repo, pr = params[:owner].to_s, params[:repo].to_s, params[:pr].to_s
     name = /\A[A-Za-z0-9_.-]+\z/
-    unless owner.match?(name) && repo.match?(name) && pr.match?(/\A[1-9][0-9]*\z/)
+    unless owner.match?(name) && repo.match?(name) && pr.match?(/\A[1-9][0-9]{0,9}\z/)
       return render plain: "owner, repo and pr name a pull request", status: :bad_request
     end
-    before = params[:before].presence
-    return render plain: "before is a step number", status: :bad_request if before && !before.match?(/\A[0-9]+\z/)
+    before = params[:before].to_s
+    return render plain: "before is a step number", status: :bad_request unless before.empty? || before.match?(/\A[0-9]+\z/)
+    before = before.empty? ? nil : before
     limit = params[:limit].to_i.positive? ? [ params[:limit].to_i, SESSION_STEPS_LIMIT ].min : SESSION_STEPS_LIMIT
     archives = SessionArchive.for_pr(owner: owner, repo: repo, pr: pr.to_i)
     worker = archives.flat_map(&:transcripts).reject { |t| t["role"] == "reviewer" }.max_by { |t| t["last_at"].to_s }

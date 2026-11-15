@@ -93,8 +93,9 @@ describe("FleetController#stories, searched", () => {
     expect((await get({ q: "bulk" })).json()).toHaveLength(FLEET_STORIES_MAX_HITS);
   });
 
-  it("answers nothing for a phrase too short to search", async () => {
+  it("answers nothing for a phrase too short to search, or an empty one", async () => {
     expect((await get({ q: "b" })).json()).toEqual([]);
+    expect((await get({ q: "" })).json()).toEqual([]);
   });
 });
 

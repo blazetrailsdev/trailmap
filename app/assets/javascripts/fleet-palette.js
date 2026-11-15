@@ -40,18 +40,25 @@ const best = (fields, query) =>
     return score >= 0 && (top < 0 || score < top) ? score : top;
   }, -1);
 
-/** `text` escaped, with every match of `query` marked. */
+/**
+ * `text` escaped, with every match of `query` marked. Matched ASCII-case-
+ * insensitively on the text itself, so a character whose lower case has a
+ * different length (`İ`) never shifts a mark.
+ */
 export function highlight(text, query) {
   const raw = String(text == null ? "" : text);
   const needle = String(query || "").trim();
   if (!needle) return esc(raw);
-  const lower = raw.toLowerCase();
-  const find = needle.toLowerCase();
+  const fold = (c) => (c >= "A" && c <= "Z" ? c.toLowerCase() : c);
+  const at = (i) => needle.split("").every((c, k) => fold(raw[i + k] || "") === fold(c));
   let out = "";
   let from = 0;
-  for (let at = lower.indexOf(find); at >= 0; at = lower.indexOf(find, from)) {
-    out += esc(raw.slice(from, at)) + "<mark>" + esc(raw.slice(at, at + find.length)) + "</mark>";
-    from = at + find.length;
+  for (let i = 0; i + needle.length <= raw.length; ) {
+    if (at(i)) {
+      out += esc(raw.slice(from, i)) + "<mark>" + esc(raw.slice(i, i + needle.length)) + "</mark>";
+      i += needle.length;
+      from = i;
+    } else i++;
   }
   return out + esc(raw.slice(from));
 }

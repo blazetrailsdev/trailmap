@@ -43,6 +43,10 @@ describe("highlight", () => {
     expect(highlight("a<b", "")).toBe("a&lt;b");
   });
 
+  it("keeps marks on the matched characters when a lower case changes length", () => {
+    expect(highlight("İx inter", "inter")).toBe("İx <mark>inter</mark>");
+  });
+
   it("never lets the query itself into the markup", () => {
     expect(highlight("x<img>y", "<img>")).toBe("x<mark>&lt;img&gt;</mark>y");
   });

@@ -43,6 +43,8 @@ class FleetStoriesTest < ActionDispatch::IntegrationTest
     assert_equal %w[interceptor-string-arm preview-interceptors drafting-alone], json.map { |s| s["id"] }
     get "/fleet/stories", params: { q: "i" }
     assert_equal [], json
+    get "/fleet/stories", params: { q: "" }
+    assert_equal [], json
   end
 
   TRANSCRIPT = [
@@ -80,6 +82,27 @@ class FleetStoriesTest < ActionDispatch::IntegrationTest
     assert_equal({ "archives" => 0, "path" => nil, "steps" => [], "total" => 0 }, json)
     get "/fleet/transcript", params: { owner: "o", repo: "r", pr: "x" }
     assert_response :bad_request
+  end
+
+  test "refuses a before or pr that is not plain digits, and reads limit like to_i" do
+    with_ringo(RINGO) do
+      [ " ", "1e2", "0x10", "1.0", "-1" ].each do |before|
+        get "/fleet/transcript", params: { owner: "blazetrailsdev", repo: "trails", pr: "9001", before: before }
+        assert_response :bad_request, before
+      end
+      [ "1e3", "0x1f", "01", "12345678901" ].each do |pr|
+        get "/fleet/transcript", params: { owner: "blazetrailsdev", repo: "trails", pr: pr }
+        assert_response :bad_request, pr
+      end
+      { "-5" => 2, "1.5" => 1, "abc" => 2 }.each do |limit, count|
+        get "/fleet/transcript", params: { owner: "blazetrailsdev", repo: "trails", pr: "9001", limit: limit }
+        assert_equal count, json["steps"].size, limit
+      end
+    end
+  end
+
+  test "transcript_steps skips a whitespace-only prompt" do
+    assert_equal [], SessionsController.transcript_steps({ "Turns" => [ { "Prompt" => "  ", "At" => "t", "Steps" => [] } ] })
   end
 
   test "steps_page takes at most the limit before the step named" do

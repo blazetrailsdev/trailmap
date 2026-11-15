@@ -63,7 +63,7 @@ export function transcriptSteps(tr: Transcript): SessionStep[] {
   const steps: SessionStep[] = [];
   const push = (step: Omit<SessionStep, "i">): void => void steps.push({ i: steps.length, ...step });
   for (const turn of tr.Turns ?? []) {
-    if (turn.Prompt) push({ at: turn.At, kind: "user", text: turn.Prompt });
+    if (turn.Prompt && turn.Prompt.trim() !== "") push({ at: turn.At, kind: "user", text: turn.Prompt });
     for (const step of turn.Steps ?? []) {
       if (step.Kind === "thinking") continue;
       if (step.Kind === "tool" && step.Tool) {
@@ -74,6 +74,16 @@ export function transcriptSteps(tr: Transcript): SessionStep[] {
     }
   }
   return steps;
+}
+
+/**
+ * `?limit=` as Rails' `to_i` reads it: the leading integer, used when it is
+ * positive and capped at `SESSION_STEPS_LIMIT`, else the default.
+ */
+export function stepsLimit(param: unknown): number {
+  const leading = /^\s*([+-]?[0-9]+)/.exec(String(param ?? ""));
+  const n = leading ? parseInt(leading[1]!, 10) : 0;
+  return n > 0 ? Math.min(n, SESSION_STEPS_LIMIT) : SESSION_STEPS_LIMIT;
 }
 
 /**
@@ -193,18 +203,20 @@ export class SessionsController extends ApplicationController {
     this.noStore();
     const owner = String(this.params.get("owner") ?? "");
     const repo = String(this.params.get("repo") ?? "");
-    const pr = Number(this.params.get("pr"));
-    if (!/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(repo) || !Number.isInteger(pr) || pr <= 0) {
+    const rawPr = String(this.params.get("pr") ?? "");
+    const NAME = /^[A-Za-z0-9_.-]+$/;
+    if (!NAME.test(owner) || !NAME.test(repo) || !/^[1-9][0-9]{0,9}$/.test(rawPr)) {
       await this.render({ plain: "owner, repo and pr name a pull request", status: 400 });
       return;
     }
-    const rawBefore = this.params.get("before");
-    const before = rawBefore == null || rawBefore === "" ? null : Number(rawBefore);
-    const limit = Math.min(SESSION_STEPS_LIMIT, Math.max(1, Number(this.params.get("limit")) || SESSION_STEPS_LIMIT));
-    if (before !== null && !(Number.isInteger(before) && before >= 0)) {
+    const pr = Number(rawPr);
+    const rawBefore = String(this.params.get("before") ?? "");
+    if (rawBefore !== "" && !/^[0-9]+$/.test(rawBefore)) {
       await this.render({ plain: "before is a step number", status: 400 });
       return;
     }
+    const before = rawBefore === "" ? null : Number(rawBefore);
+    const limit = stepsLimit(this.params.get("limit"));
     let archives: SessionArchive[];
     try {
       archives = await SessionArchive.forPr({ owner, repo, pr });
