@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-import { Dir } from "@blazetrails/ruby-compat";
+import { rbArgv } from "@blazetrails/ruby-compat";
 import "../config/environment.ts";
 
-for (const file of Dir.glob(`${import.meta.dirname}/../app/jobs/**/*.ts`)) await import(file);
-
 const { Cli } = await import("@blazetrails/solid-queue/cli");
-await Cli.start(process.argv.slice(2));
+await Cli.start(rbArgv());
