@@ -51,8 +51,11 @@ import {
   sessionKey,
   sessionList,
   storiesQuery,
+  terminalPanes,
   trackPanes,
 } from "./fleet-sessions.js";
+import { atBottom, noticeText, screenUrl } from "./pane-format.js";
+import { createPaneLoop, paintScreen } from "./pane-loop.js";
 import {
   paletteActions,
   paletteFlat,
@@ -127,6 +130,7 @@ const ctx = {
   open: new Set(),
   log: new Map(),
   steps: new Map(),
+  screens: new Map(),
   since: new Date().toISOString(),
 };
 let filter = filterFrom(window.location.search);
@@ -174,6 +178,73 @@ function keepWhileRepainting(host, paint) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// An expanded live session's terminal: its worker pane, polled through the
+// same screen relay and loop as `/panes/:id`, one loop per pane on screen.
+// ---------------------------------------------------------------------------
+
+const terminals = new Map();
+
+async function fetchScreen(pane, hash) {
+  const path = "/fleet/pane/" + encodeURIComponent(pane.slice(1)) + "/screen";
+  try {
+    const response = await fetch(screenUrl(path, hash), {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!response.ok) return { error: (await response.text()).slice(0, 200) || "HTTP " + response.status, status: response.status };
+    return { body: await response.json() };
+  } catch (error) {
+    return { error: error && error.message ? error.message : String(error) };
+  }
+}
+
+/**
+ * Put a loop's answer on the page without repainting the list: the screen
+ * into its `<pre>`, the notice beside it, and both into `ctx.screens` so the
+ * next repaint draws them again.
+ */
+function paintTerminal(pane, loop, html) {
+  if (terminals.get(pane) !== loop) return;
+  const was = ctx.screens.get(pane);
+  const notice = noticeText(loop.state, { paused: false });
+  const screen = { html: html !== null ? html : was ? was.html : "", notice, bad: !!(loop.state.exited || loop.state.unreachable) };
+  ctx.screens.set(pane, screen);
+  const pre = document.querySelector('[data-terminal="' + CSS.escape(pane) + '"]');
+  if (pre && html !== null) paintScreen(pre, html, atBottom);
+  const note = document.querySelector('[data-terminal-notice="' + CSS.escape(pane) + '"]');
+  if (note) {
+    note.textContent = notice;
+    note.classList.toggle("bad", screen.bad);
+  }
+}
+
+/** Start a loop for each terminal now on screen, and stop the rest. */
+function syncTerminals() {
+  const want = new Set(terminalPanes(shownRows, ctx.open));
+  for (const [pane, loop] of terminals) {
+    if (want.has(pane)) continue;
+    loop.stop();
+    terminals.delete(pane);
+    ctx.screens.delete(pane);
+  }
+  for (const pane of want) {
+    if (terminals.has(pane)) continue;
+    const loop = createPaneLoop({
+      fetchScreen: (hash) => fetchScreen(pane, hash),
+      hidden: () => document.hidden,
+      paint: (html) => paintTerminal(pane, loop, html),
+    });
+    terminals.set(pane, loop);
+    loop.start();
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  for (const loop of terminals.values()) loop.pollNow();
+});
+
 function renderSessions(prs, spawns) {
   ctx.now = Date.now();
   const host = byId("repoSections");
@@ -189,6 +260,7 @@ function renderSessions(prs, spawns) {
   });
   host.classList.toggle("only-needs", filter === "needs");
   byId("filterChips").innerHTML = filterChips(list.active, list.needs, filter);
+  syncTerminals();
   return list.rows;
 }
 

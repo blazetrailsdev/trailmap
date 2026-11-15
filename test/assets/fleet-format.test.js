@@ -823,9 +823,16 @@ describe("stepper, with a mark", () => {
   it("puts the mark in the current step in place of its icon", () => {
     const html = stepper("ringo", '<span class="ring"></span>');
 
-    expect(html).toContain('<span class="step"><span class="ring"></span></span>');
+    expect(html).toContain('<span class="step done"><span class="ring"></span></span>');
     expect(html).not.toContain(' current"');
     expect(html.match(/class="node st-/g)).toHaveLength(2);
+  });
+
+  it("marks every step reached as done, so its connector draws solid, and none ahead", () => {
+    const html = stepper("ci");
+
+    expect(html.match(/class="step done"/g)).toHaveLength(4);
+    expect(html.match(/<span class="step"><span class="node todo">/g)).toHaveLength(2);
   });
 });
 

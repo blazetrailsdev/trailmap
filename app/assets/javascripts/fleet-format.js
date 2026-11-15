@@ -874,8 +874,8 @@ export function stepper(stage, mark = "") {
     '<span class="stepper" role="img" aria-label="Stage: ' + STAGES[at][1] + '">' +
     STAGES.map(([id], i) => {
       if (i > at) return '<span class="step"><span class="node todo"></span></span>';
-      if (i === at && mark) return '<span class="step">' + mark + "</span>";
-      return '<span class="step"><span class="node st-' + id + (i === at ? " current" : "") + '">' + STAGE_ICONS[id] + "</span></span>";
+      if (i === at && mark) return '<span class="step done">' + mark + "</span>";
+      return '<span class="step done"><span class="node st-' + id + (i === at ? " current" : "") + '">' + STAGE_ICONS[id] + "</span></span>";
     }).join("") +
     "</span>"
   );

@@ -26,6 +26,8 @@ import {
   reviewTurn,
   sessionCard,
   sessionDetail,
+  terminalHtml,
+  terminalPanes,
   sessionGroups,
   sessionKey,
   sessionList,
@@ -632,12 +634,21 @@ describe("the filter", () => {
 });
 
 describe("sessionDetail / sessionGroups, directly", () => {
-  it("draws the detail for a session with its log, facts and Open pane link", () => {
-    const html = sessionDetail(PR, context(), null);
+  it("draws a live session's detail with its pane's terminal, facts and Open pane link", () => {
+    const html = sessionDetail(PR, context({ screens: new Map([["%214", { html: '<span class="fg2">$ pnpm test</span>', notice: "", bad: false }]]) }), null);
 
     expect(html.startsWith('<div class="detail" id="' + sessionKey(PR) + '-detail">')).toBe(true);
-    expect(html).toContain("Session log");
+    expect(html).toContain('data-terminal="%214"');
+    expect(html).toContain('<span class="fg2">$ pnpm test</span></pre>');
+    expect(html).not.toContain("Session log");
     expect(html).toContain('href="/panes/214">Open pane</a>');
+  });
+
+  it("draws a merged session's detail with its session log, not a terminal", () => {
+    const html = sessionDetail({ ...PR, merged: true }, context(), null);
+
+    expect(html).toContain("Session log");
+    expect(html).not.toContain("data-terminal");
   });
 
   it("splits each repo's rows into active ones and merged ones, spawns first", () => {
@@ -646,5 +657,30 @@ describe("sessionDetail / sessionGroups, directly", () => {
 
     expect(group.rows).toEqual([SPAWN, PR]);
     expect(group.merged).toEqual([merged]);
+  });
+});
+
+describe("terminalPanes / terminalHtml", () => {
+  it("names each open, live session's worker pane once, and no other", () => {
+    const rows = [PR, { ...PR, pr: 2 }, SPAWN, { ...PR, pr: 3, pane: "%9", merged: true }, { ...SPAWN, branch: "x", pane: "not-a-pane" }];
+    const open = new Set(rows.map(sessionKey));
+
+    expect(terminalPanes(rows, open)).toEqual(["%214", "%251"]);
+    expect(terminalPanes(rows, new Set([sessionKey(SPAWN)]))).toEqual(["%251"]);
+    expect(terminalPanes(rows, new Set())).toEqual([]);
+  });
+
+  it("draws a terminal that says it is connecting before its first screen", () => {
+    const html = terminalHtml("%214", undefined);
+
+    expect(html).toContain("connecting…");
+    expect(html).toContain('<pre class="terminal" tabindex="0" data-terminal="%214" data-log="term-%214" aria-label="Pane %214 screen"></pre>');
+  });
+
+  it("draws a failing poll's notice in red, and keeps the last screen", () => {
+    const html = terminalHtml("%214", { html: "<b>last</b>", notice: "ringo is unreachable", bad: true });
+
+    expect(html).toContain('<span class="pane-notice bad" data-terminal-notice="%214" role="status">ringo is unreachable</span>');
+    expect(html).toContain("<b>last</b></pre>");
   });
 });

@@ -680,7 +680,7 @@ ul { margin: 0 0 10px 20px; }
 .session-ci { --c: var(--st-ci); }
 .session-ready { --c: var(--st-ready); }
 .session-merged { --c: var(--st-merged); }
-.list-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px 132px; gap: 20px; align-items: center; }
+.list-grid { display: grid; grid-template-columns: minmax(0, 1fr) 480px 132px; gap: 20px; align-items: center; }
 .stage-header.list-grid {
   position: sticky; top: 49px; z-index: 5; padding: 10px 16px 10px 19px; margin-top: 8px;
   background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px);
@@ -694,7 +694,14 @@ ul { margin: 0 0 10px 20px; }
 .chip[aria-pressed="true"] { background: var(--soil); color: var(--bg); }
 .chip:focus-visible, .expand:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
 .stepper { display: grid; grid-template-columns: repeat(6, 1fr); align-items: center; justify-items: center; }
-.step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; width: 100%; }
+.step > * { position: relative; z-index: 1; }
+/* The line into each step from the one before: solid in the stage colour once reached, dashed ahead. */
+.stepper:not(.stage-names) .step + .step::before {
+  content: ""; position: absolute; top: 50%; right: calc(50% + 15px); width: calc(100% - 30px);
+  border-top: 1.5px dashed var(--line);
+}
+.stepper:not(.stage-names) .step.done + .step.done::before { border-top: 2px solid var(--c, var(--ink-3)); }
 .node {
   display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
   border-radius: 50%; color: var(--on-mark);
@@ -707,8 +714,13 @@ ul { margin: 0 0 10px 20px; }
 .st-ci { background: var(--st-ci); }
 .st-ready { background: var(--st-ready); }
 .st-merged { background: var(--st-merged); }
-.stage-names .node { width: 20px; height: 20px; }
-.stage-name { font-size: 10.5px; font-weight: 600; color: var(--ink-2); line-height: 1.2; text-align: center; max-width: 58px; overflow-wrap: normal; }
+.stage-names .node { width: 18px; height: 18px; flex: none; }
+.stage-names .step { flex-direction: row; justify-content: center; gap: 4px; }
+.stage-names .stage-name { font-size: 10px; max-width: 60px; }
+.stage-name { font-size: 10.5px; font-weight: 600; color: var(--ink-2); line-height: 1.2; text-align: left; max-width: 58px; overflow-wrap: normal; }
+@media (max-width: 1000px) { .list-grid { grid-template-columns: minmax(0, 1fr) 360px 132px; } }
+/* The dashboard runs wider than the reading pages, as the mockup does. */
+.wrap:has(#fleetConfig) { max-width: 1240px; }
 
 .repo { margin-top: 20px; }
 .repo-head { display: flex; align-items: center; gap: 8px; margin: 0 0 8px 2px; }
@@ -817,6 +829,9 @@ ul { margin: 0 0 10px 20px; }
 }
 .detail h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
 .log-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; margin-bottom: 6px; }
+/* An expanded live session's terminal: its worker pane, as /panes/:id draws it, shorter. */
+.terminal-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.detail-log .terminal { height: 420px; min-height: 0; margin: 6px 0 8px; }
 .log { max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .log-row { display: grid; grid-template-columns: 44px 56px minmax(0, 1fr); gap: 8px; padding: 5px 10px; font-size: 12.5px; }
 .log-row + .log-row { border-top: 1px solid var(--line); }

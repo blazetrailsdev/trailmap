@@ -448,6 +448,35 @@ export function logHtml(s, ctx) {
   return '<div class="log-head">' + head.join(" &middot; ") + '</div><div class="log" data-log="' + key + '">' + rows + "</div>";
 }
 
+/**
+ * The panes whose terminal is on screen: each open, live session's worker
+ * pane that names a tmux pane. `dashboard.js` polls exactly these.
+ */
+export function terminalPanes(rows, open) {
+  return [...new Set(
+    rows
+      .filter((s) => open.has(sessionKey(s)) && !s.merged && s.status !== "failed" && paneHref(paneOf(s)))
+      .map(paneOf),
+  )];
+}
+
+/**
+ * A live session's terminal: its worker pane's screen as ringo renders it
+ * (escaped text in styled spans, so it goes in as HTML), polled by
+ * `dashboard.js` through the same relay as `/panes/:id`. `screen` is that
+ * loop's last `{ html, notice, bad }`, or nothing before its first answer.
+ * `data-log` keeps its scroll, and its following, through a repaint.
+ */
+export function terminalHtml(pane, screen) {
+  const notice = screen ? screen.notice : "connecting…";
+  return (
+    '<div class="terminal-head"><h4>Terminal <code>' + esc(pane) + "</code></h4>" +
+    '<span class="pane-notice' + (screen && screen.bad ? " bad" : "") + '" data-terminal-notice="' + esc(pane) + '" role="status">' + esc(notice) + "</span></div>" +
+    '<pre class="terminal" tabindex="0" data-terminal="' + esc(pane) + '" data-log="term-' + esc(pane) + '" aria-label="Pane ' + esc(pane) + ' screen">' +
+    (screen && screen.html ? screen.html : "") + "</pre>"
+  );
+}
+
 // ---------------------------------------------------------------------------
 // One session
 // ---------------------------------------------------------------------------
@@ -486,7 +515,7 @@ export function sessionDetail(s, ctx, lead) {
   const queued = isPR(s) ? queuedUnder(s, ctx.queue, "") : "";
   return (
     '<div class="detail" id="' + key + '-detail">' +
-    '<div class="detail-log"><h4>Session log</h4>' + logHtml(s, ctx) + composer + "</div>" +
+    '<div class="detail-log">' + (live && href ? terminalHtml(paneOf(s), ctx.screens && ctx.screens.get(paneOf(s))) : "<h4>Session log</h4>" + logHtml(s, ctx)) + composer + "</div>" +
     '<div class="detail-side">' + side + queued + "</div>" +
     "</div>"
   );

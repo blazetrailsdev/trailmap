@@ -10,8 +10,9 @@ export function createPaneLoop({ fetchScreen, hidden, paint }) {
   let paused = false;
   let inFlight = false;
   let timer = null;
+  let stopped = false;
 
-  const polling = () => shouldPoll(state, { paused, hidden: hidden() });
+  const polling = () => !stopped && shouldPoll(state, { paused, hidden: hidden() });
 
   async function poll() {
     timer = null;
@@ -52,6 +53,12 @@ export function createPaneLoop({ fetchScreen, hidden, paint }) {
     togglePause() {
       paused = !paused;
       pollNow();
+    },
+    /** Never ask again: the dashboard drops a pane's loop when its card closes. */
+    stop() {
+      stopped = true;
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
     },
   };
 }
