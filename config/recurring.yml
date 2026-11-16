@@ -3,13 +3,14 @@
 # `solid_queue_recurring_executions`' unique (task_key, run_at) index keeps a
 # second scheduler — two workers during a deploy — from enqueuing it twice.
 production:
-  # The trails stats sync, replacing the host crontab's
+  # The trails stats sync, hourly, replacing the host crontab's nightly
   #   0 6 * * * …/trails/scripts/sync-stats/cron-wrapper.sh
-  # three hours ahead of it, so the two do not spend the same GitHub API budget
-  # at once. Cron reads the host's local time (America/Detroit) and the container
-  # runs in UTC, so the zone is spelled out. Both run during the cutover, each
-  # writing its own database (app/jobs/stats-sync-job.ts).
+  # at :17 past the hour, off :00, so no run starts alongside the wrapper and
+  # the two do not spend the same GitHub API budget at once. Cron reads the
+  # host's local time (America/Detroit) and the container runs in UTC, so the
+  # zone is spelled out. Both run during the cutover, each writing its own
+  # database (app/jobs/stats-sync-job.ts).
   stats_sync:
     class: StatsSyncJob
-    schedule: "0 3 * * * America/Detroit"
+    schedule: "17 * * * * America/Detroit"
     description: "Sync trails PRs, CI runs and compare stats into the job's stats database"

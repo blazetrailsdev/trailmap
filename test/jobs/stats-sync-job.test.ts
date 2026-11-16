@@ -16,6 +16,11 @@ describe("StatsSyncJob", () => {
   let log: string;
   const writable = env as Record<string, string | undefined>;
   const read = () => getFs().readFileSync(log, "utf8");
+  const priorFailedRuns = (n: number) => {
+    for (let i = 0; i < n; i++) {
+      getFs().appendFileSync(log, `=== x ===\nboom\n[cron-wrapper] stats sync failed at stage "s" (execution 1): boom\n`);
+    }
+  };
 
   beforeEach(() => {
     dir = getFs().mkdtempSync!(getPath().join(getOs().tmpdir!(), "stats-sync-job-"));
@@ -73,6 +78,7 @@ describe("StatsSyncJob", () => {
   });
 
   it("mails EMAIL the stage, error and log tail when a run fails for good", async () => {
+    priorFailedRuns(2);
     writable["EMAIL"] = "ops@example.com";
     ApplicationMailer.deliveryMethod = "test";
     ApplicationMailer.deliveries.length = 0;
@@ -88,6 +94,7 @@ describe("StatsSyncJob", () => {
   });
 
   it("still mails the stage when the log tail cannot be read", async () => {
+    priorFailedRuns(2);
     writable["EMAIL"] = "ops@example.com";
     ApplicationMailer.deliveryMethod = "test";
     ApplicationMailer.deliveries.length = 0;
@@ -104,6 +111,7 @@ describe("StatsSyncJob", () => {
   });
 
   it("names the stage when a retried run, a fresh instance, runs out of attempts", async () => {
+    priorFailedRuns(2);
     writable["EMAIL"] = "ops@example.com";
     ApplicationMailer.deliveryMethod = "test";
     ApplicationMailer.deliveries.length = 0;
@@ -122,6 +130,7 @@ describe("StatsSyncJob", () => {
   });
 
   it("notes in the log that no alert was sent when EMAIL is not set", async () => {
+    priorFailedRuns(2);
     syncLatest.mockRejectedValue(new Error("no such table: x"));
     const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
     await expect(job.performNow()).rejects.toThrow("no such table");
@@ -129,6 +138,7 @@ describe("StatsSyncJob", () => {
   });
 
   it("notes an alert it could not send without masking the sync's error", async () => {
+    priorFailedRuns(2);
     writable["EMAIL"] = "ops@example.com";
     const addDeliveryMethod = ApplicationMailer.addDeliveryMethod as (name: string, klass: unknown) => void;
     addDeliveryMethod.call(ApplicationMailer, "refused", class {
@@ -145,6 +155,7 @@ describe("StatsSyncJob", () => {
   });
 
   it("mails when a rate limit outlives its last retry", async () => {
+    priorFailedRuns(2);
     writable["EMAIL"] = "ops@example.com";
     ApplicationMailer.deliveryMethod = "test";
     ApplicationMailer.deliveries.length = 0;
@@ -180,7 +191,7 @@ describe("StatsSyncJob", () => {
     );
   });
 
-  it("reports a gap wider than 26 hours without the word failed", async () => {
+  it("reports a gap wider than 3 hours without the word failed", async () => {
     const previous = new Date(Date.now() - 30 * 3_600_000).toISOString();
     getFs().appendFileSync(log, `=== ${previous} ===\n`);
     await new StatsSyncJob().perform();
@@ -193,9 +204,125 @@ describe("StatsSyncJob", () => {
     expect(job.concurrencyKey()).toContain("stats_sync");
   });
 
-  it("holds the concurrency lock for 23 hours", () => {
+  it("holds the concurrency lock for 2 hours", () => {
     const klass = StatsSyncJob as unknown as { concurrencyDuration: { toI(): number } };
-    expect(klass.concurrencyDuration.toI()).toBe(23 * 3600);
+    expect(klass.concurrencyDuration.toI()).toBe(2 * 3600);
+  });
+
+  it("does not report the gap between two hourly runs", async () => {
+    getFs().appendFileSync(log, `=== ${new Date(Date.now() - 3_600_000).toISOString()} ===\n[cron-wrapper] ok\n`);
+    await new StatsSyncJob().perform();
+    expect(read()).not.toContain("stale");
+  });
+
+  it("mails only from the third failed run in a row", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    syncLatest.mockRejectedValue(new Error("no such table: x"));
+    for (let run = 0; run < 2; run++) {
+      const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+      await expect(job.performNow()).rejects.toThrow("no such table");
+    }
+    expect(ApplicationMailer.deliveries).toHaveLength(0);
+    expect(read()).toContain("[cron-wrapper] no alert email sent: 2 failed run(s) in a row, mailing at 3\n");
+    const third = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(third.performNow()).rejects.toThrow("no such table");
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+  });
+
+  it("mails once per outage, not again on the fourth failed run", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    priorFailedRuns(3);
+    syncLatest.mockRejectedValue(new Error("no such table: x"));
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(job.performNow()).rejects.toThrow("no such table");
+    expect(ApplicationMailer.deliveries).toHaveLength(0);
+    expect(read()).toContain("[cron-wrapper] no alert email sent: 4 failed runs in a row, mailed at 3\n");
+  });
+
+  it("counts a failure before the sync started toward the mail", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    delete writable["STATS_SYNC_DB"];
+    for (let run = 0; run < 3; run++) {
+      const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+      await expect(job.performNow()).rejects.toThrow("STATS_SYNC_DB must be set");
+    }
+    expect(read()).toContain("[cron-wrapper] stats sync failed before the sync started: STATS_SYNC_DB must be set");
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+  });
+
+  it("mails every failure when STATS_SYNC_LOG is not set", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    delete writable["STATS_SYNC_LOG"];
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(job.performNow()).rejects.toThrow("STATS_SYNC_LOG must be set");
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+  });
+
+  it("reads only the log's tail, however long the log grows", async () => {
+    getFs().appendFileSync(log, `=== 2020-01-01T00:00:00Z ===\n${"x".repeat(200 * 1024)}\n`);
+    getFs().appendFileSync(log, `=== ${new Date(Date.now() - 3_600_000).toISOString()} ===\n[cron-wrapper] ok\n`);
+    const readFileSync = vi.spyOn(getFs(), "readFileSync");
+    await new StatsSyncJob().perform();
+    expect(readFileSync).not.toHaveBeenCalledWith(log, expect.anything());
+    readFileSync.mockRestore();
+    expect(read()).not.toContain("stale");
+  });
+
+  it("still mails on the third failed run when each run writes more than 64 KiB", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    syncLatest.mockImplementation(async () => {
+      getFs().appendFileSync(log, `[gh] failed: ${"x".repeat(70 * 1024)}\n`);
+      throw new Error("no such table: x");
+    });
+    for (let run = 0; run < 3; run++) {
+      const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+      await expect(job.performNow()).rejects.toThrow("no such table");
+    }
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+  });
+
+  it("finds the previous run header behind more than 64 KiB of output", async () => {
+    const previous = new Date(Date.now() - 5 * 3_600_000).toISOString();
+    getFs().appendFileSync(log, `=== ${previous} ===\n${"x".repeat(100 * 1024)}\n`);
+    await new StatsSyncJob().perform();
+    expect(read()).toMatch(/\[cron-wrapper\] stale: previous run was 5h ago/);
+  });
+
+  it("counts failed runs only since the last good one", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    priorFailedRuns(2);
+    getFs().appendFileSync(log, "=== y ===\n[cron-wrapper] ok\n");
+    syncLatest.mockRejectedValue(new Error("no such table: x"));
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(job.performNow()).rejects.toThrow("no such table");
+    expect(ApplicationMailer.deliveries).toHaveLength(0);
+  });
+
+  it("retries a transient GitHub error once, after 5 minutes, so it ends before the next hourly run", async () => {
+    syncLatest.mockRejectedValue(new Error("502 Bad Gateway"));
+    const job = new StatsSyncJob() as unknown as {
+      performNow(): Promise<unknown>;
+      retryJob(options: { wait: unknown }): Promise<void>;
+    };
+    const retryJob = vi.spyOn(job, "retryJob").mockResolvedValue();
+    await job.performNow();
+    expect(retryJob).toHaveBeenCalledOnce();
+    const wait = Number(retryJob.mock.calls[0]![0].wait);
+    expect(wait).toBeGreaterThanOrEqual(300);
+    expect(wait).toBeLessThan(600);
+    expect(read()).toContain("(execution 1 of 2)");
   });
 
   it("retries a rate limit once, after 120 seconds, without a failed verdict", async () => {

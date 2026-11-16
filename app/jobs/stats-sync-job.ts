@@ -4,14 +4,46 @@ import { isTransientGhError } from "../../lib/stats-sync/gh-transient-error.ts";
 import { StatsSyncMailer } from "../mailers/stats-sync-mailer.ts";
 import { ApplicationJob } from "./application-job.ts";
 
-const STALE_HOURS = 26;
+const STALE_HOURS = 3;
+// A GitHub outage fails every hourly run; mail once it has outlasted a few of them.
+const FAILED_RUNS_BEFORE_MAIL = 3;
 
 // `attempts` is total executions, as retry_on counts them: the wrapper's run plus its retries.
 class RateLimitedSync extends Error {
   static attempts = 2;
 }
+// One retry, soon: the next hourly run is the real retry, so a retried run ends before it starts.
 class TransientGhSync extends Error {
-  static attempts = 3;
+  static attempts = 2;
+}
+
+// The log grows by 24 runs a day, and a run writes every failed `gh` call into it, so
+// reads go backwards from the end, 64 KiB at a time, until `enough` has what it needs.
+const LOG_CHUNK_BYTES = 64 * 1024;
+
+function readLogTail(log: string, enough: (tail: string) => boolean = () => true): string {
+  const fs = getFs();
+  const size = fs.statSync(log).size;
+  const fd = fs.openSync(log, "r");
+  let bytes = new Uint8Array(0);
+  let start = size;
+  let tail = "";
+  try {
+    do {
+      const length = Math.min(start, LOG_CHUNK_BYTES);
+      start -= length;
+      const chunk = new Uint8Array(length);
+      fs.readSync(fd, chunk, 0, length, start);
+      const joined = new Uint8Array(chunk.length + bytes.length);
+      joined.set(chunk);
+      joined.set(bytes, chunk.length);
+      bytes = joined;
+      tail = new TextDecoder().decode(bytes);
+    } while (start > 0 && !enough(tail));
+  } finally {
+    fs.closeSync(fd);
+  }
+  return tail;
 }
 
 function requiredEnv(name: string): string {
@@ -21,7 +53,7 @@ function requiredEnv(name: string): string {
 }
 
 /**
- * The daily `stats:sync --latest`, replacing cron-wrapper.sh: `retryOn` takes
+ * The hourly `stats:sync --latest`, replacing cron-wrapper.sh: `retryOn` takes
  * the wrapper's two retry loops, and the log keeps its `=== <time> ===` headers
  * and `[cron-wrapper]` verdict lines, and a run that fails for good mails
  * `EMAIL` through ApplicationJob's failure mail, as the wrapper's `send_alert`
@@ -31,10 +63,12 @@ export class StatsSyncJob extends ApplicationJob {
   private failedStage: string | null = null;
 
   static {
-    // A sync can outlive its retries' waits; a second one would race the first.
-    this.limitsConcurrency({ key: "stats_sync", duration: Duration.hours(23) });
+    // A sync (~13 min) can outlive its retries' waits; a second one would race the first.
+    // solid_queue v1.1.3 has no `on_conflict: :discard`, so an overlapping run waits
+    // for the lock, which expires after 2 hours if a run dies holding it.
+    this.limitsConcurrency({ key: "stats_sync", duration: Duration.hours(2) });
     this.retryOn(RateLimitedSync, { wait: Duration.seconds(120), attempts: RateLimitedSync.attempts });
-    this.retryOn(TransientGhSync, { wait: Duration.seconds(1800), attempts: TransientGhSync.attempts });
+    this.retryOn(TransientGhSync, { wait: Duration.seconds(300), attempts: TransientGhSync.attempts });
   }
 
   async perform(): Promise<void> {
@@ -99,6 +133,49 @@ export class StatsSyncJob extends ApplicationJob {
   }
 
   /**
+   * Mail once per outage: on the `FAILED_RUNS_BEFORE_MAIL`th run in a row to fail
+   * for good, counted from the log's `[cron-wrapper]` verdicts since its last `ok`.
+   * A failure before the sync started (no env, no log directory, a failed import)
+   * writes its verdict here, as perform's `catch` never saw it. Without a log to
+   * count in, every failure mails.
+   */
+  override async mailFailure(exception: unknown): Promise<void> {
+    const failed = this.consecutiveFailedRuns(exception);
+    if (failed !== null && failed !== FAILED_RUNS_BEFORE_MAIL) {
+      this.failureMailNotSent(
+        failed < FAILED_RUNS_BEFORE_MAIL
+          ? `no alert email sent: ${failed} failed run(s) in a row, mailing at ${FAILED_RUNS_BEFORE_MAIL}`
+          : `no alert email sent: ${failed} failed runs in a row, mailed at ${FAILED_RUNS_BEFORE_MAIL}`,
+      );
+      return;
+    }
+    await super.mailFailure(exception);
+  }
+
+  /** `null` where there is no log to count in. */
+  private consecutiveFailedRuns(exception: unknown): number | null {
+    const log = env.STATS_SYNC_LOG;
+    if (!log) return null;
+    try {
+      if (this.failedStage === null) {
+        const message = exception instanceof Error ? exception.message : String(exception);
+        getFs().appendFileSync(
+          log,
+          `[cron-wrapper] stats sync failed before the sync started: ${message.split("\n")[0]}\n`,
+        );
+      }
+      const countFailed = (text: string) => [...text.matchAll(/^\[cron-wrapper\] stats sync failed /gm)].length;
+      const tail = readLogTail(
+        log,
+        (text) => text.includes("[cron-wrapper] ok\n") || countFailed(text) > FAILED_RUNS_BEFORE_MAIL,
+      );
+      return countFailed(tail.split("[cron-wrapper] ok\n").at(-1) ?? "");
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * The stage and the log tail, as cron-wrapper.sh's `send_alert` mailed them;
    * `ApplicationJob#mailFailure` sends them once the retries are spent.
    */
@@ -107,7 +184,7 @@ export class StatsSyncJob extends ApplicationJob {
     let tail = "";
     // A log that cannot be read costs the mail its tail, not the mail itself.
     try {
-      if (log) tail = (await getFs().readFile(log, "utf8")).trimEnd().split("\n").slice(-30).join("\n");
+      if (log) tail = readLogTail(log).trimEnd().split("\n").slice(-30).join("\n");
     } catch (error) {
       tail = `(the log could not be read: ${error instanceof Error ? error.message : String(error)})`;
     }
@@ -123,14 +200,14 @@ export class StatsSyncJob extends ApplicationJob {
 
   private reportGap(log: string): void {
     if (!getFs().existsSync(log)) return;
-    const contents = getFs().readFileSync(log, "utf8");
+    const contents = readLogTail(log, (text) => /^=== \d{4}-\d{2}-\d{2}T\S+ ===$/m.test(text));
     const previous = [...contents.matchAll(/^=== (\d{4}-\d{2}-\d{2}T\S+) ===$/gm)].at(-1)?.[1];
     if (!previous) return;
     const hours = Math.floor((Date.now() - Date.parse(previous)) / 3_600_000);
     if (hours >= STALE_HOURS) {
       getFs().appendFileSync(
         log,
-        `[cron-wrapper] stale: previous run was ${hours}h ago (expected ~24h) — the sync did not run in between\n`,
+        `[cron-wrapper] stale: previous run was ${hours}h ago (expected ~1h) — the sync did not run in between\n`,
       );
     }
   }
