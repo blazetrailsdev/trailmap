@@ -157,9 +157,9 @@ code { font-family: var(--font-mono); font-size: 12px; }
 /*
  * Page chrome -- GitHub's header, which is also ringo's
  * (`webhook/nav.go:12-52`): a sticky bar on `--surface` over the content
- * column, brand on the left, page links beside it, the current page marked by
- * Primer's `--tab` underline. The links are plain text at weight 600 rather
- * than pills, which is how GitHub spells a header link.
+ * column, the signpost icon and the wordmark on the left, page links beside
+ * them, the current page marked by Primer's `--tab` underline. The links are
+ * plain text at weight 600 with GitHub's grey hover, not pills.
  *
  * ringo full-bleeds the bar by pulling it out of the body's padding with
  * negative margins; here the bar is a sibling of the content column, which
@@ -183,32 +183,25 @@ code { font-family: var(--font-mono); font-size: 12px; }
   gap: 8px;
   font-size: 16px;
   font-weight: 600;
-  letter-spacing: -0.2px;
   color: var(--fg);
   text-decoration: none;
   white-space: nowrap;
 }
-.nav-brand:hover { text-decoration: none; opacity: 0.85; }
-.nav-brand .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green);
-}
+.nav-brand:hover { color: var(--accent); text-decoration: none; }
+.nav-brand img { display: block; }
 .nav-links { display: flex; align-items: center; gap: 4px; margin-right: auto; }
 .nav-links a {
   display: inline-flex;
   align-items: center;
-  padding: 16px 8px;
-  border-bottom: 2px solid transparent;
+  padding: 5px 8px;
+  border-radius: 6px;
   font-size: 14px;
   font-weight: 600;
   color: var(--fg);
   text-decoration: none;
 }
-.nav-links a:hover { color: var(--muted); text-decoration: none; }
-.nav-links a.active { border-bottom-color: var(--tab); }
+.nav-links a:hover { background: color-mix(in srgb, var(--ink-3) 14%, transparent); text-decoration: none; }
+.nav-links a.active { border-radius: 0; box-shadow: 0 2px 0 var(--tab); }
 
 /*
  * The mobile menu is CSS only -- a hidden checkbox drives the drawer, which is
@@ -256,7 +249,8 @@ code { font-family: var(--font-mono); font-size: 12px; }
     border-left: 2px solid transparent;
   }
   .nav-links a:last-child { border-bottom: none; }
-  .nav-links a.active { border-bottom-color: var(--border); border-left-color: var(--tab); padding-left: 10px; }
+  .nav-links a { border-radius: 0; }
+  .nav-links a.active { border-bottom-color: var(--border); border-left-color: var(--tab); padding-left: 10px; box-shadow: none; }
 }
 
 .wrap { max-width: 1012px; margin: 0 auto; padding: 0 24px; }
