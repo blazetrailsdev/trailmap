@@ -705,7 +705,11 @@ document.addEventListener("click", async (event) => {
   if (outcome.say !== undefined) byId(request.says).textContent = outcome.say;
   if (outcome.clear) byId(outcome.clear).value = "";
   if (outcome.clearMessage) byId(PALETTE_INPUT).value = "";
-  if (outcome.closePalette) closePalette();
+  // The palette is about to go, and its report with it: say it on the page.
+  if (outcome.closePalette) {
+    byId("paletteDone").textContent = outcome.say ?? outcome.note ?? "";
+    closePalette();
+  }
   if (outcome.sent) {
     // What this page typed into a session goes in that session's log.
     const key = outcome.sent.key || "";
@@ -851,6 +855,7 @@ function openPalette(mode, extra = {}) {
   } else if (mode === "spawn") {
     byId("paletteModeLabel").textContent = "Spawn a session";
   }
+  byId("paletteDone").textContent = "";
   if (!palette.open) palette.showModal();
   renderPalette();
   paletteInput.focus();
@@ -962,12 +967,25 @@ document.addEventListener("click", (event) => {
 // Not on focus: closing the dialog hands focus back to this field, and a
 // focus handler would reopen the palette at once, so Esc and Cancel never close it.
 byId("fleetSearch").addEventListener("keydown", (event) => {
-  if (event.key === "Enter" || event.key === " " || (event.key.length === 1 && !event.metaKey && !event.ctrlKey)) {
+  if (event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.key === "Enter" || event.key.length === 1) {
     event.preventDefault();
-    openPalette("search");
-    if (event.key.length === 1 && event.key !== " ") paletteInput.value += event.key;
+    carryIntoPalette(event.key === "Enter" || event.key === " " ? "" : event.key);
   }
 });
+// A paste into the field is a paste into the palette.
+byId("fleetSearch").addEventListener("paste", (event) => {
+  event.preventDefault();
+  carryIntoPalette(event.clipboardData ? event.clipboardData.getData("text") : "");
+});
+
+/** Open search with `text` added to its box, and search for it as typing would. */
+function carryIntoPalette(text) {
+  openPalette("search");
+  if (!text) return;
+  paletteInput.value += text;
+  paletteInput.dispatchEvent(new Event("input"));
+}
 
 // ⌘K, or Ctrl+K, opens search: the page's only keyboard shortcut.
 document.addEventListener("keydown", (event) => {
