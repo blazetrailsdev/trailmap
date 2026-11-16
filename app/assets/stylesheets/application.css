@@ -763,7 +763,7 @@ textarea.ctl { height: auto; }
  * title with its CI mark and labels, a muted line under it, the stage as a
  * label, and when it last moved.
  */
-.list-grid { display: grid; grid-template-columns: 16px minmax(0, 1fr) 250px 124px; gap: 4px 12px; align-items: start; }
+.list-grid { display: grid; grid-template-columns: 16px minmax(0, 1fr) 250px 184px; gap: 4px 12px; align-items: start; }
 /* The dashboard runs wider than the reading pages. */
 .wrap:has(#fleetConfig) { max-width: 1280px; }
 
@@ -794,6 +794,7 @@ textarea.ctl { height: auto; }
 .review-note { display: flex; flex-wrap: wrap; gap: 0 8px; font-size: 12px; color: var(--ink-2); }
 .review-side.turn { color: var(--ink); font-weight: 600; }
 .meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 2px; }
+.row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .figure { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
 .expand {
   display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px; border: 0; border-radius: 6px;
@@ -924,10 +925,11 @@ kbd {
   details.card.fold:not([open]) > summary.card-head { margin-bottom: 0; border-bottom: 0; }
   .top-pair { margin-bottom: 8px; }
   .sessions { margin-inline: -24px; border-radius: 0; border-inline: 0; }
-  .list-grid.session-main { grid-template-columns: 16px minmax(0, 1fr) auto; padding: 12px 16px; }
-  .session-stage { grid-column: 2 / -1; grid-row: 2; padding-top: 2px; }
-  .meta { grid-column: 3; grid-row: 1; }
+  .list-grid.session-main { grid-template-columns: 16px minmax(0, 1fr); padding: 12px 16px; }
+  .session-stage { grid-column: 2; grid-row: 2; padding-top: 2px; }
+  .meta { grid-column: 2; grid-row: 3; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 8px; }
   .meta .figure { display: none; }
+  .meta .expand { margin-left: auto; }
   .strip { padding: 12px 16px; }
   .ask-text, .evidence, .ask-free { flex-basis: 100%; }
   .detail { grid-template-columns: minmax(0, 1fr); padding: 12px 16px; }

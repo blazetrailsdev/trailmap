@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { esc, ICONS, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
 import {
+  canAskReady,
+  canMerge,
+  READY_ASK,
   STALL_MS,
   STORIES_MAX_REFS,
   askFor,
@@ -468,14 +471,46 @@ describe("sessionCard", () => {
     expect(sessionCard({ ...PR, ciStatus: "pending" }, context())).not.toContain("check failed");
   });
 
-  it("offers Merge on Ready to merge rows only, in place of the figure", () => {
+  it("offers Merge on any open, non-draft pull request with CI green, whatever its stage", () => {
+    const reviewers = reviewersByKey([{ owner: PR.owner, repo: PR.repo, pr: PR.pr, agent: "codex" }]);
     const ready = sessionCard({ ...PR, ciStatus: "success" }, context());
+    const inReview = sessionCard({ ...PR, ciStatus: "success", reviewCycles: 2 }, context({ reviewers }));
 
-    expect(ready).toContain('data-action="merge" data-owner="blazetrailsdev" data-repo="trails" data-pr="9958"');
-    expect(ready).not.toContain('class="figure"');
+    expect(ready).toContain('class="btn btn-sm btn-primary" data-action="merge" data-owner="blazetrailsdev" data-repo="trails" data-pr="9958"');
+    expect(inReview).toContain('class="session session-ringo"');
+    expect(inReview).toContain('data-action="merge"');
+    expect(inReview).toContain('<span class="figure">2 review cycles</span>');
     expect(sessionCard({ ...PR, ciStatus: "failure" }, context())).not.toContain('data-action="merge"');
+    expect(sessionCard({ ...PR, ciStatus: "pending" }, context())).not.toContain('data-action="merge"');
     expect(sessionCard({ ...PR, ciStatus: "success", draft: true }, context())).not.toContain('data-action="merge"');
     expect(sessionCard({ ...PR, ciStatus: "success", merged: true }, context())).not.toContain('data-action="merge"');
+    expect(canMerge(SPAWN)).toBe(false);
+    expect(canMerge({ ...PR, ciStatus: "success", mergeConflict: true })).toBe(false);
+  });
+
+  it("offers Are we ready? once CI is green, a review round has passed and both sides are idle", () => {
+    const waiting = { ...PR, ciStatus: "success", draft: true, reviewCycles: 1, paneStatus: "idle" };
+    const html = sessionCard(waiting, context());
+
+    expect(html).toContain('data-action="pane-send" data-pane="%214" data-key="' + sessionKey(waiting) + '" data-text="Are we ready?"');
+    expect(html).toContain('id="ready-note-' + sessionKey(waiting) + '"');
+    expect(html).not.toContain('data-action="merge"');
+    expect(canAskReady(waiting, { pane_id: "%9" })).toBe(true);
+    expect(canAskReady(waiting, { pane_id: "%9", pane_status: "working" })).toBe(false);
+    expect(canAskReady({ ...waiting, paneStatus: "working" }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, paneStatus: "waiting" }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, paneStatus: "" }, null)).toBe(true);
+    expect(canAskReady({ ...waiting, reviewCycles: 0 }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, ciStatus: "pending" }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, pane: "" }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, merged: true }, null)).toBe(false);
+  });
+
+  it("puts the question before Merge when a row offers both", () => {
+    const html = sessionCard({ ...PR, ciStatus: "success", reviewCycles: 1, paneStatus: "idle" }, context());
+
+    expect(html.indexOf(READY_ASK + "</button>")).toBeLessThan(html.indexOf('data-action="merge"'));
+    expect(html.indexOf(READY_ASK + "</button>")).toBeGreaterThan(-1);
   });
 
   it("says a spawn has no PR yet, links its story, and offers dismiss once it has failed", () => {

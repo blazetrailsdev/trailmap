@@ -150,8 +150,9 @@ A row in a list reads like a pull request in GitHub's list, left to right:
    the CI mark and any labels beside it;
 3. under it a **meta line**, 12px `--ink-2`, parts joined by ` · `: the
    reference (`trails#10156`), then what last happened;
-4. on the right, what a reader scans for: a **stage label**, a count, and how
-   long ago it changed.
+4. on the right, what a reader scans for: a **stage label**, a count, the
+   row's **actions** as small buttons (the primary one last), and how long ago
+   it changed. A row offers an action only when it can be taken now.
 
 State is said once, by the leading icon and the stage label. The row itself
 stays white.

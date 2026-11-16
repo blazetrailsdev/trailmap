@@ -533,12 +533,45 @@ function stateIcon(s, failed) {
   return '<span class="ricon" title="Open pull request">' + ICONS.pr + "</span>";
 }
 
+/** What the "Are we ready?" button sends to the agent's pane. */
+export const READY_ASK = "Are we ready?";
+
+/**
+ * Whether a row offers Merge: an open pull request that is not a draft and has
+ * no merge conflict, with CI green. It does not wait for the stage to say
+ * Ready to merge.
+ */
+export const canMerge = (s) => isPR(s) && !s.merged && !s.draft && !s.mergeConflict && s.ciStatus === "success";
+
+/**
+ * Whether a row offers "Are we ready?": CI is green, at least one review
+ * round has passed, and neither side's pane is busy, so the session is waiting
+ * on someone to ask. It needs the agent's pane, which is where the message goes.
+ */
+export function canAskReady(s, entry) {
+  if (!isPR(s) || s.merged || s.ciStatus !== "success" || !(s.reviewCycles > 0) || !paneOf(s)) return false;
+  return !BUSY.has(s.paneStatus || "") && !(entry && BUSY.has(entry.pane_status || ""));
+}
+
+/** The row's own actions: the question first, then Merge, the primary one, last. */
+function rowActions(s, entry, key) {
+  const ask = canAskReady(s, entry)
+    ? '<button class="btn btn-sm" data-action="pane-send" data-pane="' + esc(paneOf(s)) + '" data-key="' + key + '" data-text="' + READY_ASK +
+      '" data-says="ready-note-' + key + '" title="Sends this as a message to the agent">' + READY_ASK + "</button>"
+    : "";
+  const merge = canMerge(s)
+    ? control("merge", { owner: s.owner, repo: s.repo, pr: s.pr }, { cls: "btn btn-sm btn-primary", title: "Merge PR", label: "Merge" })
+    : "";
+  if (!ask && !merge) return "";
+  return '<span class="row-actions">' + ask + merge + "</span>" + (ask ? '<span class="field-status" id="ready-note-' + key + '"></span>' : "");
+}
+
 /**
  * One session row, laid out as GitHub lays out a pull request in a list: a
  * state octicon, the lead story as the title with the CI mark and labels
  * beside it, a muted line under it with the PR link, a note and how many
- * stories a bundle carries; then the stage as a label, and one progress figure over how
- * long ago it changed. Its question or stall strip follows. Expanded, it lists
+ * stories a bundle carries; then the stage as a label, one progress figure,
+ * the row's actions (Are we ready?, Merge) and how long ago it changed. Its question or stall strip follows. Expanded, it lists
  * the bundle's other stories under the note, and its details below.
  */
 export function sessionCard(s, ctx, fixer = null) {
@@ -578,14 +611,14 @@ export function sessionCard(s, ctx, fixer = null) {
   if (failed && s.error) note.push('<span class="bad">' + esc(s.error) + "</span>");
   if (rest.length && !open) note.push(rest.length + 1 + " stories");
 
-  const review = stage === "ringo" ? reviewNote(s, ctx.reviewers ? ctx.reviewers[reviewerKey(s.owner, s.repo, s.pr)] : null) : "";
+  const entry = isPR(s) && ctx.reviewers ? ctx.reviewers[reviewerKey(s.owner, s.repo, s.pr)] : null;
+  const review = stage === "ringo" ? reviewNote(s, entry) : "";
   const figure = stageFigure(s, stage);
   const when = isPR(s) ? s.lastTime : s.at;
   const meta =
     '<div class="meta">' +
-    (stage === "ready"
-      ? control("merge", { owner: s.owner, repo: s.repo, pr: s.pr }, { cls: "btn btn-sm btn-primary", title: "Merge PR", label: "Merge" })
-      : '<span class="figure">' + figure + "</span>") +
+    (figure ? '<span class="figure">' + figure + "</span>" : "") +
+    rowActions(s, entry, key) +
     (failed && s.branch
       ? control("dismiss", { branch: s.branch }, { cls: "spawn-dismiss", title: "Dismiss this failed spawn", label: "&times;" })
       : "") +
