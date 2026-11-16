@@ -5,8 +5,10 @@ import { StatsSyncMailer } from "../mailers/stats-sync-mailer.ts";
 import { ApplicationJob } from "./application-job.ts";
 
 const STALE_HOURS = 3;
-// Below the 2h lock, with room for a retry's 5-minute wait: a run that hangs stops
-// before its lock expires, so the next run cannot race it.
+// Below the 2h lock, leaving 20 minutes for the work around the sync (log trim,
+// missing-data check). A retry is a new job (retry_on re-enqueues it) that takes
+// the lock again once this execution releases it, so each execution gets its own
+// lock and its own deadline: a run that hangs stops before its lock expires.
 export const RUN_DEADLINE_MINUTES = 100;
 // STATS_SYNC_LOG keeps whole runs from the last LOG_KEEP_DAYS, trimmed once it
 // passes LOG_TRIM_BYTES, so most runs never rewrite it.
@@ -25,11 +27,18 @@ export async function trimLog(log: string, now = Date.now()): Promise<void> {
   if (!(await fs.exists(log)) || (await fs.stat!(log)).size <= LOG_TRIM_BYTES) return;
   const text = await fs.readFile(log, "utf-8");
   const cutoff = now - LOG_KEEP_DAYS * 86_400_000;
-  const first = [...text.matchAll(RUN_HEADER)].find((m) => Date.parse(m[1]) >= cutoff);
-  const start = first?.index ?? text.length;
+  const headers = [...text.matchAll(RUN_HEADER)];
+  // The last run is always kept, so reportGap still sees an outage longer than LOG_KEEP_DAYS.
+  const first = headers.find((m) => Date.parse(m[1]) >= cutoff) ?? headers.at(-1);
+  const start = first?.index ?? 0;
   if (start === 0) return;
-  await fs.writeFile!(`${log}.trim`, text.slice(start));
-  await fs.rename!(`${log}.trim`, log);
+  try {
+    await fs.writeFile!(`${log}.trim`, text.slice(start));
+    await fs.rename!(`${log}.trim`, log);
+  } catch (error) {
+    await fs.rm!(`${log}.trim`, { force: true });
+    throw error;
+  }
 }
 // A GitHub outage fails every hourly run; mail once it has outlasted a few of them.
 const FAILED_RUNS_BEFORE_MAIL = 3;
@@ -100,8 +109,7 @@ export class StatsSyncJob extends ApplicationJob {
   async perform(): Promise<void> {
     const log = requiredEnv("STATS_SYNC_LOG");
     requiredEnv("STATS_SYNC_DB");
-    const { currentStage, syncLatest } = await import("../../lib/stats-sync/sync.ts");
-    const { SyncDeadlineExceededError } = await import("../../lib/stats-sync/sync.ts");
+    const { currentStage, SyncDeadlineExceededError, syncLatest } = await import("../../lib/stats-sync/sync.ts");
     getFs().mkdirSync(getPath().dirname(log), { recursive: true });
     try {
       await trimLog(log);

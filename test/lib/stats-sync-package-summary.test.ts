@@ -188,7 +188,7 @@ describe("syncPackageSummaries", () => {
       writable["STATS_SYNC_LOG"] = getPath().join(dir, "sync.log");
       await syncPackageSummaries("latest");
       expect(getFs().readFileSync(writable["STATS_SYNC_LOG"], "utf-8")).toContain(
-        "[sync-stats] package summaries: hit the 50-row cap; the rest wait for the next run\n",
+        "[sync-stats] package summaries: filled the 50-row cap; any rows left wait for the next run\n",
       );
       delete writable["STATS_SYNC_LOG"];
       await StatsSyncRecord.removeConnection();

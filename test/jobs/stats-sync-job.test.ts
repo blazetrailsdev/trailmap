@@ -99,6 +99,13 @@ describe("StatsSyncJob", () => {
     expect(read()).toBe("=== 2026-11-10T00:00:00Z ===\n[cron-wrapper] ok\n");
   });
 
+  it("keeps the last run when every run is older than two weeks", async () => {
+    const pad = "x".repeat(LOG_TRIM_BYTES);
+    getFs().writeFileSync(log, `=== 2026-10-01T00:00:00Z ===\n${pad}\n=== 2026-10-02T00:00:00Z ===\n[cron-wrapper] ok\n`);
+    await trimLog(log, Date.parse("2026-11-16T12:00:00Z"));
+    expect(read()).toBe("=== 2026-10-02T00:00:00Z ===\n[cron-wrapper] ok\n");
+  });
+
   it("leaves a log under its size limit alone", async () => {
     getFs().writeFileSync(log, "=== 2020-01-01T00:00:00Z ===\n[cron-wrapper] ok\n");
     await trimLog(log);

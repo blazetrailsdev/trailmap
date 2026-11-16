@@ -83,7 +83,8 @@ export function logGhFailure(error: unknown): void {
  * Every `--latest` work query takes at most this many rows. Each was kept, not
  * raised or paged: an hourly run drains 1,200 rows a day per queue, and the run
  * deadline (`syncLatest`) bounds a run's length better than a smaller cap could.
- * A run that fills a cap says so, so a backlog is visible in STATS_SYNC_LOG.
+ * A run that fills a cap says so, so a backlog is visible in STATS_SYNC_LOG. A
+ * queue of exactly 50 also fills it: the line says more rows may be waiting.
  */
 export const LATEST_BATCH = 50;
 
@@ -93,7 +94,7 @@ function latestLimit(mode: string): string {
 
 async function noteCap(mode: string, queue: string, rows: number): Promise<void> {
   if (mode !== "latest" || rows < LATEST_BATCH) return;
-  const line = `[sync-stats] ${queue}: hit the ${LATEST_BATCH}-row cap; the rest wait for the next run\n`;
+  const line = `[sync-stats] ${queue}: filled the ${LATEST_BATCH}-row cap; any rows left wait for the next run\n`;
   console.log(`  ${line.trimEnd()}`);
   const log = env.STATS_SYNC_LOG;
   if (!log) return;
