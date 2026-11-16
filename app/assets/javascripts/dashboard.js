@@ -958,7 +958,15 @@ document.addEventListener("click", (event) => {
   openPalette(opener.dataset.mode || "search");
 });
 // The header field is a way into the palette: typing into it types there.
-byId("fleetSearch").addEventListener("focus", () => openPalette("search"));
+// Not on focus: closing the dialog hands focus back to this field, and a
+// focus handler would reopen the palette at once, so Esc and Cancel never close it.
+byId("fleetSearch").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " " || (event.key.length === 1 && !event.metaKey && !event.ctrlKey)) {
+    event.preventDefault();
+    openPalette("search");
+    if (event.key.length === 1 && event.key !== " ") paletteInput.value += event.key;
+  }
+});
 
 // ⌘K, or Ctrl+K, opens search: the page's only keyboard shortcut.
 document.addEventListener("keydown", (event) => {
