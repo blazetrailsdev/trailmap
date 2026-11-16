@@ -28,7 +28,10 @@ export const ApplicationHelper = {
   navMark(this: { request?: NavRequest } | void, path: string, current?: string): "page" | "section" | null {
     if (current === undefined) {
       const request = (this as { request?: NavRequest } | undefined)?.request;
-      if (!request || !["GET", "HEAD"].includes(request.method.toUpperCase())) return null;
+      if (!request) {
+        throw new Error("You cannot use helpers that need to determine the current page unless your view context provides a Request object in a #request method");
+      }
+      if (!["GET", "HEAD"].includes(request.method.toUpperCase())) return null;
       current = request.path;
     }
     const target = unescape(path);

@@ -19,6 +19,7 @@ describe("ApplicationHelper", () => {
     expect(navMark.call(on("/rfcs"), "/rfcs")).toBe("page");
     expect(navMark.call(on("/rfcs", "HEAD"), "/rfcs")).toBe("page");
     expect(navMark.call(on("/rfcs", "POST"), "/rfcs")).toBeNull();
+    expect(() => navMark.call({}, "/rfcs")).toThrow(/Request object/);
   });
 
   it("nav_mark unescapes both sides", () => {

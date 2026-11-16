@@ -12,8 +12,8 @@ module ApplicationHelper
       return nil unless request.get? || request.head?
       current = request.path
     end
-    target = URI::DEFAULT_PARSER.unescape(path)
-    here = URI::DEFAULT_PARSER.unescape(current)
+    target = URI::RFC2396_PARSER.unescape(path)
+    here = URI::RFC2396_PARSER.unescape(current)
     here = here.sub(%r{/+\z}, "") if here.length > 1
     return "page" if here == target
     extra = HEADER_SECTIONS[path]
