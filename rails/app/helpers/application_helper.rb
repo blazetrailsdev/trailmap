@@ -1,4 +1,18 @@
 module ApplicationHelper
+  # The pages each header link's section holds besides the paths under its
+  # own; the trails app's `navMark` reads the same file.
+  HEADER_SECTIONS = JSON.parse(File.read(Rails.root.join("config/header-sections.json"))).freeze
+
+  # How a header link is marked on the page at `current`: "page" on an exact
+  # match, "section" on a page inside the link's section, else nil.
+  def nav_mark(path, current = request.path)
+    here = current.length > 1 ? current.sub(%r{/+\z}, "") : current
+    return "page" if here == path
+    extra = HEADER_SECTIONS[path]
+    prefixes = ["#{path}/", *(extra.is_a?(Array) ? extra : [])]
+    prefixes.any? { |prefix| here.start_with?(prefix) } ? "section" : nil
+  end
+
   # The word a status badge shows, and the suffix of its `s-` class. Blank is
   # `unknown`, ringo's arm for a dep whose RFC is missing.
   def status_word(status)

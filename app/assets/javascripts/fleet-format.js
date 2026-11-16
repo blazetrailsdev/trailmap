@@ -534,7 +534,7 @@ export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  * - the loop's settings never stay disabled: the control is still there after
  *   the click, and a success carries the loop's new `state` for the page to
  *   draw. A refusal or a failed fetch alerts, where ringo says nothing.
- *   "spawn now" is the exception, held like merge and then re-read
+ *   "Spawn now" is the exception, held like merge and then re-read
  *   (`refresh`), because ringo answers before the tick has registered.
  */
 export function controlOutcome(request, result, label) {
@@ -600,14 +600,14 @@ function stateOutcome(text) {
 /** The panel's buttons, drawn once; `spawnLoopView` says what each shows. */
 export const spawnLoopControls = () =>
   control("loop-toggle", { enabled: "false" }, {
-    id: "slToggle", cls: "btn btn-green btn-sm", title: "Start or pause the spawn loop", label: "play",
+    id: "slToggle", cls: "btn btn-green btn-sm", title: "Start or pause the spawn loop", label: "Play",
   }) +
   control("loop-now", {}, {
-    cls: "btn btn-blue btn-sm", title: "Run one tick now, bypassing caps", label: "spawn now",
+    cls: "btn btn-blue btn-sm", title: "Run one tick now, bypassing caps", label: "Spawn now",
   }) +
   '<span class="field-note" id="slNext"></span>' +
   control("loop-skip", {}, {
-    id: "slSkip", cls: "btn btn-sm", title: "Skip the next story", label: "skip", hidden: true,
+    id: "slSkip", cls: "btn btn-sm", title: "Skip the next story", label: "Skip", hidden: true,
   });
 
 /**
@@ -660,7 +660,7 @@ export function spawnLoopView(s, now = Date.now()) {
     nextTitle = s.next.id;
   }
   return {
-    enabled: !!s.enabled, toggle: s.enabled ? "pause" : "play",
+    enabled: !!s.enabled, toggle: s.enabled ? "Pause" : "Play",
     liveCap: s.live_cap, queueCap: s.queue_cap,
     interval: Math.round((s.stagger_seconds || 0) / 60),
     bundleMode: !!s.bundle_mode,

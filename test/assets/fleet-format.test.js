@@ -729,26 +729,26 @@ describe("the spawn loop's controls", () => {
   it("hands a setting's answer back as the loop's new state, and never holds the control", () => {
     const toggle = controlRequest("loop-toggle", { enabled: "false" });
 
-    expect(controlOutcome(toggle, { ok: true, text: JSON.stringify(STATE) }, "play")).toEqual({
+    expect(controlOutcome(toggle, { ok: true, text: JSON.stringify(STATE) }, "Play")).toEqual({
       disabled: false,
       state: STATE,
     });
-    expect(controlOutcome(toggle, { ok: true, text: "not json" }, "play")).toEqual({ disabled: false });
+    expect(controlOutcome(toggle, { ok: true, text: "not json" }, "Play")).toEqual({ disabled: false });
     // A refusal or a failed fetch is said, where ringo swallows both.
     const refused = (text) => ({ disabled: false, alert: "Spawn loop not changed: " + text });
-    expect(controlOutcome(toggle, { ok: false, text: "bad request" }, "play")).toEqual(refused("bad request"));
-    expect(controlOutcome(toggle, { error: "offline" }, "play")).toEqual(refused("offline"));
+    expect(controlOutcome(toggle, { ok: false, text: "bad request" }, "Play")).toEqual(refused("bad request"));
+    expect(controlOutcome(toggle, { error: "offline" }, "Play")).toEqual(refused("offline"));
   });
 
   it("holds spawn now while the tick registers, then asks for a re-read", () => {
     const now = controlRequest("loop-now", {});
 
     expect(now.busy).toBe("spawning…");
-    expect(controlOutcome(now, { ok: true, text: "" }, "spawn now")).toEqual({
+    expect(controlOutcome(now, { ok: true, text: "" }, "Spawn now")).toEqual({
       disabled: true, text: "spawning…", resetAfterMs: 1500, refresh: "spawn-loop",
     });
-    expect(controlOutcome(now, { error: "offline" }, "spawn now")).toMatchObject({
-      disabled: true, text: "spawn now", alert: "Spawn now failed: offline",
+    expect(controlOutcome(now, { error: "offline" }, "Spawn now")).toMatchObject({
+      disabled: true, text: "Spawn now", alert: "Spawn now failed: offline",
     });
   });
 
@@ -766,13 +766,13 @@ describe("the spawn loop's controls", () => {
     );
 
     expect(view).toMatchObject({
-      enabled: true, toggle: "pause", liveCap: 6, queueCap: 12, interval: 5, bundleMode: false,
+      enabled: true, toggle: "Pause", liveCap: 6, queueCap: 12, interval: 5, bundleMode: false,
       liveNow: "(now: 4)", openNow: "(now: 9)", next: "next: A <story>", nextTitle: "a-story",
       skip: true, bundleList: "",
     });
     expect(view.lastSpawn).toMatch(/^\(last spawn at .+ \(.+\)\)$/);
     expect(spawnLoopView({}, NOW)).toMatchObject({
-      enabled: false, toggle: "play", interval: 0, liveNow: "(now: 0)", lastSpawn: "",
+      enabled: false, toggle: "Play", interval: 0, liveNow: "(now: 0)", lastSpawn: "",
       next: "next: nothing ready", skip: false,
     });
   });

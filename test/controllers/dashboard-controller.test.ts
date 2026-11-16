@@ -5,6 +5,7 @@ import { setEnv } from "@blazetrails/ruby-compat";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { DashboardController } from "../../app/controllers/dashboard-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
+import { staleAssets } from "../support/stale-assets.ts";
 
 /**
  * `/dashboard`, the fleet dashboard ported from ringo's `/`.
@@ -31,7 +32,7 @@ describe("DashboardController", () => {
 
     expect(body).toContain("<!DOCTYPE html>");
     // Logical name only; scripts/smoke-boot.sh guards the digested link.
-    expect(body).toMatch(/<link rel="stylesheet" href="[^"]*\/stylesheets\/application\.css"/);
+    expect(body, staleAssets).toMatch(/<link rel="stylesheet" href="[^"]*\/stylesheets\/application\.css"/);
     expect(body).toContain('<nav class="nav">');
   });
 
@@ -121,6 +122,6 @@ describe("DashboardController", () => {
     const body = await index();
 
     // Logical name only; scripts/smoke-boot.sh guards the digested link.
-    expect(body).toMatch(/<script src="[^"]*\/javascripts\/dashboard\.js" type="module"><\/script>/);
+    expect(body, staleAssets).toMatch(/<script src="[^"]*\/javascripts\/dashboard\.js" type="module"><\/script>/);
   });
 });

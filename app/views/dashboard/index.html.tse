@@ -129,7 +129,10 @@
     <button class="btn btn-primary" id="messageSend" data-action="pane-send" data-pane="" data-key="" data-source="paletteInput" data-clears="paletteInput" data-says="messageNote">Send</button>
     <span class="field-status" id="messageNote"></span>
   </div>
-  <div class="palette-foot"><span><kbd>&uarr;</kbd> <kbd>&darr;</kbd> move</span><span><kbd>&#8629;</kbd> open</span><span><kbd>&#8984;</kbd> <kbd>&#8629;</kbd> message session</span><span><kbd>esc</kbd> close</span></div>
+  <div class="palette-foot" data-foot-mode="search"><span><kbd>&uarr;</kbd> <kbd>&darr;</kbd> move</span><span><kbd>&#8629;</kbd> open</span><span><kbd>&#8984;</kbd> <kbd>&#8629;</kbd> message session</span><span><kbd>esc</kbd> close</span></div>
+  <div class="palette-foot" data-foot-mode="spawn" hidden><span><kbd>&#8629;</kbd> spawn</span><span><kbd>esc</kbd> close</span></div>
+  <div class="palette-foot" data-foot-mode="broadcast" hidden><span><kbd>&#8629;</kbd> send to all</span><span><kbd>&#8984;</kbd> <kbd>&#8629;</kbd> send to CI red</span><span><kbd>esc</kbd> close</span></div>
+  <div class="palette-foot" data-foot-mode="message" hidden><span><kbd>&#8629;</kbd> send</span><span><kbd>esc</kbd> close</span></div>
 </dialog>
 
 <script src="<%= javascriptPath("dashboard") %>" type="module"></script>

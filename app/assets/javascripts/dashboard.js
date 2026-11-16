@@ -829,6 +829,7 @@ function renderPalette() {
   paletteInput.setAttribute("aria-label", PALETTE_LABELS[paletteMode]);
   paletteInput.placeholder = PALETTE_LABELS[paletteMode];
   for (const pane of palette.querySelectorAll("[data-pane-mode]")) pane.hidden = pane.dataset.paneMode !== paletteMode;
+  for (const foot of palette.querySelectorAll("[data-foot-mode]")) foot.hidden = foot.dataset.footMode !== paletteMode;
   if (!searching) return;
   const results = paletteResults();
   const repos = [...new Set(shownRows.filter((s) => !s.kind).map(repoName))];
