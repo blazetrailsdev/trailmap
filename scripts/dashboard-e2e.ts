@@ -252,7 +252,7 @@ await evaluate(`${expand("s-pr-o-r-7")}.click(); true`);
 await until("PR #7 to expand", () => evaluate(`${expand("s-pr-o-r-7")}.getAttribute("aria-expanded") === "true" && !!${button("add-worker")}`));
 await evaluate(`${expand("s-pr-o-r-7")}.click(); true`);
 await until("PR #7 to collapse", () => evaluate(`${expand("s-pr-o-r-7")}.getAttribute("aria-expanded") === "false" && !${button("add-worker")}`));
-await evaluate(`${expand("s-pr-o-r-7")}.click(); document.querySelector('#s-pr-o-r-8 .session-main .stories').click(); true`);
+await evaluate(`${expand("s-pr-o-r-7")}.click(); document.querySelector('#s-pr-o-r-8 .session-main .session-note').click(); true`);
 await until("both rows expanded, the second by a click on the row", () =>
   evaluate(`!!${button("add-worker")} && !!${button("add-reviewer", "8")} && !!document.querySelector('#s-pr-o-r-8 .composer')`),
 );
