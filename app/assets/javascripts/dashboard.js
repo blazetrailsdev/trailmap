@@ -705,6 +705,7 @@ document.addEventListener("click", async (event) => {
   if (outcome.say !== undefined) byId(request.says).textContent = outcome.say;
   if (outcome.clear) byId(outcome.clear).value = "";
   if (outcome.clearMessage) byId(PALETTE_INPUT).value = "";
+  if (outcome.closePalette) closePalette();
   if (outcome.sent) {
     // What this page typed into a session goes in that session's log.
     const key = outcome.sent.key || "";
