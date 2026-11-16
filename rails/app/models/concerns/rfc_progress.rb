@@ -112,17 +112,13 @@ module RfcProgress
 
   def sort_rfcs_for_index(rfcs, sort, counts)
     base = order_rfcs_for_index(rfcs, counts.transform_values(&:open))
-    key = case sort
-    when "open" then ->(r) { -(counts[r.id]&.open || 0) }
-    when "progress" then ->(r) { -(counts[r.id]&.done_pct || 0) }
-    when "newest" then nil
-    when "id" then ->(r) { r.id.b }
-    else return base
+    case sort
+    when "open" then StableSort.sort(base) { |a, b| (counts[b.id]&.open || 0) <=> (counts[a.id]&.open || 0) }
+    when "progress" then StableSort.sort(base) { |a, b| (counts[b.id]&.done_pct || 0) <=> (counts[a.id]&.done_pct || 0) }
+    when "newest" then StableSort.sort(base) { |a, b| b.created_on.to_s.b <=> a.created_on.to_s.b }
+    when "id" then StableSort.sort(base) { |a, b| a.id.b <=> b.id.b }
+    else base
     end
-    if key.nil?
-      return StableSort.sort(base) { |a, b| (b.created_on.to_s.b) <=> (a.created_on.to_s.b) }
-    end
-    base.each_with_index.sort_by { |r, i| [ key.call(r), i ] }.map(&:first)
   end
 
   def terminal?(status)
