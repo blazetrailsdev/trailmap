@@ -10,27 +10,18 @@
   <link rel="icon" href="/icon.png" type="image/png" sizes="512x512">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <%= csrf_meta_tags %>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <%= stylesheet_link_tag "application" %>
   <%= javascript_inline_importmap_tag %>
 </head>
 <body>
   <nav class="nav">
-    <a class="nav-brand" href="<%= root_path %>"><span class="dot"></span>trailmap</a>
+    <a class="nav-brand" href="<%= root_path %>"><%= image_tag "/icon.png", size: 24, alt: "" %>trailmap</a>
     <input type="checkbox" id="navToggle" class="nav-toggle">
     <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">
-      <a href="<%= rfcs_path %>">RFCs</a>
-      <a href="<%= backlog_path %>">Backlog</a>
-      <a href="<%= dashboard_path %>">Dashboard</a>
-      <a href="<%= parity_graph_path %>">Parity</a>
-      <a href="<%= packages_path %>">Packages</a>
-      <a href="<%= audits_path %>">Audits</a>
-      <a href="<%= deploys_path %>">Deploys</a>
-      <a href="<%= sessions_path %>">Sessions</a>
-      <a href="<%= search_path %>">Search</a>
+      <% [ [ "RFCs", rfcs_path ], [ "Backlog", backlog_path ], [ "Dashboard", dashboard_path ], [ "Parity", parity_graph_path ], [ "Packages", packages_path ], [ "Audits", audits_path ], [ "Deploys", deploys_path ], [ "Sessions", sessions_path ], [ "Search", search_path ] ].each do |label, path| %>
+        <a href="<%= path %>"<% if current_page?(path) %> class="active" aria-current="page"<% end %>><%= label %></a>
+      <% end %>
     </nav>
   </nav>
 

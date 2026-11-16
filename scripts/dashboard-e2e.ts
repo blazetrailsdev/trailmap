@@ -189,7 +189,7 @@ const expand = (key: string): string => `document.querySelector('button[data-ui=
 const bothHeld = `${byId("bcastAll")}.disabled && ${byId("bcastCIRed")}.disabled`;
 /** `during`, when given, must hold while ringo has the POST and has not answered. */
 const CASES: Array<{ name: string; on: string; act?: string; post: [string, unknown]; during?: string; after: string }> = [
-  { name: "merge", on: button("merge"), post: ["/merge-pr", { owner: "o", repo: "r", pr: 7 }],
+  { name: "merge", on: button("merge", "7"), post: ["/merge-pr", { owner: "o", repo: "r", pr: 7 }],
     after: `b.textContent === "merged" && b.disabled && b.title === "merged"` },
   { name: "add worker, refused by ringo", on: button("add-worker"),
     post: ["/worker/spawn", { owner: "o", repo: "r", pr: 7, branch: "a-branch" }],
@@ -225,8 +225,6 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
       `document.querySelector('#s-pr-o-r-8 [data-terminal-notice="%4"]').textContent === "This pane has exited." && ` +
       // The sent line shows in the events beneath the terminal.
       `[...document.querySelectorAll('#s-pr-o-r-8 .events .log-you .log-text')].some((t) => t.textContent === "please rebase")` },
-  { name: "pause", on: byId("pauseBtn"), post: ["/pause", { paused: true }],
-    after: `!b.disabled && b.textContent === "Resume" && b.dataset.paused === "true"` },
   { name: "refresh usage from the scraper pill", on: byId("watchPill"), post: ["/refresh-usage", null],
     after: `!b.disabled && ${byId("watchDot")}.className === "connected on"` },
   // Last, because a reviewer's refresh repaints the rows: the `+` gives way to the pane.
@@ -242,7 +240,7 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
 await until("the page to draw", () =>
   evaluate(
     `!!${expand("s-pr-o-r-7")} && !!${expand("s-pr-o-r-8")} && ${byId("bcastCIRed")}.textContent === "CI red (1)" && ` +
-      `${byId("pauseBtn")}.textContent === "Pause" && ${byId("watchDot")}.className === "connected off" && ` +
+      `${byId("watchDot")}.className === "connected off" && ` +
       `!!document.querySelector('#s-pr-o-r-8 .strip.ask')`,
   ),
 );
@@ -252,7 +250,7 @@ await evaluate(`${expand("s-pr-o-r-7")}.click(); true`);
 await until("PR #7 to expand", () => evaluate(`${expand("s-pr-o-r-7")}.getAttribute("aria-expanded") === "true" && !!${button("add-worker")}`));
 await evaluate(`${expand("s-pr-o-r-7")}.click(); true`);
 await until("PR #7 to collapse", () => evaluate(`${expand("s-pr-o-r-7")}.getAttribute("aria-expanded") === "false" && !${button("add-worker")}`));
-await evaluate(`${expand("s-pr-o-r-7")}.click(); document.querySelector('#s-pr-o-r-8 .session-main .stories').click(); true`);
+await evaluate(`${expand("s-pr-o-r-7")}.click(); document.querySelector('#s-pr-o-r-8 .session-main .session-note').click(); true`);
 await until("both rows expanded, the second by a click on the row", () =>
   evaluate(`!!${button("add-worker")} && !!${button("add-reviewer", "8")} && !!document.querySelector('#s-pr-o-r-8 .composer')`),
 );
@@ -293,23 +291,11 @@ await pressEscape();
 await until("Esc to close the palette", () => evaluate(`!${byId("palette")}.open`));
 console.log("ok  palette, ⌘K opens it, ↓ moves, Esc closes");
 
-// Needs you keeps the rows that want something, and the URL says so.
-await evaluate(`document.querySelector('[data-filter="needs"]').click(); true`);
-await until("the Needs you filter", () =>
-  evaluate(
-    `location.search === "?filter=needs" && ${byId("repoSections")}.classList.contains("only-needs") && ` +
-      `document.querySelector('[data-filter="needs"]').getAttribute("aria-pressed") === "true" && ` +
-      `getComputedStyle(document.querySelector('#s-pr-o-r-7')).display !== "none"`,
-  ),
-);
-await evaluate(`document.querySelector('[data-filter="all"]').click(); true`);
-await until("All again", () => evaluate(`location.search === "" && !${byId("repoSections")}.classList.contains("only-needs")`));
-console.log("ok  Needs you filter, chip and URL");
 
 // A declined confirm sends nothing and leaves the button as it was.
-await evaluate(`window.alert = () => {}; window.confirm = () => false; ${button("merge")}.click(); true`);
+await evaluate(`window.alert = () => {}; window.confirm = () => false; ${button("merge", "7")}.click(); true`);
 await new Promise((resolve) => setTimeout(resolve, 500));
-if (posts.length > 0 || (await evaluate(`${button("merge")}.disabled`))) {
+if (posts.length > 0 || (await evaluate(`${button("merge", "7")}.disabled`))) {
   throw new Error("dashboard-e2e: a declined confirm still acted");
 }
 console.log("ok  merge, confirm declined");

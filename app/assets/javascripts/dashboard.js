@@ -24,7 +24,6 @@ import {
   drainStatus,
   mainCIByRepo,
   mainCITitle,
-  pauseButton,
   pokeButton,
   queueCard,
   redPanes,
@@ -35,7 +34,6 @@ import {
   reviewersPollOutcome,
   spawnLoopControls,
   spawnLoopView,
-  stageHeader,
   strandedAgents,
   usageScraperPill,
   usageSummary,
@@ -43,9 +41,6 @@ import {
 } from "./fleet-format.js";
 import {
   fixerAnchor,
-  filterChips,
-  filterFrom,
-  filterUrl,
   frameEvents,
   frameRows,
   sessionKey,
@@ -133,7 +128,6 @@ const ctx = {
   screens: new Map(),
   since: new Date().toISOString(),
 };
-let filter = filterFrom(window.location.search);
 /** The last frame's rows by key, so the next frame can say what changed. */
 let lastRows = null;
 /** The rows the palette searches: the last frame's sessions, and its PRs. */
@@ -258,8 +252,6 @@ function renderSessions(prs, spawns) {
   keepWhileRepainting(host, () => {
     host.innerHTML = list.html;
   });
-  host.classList.toggle("only-needs", filter === "needs");
-  byId("filterChips").innerHTML = filterChips(list.active, list.needs, filter);
   syncTerminals();
   return list.rows;
 }
@@ -567,12 +559,6 @@ const usageStale = (id) => () => byId(id).classList.add("stale");
 poll("usage", 60_000, (u) => {
   showUsage("usageBar", claudeUsage(u), !!u.stale);
   byId("usageSummary").textContent = usageSummary(u);
-  const pause = pauseButton(u);
-  byId("pauseBtn").style.display = "";
-  byId("pauseBtn").textContent = pause.text;
-  byId("pauseBtn").dataset.paused = String(pause.paused);
-  byId("pauseBtn").classList.remove("btn-green", "btn-red");
-  byId("pauseBtn").classList.add(pause.cls);
   const pill = usageScraperPill(u);
   byId("watchPill").style.display = "";
   byId("watchDot").className = "connected " + pill.state;
@@ -735,7 +721,7 @@ document.addEventListener("click", async (event) => {
 });
 
 // ---------------------------------------------------------------------------
-// The session list's own controls: expand, filter, a log's earlier steps.
+// The session list's own controls: expand, a log's earlier steps.
 // ---------------------------------------------------------------------------
 
 /** A merged session's transcript, the first page or the one before `before`. */
@@ -765,12 +751,6 @@ function toggleSession(key) {
   if (lastEnvelope) paint(lastEnvelope);
 }
 
-function setFilter(next) {
-  filter = next;
-  window.history.replaceState(null, "", filterUrl(window.location.href, filter));
-  if (lastEnvelope) paint(lastEnvelope);
-}
-
 document.addEventListener("click", (event) => {
   const target = event.target instanceof Element ? event.target : null;
   if (!target) return;
@@ -785,9 +765,6 @@ document.addEventListener("click", (event) => {
     // pointer shortcut to it, so no interactive element sits inside another.
     case "row":
       if (!target.closest("a, button, input, textarea, select")) toggleSession(ui.dataset.key);
-      break;
-    case "filter":
-      setFilter(ui.dataset.filter);
       break;
     case "log-earlier": {
       const row = shownRows.find((s) => sessionKey(s) === ui.dataset.key);
@@ -993,10 +970,8 @@ document.addEventListener("keydown", (event) => {
 });
 
 // ---------------------------------------------------------------------------
-// The shell: the stage header, and Usage and Loop folding on a phone.
+// The shell: Usage and Loop folding on a phone.
 // ---------------------------------------------------------------------------
-
-byId("stageNames").innerHTML = stageHeader();
 
 /*
  * Usage and Loop are always open on a wide page, their summary out of the tab

@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { esc, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
+import { esc, ICONS, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
 import {
+  canAskReady,
+  canMerge,
+  READY_ASK,
   STALL_MS,
   STORIES_MAX_REFS,
   askFor,
   askRow,
   askStrip,
   branchStory,
-  filterChips,
-  filterFrom,
-  filterUrl,
   fixerAnchor,
   fixerNote,
   frameEvents,
@@ -23,7 +23,7 @@ import {
   prRef,
   reportedStage,
   reviewLines,
-  reviewRing,
+  reviewNote,
   reviewTurn,
   sessionCard,
   sessionDetail,
@@ -32,7 +32,6 @@ import {
   sessionGroups,
   sessionKey,
   sessionList,
-  sessionNeeds,
   sessionStall,
   sessionStories,
   stageOf,
@@ -114,8 +113,14 @@ describe("the lead story", () => {
     expect(sessionCard(PR, context({ stories: STORIES }))).toContain('<a class="story lead" href="/story/preview-interceptors"');
   });
 
-  it("lists the bundle's other stories as links to their pages", () => {
-    expect(sessionCard(PR, context({ stories: STORIES }))).toContain('<a class="story" href="/story/interceptor-string-arm"');
+  it("counts a bundle's stories on the row, and lists the others as links once it is expanded", () => {
+    const shut = sessionCard(PR, context({ stories: STORIES }));
+    const open = sessionCard(PR, context({ stories: STORIES, open: new Set([sessionKey(PR)]) }));
+
+    expect(shut).toContain(" &middot; 2 stories</div>");
+    expect(shut).not.toContain('class="stories"');
+    expect(open).toContain('<div class="stories"><a class="story" href="/story/interceptor-string-arm"');
+    expect(open).not.toContain("2 stories</div>");
   });
 });
 
@@ -180,7 +185,7 @@ describe("questions in the row", () => {
     const list = sessionList(repoSections([PR], []), context({ asks: [lost] }));
 
     expect(unmatchedAsks([lost], [PR])).toEqual([lost]);
-    expect(list.html.startsWith('<article class="session session-drafting needs orphan-ask">')).toBe(true);
+    expect(list.html.startsWith('<article class="session session-drafting orphan-ask">')).toBe(true);
     expect(askRow(lost, NOW)).toContain("Waiting on you");
     expect(list.html.match(/Waiting on you/g)).toHaveLength(1);
   });
@@ -299,21 +304,20 @@ describe("the review loop", () => {
     expect(reviewTurn("idle", null)).toBe("agent");
   });
 
-  it("fills the side whose turn it is, and spins only while a side works", () => {
-    const owed = reviewRing({ ...PR, paneStatus: "idle", reviewCycles: 2 }, { review_owed: true, pane_id: "%9" });
-    const working = reviewRing({ ...PR, paneStatus: "working", reviewCycles: 2 }, null);
+  it("bolds the side whose turn it is", () => {
+    const owed = reviewNote({ ...PR, paneStatus: "idle", reviewCycles: 2 }, { review_owed: true, pane_id: "%9" });
+    const working = reviewNote({ ...PR, paneStatus: "working", reviewCycles: 2 }, null);
 
-    expect(owed).toContain('class="ring-side bottom turn"');
-    expect(owed).not.toContain("spinning");
-    expect(working).toContain('class="ring-side top turn"');
-    expect(working).toContain("ring spinning");
+    expect(owed).toContain('<span class="review-side turn">Reviewer %9 owes review</span>');
+    expect(owed).toContain('<span class="review-side">Agent waiting</span>');
+    expect(working).toContain('<span class="review-side turn">Agent fixing</span>');
   });
 
-  it("carries one label with the round and both lines", () => {
-    const html = reviewRing({ ...PR, paneStatus: "idle", reviewCycles: 3, lastAction: "pushed <fix>" }, { pane_status: "working" });
+  it("carries the round, and one tooltip with the round and both sides", () => {
+    const html = reviewNote({ ...PR, paneStatus: "idle", reviewCycles: 3, lastAction: "pushed <fix>" }, { pane_status: "working" });
 
-    expect(html).toContain('aria-label="Review round 3. Agent: pushed &lt;fix&gt;. Reviewer: reviewing."');
-    expect(html).toContain('<span class="ring-round">3</span>');
+    expect(html).toContain('title="Review round 3. Agent: pushed &lt;fix&gt;. Reviewer: reviewing."');
+    expect(html).toContain('<span class="review-round">Round 3</span>');
   });
 
   it("writes each line for its column: who acts and a short verb", () => {
@@ -328,19 +332,19 @@ describe("the review loop", () => {
   });
 
   it("keeps ringo's last action in the tooltip, not the line", () => {
-    const html = reviewRing({ ...PR, paneStatus: "idle", reviewCycles: 1, lastAction: "Claude review #1 (6 comments)" }, { pane_id: "%9", pane_status: "working" });
+    const html = reviewNote({ ...PR, paneStatus: "idle", reviewCycles: 1, lastAction: "Claude review #1 (6 comments)" }, { pane_id: "%9", pane_status: "working" });
 
     expect(html).toContain('title="Review round 1. Agent: Claude review #1 (6 comments). Reviewer: reviewing."');
-    expect(html).toContain('<span class="ring-line agent-line"><b>Agent</b> waiting</span>');
-    expect(html).toContain('<span class="ring-line reviewer-line"><b>Reviewer</b> %9 reviewing</span>');
+    expect(html).toContain('<span class="review-side">Agent waiting</span>');
+    expect(html).toContain('<span class="review-side turn">Reviewer %9 reviewing</span>');
   });
 
-  it("stands in for the icon at Reviewer convergence and nowhere else", () => {
+  it("sits under the stage label at Reviewer convergence and nowhere else", () => {
     const reviewers = reviewersByKey([{ owner: PR.owner, repo: PR.repo, pr: PR.pr, agent: "codex" }]);
 
-    expect(sessionCard(PR, context({ reviewers }))).toContain('class="ring');
-    expect(sessionCard({ ...PR, ciStatus: "success" }, context())).not.toContain('class="ring');
-    expect(sessionCard({ ...PR, merged: true, reviewCycles: 2 }, context({ reviewers }))).not.toContain('class="ring');
+    expect(sessionCard(PR, context({ reviewers }))).toContain('class="review-note"');
+    expect(sessionCard({ ...PR, ciStatus: "success" }, context())).not.toContain('class="review-note"');
+    expect(sessionCard({ ...PR, merged: true, reviewCycles: 2 }, context({ reviewers }))).not.toContain('class="review-note"');
   });
 });
 
@@ -366,7 +370,7 @@ describe("the CI fixer as a session", () => {
     expect(html).toContain("session-drafting fixer");
   });
 
-  it("is tinted and labelled, and sorts first in its repo whatever its stage", () => {
+  it("is labelled, and sorts first in its repo whatever its stage", () => {
     const ready = { ...PR, pr: 1, ciStatus: "success" };
     const fixed = { ...PR, ciStatus: "failure" };
     const { byKey } = joinFixers([{ ...fixer, pr: 9958 }], [ready, fixed], []);
@@ -388,26 +392,6 @@ describe("the CI fixer as a session", () => {
     expect(note).toContain(">spawn fixer</button>");
     expect(fixerNote({ ...fixer, story_id: "fix" })).toContain(">respawn fixer</button>");
     expect(fixerNote({ owner: "o", repo: "r", consecutive_red: 1 })).not.toContain("data-action");
-  });
-
-  it("is not counted under Needs you", () => {
-    expect(sessionNeeds({ ...PR, ciStatus: "failure" }, context(), fixer)).toBe(false);
-  });
-});
-
-describe("sessionNeeds", () => {
-  it("keeps an open question, a failed check, a stall and a merge waiting", () => {
-    expect(sessionNeeds(PR, context({ asks: [{ pane: "%214" }] }))).toBe(true);
-    expect(sessionNeeds({ ...PR, ciStatus: "failure" }, context())).toBe(true);
-    expect(sessionNeeds({ ...PR, ciStatus: "success" }, context())).toBe(true);
-    const stalled = { ...PR, ciStatus: "pending", paneStatus: "idle", draft: true };
-    expect(sessionNeeds(stalled, context({ panes: idleSince("%214", 30) }))).toBe(true);
-  });
-
-  it("drops everything else, merged sessions and grooming agents included", () => {
-    expect(sessionNeeds({ ...PR, ciStatus: "pending" }, context())).toBe(false);
-    expect(sessionNeeds({ ...PR, merged: true, ciStatus: "failure" }, context())).toBe(false);
-    expect(sessionNeeds({ kind: "rfc-refine" }, context())).toBe(false);
   });
 });
 
@@ -457,32 +441,77 @@ describe("the session log", () => {
 });
 
 describe("sessionCard", () => {
-  it("links the PR, shows the stage by its stepper, and the note and its age", () => {
+  it("links the PR, shows the stage by its label, and the note and its age", () => {
     const html = sessionCard({ ...PR, lastAction: "pushed <fix>", lastTime: minutesAgo(6) }, context());
 
     expect(html).toContain('<a class="pr-link" href="https://github.com/blazetrailsdev/trails/pull/9958" target="_blank">trails#9958</a>');
-    expect(html).toContain('aria-label="Stage: Getting CI green"');
+    expect(html).toContain('<span class="Label stage st-ci">');
+    expect(html).toContain("Getting CI green</span>");
+    expect(html).toContain('<span class="ricon" title="Open pull request">');
     expect(html).toContain('class="session session-ci"');
     expect(html).toContain("pushed &lt;fix&gt;");
     expect(html).toContain(">6m ago</button>");
   });
 
-  it("flags a failed check beside the PR link", () => {
+  it("leads a session with no pull request by the open issue mark, never a pull request one", () => {
+    const html = sessionCard(SPAWN, context());
+    const draft = sessionCard({ ...PR, draft: true }, context());
+
+    expect(html).toContain('<span class="ricon" title="Open story, no pull request yet">' + ICONS.issue);
+    expect(html).not.toContain(ICONS.draft);
+    expect(draft).toContain('<span class="ricon draft" title="Draft pull request">' + ICONS.draft);
+  });
+
+  it("marks a failed check beside the title, ahead of the PR link", () => {
     const html = sessionCard({ ...PR, ciStatus: "failure" }, context());
 
     expect(html).toContain("check failed</span>");
-    expect(html.indexOf("pr-link")).toBeLessThan(html.indexOf("check failed"));
+    expect(html.indexOf("check failed")).toBeLessThan(html.indexOf("pr-link"));
+    expect(html).toContain('class="ci ci-failure"');
     expect(sessionCard({ ...PR, ciStatus: "pending" }, context())).not.toContain("check failed");
   });
 
-  it("offers Merge on Ready to merge rows only, in place of the figure", () => {
+  it("offers Merge on any open, non-draft pull request with CI green, whatever its stage", () => {
+    const reviewers = reviewersByKey([{ owner: PR.owner, repo: PR.repo, pr: PR.pr, agent: "codex" }]);
     const ready = sessionCard({ ...PR, ciStatus: "success" }, context());
+    const inReview = sessionCard({ ...PR, ciStatus: "success", reviewCycles: 2 }, context({ reviewers }));
 
-    expect(ready).toContain('data-action="merge" data-owner="blazetrailsdev" data-repo="trails" data-pr="9958"');
-    expect(ready).not.toContain('class="figure"');
+    expect(ready).toContain('class="btn btn-sm btn-primary" data-action="merge" data-owner="blazetrailsdev" data-repo="trails" data-pr="9958"');
+    expect(inReview).toContain('class="session session-ringo"');
+    expect(inReview).toContain('data-action="merge"');
+    expect(inReview).toContain('<span class="figure">2 review cycles</span>');
     expect(sessionCard({ ...PR, ciStatus: "failure" }, context())).not.toContain('data-action="merge"');
+    expect(sessionCard({ ...PR, ciStatus: "pending" }, context())).not.toContain('data-action="merge"');
     expect(sessionCard({ ...PR, ciStatus: "success", draft: true }, context())).not.toContain('data-action="merge"');
     expect(sessionCard({ ...PR, ciStatus: "success", merged: true }, context())).not.toContain('data-action="merge"');
+    expect(canMerge(SPAWN)).toBe(false);
+    expect(canMerge({ ...PR, ciStatus: "success", mergeConflict: true })).toBe(false);
+  });
+
+  it("offers Are we ready? once CI is green, a review round has passed and both sides are idle", () => {
+    const waiting = { ...PR, ciStatus: "success", draft: true, reviewCycles: 1, paneStatus: "idle" };
+    const html = sessionCard(waiting, context());
+
+    expect(html).toContain('data-action="pane-send" data-pane="%214" data-key="' + sessionKey(waiting) + '" data-text="Are we ready?"');
+    expect(html).toContain('id="ready-note-' + sessionKey(waiting) + '"');
+    expect(html).not.toContain('data-action="merge"');
+    expect(canAskReady(waiting, { pane_id: "%9" })).toBe(true);
+    expect(canAskReady(waiting, { pane_id: "%9", pane_status: "working" })).toBe(false);
+    expect(canAskReady(waiting, { pane_id: "%9", review_owed: true })).toBe(false);
+    expect(canAskReady({ ...waiting, paneStatus: "working" }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, paneStatus: "waiting" }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, paneStatus: "" }, null)).toBe(true);
+    expect(canAskReady({ ...waiting, reviewCycles: 0 }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, ciStatus: "pending" }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, pane: "" }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, merged: true }, null)).toBe(false);
+  });
+
+  it("puts the question before Merge when a row offers both", () => {
+    const html = sessionCard({ ...PR, ciStatus: "success", reviewCycles: 1, paneStatus: "idle" }, context());
+
+    expect(html.indexOf(READY_ASK + "</button>")).toBeLessThan(html.indexOf('data-action="merge"'));
+    expect(html.indexOf(READY_ASK + "</button>")).toBeGreaterThan(-1);
   });
 
   it("says a spawn has no PR yet, links its story, and offers dismiss once it has failed", () => {
@@ -613,16 +642,7 @@ describe("the list", () => {
   it("heads each repo with its count of active sessions", () => {
     const list = sessionList(repoSections([PR, { ...PR, pr: 1, merged: true }], [SPAWN]), ctx);
 
-    expect(list.html).toContain('<h2>blazetrailsdev/trails</h2><span class="muted">2 active</span>');
-    expect(list.active).toBe(2);
-  });
-
-  it("counts what Needs you keeps, and marks the repos that have any", () => {
-    const list = sessionList(repoSections([{ ...PR, ciStatus: "failure" }, { owner: "o", repo: "quiet", pr: 4 }], []), ctx);
-
-    expect(list.needs).toBe(1);
-    expect(list.html).toContain('<section class="repo has-needs" aria-label="blazetrailsdev/trails">');
-    expect(list.html).toContain('<section class="repo" aria-label="o/quiet">');
+    expect(list.html).toContain('<h2>blazetrailsdev/trails</h2><span class="Counter">2</span><span class="sr-only"> active</span>');
   });
 
   it("puts a fixer with no session of its own first in its repo", () => {
@@ -633,23 +653,6 @@ describe("the list", () => {
 
   it("puts a repo's own extras, the clear-failed button, beside its heading", () => {
     expect(sessionList(repoSections([], []), ctx, { "blazetrailsdev/trails": "<i>x</i>" }).html).toContain("active</span><i>x</i>");
-  });
-});
-
-describe("the filter", () => {
-  it("draws both chips with their counts and which one is pressed", () => {
-    const html = filterChips(7, 2, "needs");
-
-    expect(html).toContain('data-filter="all" aria-pressed="false">All 7</button>');
-    expect(html).toContain('data-filter="needs" aria-pressed="true">Needs you 2</button>');
-  });
-
-  it("opens filtered from ?filter=needs, and writes it back", () => {
-    expect(filterFrom("?filter=needs")).toBe("needs");
-    expect(filterFrom("?filter=bogus")).toBe("all");
-    expect(filterFrom("")).toBe("all");
-    expect(filterUrl("https://t/dashboard?x=1", "needs")).toBe("/dashboard?x=1&filter=needs");
-    expect(filterUrl("https://t/dashboard?filter=needs", "all")).toBe("/dashboard");
   });
 });
 

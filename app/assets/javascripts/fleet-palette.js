@@ -4,7 +4,7 @@
  * with scope chips, and the actions that replaced the broadcast and spawn
  * forms. Pure: `dashboard.js` opens the dialog and assigns what this returns.
  */
-import { esc, STAGE_ICONS, stageName } from "./fleet-format.js";
+import { esc, OCTICON, STAGE_ICONS, stageName } from "./fleet-format.js";
 import { sessionKey, sessionStories, stageOf } from "./fleet-sessions.js";
 
 /** The kinds, in the order their groups are drawn. */
@@ -164,8 +164,8 @@ export function paletteMove(selected, count, key) {
   return Math.min(selected, count - 1);
 }
 
-const DOC = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" d="M4 1.5h5.5L12.5 4.5V14.5h-8.5z M6 7h4M6 10h4"></path></svg>';
-const ARROW = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" d="M2 8h10M8 4l4 4-4 4"></path></svg>';
+const DOC = OCTICON('<path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z"></path>');
+const ARROW = OCTICON('<path d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z"></path>');
 
 /** The results' markup, the selected one marked for the listbox. */
 export function paletteHtml(groups, selected, query) {

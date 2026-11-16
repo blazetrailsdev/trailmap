@@ -66,12 +66,12 @@
       <div class="side-section rfc-actions">
         <div class="side-head">Dispatch</div>
         <% if (this.canBatch) { %>
-          <button type="button" class="btn" data-relay="spawnloop/rfc-batch-spawn" data-payload="<%= JSON.stringify({ slug: rfc.id }) %>" data-confirm="Spawn one worker for the next batch of stories under <%= rfc.id %>?">Spawn batch</button>
+          <button type="button" class="btn btn-primary" data-relay="spawnloop/rfc-batch-spawn" data-payload="<%= JSON.stringify({ slug: rfc.id }) %>" data-confirm="Spawn one worker for the next batch of stories under <%= rfc.id %>?">Spawn batch</button>
         <% } %>
-        <textarea class="input" data-relay-note aria-label="Message for the agent" placeholder="Optional message for the agent (steers this refine pass)…"></textarea>
+        <textarea class="ctl" rows="3" data-relay-note aria-label="Message for the agent" placeholder="Optional message for the agent (steers this refine pass)…"></textarea>
         <button type="button" class="btn" data-relay="spawnloop/rfc-refine" data-payload="<%= JSON.stringify({ slug: rfc.id, note: "", mode: "refine" }) %>" data-confirm="Spawn an agent to groom every story under <%= rfc.id %>?">Refine stories</button>
         <% if (this.canSunset) { %>
-          <button type="button" class="btn" data-relay="spawnloop/rfc-refine" data-payload="<%= JSON.stringify({ slug: rfc.id, note: "", mode: "sunset" }) %>" data-confirm="Sunset <%= rfc.id %>? An agent will re-home its remaining stories and close the RFC unless work is still in flight.">Sunset RFC</button>
+          <button type="button" class="btn btn-red" data-relay="spawnloop/rfc-refine" data-payload="<%= JSON.stringify({ slug: rfc.id, note: "", mode: "sunset" }) %>" data-confirm="Sunset <%= rfc.id %>? An agent will re-home its remaining stories and close the RFC unless work is still in flight.">Sunset RFC</button>
         <% } %>
         <div class="field-note" data-relay-status hidden></div>
       </div>
