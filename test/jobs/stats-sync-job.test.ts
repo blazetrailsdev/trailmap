@@ -2,14 +2,9 @@ import { getFs, getOs, getPath } from "@blazetrails/ruby-compat";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const syncLatest = vi.hoisted(() => vi.fn());
-vi.mock("../../lib/stats-sync/sync.ts", () => ({
-  syncLatest,
-  currentStage: () => "Syncing job logs",
-}));
+vi.mock("../../lib/stats-sync/sync.ts", () => ({ syncLatest, currentStage: () => "Syncing job logs" }));
 const packagesMissingCompareData = vi.hoisted(() => vi.fn());
-vi.mock("../../lib/stats-sync/missing-compare-data.ts", () => ({
-  packagesMissingCompareData,
-}));
+vi.mock("../../lib/stats-sync/missing-compare-data.ts", () => ({ packagesMissingCompareData }));
 
 import { constantize } from "@blazetrails/activesupport";
 import { env } from "@blazetrails/ruby-compat";
@@ -23,17 +18,12 @@ describe("StatsSyncJob", () => {
   const read = () => getFs().readFileSync(log, "utf8");
   const priorFailedRuns = (n: number) => {
     for (let i = 0; i < n; i++) {
-      getFs().appendFileSync(
-        log,
-        `=== x ===\nboom\n[cron-wrapper] stats sync failed at stage "s" (execution 1): boom\n`,
-      );
+      getFs().appendFileSync(log, `=== x ===\nboom\n[cron-wrapper] stats sync failed at stage "s" (execution 1): boom\n`);
     }
   };
 
   beforeEach(() => {
-    dir = getFs().mkdtempSync!(
-      getPath().join(getOs().tmpdir!(), "stats-sync-job-"),
-    );
+    dir = getFs().mkdtempSync!(getPath().join(getOs().tmpdir!(), "stats-sync-job-"));
     log = getPath().join(dir, "sync.log");
     writable["STATS_SYNC_LOG"] = log;
     writable["STATS_SYNC_DB"] = getPath().join(dir, "stats.db");
@@ -58,29 +48,19 @@ describe("StatsSyncJob", () => {
     writable["EMAIL"] = "ops@example.com";
     ApplicationMailer.deliveryMethod = "test";
     ApplicationMailer.deliveries.length = 0;
-    packagesMissingCompareData.mockResolvedValue([
-      { package: "rack-test", missing: ["api"] },
-    ]);
+    packagesMissingCompareData.mockResolvedValue([{ package: "rack-test", missing: ["api"] }]);
     await new StatsSyncJob().perform();
-    expect(read()).toContain(
-      "[cron-wrapper] missing compare data: rack-test (api)\n",
-    );
+    expect(read()).toContain("[cron-wrapper] missing compare data: rack-test (api)\n");
     expect(ApplicationMailer.deliveries).toHaveLength(1);
     const mail = ApplicationMailer.deliveries[0]!;
-    expect(String(mail.subject())).toBe(
-      "[stats-sync] 1 package has no compare data",
-    );
+    expect(String(mail.subject())).toBe("[stats-sync] 1 package has no compare data");
     expect(String(mail.body())).toContain("rack-test: no api rows");
   });
 
   it("logs a failed missing-data check without failing a good run", async () => {
-    packagesMissingCompareData.mockRejectedValue(
-      new Error("no such table: package_meta"),
-    );
+    packagesMissingCompareData.mockRejectedValue(new Error("no such table: package_meta"));
     await new StatsSyncJob().perform();
-    expect(read()).toContain(
-      "[cron-wrapper] ok\n[cron-wrapper] missing-data check failed: no such table: package_meta\n",
-    );
+    expect(read()).toContain("[cron-wrapper] ok\n[cron-wrapper] missing-data check failed: no such table: package_meta\n");
   });
 
   it("writes its run header in whole seconds, as the wrapper did", async () => {
@@ -90,9 +70,7 @@ describe("StatsSyncJob", () => {
 
   it("names the stage and error in a failed verdict and rethrows", async () => {
     syncLatest.mockRejectedValue(new Error("no such table: x\nstack"));
-    const job = new StatsSyncJob() as unknown as {
-      performNow(): Promise<unknown>;
-    };
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
     await expect(job.performNow()).rejects.toThrow("no such table");
     expect(read()).toMatch(
       /\[cron-wrapper\] stats sync failed at stage "Syncing job logs" \(execution 1\): no such table: x\n/,
@@ -105,20 +83,14 @@ describe("StatsSyncJob", () => {
     ApplicationMailer.deliveryMethod = "test";
     ApplicationMailer.deliveries.length = 0;
     syncLatest.mockRejectedValue(new Error("no such table: x\nstack"));
-    const job = new StatsSyncJob() as unknown as {
-      performNow(): Promise<unknown>;
-    };
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
     await expect(job.performNow()).rejects.toThrow("no such table");
     expect(ApplicationMailer.deliveries).toHaveLength(1);
     const mail = ApplicationMailer.deliveries[0]!;
     expect([...(mail.to() as string[])]).toEqual(["ops@example.com"]);
-    expect(String(mail.subject())).toBe(
-      "[trailmap] StatsSyncJob failed: Error: no such table: x",
-    );
+    expect(String(mail.subject())).toBe("[trailmap] StatsSyncJob failed: Error: no such table: x");
     expect(String(mail.body())).toContain("Stage: Syncing job logs");
-    expect(String(mail.body())).toContain(
-      '[cron-wrapper] stats sync failed at stage "Syncing job logs"',
-    );
+    expect(String(mail.body())).toContain('[cron-wrapper] stats sync failed at stage "Syncing job logs"');
   });
 
   it("still mails the stage when the log tail cannot be read", async () => {
@@ -130,9 +102,7 @@ describe("StatsSyncJob", () => {
       writable["STATS_SYNC_LOG"] = getPath().join(dir, "gone", "sync.log");
       throw new Error("no such table: x");
     });
-    const job = new StatsSyncJob() as unknown as {
-      performNow(): Promise<unknown>;
-    };
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
     await expect(job.performNow()).rejects.toThrow("no such table");
     expect(ApplicationMailer.deliveries).toHaveLength(1);
     const body = String(ApplicationMailer.deliveries[0]!.body());
@@ -154,52 +124,33 @@ describe("StatsSyncJob", () => {
     vi.spyOn(first, "retryJob").mockResolvedValue();
     await first.performNow();
     const payload = { ...first.serialize(), executions: 1 };
-    await expect(StatsSyncJob.execute(payload as never)).rejects.toThrow(
-      "API rate limit exceeded",
-    );
+    await expect(StatsSyncJob.execute(payload as never)).rejects.toThrow("API rate limit exceeded");
     expect(ApplicationMailer.deliveries).toHaveLength(1);
-    expect(String(ApplicationMailer.deliveries[0]!.body())).toContain(
-      "Stage: Syncing job logs",
-    );
+    expect(String(ApplicationMailer.deliveries[0]!.body())).toContain("Stage: Syncing job logs");
   });
 
   it("notes in the log that no alert was sent when EMAIL is not set", async () => {
     priorFailedRuns(2);
     syncLatest.mockRejectedValue(new Error("no such table: x"));
-    const job = new StatsSyncJob() as unknown as {
-      performNow(): Promise<unknown>;
-    };
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
     await expect(job.performNow()).rejects.toThrow("no such table");
-    expect(read()).toContain(
-      "[cron-wrapper] no alert email sent: EMAIL is not set\n",
-    );
+    expect(read()).toContain("[cron-wrapper] no alert email sent: EMAIL is not set\n");
   });
 
   it("notes an alert it could not send without masking the sync's error", async () => {
     priorFailedRuns(2);
     writable["EMAIL"] = "ops@example.com";
-    const addDeliveryMethod = ApplicationMailer.addDeliveryMethod as (
-      name: string,
-      klass: unknown,
-    ) => void;
-    addDeliveryMethod.call(
-      ApplicationMailer,
-      "refused",
-      class {
-        deliverBang(): never {
-          throw new Error("connection refused");
-        }
-      },
-    );
+    const addDeliveryMethod = ApplicationMailer.addDeliveryMethod as (name: string, klass: unknown) => void;
+    addDeliveryMethod.call(ApplicationMailer, "refused", class {
+      deliverBang(): never {
+        throw new Error("connection refused");
+      }
+    });
     ApplicationMailer.deliveryMethod = "refused";
     syncLatest.mockRejectedValue(new Error("no such table: x"));
-    const job = new StatsSyncJob() as unknown as {
-      performNow(): Promise<unknown>;
-    };
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
     await expect(job.performNow()).rejects.toThrow("no such table");
-    expect(read()).toContain(
-      "[cron-wrapper] alert email to ops@example.com could not be sent: connection refused\n",
-    );
+    expect(read()).toContain("[cron-wrapper] alert email to ops@example.com could not be sent: connection refused\n");
     ApplicationMailer.deliveryMethod = "test";
   });
 
@@ -217,9 +168,7 @@ describe("StatsSyncJob", () => {
     await job.performNow();
     expect(ApplicationMailer.deliveries).toHaveLength(0);
     await expect(job.performNow()).rejects.toThrow("API rate limit exceeded");
-    expect(read()).toContain(
-      'stats sync failed at stage "Syncing job logs" (execution 2)',
-    );
+    expect(read()).toContain('stats sync failed at stage "Syncing job logs" (execution 2)');
     expect(ApplicationMailer.deliveries).toHaveLength(1);
     expect(String(ApplicationMailer.deliveries[0]!.subject())).toBe(
       "[trailmap] StatsSyncJob failed: RateLimitedSync: API rate limit exceeded",
@@ -238,9 +187,7 @@ describe("StatsSyncJob", () => {
   it("raises the retried class for a rate limit", async () => {
     syncLatest.mockRejectedValue(new Error("API rate limit exceeded"));
     await expect(new StatsSyncJob().perform()).rejects.toThrow(
-      expect.objectContaining({
-        constructor: expect.objectContaining({ name: "RateLimitedSync" }),
-      }),
+      expect.objectContaining({ constructor: expect.objectContaining({ name: "RateLimitedSync" }) }),
     );
   });
 
@@ -258,17 +205,12 @@ describe("StatsSyncJob", () => {
   });
 
   it("holds the concurrency lock for 2 hours", () => {
-    const klass = StatsSyncJob as unknown as {
-      concurrencyDuration: { toI(): number };
-    };
+    const klass = StatsSyncJob as unknown as { concurrencyDuration: { toI(): number } };
     expect(klass.concurrencyDuration.toI()).toBe(2 * 3600);
   });
 
   it("does not report the gap between two hourly runs", async () => {
-    getFs().appendFileSync(
-      log,
-      `=== ${new Date(Date.now() - 3_600_000).toISOString()} ===\n[cron-wrapper] ok\n`,
-    );
+    getFs().appendFileSync(log, `=== ${new Date(Date.now() - 3_600_000).toISOString()} ===\n[cron-wrapper] ok\n`);
     await new StatsSyncJob().perform();
     expect(read()).not.toContain("stale");
   });
@@ -279,18 +221,12 @@ describe("StatsSyncJob", () => {
     ApplicationMailer.deliveries.length = 0;
     syncLatest.mockRejectedValue(new Error("no such table: x"));
     for (let run = 0; run < 2; run++) {
-      const job = new StatsSyncJob() as unknown as {
-        performNow(): Promise<unknown>;
-      };
+      const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
       await expect(job.performNow()).rejects.toThrow("no such table");
     }
     expect(ApplicationMailer.deliveries).toHaveLength(0);
-    expect(read()).toContain(
-      "[cron-wrapper] no alert email sent: 2 failed run(s) in a row, mailing at 3\n",
-    );
-    const third = new StatsSyncJob() as unknown as {
-      performNow(): Promise<unknown>;
-    };
+    expect(read()).toContain("[cron-wrapper] no alert email sent: 2 failed run(s) in a row, mailing at 3\n");
+    const third = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
     await expect(third.performNow()).rejects.toThrow("no such table");
     expect(ApplicationMailer.deliveries).toHaveLength(1);
   });
@@ -302,9 +238,7 @@ describe("StatsSyncJob", () => {
     priorFailedRuns(2);
     getFs().appendFileSync(log, "=== y ===\n[cron-wrapper] ok\n");
     syncLatest.mockRejectedValue(new Error("no such table: x"));
-    const job = new StatsSyncJob() as unknown as {
-      performNow(): Promise<unknown>;
-    };
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
     await expect(job.performNow()).rejects.toThrow("no such table");
     expect(ApplicationMailer.deliveries).toHaveLength(0);
   });
@@ -348,8 +282,6 @@ describe("StatsSyncJob", () => {
 
   it("refuses to run without its database", async () => {
     delete writable["STATS_SYNC_DB"];
-    await expect(new StatsSyncJob().perform()).rejects.toThrow(
-      "STATS_SYNC_DB must be set",
-    );
+    await expect(new StatsSyncJob().perform()).rejects.toThrow("STATS_SYNC_DB must be set");
   });
 });

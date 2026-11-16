@@ -38,28 +38,18 @@ export class StatsSyncJob extends ApplicationJob {
     // solid_queue v1.1.3 has no `on_conflict: :discard`, so an overlapping run waits
     // for the lock, which expires after 2 hours if a run dies holding it.
     this.limitsConcurrency({ key: "stats_sync", duration: Duration.hours(2) });
-    this.retryOn(RateLimitedSync, {
-      wait: Duration.seconds(120),
-      attempts: RateLimitedSync.attempts,
-    });
-    this.retryOn(TransientGhSync, {
-      wait: Duration.seconds(300),
-      attempts: TransientGhSync.attempts,
-    });
+    this.retryOn(RateLimitedSync, { wait: Duration.seconds(120), attempts: RateLimitedSync.attempts });
+    this.retryOn(TransientGhSync, { wait: Duration.seconds(300), attempts: TransientGhSync.attempts });
   }
 
   async perform(): Promise<void> {
     const log = requiredEnv("STATS_SYNC_LOG");
     requiredEnv("STATS_SYNC_DB");
-    const { currentStage, syncLatest } =
-      await import("../../lib/stats-sync/sync.ts");
+    const { currentStage, syncLatest } = await import("../../lib/stats-sync/sync.ts");
     getFs().mkdirSync(getPath().dirname(log), { recursive: true });
     this.reportGap(log);
     // Whole seconds, as the wrapper's `date -Iseconds`: btwhooks' run-header pattern has no `.`.
-    getFs().appendFileSync(
-      log,
-      `=== ${new Date().toISOString().replace(/\.\d+Z$/, "Z")} ===\n`,
-    );
+    getFs().appendFileSync(log, `=== ${new Date().toISOString().replace(/\.\d+Z$/, "Z")} ===\n`);
 
     try {
       await syncLatest();
@@ -91,15 +81,11 @@ export class StatsSyncJob extends ApplicationJob {
   private async reportMissingCompareData(log: string): Promise<void> {
     let packages;
     try {
-      const { packagesMissingCompareData } =
-        await import("../../lib/stats-sync/missing-compare-data.ts");
+      const { packagesMissingCompareData } = await import("../../lib/stats-sync/missing-compare-data.ts");
       packages = await packagesMissingCompareData();
     } catch (error) {
       const cause = error instanceof Error ? error.message : String(error);
-      getFs().appendFileSync(
-        log,
-        `[cron-wrapper] missing-data check failed: ${cause}\n`,
-      );
+      getFs().appendFileSync(log, `[cron-wrapper] missing-data check failed: ${cause}\n`);
       return;
     }
     if (packages.length === 0) return;
@@ -113,10 +99,7 @@ export class StatsSyncJob extends ApplicationJob {
       await StatsSyncMailer.missingCompareData({ to, packages }).deliverNow();
     } catch (error) {
       const cause = error instanceof Error ? error.message : String(error);
-      getFs().appendFileSync(
-        log,
-        `[cron-wrapper] missing-data email to ${to} could not be sent: ${cause}\n`,
-      );
+      getFs().appendFileSync(log, `[cron-wrapper] missing-data email to ${to} could not be sent: ${cause}\n`);
     }
   }
 
@@ -127,14 +110,13 @@ export class StatsSyncJob extends ApplicationJob {
   override async mailFailure(exception: unknown): Promise<void> {
     const failed = this.consecutiveFailedRuns();
     if (failed < FAILED_RUNS_BEFORE_MAIL) {
-      this.failureMailNotSent(
-        `no alert email sent: ${failed} failed run(s) in a row, mailing at ${FAILED_RUNS_BEFORE_MAIL}`,
-      );
+      this.failureMailNotSent(`no alert email sent: ${failed} failed run(s) in a row, mailing at ${FAILED_RUNS_BEFORE_MAIL}`);
       return;
     }
     await super.mailFailure(exception);
   }
 
+  /** A log that cannot be read counts as enough failures, so the mail still goes out. */
   private consecutiveFailedRuns(): number {
     const log = env.STATS_SYNC_LOG;
     let contents = "";
@@ -144,8 +126,7 @@ export class StatsSyncJob extends ApplicationJob {
       return FAILED_RUNS_BEFORE_MAIL;
     }
     const sinceOk = contents.split("[cron-wrapper] ok\n").at(-1) ?? "";
-    return [...sinceOk.matchAll(/^\[cron-wrapper\] stats sync failed /gm)]
-      .length;
+    return [...sinceOk.matchAll(/^\[cron-wrapper\] stats sync failed /gm)].length;
   }
 
   /**
@@ -157,21 +138,11 @@ export class StatsSyncJob extends ApplicationJob {
     let tail = "";
     // A log that cannot be read costs the mail its tail, not the mail itself.
     try {
-      if (log)
-        tail = (await getFs().readFile(log, "utf8"))
-          .trimEnd()
-          .split("\n")
-          .slice(-30)
-          .join("\n");
+      if (log) tail = (await getFs().readFile(log, "utf8")).trimEnd().split("\n").slice(-30).join("\n");
     } catch (error) {
       tail = `(the log could not be read: ${error instanceof Error ? error.message : String(error)})`;
     }
-    return [
-      `Stage: ${this.failedStage ?? "(before the sync started)"}`,
-      "",
-      "Last 30 lines:",
-      tail,
-    ];
+    return [`Stage: ${this.failedStage ?? "(before the sync started)"}`, "", "Last 30 lines:", tail];
   }
 
   /** An unsent alert is a `[cron-wrapper]` line in the log, as the wrapper wrote it. */
@@ -184,9 +155,7 @@ export class StatsSyncJob extends ApplicationJob {
   private reportGap(log: string): void {
     if (!getFs().existsSync(log)) return;
     const contents = getFs().readFileSync(log, "utf8");
-    const previous = [
-      ...contents.matchAll(/^=== (\d{4}-\d{2}-\d{2}T\S+) ===$/gm),
-    ].at(-1)?.[1];
+    const previous = [...contents.matchAll(/^=== (\d{4}-\d{2}-\d{2}T\S+) ===$/gm)].at(-1)?.[1];
     if (!previous) return;
     const hours = Math.floor((Date.now() - Date.parse(previous)) / 3_600_000);
     if (hours >= STALE_HOURS) {
