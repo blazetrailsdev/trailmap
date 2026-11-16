@@ -1,15 +1,24 @@
+<%#
+  "RFCs" is said once, in the title. The total sits beside it as a counter,
+  the tabs carry per-status counts, and the empty state names only the slice.
+%>
 <div class="page-header">
-  <h1 class="page-title">RFCs</h1>
-  <div class="page-subhead">
-    <span class="muted"><%= this.total %> <%= this.total === 1 ? "RFC" : "RFCs" %></span>
-  </div>
+  <h1 class="page-title">RFCs <span class="counter" title="every RFC, across all statuses"><%= this.total %></span></h1>
 </div>
 
-<%= render({ partial: "shared/filter-tabs", locals: { tabs: this.tabs } }) %>
+<div class="list-controls">
+  <%= render({ partial: "shared/filter-tabs", locals: { tabs: this.tabs } }) %>
+  <nav class="sort-links" aria-label="Sort">
+    <span class="muted">Sort</span>
+    <% for (const option of this.sorts) { %>
+      <a class="sort-link<%= option.active ? " active" : "" %>" href="<%= option.href %>" title="<%= option.title %>"<% if (option.active) { %> aria-current="true"<% } %>><%= option.label %></a>
+    <% } %>
+  </nav>
+</div>
 
 <div class="box">
   <% if (this.rows.length === 0) { %>
-    <div class="empty">No <%= this.filter %> RFCs.</div>
+    <div class="empty">Nothing <%= this.filter %>.</div>
   <% } %>
   <%#
     No status badge on a row. Every row here has the status of the selected

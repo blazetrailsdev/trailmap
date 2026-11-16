@@ -407,6 +407,16 @@ ul { margin: 0 0 10px 20px; }
 .tabs .tab:hover { color: var(--fg); text-decoration: none; }
 .tabs .tab.active { color: var(--fg); font-weight: 600; }
 
+/* A list's filter tabs and its sort, on one row: tabs left, sort right. */
+.list-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; }
+.list-controls .tabs { margin-bottom: 0; }
+.sort-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 13px; }
+.sort-links .sort-link { color: var(--muted); }
+.sort-links .sort-link:hover { color: var(--fg); text-decoration: none; }
+.sort-links .sort-link.active { color: var(--fg); font-weight: 600; }
+/* GitHub's Counter: a count beside a heading, quieter than the heading. */
+.page-title .counter { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 2em; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 500; line-height: 18px; text-align: center; vertical-align: middle; }
+
 /* A list's page links, above and below it. Muted like the tabs: where you are
    in a list is a fact about the list, not a call to action. */
 .pager { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin: 12px 0; font-size: 13px; }

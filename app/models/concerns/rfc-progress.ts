@@ -308,6 +308,39 @@ export function orderRfcsForIndex<T extends { id: string; priority: number | nul
   });
 }
 
+/**
+ * The list's alternate orders, `/rfcs?sort=<key>`. `priority` is the default
+ * and is `orderRfcsForIndex`; every other key re-sorts that order stably, so
+ * a tie falls back to it rather than to an arbitrary order.
+ */
+export const RFC_INDEX_SORTS: readonly { key: string; label: string; title: string }[] = [
+  { key: "priority", label: "priority", title: "priority, unset last; then fewest open stories; then id" },
+  { key: "open", label: "most open", title: "most open stories first" },
+  { key: "progress", label: "progress", title: "highest share of stories done first" },
+  { key: "newest", label: "newest", title: "most recently written first, undated last" },
+  { key: "id", label: "number", title: "RFC number, ascending" },
+];
+
+export function sortRfcsForIndex<
+  T extends { id: string; priority: number | null; created_on: string | null },
+>(rfcs: readonly T[], sort: string, counts: ReadonlyMap<string, RfcStoryCounts>): T[] {
+  const openCount = new Map([...counts].map(([id, c]) => [id, c.open]));
+  const base = orderRfcsForIndex(rfcs, openCount);
+  const count = (rfc: T) => counts.get(rfc.id);
+  switch (sort) {
+    case "open":
+      return base.sort((a, b) => (count(b)?.open ?? 0) - (count(a)?.open ?? 0));
+    case "progress":
+      return base.sort((a, b) => (count(b)?.donePct ?? 0) - (count(a)?.donePct ?? 0));
+    case "newest":
+      return base.sort((a, b) => compareBytes(b.created_on ?? "", a.created_on ?? ""));
+    case "id":
+      return base.sort((a, b) => compareBytes(a.id, b.id));
+    default:
+      return base;
+  }
+}
+
 /** Go's string comparison: byte order, not locale collation. */
 function compareBytes(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
@@ -325,6 +358,7 @@ export function rfcTerminal(status: string | null): boolean {
 export const RfcProgress = {
   orderRfcsForIndex,
   orderStoriesForRfc,
+  sortRfcsForIndex,
   rfcStalled,
   rfcStoryCounts,
   rfcTerminal,
