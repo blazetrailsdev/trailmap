@@ -3,13 +3,21 @@ module ApplicationHelper
   # own; the trails app's `navMark` reads the same file.
   HEADER_SECTIONS = JSON.parse(File.read(Rails.root.join("config/header-sections.json"))).freeze
 
-  # How a header link is marked on the page at `current`: "page" on an exact
-  # match, "section" on a page inside the link's section, else nil.
-  def nav_mark(path, current = request.path)
-    here = current.length > 1 ? current.sub(%r{/+\z}, "") : current
-    return "page" if here == path
+  # How a header link is marked: "page" on an exact match, "section" on a
+  # page inside the link's section, else nil. `current` defaults to the
+  # request's path, and then, as `current_page?` does, only a GET or HEAD is
+  # marked. Both sides are unescaped before comparing.
+  def nav_mark(path, current = nil)
+    if current.nil?
+      return nil unless request.get? || request.head?
+      current = request.path
+    end
+    target = URI::DEFAULT_PARSER.unescape(path)
+    here = URI::DEFAULT_PARSER.unescape(current)
+    here = here.sub(%r{/+\z}, "") if here.length > 1
+    return "page" if here == target
     extra = HEADER_SECTIONS[path]
-    prefixes = ["#{path}/", *(extra.is_a?(Array) ? extra : [])]
+    prefixes = ["#{target}/", *(extra.is_a?(Array) ? extra : [])]
     prefixes.any? { |prefix| here.start_with?(prefix) } ? "section" : nil
   end
 

@@ -10,4 +10,16 @@ class ApplicationHelperTest < ActionView::TestCase
     assert_nil nav_mark("/packages", "/packagesx")
     assert_nil nav_mark("/rfcs", "/backlog")
   end
+
+  test "nav_mark reads the request, marking only a GET or HEAD" do
+    request.path = "/rfcs"
+    assert_equal "page", nav_mark("/rfcs")
+    request.request_method = "POST"
+    assert_nil nav_mark("/rfcs")
+  end
+
+  test "nav_mark unescapes both sides" do
+    assert_equal "page", nav_mark("/rfcs", "/rfc%73")
+    assert_equal "section", nav_mark("/packages", "/packages/a%20b")
+  end
 end

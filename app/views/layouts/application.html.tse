@@ -20,7 +20,7 @@
     <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">
       <% for (const [label, path] of [["RFCs", rfcsPath()], ["Backlog", backlogPath()], ["Dashboard", dashboardPath()], ["Parity", parityGraphPath()], ["Packages", packagesPath()], ["Audits", auditsPath()], ["Deploys", deploysPath()], ["Sessions", sessionsPath()], ["Search", searchPath()]]) { %>
-        <% const mark = navMarkHere(path); %>
+        <% const mark = navMark(path); %>
         <a href="<%= path %>"<% if (mark) { %> class="active"<% } %><% if (mark === "page") { %> aria-current="page"<% } %>><%= label %></a>
       <% } %>
     </nav>

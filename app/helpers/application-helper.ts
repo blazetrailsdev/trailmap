@@ -1,27 +1,43 @@
 import { getFs } from "@blazetrails/ruby-compat";
 
+// Anchored to this file, not the working directory, as Rails' copy is to
+// `Rails.root`.
 const headerSections: Record<string, unknown> = JSON.parse(
-  await getFs().readFile("config/header-sections.json", "utf8"),
+  await getFs().readFile(decodeURIComponent(new URL("../../config/header-sections.json", import.meta.url).pathname), "utf8"),
 );
 
-/**
- * How a header link is marked on the page at `current`: `page` on an exact
- * match, `section` on a page inside the link's section (paths under its own,
- * and those `config/header-sections.json` lists), else `null`. Rails'
- * `nav_mark` reads the same file.
- */
-export function navMark(path: string, current: string): "page" | "section" | null {
-  const here = current.length > 1 ? current.replace(/\/+$/, "") : current;
-  if (here === path) return "page";
-  const extra = headerSections[path];
-  const prefixes = [path + "/", ...(Array.isArray(extra) ? (extra as string[]) : [])];
-  return prefixes.some((prefix) => here.startsWith(prefix)) ? "section" : null;
-}
+const unescape = (value: string): string => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+type NavRequest = { path: string; method: string };
 
 export const ApplicationHelper = {
-  /** `navMark` for the request this view renders. */
-  navMarkHere(this: { request: { path: string } }, path: string): "page" | "section" | null {
-    return navMark(path, this.request.path);
+  /**
+   * How a header link is marked: `page` on an exact match, `section` on a page
+   * inside the link's section (paths under its own, and those
+   * `config/header-sections.json` lists), else `null`. `current` defaults to
+   * the request's path, and then, as `current_page?` does, only a GET or HEAD
+   * is marked. Both sides are unescaped before comparing. Rails' `nav_mark`
+   * has the same shape and reads the same file.
+   */
+  navMark(this: { request?: NavRequest } | void, path: string, current?: string): "page" | "section" | null {
+    if (current === undefined) {
+      const request = (this as { request?: NavRequest } | undefined)?.request;
+      if (!request || !["GET", "HEAD"].includes(request.method.toUpperCase())) return null;
+      current = request.path;
+    }
+    const target = unescape(path);
+    let here = unescape(current);
+    if (here.length > 1) here = here.replace(/\/+$/, "");
+    if (here === target) return "page";
+    const extra = headerSections[path];
+    const prefixes = [target + "/", ...(Array.isArray(extra) ? (extra as string[]) : [])];
+    return prefixes.some((prefix) => here.startsWith(prefix)) ? "section" : null;
   },
 
   /**
