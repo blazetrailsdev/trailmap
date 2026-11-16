@@ -19,8 +19,8 @@ describe("syncLatest", () => {
     const path = writable["PATH"];
     writable["PATH"] = `${dir}:${path}`;
     writable["STATS_SYNC_DB"] = getPath().join(dir, "stats.db");
+    const { StatsSyncRecord } = await import("../../app/models/stats-sync/stats-sync-record.ts");
     try {
-      const { StatsSyncRecord } = await import("../../app/models/stats-sync/stats-sync-record.ts");
       await StatsSyncRecord.establishConnection(statsSyncDatabaseConfig());
       await Base.establishConnection(statsSyncDatabaseConfig());
       try {
@@ -32,8 +32,8 @@ describe("syncLatest", () => {
       const error = await syncLatest({ deadlineMinutes: 2 / 60 }).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(SyncDeadlineExceededError);
       expect(Date.now() - started).toBeLessThan(30_000);
-      await StatsSyncRecord.removeConnection();
     } finally {
+      await StatsSyncRecord.removeConnection();
       writable["PATH"] = path;
       delete writable["STATS_SYNC_DB"];
       getFs().rmSync(dir, { recursive: true, force: true });
