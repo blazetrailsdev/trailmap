@@ -16,7 +16,7 @@ module ApplicationHelper
     target = strip.(URI::RFC2396_PARSER.unescape(path))
     here = strip.(URI::RFC2396_PARSER.unescape(current))
     return "page" if here == target
-    extra = HEADER_SECTIONS[path]
+    extra = HEADER_SECTIONS[target]
     prefixes = ["#{target}/", *(extra.is_a?(Array) ? extra : [])]
     prefixes.any? { |prefix| here.start_with?(prefix) } ? "section" : nil
   end

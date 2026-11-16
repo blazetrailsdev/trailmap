@@ -22,5 +22,6 @@ class ApplicationHelperTest < ActionView::TestCase
     assert_equal "page", nav_mark("/rfcs", "/rfc%73")
     assert_equal "section", nav_mark("/packages", "/packages/a%20b")
     assert_equal "page", nav_mark("/rfcs/", "/rfcs")
+    assert_equal "section", nav_mark("/sessions/", "/panes/42")
   end
 end

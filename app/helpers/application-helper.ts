@@ -38,7 +38,7 @@ export const ApplicationHelper = {
     const target = strip(unescape(path));
     const here = strip(unescape(current));
     if (here === target) return "page";
-    const extra = headerSections[path];
+    const extra = headerSections[target];
     const prefixes = [target + "/", ...(Array.isArray(extra) ? (extra as string[]) : [])];
     return prefixes.some((prefix) => here.startsWith(prefix)) ? "section" : null;
   },

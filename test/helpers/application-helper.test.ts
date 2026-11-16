@@ -26,5 +26,6 @@ describe("ApplicationHelper", () => {
     expect(navMark("/rfcs", "/rfc%73")).toBe("page");
     expect(navMark("/packages", "/packages/a%20b")).toBe("section");
     expect(navMark("/rfcs/", "/rfcs")).toBe("page");
+    expect(navMark("/sessions/", "/panes/42")).toBe("section");
   });
 });
