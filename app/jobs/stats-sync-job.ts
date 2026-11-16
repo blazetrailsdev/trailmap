@@ -17,6 +17,23 @@ class TransientGhSync extends Error {
   static attempts = 2;
 }
 
+// Every log read needs only the last few runs, and the log grows by 24 runs a day.
+const LOG_TAIL_BYTES = 64 * 1024;
+
+function readLogTail(log: string): string {
+  const fs = getFs();
+  const size = fs.statSync(log).size;
+  const length = Math.min(size, LOG_TAIL_BYTES);
+  const buffer = new Uint8Array(length);
+  const fd = fs.openSync(log, "r");
+  try {
+    fs.readSync(fd, buffer, 0, length, size - length);
+  } finally {
+    fs.closeSync(fd);
+  }
+  return new TextDecoder().decode(buffer);
+}
+
 function requiredEnv(name: string): string {
   const value = env[name];
   if (!value) throw new Error(`${name} must be set for StatsSyncJob`);
@@ -135,7 +152,7 @@ export class StatsSyncJob extends ApplicationJob {
           `[cron-wrapper] stats sync failed before the sync started: ${message.split("\n")[0]}\n`,
         );
       }
-      const sinceOk = getFs().readFileSync(log, "utf8").split("[cron-wrapper] ok\n").at(-1) ?? "";
+      const sinceOk = readLogTail(log).split("[cron-wrapper] ok\n").at(-1) ?? "";
       return [...sinceOk.matchAll(/^\[cron-wrapper\] stats sync failed /gm)].length;
     } catch {
       return null;
@@ -151,7 +168,7 @@ export class StatsSyncJob extends ApplicationJob {
     let tail = "";
     // A log that cannot be read costs the mail its tail, not the mail itself.
     try {
-      if (log) tail = (await getFs().readFile(log, "utf8")).trimEnd().split("\n").slice(-30).join("\n");
+      if (log) tail = readLogTail(log).trimEnd().split("\n").slice(-30).join("\n");
     } catch (error) {
       tail = `(the log could not be read: ${error instanceof Error ? error.message : String(error)})`;
     }
@@ -167,7 +184,7 @@ export class StatsSyncJob extends ApplicationJob {
 
   private reportGap(log: string): void {
     if (!getFs().existsSync(log)) return;
-    const contents = getFs().readFileSync(log, "utf8");
+    const contents = readLogTail(log);
     const previous = [...contents.matchAll(/^=== (\d{4}-\d{2}-\d{2}T\S+) ===$/gm)].at(-1)?.[1];
     if (!previous) return;
     const hours = Math.floor((Date.now() - Date.parse(previous)) / 3_600_000);

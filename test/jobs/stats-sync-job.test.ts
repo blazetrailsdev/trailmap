@@ -266,6 +266,16 @@ describe("StatsSyncJob", () => {
     expect(ApplicationMailer.deliveries).toHaveLength(1);
   });
 
+  it("reads only the log's tail, however long the log grows", async () => {
+    getFs().appendFileSync(log, `=== 2020-01-01T00:00:00Z ===\n${"x".repeat(200 * 1024)}\n`);
+    getFs().appendFileSync(log, `=== ${new Date(Date.now() - 3_600_000).toISOString()} ===\n[cron-wrapper] ok\n`);
+    const readFileSync = vi.spyOn(getFs(), "readFileSync");
+    await new StatsSyncJob().perform();
+    expect(readFileSync).not.toHaveBeenCalledWith(log, expect.anything());
+    readFileSync.mockRestore();
+    expect(read()).not.toContain("stale");
+  });
+
   it("counts failed runs only since the last good one", async () => {
     writable["EMAIL"] = "ops@example.com";
     ApplicationMailer.deliveryMethod = "test";
