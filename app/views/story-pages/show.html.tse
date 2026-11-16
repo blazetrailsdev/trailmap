@@ -85,7 +85,7 @@
         <div class="side-section rfc-actions">
           <div class="side-head">Lifecycle</div>
           <% if (actions.spawn) { %>
-            <button type="button" class="btn" data-relay="spawnloop/story-spawn" data-payload="<%= JSON.stringify({ id: story.id }) %>" data-confirm="Spawn a worker for <%= story.id %> now, using the current loop settings?">Spawn worker</button>
+            <button type="button" class="btn btn-primary" data-relay="spawnloop/story-spawn" data-payload="<%= JSON.stringify({ id: story.id }) %>" data-confirm="Spawn a worker for <%= story.id %> now, using the current loop settings?">Spawn worker</button>
             <div class="field-note" data-relay-status hidden></div>
           <% } %>
           <% if (actions.ready) { %>
@@ -97,11 +97,11 @@
           <% if (actions.release) { %>
             <%= buttonTo("Release claim", storyReleasePath(story.id), { form: { "data-confirm": "Release this claim? The story goes back to ready." }, class: "btn" }) %>
           <% } %>
-          <% for (const verb of [{ show: actions.block, url: storyBlockPath(story.id), label: "Block" }, { show: actions.close, url: storyClosePath(story.id), label: "Close story" }]) { %>
+          <% for (const verb of [{ show: actions.block, url: storyBlockPath(story.id), label: "Block", cls: "btn" }, { show: actions.close, url: storyClosePath(story.id), label: "Close story", cls: "btn btn-red" }]) { %>
             <% if (verb.show) { %>
               <%= formWith({ url: verb.url, method: "post" }, () => { %>
-                <input class="input" name="reason" placeholder="Reason" aria-label="<%= verb.label %> reason">
-                <button type="submit" class="btn"><%= verb.label %></button>
+                <input class="ctl" name="reason" placeholder="Reason" aria-label="<%= verb.label %> reason">
+                <button type="submit" class="<%= verb.cls %>"><%= verb.label %></button>
               <% }) %>
             <% } %>
           <% } %>

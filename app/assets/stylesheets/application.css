@@ -577,29 +577,16 @@ ul { margin: 0 0 10px 20px; }
  */
 .fleet-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
 
-/* The list's toolbar: the subnav, the search field, then the actions. */
+/* The list's toolbar: the search field, then the actions. */
 .list-toolbar { display: flex; align-items: center; gap: 8px; margin: 8px 0 16px; }
 #fleetSearch { flex: 1; min-width: 0; cursor: pointer; }
 #fleetSearchBtn { display: none; }
 @media (max-width: 700px) {
   .list-toolbar { flex-wrap: wrap; }
-  .list-toolbar .subnav { flex: 1 0 100%; }
-  .list-toolbar .subnav-item { flex: 1; justify-content: center; }
   #fleetSearch { display: none; }
   #fleetSearchBtn { display: inline-flex; margin-right: auto; }
 }
-.subnav { display: inline-flex; flex: none; }
-.subnav-item {
-  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; margin-left: -1px;
-  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
-  font: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;
-}
-.subnav-item:first-child { margin-left: 0; border-radius: 6px 0 0 6px; }
-.subnav-item:last-child { border-radius: 0 6px 6px 0; }
-.subnav-item:hover { background: var(--surface-2); }
-.subnav-item[aria-pressed="true"] { position: relative; background: var(--accent); border-color: var(--accent); color: var(--on-mark); }
-.subnav-item[aria-pressed="true"] .Counter { color: inherit; background: color-mix(in srgb, currentColor 22%, transparent); }
-.subnav-item:focus-visible, .chip:focus-visible, .expand:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip:focus-visible, .expand:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* GitHub's Counter and Label. */
 .Counter {
@@ -626,7 +613,6 @@ ul { margin: 0 0 10px 20px; }
 /* Usage and Loop, side by side, one above the other on a narrow screen. */
 .top-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 16px; }
 .loop-paused { display: none; color: var(--yellow-ink); }
-#spawnLoopPanel:has(#pauseBtn[data-paused="true"]) .loop-paused[data-why="pause"],
 #spawnLoopPanel:has(#slToggle:enabled[data-enabled="false"]) .loop-paused[data-why="loop"] { display: inline; }
 
 /* Connection status, each a label with a dot: events, tmux, per-repo main CI, pull failures, agents. */
@@ -678,7 +664,7 @@ details.card.fold > :not(summary) { margin-inline: 16px; margin-bottom: 12px; }
 .meter { display: block; height: 8px; border-radius: 6px; background: color-mix(in srgb, var(--ink-3) 18%, transparent); overflow: hidden; }
 .meter .bar-fill { display: block; height: 100%; border-radius: 6px; }
 .usage-note { margin-top: 8px; font-size: 12px; color: var(--ink-3); }
-.loop-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto; gap: 10px; align-items: end; }
+.loop-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 10px; align-items: end; }
 .loop-row .field { display: flex; flex-direction: column; align-items: stretch; gap: 4px; font-size: 12px; font-weight: 600; color: var(--ink); text-align: left; white-space: nowrap; min-width: 0; }
 .loop-row .field .field-note { font-size: 12px; font-weight: 400; }
 .loop-row .field:has(.switch) { align-items: flex-start; }
@@ -692,7 +678,7 @@ details.card.fold > :not(summary) { margin-inline: 16px; margin-bottom: 12px; }
 .loop-controls { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .bundle-fold { margin-top: 6px; }
 .bundle-fold > summary { cursor: pointer; }
-@media (max-width: 700px) { .loop-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } .loop-row .btn { grid-column: 2 / -1; } }
+@media (max-width: 700px) { .loop-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .usage-bar.stale { opacity: 0.7; }
 .usage-bar.stale .bar-fill { background: var(--muted); }
 .bar-fill { height: 100%; border-radius: 6px; }
@@ -831,7 +817,6 @@ textarea.ctl { height: auto; }
 .ask-free input { flex: 1; min-width: 0; }
 .evidence { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; flex: 1 1 260px; font-size: 13px; color: var(--ink-2); }
 .met::before { content: "✓ "; color: var(--st-ready); font-weight: 700; }
-.only-needs .session:not(.needs), .only-needs .merged-line, .only-needs .repo:not(.has-needs), .only-needs .list-empty { display: none; }
 
 /* The Merged line closing a repo's list. */
 .merged-line {
@@ -1144,10 +1129,19 @@ kbd {
 .tx-think { border: 1px dashed var(--border); border-radius: 6px; }
 .tx-think .tx-body { padding: 0 11px 10px; font-size: 12.5px; color: var(--muted); }
 
-/* /rfc/<id>: the lifecycle buttons, one per line, and a refused move's message. */
-.rfc-actions form { margin: 0 0 6px; }
+/*
+ * /rfc/<id> and /story/<id>: the sidebar's actions, one full-width button per
+ * line. The group's primary action is green, a destructive one red, and a
+ * verb that takes a reason keeps its field directly above its button.
+ */
+.rfc-actions form { margin: 8px 0 0; }
+.rfc-actions > * + * { margin-top: 8px; }
 .rfc-actions .btn { width: 100%; }
-.rfc-actions .input { width: 100%; margin-bottom: 4px; }
+.rfc-actions .ctl { width: 100%; }
+.rfc-actions textarea.ctl { min-height: 72px; resize: vertical; }
+.rfc-actions form .ctl { margin-bottom: 4px; }
+.rfc-actions form:has(.ctl) { padding-top: 8px; border-top: 1px solid var(--line); }
+.rfc-actions .field-note { margin-top: 4px; }
 .flash-error { border: 1px solid var(--red); color: var(--red); border-radius: 6px; padding: 8px 12px; }
 
 /* ringo's `sessionTimelineCSS`: the PR timeline on /sessions/:owner/:repo/:pr. */

@@ -164,7 +164,7 @@ export function askStrip(ask, now = Date.now()) {
 
 /** A question no row matches, as a row of its own at the top of the list. */
 export function askRow(ask, now = Date.now()) {
-  return '<article class="session session-drafting needs orphan-ask">' + askStrip(ask, now) + "</article>";
+  return '<article class="session session-drafting orphan-ask">' + askStrip(ask, now) + "</article>";
 }
 
 /** The pane statuses that are not idle: busy, asking, failing, or out of quota (a prod reaches none of them). */
@@ -351,23 +351,6 @@ export function fixerNote(f) {
 export const fixerAnchor = (repo) => "fixer-" + String(repo).replace(/[^a-zA-Z0-9_-]+/g, "-");
 
 // ---------------------------------------------------------------------------
-// Needs you
-// ---------------------------------------------------------------------------
-
-/**
- * Whether a row wants something from the operator: an open question, a
- * failed check, a stall, or a merge waiting. The CI fixer's row is not
- * counted: a red main is not waiting on an answer (open question 5).
- */
-export function sessionNeeds(s, ctx, fixer = null) {
-  if (fixer || s.merged || s.kind) return false;
-  if (askFor(s, ctx.asks)) return true;
-  if (isPR(s) && s.ciStatus === "failure") return true;
-  if (stageOf(s, ctx) === "ready") return true;
-  return !!sessionStall(s, ctx);
-}
-
-// ---------------------------------------------------------------------------
 // The session log
 // ---------------------------------------------------------------------------
 
@@ -537,11 +520,15 @@ export function sessionDetail(s, ctx, lead) {
   );
 }
 
-/** The octicon that leads a row, as GitHub leads a pull request's: draft, open, merged, or failed. */
+/**
+ * The octicon that leads a row, as GitHub leads a pull request's: draft, open,
+ * merged, or failed. A session with no pull request yet leads with the open
+ * issue mark, never a pull request one.
+ */
 function stateIcon(s, failed) {
   if (failed) return '<span class="ricon failed" title="Spawn failed">' + ICONS.x + "</span>";
   if (s.merged) return '<span class="ricon merged" title="Merged">' + ICONS.merge + "</span>";
-  if (!isPR(s)) return '<span class="ricon draft" title="No pull request yet">' + ICONS.draft + "</span>";
+  if (!isPR(s)) return '<span class="ricon" title="Open story, no pull request yet">' + ICONS.issue + "</span>";
   if (s.draft) return '<span class="ricon draft" title="Draft pull request">' + ICONS.draft + "</span>";
   return '<span class="ricon" title="Open pull request">' + ICONS.pr + "</span>";
 }
@@ -549,10 +536,10 @@ function stateIcon(s, failed) {
 /**
  * One session row, laid out as GitHub lays out a pull request in a list: a
  * state octicon, the lead story as the title with the CI mark and labels
- * beside it, a muted line under it with the PR link and a note, the bundle's
- * other stories; then the stage as a label, and one progress figure over how
- * long ago it changed. Its question or stall strip follows, and its details
- * when expanded.
+ * beside it, a muted line under it with the PR link, a note and how many
+ * stories a bundle carries; then the stage as a label, and one progress figure over how
+ * long ago it changed. Its question or stall strip follows. Expanded, it lists
+ * the bundle's other stories under the note, and its details below.
  */
 export function sessionCard(s, ctx, fixer = null) {
   if (s.kind) return '<article class="session session-drafting grooming">' + rfcSpawnRow(s, ctx.now) + "</article>";
@@ -563,7 +550,6 @@ export function sessionCard(s, ctx, fixer = null) {
   const open = !!(ctx.open && ctx.open.has(key));
   const ask = askFor(s, ctx.asks);
   const stall = ask ? null : sessionStall(s, ctx);
-  const needs = sessionNeeds(s, ctx, fixer);
 
   const tags =
     (isPR(s) ? ciMark(s.ciStatus) : "") +
@@ -590,6 +576,7 @@ export function sessionCard(s, ctx, fixer = null) {
   else if (s.lastAction) note.push(esc(s.lastAction));
   if (!isPR(s) && s.source && !fixer) note.push("spawned via " + esc(s.source));
   if (failed && s.error) note.push('<span class="bad">' + esc(s.error) + "</span>");
+  if (rest.length && !open) note.push(rest.length + 1 + " stories");
 
   const review = stage === "ringo" ? reviewNote(s, ctx.reviewers ? ctx.reviewers[reviewerKey(s.owner, s.repo, s.pr)] : null) : "";
   const figure = stageFigure(s, stage);
@@ -607,13 +594,13 @@ export function sessionCard(s, ctx, fixer = null) {
     "</div>";
 
   return (
-    '<article class="session session-' + stage + (fixer ? " fixer" : "") + (needs ? " needs" : "") + (open ? " open" : "") +
+    '<article class="session session-' + stage + (fixer ? " fixer" : "") + (open ? " open" : "") +
     (failed ? " failed" : "") + '" id="' + key + '"' + (fixer ? ' data-fixer="' + fixerAnchor(fixer.owner + "/" + fixer.repo) + '"' : "") + ">" +
     '<div class="session-main list-grid" data-ui="row" data-key="' + key + '">' +
     stateIcon(s, failed) +
     '<div class="session-info"><div class="titleline">' + leadHtml + tags + "</div>" +
     '<div class="session-note">' + note.join(" &middot; ") + "</div>" +
-    (rest.length ? '<div class="stories">' + rest.map((story) => storyLink(story, "story")).join("") + "</div>" : "") +
+    (rest.length && open ? '<div class="stories">' + rest.map((story) => storyLink(story, "story")).join("") + "</div>" : "") +
     "</div>" +
     '<div class="session-stage">' + stageLabel(stage) + review + "</div>" +
     meta +
@@ -673,8 +660,7 @@ export function sessionGroups(sections) {
 
 /**
  * The whole list: questions no row matches, then each repo as one surface of
- * rows under a header naming it, ending with its Merged line. Returns the markup
- * and the counts the filter chips show.
+ * rows under a header naming it, ending with its Merged line.
  */
 export function sessionList(sections, ctx, extras = {}) {
   const { byKey, orphans } = joinFixers(ctx.fixers, sections.flatMap((s) => s.prs), sections.flatMap((s) => s.spawns));
@@ -686,23 +672,15 @@ export function sessionList(sections, ctx, extras = {}) {
   }
   const rows = groups.flatMap((g) => g.rows);
   const asks = unmatchedAsks(ctx.asks, rows);
-  let active = 0;
-  let needs = asks.length;
   const html =
     asks.map((a) => askRow(a, ctx.now)).join("") +
     groups
       .map((g) => {
         const ordered = orderSessions(g.rows, ctx, byKey);
-        const cards = ordered.map((s) => {
-          const fixer = byKey.get(sessionKey(s)) || null;
-          if (!s.kind) active++;
-          if (sessionNeeds(s, ctx, fixer)) needs++;
-          return sessionCard(s, ctx, fixer);
-        });
-        const anyNeeds = ordered.some((s) => sessionNeeds(s, ctx, byKey.get(sessionKey(s)) || null));
+        const cards = ordered.map((s) => sessionCard(s, ctx, byKey.get(sessionKey(s)) || null));
         const live = ordered.filter((s) => !s.kind).length;
         return (
-          '<section class="repo' + (anyNeeds ? " has-needs" : "") + '" aria-label="' + esc(g.name) + '">' +
+          '<section class="repo" aria-label="' + esc(g.name) + '">' +
           '<div class="sessions">' +
           '<div class="repo-head"><h2>' + esc(g.name) + '</h2><span class="Counter">' + live + '</span><span class="sr-only"> active</span>' + (extras[g.name] || "") + "</div>" +
           (cards.length ? cards.join("") : '<div class="list-empty">No open sessions.</div>') +
@@ -711,25 +689,5 @@ export function sessionList(sections, ctx, extras = {}) {
         );
       })
       .join("");
-  return { html, active, needs, rows: [...rows, ...groups.flatMap((g) => g.merged)], fixerByKey: byKey };
+  return { html, rows: [...rows, ...groups.flatMap((g) => g.merged)], fixerByKey: byKey };
 }
-
-/** The two filters as a GitHub subnav: a segmented pair, each with its count. */
-export function filterChips(active, needs, filter) {
-  const chip = (f, label) =>
-    '<button type="button" class="subnav-item" data-ui="filter" data-filter="' + f + '" aria-pressed="' + (filter === f) + '">' + label + "</button>";
-  const count = (n) => ' <span class="Counter">' + n + "</span>";
-  return chip("all", "All" + count(active)) + chip("needs", "Needs you" + count(needs));
-}
-
-/** `?filter=needs` opens the page filtered; anything else is All. */
-export const filterFrom = (search) => (new URLSearchParams(search || "").get("filter") === "needs" ? "needs" : "all");
-
-/** The location with its filter set, for `history.replaceState`. */
-export function filterUrl(href, filter) {
-  const url = new URL(href);
-  if (filter === "needs") url.searchParams.set("filter", "needs");
-  else url.searchParams.delete("filter");
-  return url.pathname + url.search + url.hash;
-}
-

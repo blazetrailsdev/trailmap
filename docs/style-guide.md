@@ -94,9 +94,10 @@ for the nearest concept:
 | Octicon | Means |
 | --- | --- |
 | `git-pull-request` (green) | an open pull request |
-| `git-pull-request-draft` (grey) | a draft, or work with no pull request yet |
+| `git-pull-request-draft` (grey) | a draft pull request, and only that |
 | `git-merge` (purple) | merged |
-| `issue-opened` | a story or an agent that is not a pull request |
+| `issue-opened` (green) | an open story: an agent with no pull request yet |
+| `pencil` | the drafting stage |
 | `check` / `x` / `dot-fill` | CI passing / failing / running |
 | `eye`, `code-review`, `sync`, `check-circle` | the self-review, review, CI and ready stages |
 
@@ -109,9 +110,8 @@ for the nearest concept:
 | Box row | `.session`, `.row`, `.item-row` | divided by a 1px top border; hover is `--surface-2` |
 | Button | `.btn` | see below |
 | Form control | `.ctl` | 32px, 1px border, 6px radius; focus is a 2px `--accent` outline |
-| Subnav | `.subnav` / `.subnav-item` | a segmented pair or trio of filters; the pressed one is filled `--accent` |
 | Label | `.Label`, `.flag` | a 12px outlined pill. `.Label.stage.st-*` is a stage; `.flag` is attention, `.flag.bad` danger |
-| Counter | `.Counter` | a count beside a title or inside a subnav item |
+| Counter | `.Counter` | a count beside a title |
 | State | `.state` | the solid pill at the top of a show page: Open, Draft, Merged |
 | Flash | `.strip` | a `--yellow-bg` banner inside the thing it is about |
 | Progress bar | `.meter` | 8px, 6px radius, on a neutral track |
@@ -130,9 +130,13 @@ shows a 2px `--accent` outline on keyboard focus.
 - `.btn-primary` (also `.btn-green`): the green one. **At most one per group**,
   and it goes last, on the right: Spawn, Merge, Save. It is the thing the
   group exists to do.
-- `.btn-red`: destructive or stopping. Red text on the default fill, filled
-  red on hover, as GitHub's danger button is. Pause, Delete.
+- `.btn-red`: destructive or hard to undo. Red text on the default fill,
+  filled red on hover, as GitHub's danger button is. Close story, Sunset RFC.
 - `.btn-sm`: 28px, for a button inside a row or a dense line.
+
+In a sidebar (`.rfc-actions` on the story and RFC pages) buttons run full
+width, one per line: the primary first, destructive ones last, and a verb that
+takes a reason keeps its field directly above its button.
 
 There is no yellow or blue button. A second action beside a primary is a
 default button. A button's label is a verb in sentence case.

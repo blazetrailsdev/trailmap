@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { esc, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
+import { esc, ICONS, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
 import {
   STALL_MS,
   STORIES_MAX_REFS,
@@ -7,9 +7,6 @@ import {
   askRow,
   askStrip,
   branchStory,
-  filterChips,
-  filterFrom,
-  filterUrl,
   fixerAnchor,
   fixerNote,
   frameEvents,
@@ -32,7 +29,6 @@ import {
   sessionGroups,
   sessionKey,
   sessionList,
-  sessionNeeds,
   sessionStall,
   sessionStories,
   stageOf,
@@ -114,8 +110,14 @@ describe("the lead story", () => {
     expect(sessionCard(PR, context({ stories: STORIES }))).toContain('<a class="story lead" href="/story/preview-interceptors"');
   });
 
-  it("lists the bundle's other stories as links to their pages", () => {
-    expect(sessionCard(PR, context({ stories: STORIES }))).toContain('<a class="story" href="/story/interceptor-string-arm"');
+  it("counts a bundle's stories on the row, and lists the others as links once it is expanded", () => {
+    const shut = sessionCard(PR, context({ stories: STORIES }));
+    const open = sessionCard(PR, context({ stories: STORIES, open: new Set([sessionKey(PR)]) }));
+
+    expect(shut).toContain(" &middot; 2 stories</div>");
+    expect(shut).not.toContain('class="stories"');
+    expect(open).toContain('<div class="stories"><a class="story" href="/story/interceptor-string-arm"');
+    expect(open).not.toContain("2 stories</div>");
   });
 });
 
@@ -180,7 +182,7 @@ describe("questions in the row", () => {
     const list = sessionList(repoSections([PR], []), context({ asks: [lost] }));
 
     expect(unmatchedAsks([lost], [PR])).toEqual([lost]);
-    expect(list.html.startsWith('<article class="session session-drafting needs orphan-ask">')).toBe(true);
+    expect(list.html.startsWith('<article class="session session-drafting orphan-ask">')).toBe(true);
     expect(askRow(lost, NOW)).toContain("Waiting on you");
     expect(list.html.match(/Waiting on you/g)).toHaveLength(1);
   });
@@ -388,26 +390,6 @@ describe("the CI fixer as a session", () => {
     expect(fixerNote({ ...fixer, story_id: "fix" })).toContain(">respawn fixer</button>");
     expect(fixerNote({ owner: "o", repo: "r", consecutive_red: 1 })).not.toContain("data-action");
   });
-
-  it("is not counted under Needs you", () => {
-    expect(sessionNeeds({ ...PR, ciStatus: "failure" }, context(), fixer)).toBe(false);
-  });
-});
-
-describe("sessionNeeds", () => {
-  it("keeps an open question, a failed check, a stall and a merge waiting", () => {
-    expect(sessionNeeds(PR, context({ asks: [{ pane: "%214" }] }))).toBe(true);
-    expect(sessionNeeds({ ...PR, ciStatus: "failure" }, context())).toBe(true);
-    expect(sessionNeeds({ ...PR, ciStatus: "success" }, context())).toBe(true);
-    const stalled = { ...PR, ciStatus: "pending", paneStatus: "idle", draft: true };
-    expect(sessionNeeds(stalled, context({ panes: idleSince("%214", 30) }))).toBe(true);
-  });
-
-  it("drops everything else, merged sessions and grooming agents included", () => {
-    expect(sessionNeeds({ ...PR, ciStatus: "pending" }, context())).toBe(false);
-    expect(sessionNeeds({ ...PR, merged: true, ciStatus: "failure" }, context())).toBe(false);
-    expect(sessionNeeds({ kind: "rfc-refine" }, context())).toBe(false);
-  });
 });
 
 describe("the session log", () => {
@@ -466,6 +448,15 @@ describe("sessionCard", () => {
     expect(html).toContain('class="session session-ci"');
     expect(html).toContain("pushed &lt;fix&gt;");
     expect(html).toContain(">6m ago</button>");
+  });
+
+  it("leads a session with no pull request by the open issue mark, never a pull request one", () => {
+    const html = sessionCard(SPAWN, context());
+    const draft = sessionCard({ ...PR, draft: true }, context());
+
+    expect(html).toContain('<span class="ricon" title="Open story, no pull request yet">' + ICONS.issue);
+    expect(html).not.toContain(ICONS.draft);
+    expect(draft).toContain('<span class="ricon draft" title="Draft pull request">' + ICONS.draft);
   });
 
   it("marks a failed check beside the title, ahead of the PR link", () => {
@@ -616,15 +607,6 @@ describe("the list", () => {
     const list = sessionList(repoSections([PR, { ...PR, pr: 1, merged: true }], [SPAWN]), ctx);
 
     expect(list.html).toContain('<h2>blazetrailsdev/trails</h2><span class="Counter">2</span><span class="sr-only"> active</span>');
-    expect(list.active).toBe(2);
-  });
-
-  it("counts what Needs you keeps, and marks the repos that have any", () => {
-    const list = sessionList(repoSections([{ ...PR, ciStatus: "failure" }, { owner: "o", repo: "quiet", pr: 4 }], []), ctx);
-
-    expect(list.needs).toBe(1);
-    expect(list.html).toContain('<section class="repo has-needs" aria-label="blazetrailsdev/trails">');
-    expect(list.html).toContain('<section class="repo" aria-label="o/quiet">');
   });
 
   it("puts a fixer with no session of its own first in its repo", () => {
@@ -635,23 +617,6 @@ describe("the list", () => {
 
   it("puts a repo's own extras, the clear-failed button, beside its heading", () => {
     expect(sessionList(repoSections([], []), ctx, { "blazetrailsdev/trails": "<i>x</i>" }).html).toContain("active</span><i>x</i>");
-  });
-});
-
-describe("the filter", () => {
-  it("draws both chips with their counts and which one is pressed", () => {
-    const html = filterChips(7, 2, "needs");
-
-    expect(html).toContain('data-filter="all" aria-pressed="false">All <span class="Counter">7</span></button>');
-    expect(html).toContain('data-filter="needs" aria-pressed="true">Needs you <span class="Counter">2</span></button>');
-  });
-
-  it("opens filtered from ?filter=needs, and writes it back", () => {
-    expect(filterFrom("?filter=needs")).toBe("needs");
-    expect(filterFrom("?filter=bogus")).toBe("all");
-    expect(filterFrom("")).toBe("all");
-    expect(filterUrl("https://t/dashboard?x=1", "needs")).toBe("/dashboard?x=1&filter=needs");
-    expect(filterUrl("https://t/dashboard?filter=needs", "all")).toBe("/dashboard");
   });
 });
 

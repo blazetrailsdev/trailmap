@@ -12,7 +12,6 @@ import {
   control,
   BROADCAST_BUTTONS,
   broadcastButtons,
-  pauseButton,
   usageScraperPill,
   controlOutcome,
   controlRequest,
@@ -1206,20 +1205,6 @@ describe("the usage helpers", () => {
     expect(claudeUsage({ weeklyPercent: 5 }, noon)).not.toContain(" plan");
     // A scraper with nothing yet sends no percents: zero, not "NaN%".
     expect(claudeUsage({}, noon)).not.toMatch(/NaN|undefined/);
-  });
-});
-
-describe("the pause button", () => {
-  it("says Pause or Resume from ringo's manualPause", () => {
-    expect(pauseButton({ manualPause: false })).toEqual({ text: "Pause", paused: false, cls: "btn-red" });
-    expect(pauseButton({ manualPause: true, paused: true })).toEqual({ text: "Resume", paused: true, cls: "btn-green" });
-  });
-
-  it("posts the other way from what the button says, and comes back", () => {
-    const request = controlRequest("pause", { paused: "false" });
-    expect(request).toEqual({ path: "/pause", body: { paused: true }, keep: true, refresh: "usage" });
-    expect(controlRequest("pause", { paused: "true" }).body).toEqual({ paused: false });
-    expect(controlOutcome(request, { ok: true, text: '{"paused":true}' }, "Pause")).toEqual({ disabled: false, refresh: "usage" });
   });
 });
 

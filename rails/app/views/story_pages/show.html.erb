@@ -84,7 +84,7 @@
         <div class="side-section rfc-actions">
           <div class="side-head">Lifecycle</div>
           <% if @actions.spawn %>
-            <button type="button" class="btn" data-relay="spawnloop/story-spawn" data-payload="<%= { id: @story.id }.to_json %>" data-confirm="Spawn a worker for <%= @story.id %> now, using the current loop settings?">Spawn worker</button>
+            <button type="button" class="btn btn-primary" data-relay="spawnloop/story-spawn" data-payload="<%= { id: @story.id }.to_json %>" data-confirm="Spawn a worker for <%= @story.id %> now, using the current loop settings?">Spawn worker</button>
             <div class="field-note" data-relay-status hidden></div>
           <% end %>
           <% if @actions.ready %>
@@ -96,11 +96,11 @@
           <% if @actions.release %>
             <%= button_to "Release claim", story_release_path(@story.id), form: { "data-confirm": "Release this claim? The story goes back to ready." }, class: "btn" %>
           <% end %>
-          <% [ [ @actions.block, story_block_path(@story.id), "Block" ], [ @actions.close, story_close_path(@story.id), "Close story" ] ].each do |show, path, label| %>
+          <% [ [ @actions.block, story_block_path(@story.id), "Block", "btn" ], [ @actions.close, story_close_path(@story.id), "Close story", "btn btn-red" ] ].each do |show, path, label, cls| %>
             <% if show %>
               <%= form_with url: path, method: :post do %>
-                <input class="input" name="reason" placeholder="Reason" aria-label="<%= label %> reason">
-                <button type="submit" class="btn"><%= label %></button>
+                <input class="ctl" name="reason" placeholder="Reason" aria-label="<%= label %> reason">
+                <button type="submit" class="<%= cls %>"><%= label %></button>
               <% end %>
             <% end %>
           <% end %>

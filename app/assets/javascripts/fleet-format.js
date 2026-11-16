@@ -361,10 +361,6 @@ export function controlRequest(action, data, page = {}) {
         holds: BROADCAST_BUTTONS,
       };
     }
-    // `togglePause` (`dashboard.go:1922`). The button says which way it goes
-    // from the last usage answer, and the re-read redraws it.
-    case "pause":
-      return { path: "/pause", body: { paused: data.paused !== "true" }, keep: true, refresh: "usage" };
     // `refreshUsageNow`: the scraper pill's click. ringo answers with the
     // fresh status, which the re-read draws.
     case "refresh-usage":
@@ -702,12 +698,6 @@ export const PALETTE_INPUT = "paletteInput";
 /** The broadcast box's buttons, every one of which a send holds. */
 export const BROADCAST_BUTTONS = ["bcastAll", "bcastCIRed"];
 
-/** What the pause button says for ringo's usage answer (`renderUsage`, `dashboard.go:1543`). */
-export function pauseButton(u) {
-  const paused = !!u.manualPause;
-  return { text: paused ? "Resume" : "Pause", paused, cls: paused ? "btn-green" : "btn-red" };
-}
-
 /**
  * The usage-scraper pill for ringo's usage answer (`renderUsage`,
  * `dashboard.go:1592-1605`): on while the browser watch is connected and
@@ -750,6 +740,7 @@ export const OCTICON = (paths) => '<svg viewBox="0 0 16 16" width="16" height="1
 export const ICONS = {
   issue: OCTICON('<path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"></path>'),
   pr: OCTICON('<path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.677-.177L9.573.677A.25.25 0 0 1 10 .854V2.5h1A2.5 2.5 0 0 1 13.5 5v5.628a2.251 2.251 0 1 1-1.5 0V5a1 1 0 0 0-1-1h-1v1.646a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"></path>'),
+  pencil: OCTICON('<path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"></path>'),
   draft: OCTICON('<path d="M3.25 1A2.25 2.25 0 0 1 4 5.372v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.251 2.251 0 0 1 3.25 1Zm9.5 14a2.25 2.25 0 1 1 0-4.5 2.25 2.25 0 0 1 0 4.5ZM2.5 3.25a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0ZM3.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm9.5 0a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM14 7.5a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm0-4.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z"></path>'),
   merge: OCTICON('<path d="M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218ZM4.25 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8.5-4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0 0 .005V3.25Z"></path>'),
   eye: OCTICON('<path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.473 0 2.825-.742 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5c-1.473 0-2.825.742-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"></path>'),
@@ -861,9 +852,9 @@ export function sessionStage(row, reviewers = null, reported = null) {
 }
 
 
-/** Each stage's octicon: draft PR, eye, code review, sync, check-circle, merge. */
+/** Each stage's octicon: pencil, eye, code review, sync, check-circle, merge. */
 export const STAGE_ICONS = {
-  drafting: ICONS.draft,
+  drafting: ICONS.pencil,
   self: ICONS.eye,
   ringo: ICONS.review,
   ci: ICONS.sync,
