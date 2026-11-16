@@ -356,6 +356,7 @@ export function rfcTerminal(status: string | null): boolean {
  * module of `module_function`s, bundling the named exports above.
  */
 export const RfcProgress = {
+  RFC_INDEX_SORTS,
   orderRfcsForIndex,
   orderStoriesForRfc,
   sortRfcsForIndex,
