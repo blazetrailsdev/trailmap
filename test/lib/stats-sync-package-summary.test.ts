@@ -181,6 +181,16 @@ describe("syncPackageSummaries", () => {
       expect(await q("SELECT DISTINCT merge_commit_sha FROM claude_md_sections")).toEqual([
         { merge_commit_sha: "new" },
       ]);
+      // A run that fills the 50-row cap says so in STATS_SYNC_LOG.
+      const values = Array.from({ length: 50 }, (_, i) => `(${100 + i}, 'cap${i}', ${100 + i}, 'push', 'success', 'CI')`);
+      await adapter.execute(`INSERT INTO workflow_runs (id, head_sha, pr_number, event, conclusion, workflow_name)
+        VALUES ${values.join(", ")}`);
+      writable["STATS_SYNC_LOG"] = getPath().join(dir, "sync.log");
+      await syncPackageSummaries("latest");
+      expect(getFs().readFileSync(writable["STATS_SYNC_LOG"], "utf-8")).toContain(
+        "[sync-stats] package summaries: hit the 50-row cap; the rest wait for the next run\n",
+      );
+      delete writable["STATS_SYNC_LOG"];
       await StatsSyncRecord.removeConnection();
     } finally {
       writable["PATH"] = path;
