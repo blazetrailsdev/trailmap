@@ -528,6 +528,9 @@ export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  *   away on success, that is a dead button with nothing to say why.
  * - manual spawn comes back at once, and reports beside itself (`say`)
  *   rather than on its button; a spawn that landed clears the task box.
+ * - a palette action that landed (spawn, a complete broadcast, a pane
+ *   message) closes the palette (`closePalette`); a failure keeps it open
+ *   with its error.
  * - the loop's settings never stay disabled: the control is still there after
  *   the click, and a success carries the loop's new `state` for the page to
  *   draw. A refusal or a failed fetch alerts, where ringo says nothing.
@@ -544,11 +547,11 @@ export function controlOutcome(request, result, label) {
   // A pane message reports beside its box, and a sent one goes in the log.
   if (request.pane) {
     if (!succeeded) return { disabled: false, say: answered ? result.text : result.error };
-    return { disabled: false, say: "sent", clear: request.clears || undefined, sent: { key: request.key, text: request.body.text } };
+    return { disabled: false, say: "sent", clear: request.clears || undefined, sent: { key: request.key, text: request.body.text }, closePalette: true };
   }
   if (request.says) {
     if (!succeeded) return { disabled: false, say: "Error: " + (answered ? result.text : result.error) };
-    return { disabled: false, say: "Spawned: " + result.text, clear: request.clears };
+    return { disabled: false, say: "Spawned: " + result.text, clear: request.clears, closePalette: true };
   }
   // A control that stays where it is: it comes back, and says nothing on itself.
   if (request.keep) {
@@ -568,7 +571,7 @@ export function controlOutcome(request, result, label) {
       ...outcome,
       disabled: false,
       note: sent ? sent.note : "failed: " + said,
-      ...(sent && sent.complete ? { clearMessage: true } : {}),
+      ...(sent && sent.complete ? { clearMessage: true, closePalette: true } : {}),
     };
   }
   if (succeeded) outcome.text = request.report ? request.report(result.text) : request.done;

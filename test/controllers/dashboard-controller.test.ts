@@ -51,6 +51,12 @@ describe("DashboardController", () => {
     expect(body).toContain('id="eventsPill"');
   });
 
+  it("gives the palette a close button beside its esc hint", async () => {
+    const body = await index();
+
+    expect(body).toMatch(/<button type="button" class="palette-x" data-ui="palette-close" aria-label="Close"/);
+  });
+
   it("reuses the shell's status vocabulary rather than re-declaring it", async () => {
     const body = await index();
 

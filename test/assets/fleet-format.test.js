@@ -382,7 +382,7 @@ describe("the broadcast box", () => {
     const sent = (out) => controlOutcome(request, { ok: true, text: JSON.stringify(out) }, "all (3)");
 
     const kept = { disabled: false, refresh: "broadcast-targets" };
-    expect(sent({ pane_count: 3, sent: [{}, {}, {}] })).toEqual({ ...kept, note: "sent to 3 panes", clearMessage: true });
+    expect(sent({ pane_count: 3, sent: [{}, {}, {}] })).toEqual({ ...kept, note: "sent to 3 panes", clearMessage: true, closePalette: true });
     expect(sent({ pane_count: 1, skipped: 2, sent: [{ error: "gone" }] })).toEqual({
       ...kept,
       note: "sent to 1 pane (2 pane gone) — 1 failed",
@@ -639,13 +639,14 @@ describe("controlRequest", () => {
 });
 
 describe("controlOutcome", () => {
-  it("says a manual spawn landed, clears the task and gives the button back", () => {
+  it("says a manual spawn landed, clears the task, gives the button back and closes the palette", () => {
     const spawn = controlRequest("spawn", {}, { task: "t", repoDir: "/w" });
 
     expect(controlOutcome(spawn, { ok: true, text: "spawned %5" }, "Spawn")).toEqual({
       disabled: false,
       say: "Spawned: spawned %5",
       clear: "paletteInput",
+      closePalette: true,
     });
     expect(controlOutcome(spawn, { ok: false, text: "no such repo" }, "Spawn")).toEqual({ disabled: false, say: "Error: no such repo" });
     expect(controlOutcome(spawn, { error: "offline" }, "Spawn")).toEqual({ disabled: false, say: "Error: offline" });
@@ -843,7 +844,7 @@ describe("a pane message", () => {
   it("logs a sent line and clears its box; shows ringo's refusal beside it", () => {
     const request = controlRequest("pane-send", { pane: "%42", text: "go", key: "k", says: "note", clears: "box" });
 
-    expect(controlOutcome(request, { ok: true, text: "" }, "Send")).toEqual({ disabled: false, say: "sent", clear: "box", sent: { key: "k", text: "go" } });
+    expect(controlOutcome(request, { ok: true, text: "" }, "Send")).toEqual({ disabled: false, say: "sent", clear: "box", sent: { key: "k", text: "go" }, closePalette: true });
     expect(controlOutcome(request, { ok: false, text: "pane %42 has exited" }, "Send")).toEqual({ disabled: false, say: "pane %42 has exited" });
     expect(controlOutcome(request, { error: "offline" }, "Send")).toEqual({ disabled: false, say: "offline" });
   });

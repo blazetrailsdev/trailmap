@@ -870,6 +870,8 @@ details.fold > summary::-webkit-details-marker { display: none; }
 .palette-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: var(--ink); }
 .palette-input input::placeholder { color: var(--ink-3); }
 .palette-cancel { display: none; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; }
+.palette-x { flex: none; display: inline-flex; padding: 4px; border: 0; border-radius: 6px; background: none; color: var(--ink-2); cursor: pointer; }
+.palette-x:hover { background: var(--line); color: var(--ink); }
 .palette-mode { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 600; }
 .palette-mode[hidden], .palette-pane[hidden], .palette-scopes[hidden], .palette-body[hidden] { display: none; }
 .palette-scopes { display: flex; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--line); overflow-x: auto; }
@@ -932,6 +934,7 @@ kbd {
   .palette { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
   .palette-input kbd, .palette-foot { display: none; }
   .palette-cancel { display: inline; }
+  .palette-x { display: none; }
 }
 @media (max-width: 640px) {
   .top-pair, .sessions { margin-inline: -16px; }
