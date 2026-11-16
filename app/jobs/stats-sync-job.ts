@@ -17,21 +17,33 @@ class TransientGhSync extends Error {
   static attempts = 2;
 }
 
-// Every log read needs only the last few runs, and the log grows by 24 runs a day.
-const LOG_TAIL_BYTES = 64 * 1024;
+// The log grows by 24 runs a day, and a run writes every failed `gh` call into it, so
+// reads go backwards from the end, 64 KiB at a time, until `enough` has what it needs.
+const LOG_CHUNK_BYTES = 64 * 1024;
 
-function readLogTail(log: string): string {
+function readLogTail(log: string, enough: (tail: string) => boolean = () => true): string {
   const fs = getFs();
   const size = fs.statSync(log).size;
-  const length = Math.min(size, LOG_TAIL_BYTES);
-  const buffer = new Uint8Array(length);
   const fd = fs.openSync(log, "r");
+  let bytes = new Uint8Array(0);
+  let start = size;
+  let tail = "";
   try {
-    fs.readSync(fd, buffer, 0, length, size - length);
+    do {
+      const length = Math.min(start, LOG_CHUNK_BYTES);
+      start -= length;
+      const chunk = new Uint8Array(length);
+      fs.readSync(fd, chunk, 0, length, start);
+      const joined = new Uint8Array(chunk.length + bytes.length);
+      joined.set(chunk);
+      joined.set(bytes, chunk.length);
+      bytes = joined;
+      tail = new TextDecoder().decode(bytes);
+    } while (start > 0 && !enough(tail));
   } finally {
     fs.closeSync(fd);
   }
-  return new TextDecoder().decode(buffer);
+  return tail;
 }
 
 function requiredEnv(name: string): string {
@@ -152,8 +164,12 @@ export class StatsSyncJob extends ApplicationJob {
           `[cron-wrapper] stats sync failed before the sync started: ${message.split("\n")[0]}\n`,
         );
       }
-      const sinceOk = readLogTail(log).split("[cron-wrapper] ok\n").at(-1) ?? "";
-      return [...sinceOk.matchAll(/^\[cron-wrapper\] stats sync failed /gm)].length;
+      const countFailed = (text: string) => [...text.matchAll(/^\[cron-wrapper\] stats sync failed /gm)].length;
+      const tail = readLogTail(
+        log,
+        (text) => text.includes("[cron-wrapper] ok\n") || countFailed(text) > FAILED_RUNS_BEFORE_MAIL,
+      );
+      return countFailed(tail.split("[cron-wrapper] ok\n").at(-1) ?? "");
     } catch {
       return null;
     }
@@ -184,7 +200,7 @@ export class StatsSyncJob extends ApplicationJob {
 
   private reportGap(log: string): void {
     if (!getFs().existsSync(log)) return;
-    const contents = readLogTail(log);
+    const contents = readLogTail(log, (text) => /^=== \d{4}-\d{2}-\d{2}T\S+ ===$/m.test(text));
     const previous = [...contents.matchAll(/^=== (\d{4}-\d{2}-\d{2}T\S+) ===$/gm)].at(-1)?.[1];
     if (!previous) return;
     const hours = Math.floor((Date.now() - Date.parse(previous)) / 3_600_000);

@@ -276,6 +276,28 @@ describe("StatsSyncJob", () => {
     expect(read()).not.toContain("stale");
   });
 
+  it("still mails on the third failed run when each run writes more than 64 KiB", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    syncLatest.mockImplementation(async () => {
+      getFs().appendFileSync(log, `[gh] failed: ${"x".repeat(70 * 1024)}\n`);
+      throw new Error("no such table: x");
+    });
+    for (let run = 0; run < 3; run++) {
+      const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+      await expect(job.performNow()).rejects.toThrow("no such table");
+    }
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+  });
+
+  it("finds the previous run header behind more than 64 KiB of output", async () => {
+    const previous = new Date(Date.now() - 5 * 3_600_000).toISOString();
+    getFs().appendFileSync(log, `=== ${previous} ===\n${"x".repeat(100 * 1024)}\n`);
+    await new StatsSyncJob().perform();
+    expect(read()).toMatch(/\[cron-wrapper\] stale: previous run was 5h ago/);
+  });
+
   it("counts failed runs only since the last good one", async () => {
     writable["EMAIL"] = "ops@example.com";
     ApplicationMailer.deliveryMethod = "test";
