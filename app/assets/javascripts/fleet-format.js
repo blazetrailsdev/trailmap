@@ -744,7 +744,8 @@ export function broadcastButtons(counts) {
  * GitHub octicons, inlined so a PR, spawn or merged row shows the same status
  * circle the backlog list does. Fill comes from `.ricon svg` in the shell CSS.
  */
-const OCTICON = (paths) => '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">' + paths + "</svg>";
+/** A 16px octicon from its path markup, filled by the stylesheet. */
+export const OCTICON = (paths) => '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">' + paths + "</svg>";
 
 export const ICONS = {
   issue: OCTICON('<path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"></path>'),

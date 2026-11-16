@@ -1009,7 +1009,7 @@ kbd {
 /* Status pills. `limit-reached` is purple: blocked, but nothing is broken. */
 .status { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; white-space: nowrap; }
 .status-waiting-for-ci, .status-ready-to-merge, .status-spawned { background: var(--green-bg); color: var(--green); }
-.status-waiting-for-fixes, .status-failed { background: var(--red-bg); color: var(--red); }
+.status-waiting-for-fixes { background: var(--red-bg); color: var(--red); }
 .status-waiting-for-pr, .status-waiting-for-review { background: var(--yellow-bg); color: var(--yellow-ink); }
 .status-waiting-for-answer { background: var(--yellow-bg); color: var(--yellow-ink); font-weight: 600; }
 .status-done { background: var(--surface); color: var(--muted); }
