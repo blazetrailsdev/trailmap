@@ -104,29 +104,42 @@ export class StatsSyncJob extends ApplicationJob {
   }
 
   /**
-   * Mail only once `FAILED_RUNS_BEFORE_MAIL` runs in a row have failed for good,
-   * counted from the log's `[cron-wrapper]` verdicts since its last `ok`.
+   * Mail once per outage: on the `FAILED_RUNS_BEFORE_MAIL`th run in a row to fail
+   * for good, counted from the log's `[cron-wrapper]` verdicts since its last `ok`.
+   * A failure before the sync started (no env, no log directory, a failed import)
+   * writes its verdict here, as perform's `catch` never saw it. Without a log to
+   * count in, every failure mails.
    */
   override async mailFailure(exception: unknown): Promise<void> {
-    const failed = this.consecutiveFailedRuns();
-    if (failed < FAILED_RUNS_BEFORE_MAIL) {
-      this.failureMailNotSent(`no alert email sent: ${failed} failed run(s) in a row, mailing at ${FAILED_RUNS_BEFORE_MAIL}`);
+    const failed = this.consecutiveFailedRuns(exception);
+    if (failed !== null && failed !== FAILED_RUNS_BEFORE_MAIL) {
+      this.failureMailNotSent(
+        failed < FAILED_RUNS_BEFORE_MAIL
+          ? `no alert email sent: ${failed} failed run(s) in a row, mailing at ${FAILED_RUNS_BEFORE_MAIL}`
+          : `no alert email sent: ${failed} failed runs in a row, mailed at ${FAILED_RUNS_BEFORE_MAIL}`,
+      );
       return;
     }
     await super.mailFailure(exception);
   }
 
-  /** A log that cannot be read counts as enough failures, so the mail still goes out. */
-  private consecutiveFailedRuns(): number {
+  /** `null` where there is no log to count in. */
+  private consecutiveFailedRuns(exception: unknown): number | null {
     const log = env.STATS_SYNC_LOG;
-    let contents = "";
+    if (!log) return null;
     try {
-      if (log) contents = getFs().readFileSync(log, "utf8");
+      if (this.failedStage === null) {
+        const message = exception instanceof Error ? exception.message : String(exception);
+        getFs().appendFileSync(
+          log,
+          `[cron-wrapper] stats sync failed before the sync started: ${message.split("\n")[0]}\n`,
+        );
+      }
+      const sinceOk = getFs().readFileSync(log, "utf8").split("[cron-wrapper] ok\n").at(-1) ?? "";
+      return [...sinceOk.matchAll(/^\[cron-wrapper\] stats sync failed /gm)].length;
     } catch {
-      return FAILED_RUNS_BEFORE_MAIL;
+      return null;
     }
-    const sinceOk = contents.split("[cron-wrapper] ok\n").at(-1) ?? "";
-    return [...sinceOk.matchAll(/^\[cron-wrapper\] stats sync failed /gm)].length;
   }
 
   /**

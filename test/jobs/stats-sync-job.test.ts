@@ -231,6 +231,41 @@ describe("StatsSyncJob", () => {
     expect(ApplicationMailer.deliveries).toHaveLength(1);
   });
 
+  it("mails once per outage, not again on the fourth failed run", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    priorFailedRuns(3);
+    syncLatest.mockRejectedValue(new Error("no such table: x"));
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(job.performNow()).rejects.toThrow("no such table");
+    expect(ApplicationMailer.deliveries).toHaveLength(0);
+    expect(read()).toContain("[cron-wrapper] no alert email sent: 4 failed runs in a row, mailed at 3\n");
+  });
+
+  it("counts a failure before the sync started toward the mail", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    delete writable["STATS_SYNC_DB"];
+    for (let run = 0; run < 3; run++) {
+      const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+      await expect(job.performNow()).rejects.toThrow("STATS_SYNC_DB must be set");
+    }
+    expect(read()).toContain("[cron-wrapper] stats sync failed before the sync started: STATS_SYNC_DB must be set");
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+  });
+
+  it("mails every failure when STATS_SYNC_LOG is not set", async () => {
+    writable["EMAIL"] = "ops@example.com";
+    ApplicationMailer.deliveryMethod = "test";
+    ApplicationMailer.deliveries.length = 0;
+    delete writable["STATS_SYNC_LOG"];
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(job.performNow()).rejects.toThrow("STATS_SYNC_LOG must be set");
+    expect(ApplicationMailer.deliveries).toHaveLength(1);
+  });
+
   it("counts failed runs only since the last good one", async () => {
     writable["EMAIL"] = "ops@example.com";
     ApplicationMailer.deliveryMethod = "test";
