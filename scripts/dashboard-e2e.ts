@@ -189,7 +189,7 @@ const expand = (key: string): string => `document.querySelector('button[data-ui=
 const bothHeld = `${byId("bcastAll")}.disabled && ${byId("bcastCIRed")}.disabled`;
 /** `during`, when given, must hold while ringo has the POST and has not answered. */
 const CASES: Array<{ name: string; on: string; act?: string; post: [string, unknown]; during?: string; after: string }> = [
-  { name: "merge", on: button("merge"), post: ["/merge-pr", { owner: "o", repo: "r", pr: 7 }],
+  { name: "merge", on: button("merge", "7"), post: ["/merge-pr", { owner: "o", repo: "r", pr: 7 }],
     after: `b.textContent === "merged" && b.disabled && b.title === "merged"` },
   { name: "add worker, refused by ringo", on: button("add-worker"),
     post: ["/worker/spawn", { owner: "o", repo: "r", pr: 7, branch: "a-branch" }],
@@ -293,9 +293,9 @@ console.log("ok  palette, ⌘K opens it, ↓ moves, Esc closes");
 
 
 // A declined confirm sends nothing and leaves the button as it was.
-await evaluate(`window.alert = () => {}; window.confirm = () => false; ${button("merge")}.click(); true`);
+await evaluate(`window.alert = () => {}; window.confirm = () => false; ${button("merge", "7")}.click(); true`);
 await new Promise((resolve) => setTimeout(resolve, 500));
-if (posts.length > 0 || (await evaluate(`${button("merge")}.disabled`))) {
+if (posts.length > 0 || (await evaluate(`${button("merge", "7")}.disabled`))) {
   throw new Error("dashboard-e2e: a declined confirm still acted");
 }
 console.log("ok  merge, confirm declined");
