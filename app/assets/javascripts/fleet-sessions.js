@@ -545,12 +545,13 @@ export const canMerge = (s) => isPR(s) && !s.merged && !s.draft && !s.mergeConfl
 
 /**
  * Whether a row offers "Are we ready?": CI is green, at least one review
- * round has passed, and neither side's pane is busy, so the session is waiting
- * on someone to ask. It needs the agent's pane, which is where the message goes.
+ * round has passed, neither side's pane is busy and no review is owed, so the
+ * session is waiting on someone to ask. It needs the agent's pane, which is where the message goes.
  */
 export function canAskReady(s, entry) {
   if (!isPR(s) || s.merged || s.ciStatus !== "success" || !(s.reviewCycles > 0) || !paneOf(s)) return false;
-  return !BUSY.has(s.paneStatus || "") && !(entry && BUSY.has(entry.pane_status || ""));
+  if (BUSY.has(paneStatusOf(s))) return false;
+  return !(entry && (entry.review_owed || BUSY.has(entry.pane_status || "")));
 }
 
 /** The row's own actions: the question first, then Merge, the primary one, last. */

@@ -497,6 +497,7 @@ describe("sessionCard", () => {
     expect(html).not.toContain('data-action="merge"');
     expect(canAskReady(waiting, { pane_id: "%9" })).toBe(true);
     expect(canAskReady(waiting, { pane_id: "%9", pane_status: "working" })).toBe(false);
+    expect(canAskReady(waiting, { pane_id: "%9", review_owed: true })).toBe(false);
     expect(canAskReady({ ...waiting, paneStatus: "working" }, null)).toBe(false);
     expect(canAskReady({ ...waiting, paneStatus: "waiting" }, null)).toBe(false);
     expect(canAskReady({ ...waiting, paneStatus: "" }, null)).toBe(true);
