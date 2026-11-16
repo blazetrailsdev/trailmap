@@ -41,9 +41,11 @@ import {
   reviewerLine,
   rfcSpawnRow,
   sessionStage,
+  ciMark,
+  ICONS,
   stageFigure,
+  stageLabel,
   stageName,
-  stepper,
   timeAgo,
   workerLine,
   WORK_EMOJI,
@@ -247,7 +249,7 @@ export function reviewTurn(workerStatus, entry) {
   return "agent";
 }
 
-/** What the reviewer is doing, from its entry: the long form, for the ring's label. */
+/** What the reviewer is doing, from its entry: the long form, for the review note's tooltip. */
 function reviewerDoing(entry) {
   if (!entry) return "no reviewer";
   if (entry.pane_status === "working") return "reviewing";
@@ -256,11 +258,9 @@ function reviewerDoing(entry) {
 }
 
 /**
- * The two lines around the ring, written for the stepper column: who acts and
- * a short verb. The agent works ("fixing" once a round has passed), waits on
+ * The two sides of the review note: who acts and a short verb. The agent works ("fixing" once a round has passed), waits on
  * an owed review, or idles; the reviewer, named by its pane, reviews, owes
- * one, or waits. ringo's last-action text is too long for it and goes in the
- * ring's tooltip instead.
+ * one, or waits.
  */
 export function reviewLines(s, entry) {
   const turn = reviewTurn(s.paneStatus, entry);
@@ -274,27 +274,20 @@ export function reviewLines(s, entry) {
 }
 
 /**
- * The review loop at Reviewer convergence: a ring in place of the stage icon,
- * the agent on top and the reviewer below, the one whose turn it is filled,
- * the round in the middle, and a short line for what each side is doing. It
- * spins only while a side is working.
+ * The review loop at Reviewer convergence, as one line under the stage label:
+ * the round, and what each side is doing, the side whose turn it is in bold.
+ * ringo's last-action text is too long for it and goes in the tooltip.
  */
-export function reviewRing(s, entry) {
+export function reviewNote(s, entry) {
   const turn = reviewTurn(s.paneStatus, entry);
-  const working = s.paneStatus === "working" || !!(entry && entry.pane_status === "working");
   const agentLong = s.lastAction || (s.paneStatus === "working" ? "working" : "idle");
   const round = s.reviewCycles || 0;
   const label = "Review round " + round + ". Agent: " + agentLong + ". Reviewer: " + reviewerDoing(entry) + ".";
   const lines = reviewLines(s, entry);
+  const side = (who, name, text) => '<span class="review-side' + (turn === who ? " turn" : "") + '">' + name + " " + esc(text) + "</span>";
   return (
-    '<span class="ring' + (working ? " spinning" : "") + '" role="img" aria-label="' + esc(label) + '" title="' + esc(label) + '">' +
-    '<span class="ring-line agent-line"><b>Agent</b> ' + esc(lines.agent) + "</span>" +
-    '<span class="ring-body">' +
-    '<span class="ring-side top' + (turn === "agent" ? " turn" : "") + '"></span>' +
-    '<span class="ring-round">' + round + "</span>" +
-    '<span class="ring-side bottom' + (turn === "reviewer" ? " turn" : "") + '"></span>' +
-    "</span>" +
-    '<span class="ring-line reviewer-line"><b>Reviewer</b> ' + esc(lines.reviewer) + "</span>" +
+    '<span class="review-note" title="' + esc(label) + '">' +
+    '<span class="review-round">Round ' + round + "</span>" + side("agent", "Agent", lines.agent) + side("reviewer", "Reviewer", lines.reviewer) +
     "</span>"
   );
 }
@@ -544,10 +537,22 @@ export function sessionDetail(s, ctx, lead) {
   );
 }
 
+/** The octicon that leads a row, as GitHub leads a pull request's: draft, open, merged, or failed. */
+function stateIcon(s, failed) {
+  if (failed) return '<span class="ricon failed" title="Spawn failed">' + ICONS.x + "</span>";
+  if (s.merged) return '<span class="ricon merged" title="Merged">' + ICONS.merge + "</span>";
+  if (!isPR(s)) return '<span class="ricon draft" title="No pull request yet">' + ICONS.draft + "</span>";
+  if (s.draft) return '<span class="ricon draft" title="Draft pull request">' + ICONS.draft + "</span>";
+  return '<span class="ricon" title="Open pull request">' + ICONS.pr + "</span>";
+}
+
 /**
- * One session row: PR link and flags, the lead story and the bundle's other
- * stories, a note, the stepper, and one progress figure over how long ago it
- * changed; then its question or stall strip, and its details when expanded.
+ * One session row, laid out as GitHub lays out a pull request in a list: a
+ * state octicon, the lead story as the title with the CI mark and labels
+ * beside it, a muted line under it with the PR link and a note, the bundle's
+ * other stories; then the stage as a label, and one progress figure over how
+ * long ago it changed. Its question or stall strip follows, and its details
+ * when expanded.
  */
 export function sessionCard(s, ctx, fixer = null) {
   if (s.kind) return '<article class="session session-drafting grooming">' + rfcSpawnRow(s, ctx.now) + "</article>";
@@ -561,14 +566,11 @@ export function sessionCard(s, ctx, fixer = null) {
   const needs = sessionNeeds(s, ctx, fixer);
 
   const tags =
-    (isPR(s)
-      ? '<a class="pr-link" href="' + PR_URL(s) + '" target="_blank">' + esc(s.repo) + "#" + s.pr + "</a>"
-      : '<span class="pr-link none">no PR yet</span>') +
+    (isPR(s) ? ciMark(s.ciStatus) : "") +
     (fixer ? '<span class="flag kind">CI fixer</span><span class="flag bad">main is red</span>' : "") +
-    (isPR(s) && s.ciStatus === "failure" ? '<span class="flag bad check-failed">check failed</span>' : "") +
-    (s.mergeConflict ? '<span class="conflict">conflict</span>' : "") +
-    (s.labels || []).map((l) => '<span class="label">' + esc(l) + "</span>").join("") +
-    (failed ? '<span class="status status-failed">failed</span>' : paneOverridePill(paneStatusOf(s)) || "");
+    (s.mergeConflict ? '<span class="flag bad">conflict</span>' : "") +
+    (s.labels || []).map((l) => '<span class="Label">' + esc(l) + "</span>").join("") +
+    (failed ? '<span class="flag bad">failed</span>' : paneOverridePill(paneStatusOf(s)) || "");
 
   const fallback = s.title || (isPR(s) ? s.owner + "/" + s.repo + "#" + s.pr : s.story_id);
   const leadHtml = lead
@@ -578,21 +580,24 @@ export function sessionCard(s, ctx, fixer = null) {
       : s.story_id
         ? '<a class="story lead" href="/story/' + encodeURIComponent(s.story_id) + '">' + esc(fallback) + "</a>"
         : '<span class="story lead">' + esc(fallback) + "</span>";
-  const stories = '<div class="stories">' + leadHtml + rest.map((story) => storyLink(story, "story")).join("") + "</div>";
 
-  const note = [];
+  const note = [
+    isPR(s)
+      ? '<a class="pr-link" href="' + PR_URL(s) + '" target="_blank">' + esc(s.repo) + "#" + s.pr + "</a>"
+      : '<span class="pr-link none">no PR yet</span>',
+  ];
   if (fixer) note.push(fixerNote(fixer));
   else if (s.lastAction) note.push(esc(s.lastAction));
   if (!isPR(s) && s.source && !fixer) note.push("spawned via " + esc(s.source));
   if (failed && s.error) note.push('<span class="bad">' + esc(s.error) + "</span>");
 
-  const ring = stage === "ringo" ? reviewRing(s, ctx.reviewers ? ctx.reviewers[reviewerKey(s.owner, s.repo, s.pr)] : null) : "";
+  const review = stage === "ringo" ? reviewNote(s, ctx.reviewers ? ctx.reviewers[reviewerKey(s.owner, s.repo, s.pr)] : null) : "";
   const figure = stageFigure(s, stage);
   const when = isPR(s) ? s.lastTime : s.at;
   const meta =
     '<div class="meta">' +
     (stage === "ready"
-      ? control("merge", { owner: s.owner, repo: s.repo, pr: s.pr }, { cls: "btn btn-sm", title: "Merge PR", label: "Merge" })
+      ? control("merge", { owner: s.owner, repo: s.repo, pr: s.pr }, { cls: "btn btn-sm btn-primary", title: "Merge PR", label: "Merge" })
       : '<span class="figure">' + figure + "</span>") +
     (failed && s.branch
       ? control("dismiss", { branch: s.branch }, { cls: "spawn-dismiss", title: "Dismiss this failed spawn", label: "&times;" })
@@ -605,10 +610,12 @@ export function sessionCard(s, ctx, fixer = null) {
     '<article class="session session-' + stage + (fixer ? " fixer" : "") + (needs ? " needs" : "") + (open ? " open" : "") +
     (failed ? " failed" : "") + '" id="' + key + '"' + (fixer ? ' data-fixer="' + fixerAnchor(fixer.owner + "/" + fixer.repo) + '"' : "") + ">" +
     '<div class="session-main list-grid" data-ui="row" data-key="' + key + '">' +
-    '<div class="session-info"><div class="tags">' + tags + "</div>" + stories +
-    (note.length ? '<div class="session-note">' + note.join(" &middot; ") + "</div>" : "") + "</div>" +
-    '<div class="session-stage">' + stepper(stage, ring) +
-    '<span class="now-label">' + stageName(stage) + (figure && stage !== "ready" ? '<span class="muted"> · ' + figure + "</span>" : "") + "</span></div>" +
+    stateIcon(s, failed) +
+    '<div class="session-info"><div class="titleline">' + leadHtml + tags + "</div>" +
+    '<div class="session-note">' + note.join(" &middot; ") + "</div>" +
+    (rest.length ? '<div class="stories">' + rest.map((story) => storyLink(story, "story")).join("") + "</div>" : "") +
+    "</div>" +
+    '<div class="session-stage">' + stageLabel(stage) + review + "</div>" +
     meta +
     "</div>" +
     (ask ? askStrip(ask, ctx.now) : "") +
@@ -666,7 +673,7 @@ export function sessionGroups(sections) {
 
 /**
  * The whole list: questions no row matches, then each repo as one surface of
- * rows divided by hairlines, ending with its Merged line. Returns the markup
+ * rows under a header naming it, ending with its Merged line. Returns the markup
  * and the counts the filter chips show.
  */
 export function sessionList(sections, ctx, extras = {}) {
@@ -696,8 +703,8 @@ export function sessionList(sections, ctx, extras = {}) {
         const live = ordered.filter((s) => !s.kind).length;
         return (
           '<section class="repo' + (anyNeeds ? " has-needs" : "") + '" aria-label="' + esc(g.name) + '">' +
-          '<div class="repo-head"><h2>' + esc(g.name) + '</h2><span class="muted">' + live + " active</span>" + (extras[g.name] || "") + "</div>" +
           '<div class="sessions">' +
+          '<div class="repo-head"><h2>' + esc(g.name) + '</h2><span class="Counter">' + live + '</span><span class="sr-only"> active</span>' + (extras[g.name] || "") + "</div>" +
           (cards.length ? cards.join("") : '<div class="list-empty">No open sessions.</div>') +
           mergedLine(g.merged, ctx) +
           "</div></section>"
@@ -707,11 +714,12 @@ export function sessionList(sections, ctx, extras = {}) {
   return { html, active, needs, rows: [...rows, ...groups.flatMap((g) => g.merged)], fixerByKey: byKey };
 }
 
-/** The filter chips' text, with their counts. */
+/** The two filters as a GitHub subnav: a segmented pair, each with its count. */
 export function filterChips(active, needs, filter) {
   const chip = (f, label) =>
-    '<button type="button" class="chip" data-ui="filter" data-filter="' + f + '" aria-pressed="' + (filter === f) + '">' + label + "</button>";
-  return chip("all", "All " + active) + chip("needs", "Needs you " + needs);
+    '<button type="button" class="subnav-item" data-ui="filter" data-filter="' + f + '" aria-pressed="' + (filter === f) + '">' + label + "</button>";
+  const count = (n) => ' <span class="Counter">' + n + "</span>";
+  return chip("all", "All" + count(active)) + chip("needs", "Needs you" + count(needs));
 }
 
 /** `?filter=needs` opens the page filtered; anything else is All. */

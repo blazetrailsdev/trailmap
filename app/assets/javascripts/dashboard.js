@@ -35,7 +35,6 @@ import {
   reviewersPollOutcome,
   spawnLoopControls,
   spawnLoopView,
-  stageHeader,
   strandedAgents,
   usageScraperPill,
   usageSummary,
@@ -993,10 +992,8 @@ document.addEventListener("keydown", (event) => {
 });
 
 // ---------------------------------------------------------------------------
-// The shell: the stage header, and Usage and Loop folding on a phone.
+// The shell: Usage and Loop folding on a phone.
 // ---------------------------------------------------------------------------
-
-byId("stageNames").innerHTML = stageHeader();
 
 /*
  * Usage and Loop are always open on a wide page, their summary out of the tab

@@ -23,7 +23,7 @@ import {
   prRef,
   reportedStage,
   reviewLines,
-  reviewRing,
+  reviewNote,
   reviewTurn,
   sessionCard,
   sessionDetail,
@@ -299,21 +299,20 @@ describe("the review loop", () => {
     expect(reviewTurn("idle", null)).toBe("agent");
   });
 
-  it("fills the side whose turn it is, and spins only while a side works", () => {
-    const owed = reviewRing({ ...PR, paneStatus: "idle", reviewCycles: 2 }, { review_owed: true, pane_id: "%9" });
-    const working = reviewRing({ ...PR, paneStatus: "working", reviewCycles: 2 }, null);
+  it("bolds the side whose turn it is", () => {
+    const owed = reviewNote({ ...PR, paneStatus: "idle", reviewCycles: 2 }, { review_owed: true, pane_id: "%9" });
+    const working = reviewNote({ ...PR, paneStatus: "working", reviewCycles: 2 }, null);
 
-    expect(owed).toContain('class="ring-side bottom turn"');
-    expect(owed).not.toContain("spinning");
-    expect(working).toContain('class="ring-side top turn"');
-    expect(working).toContain("ring spinning");
+    expect(owed).toContain('<span class="review-side turn">Reviewer %9 owes review</span>');
+    expect(owed).toContain('<span class="review-side">Agent waiting</span>');
+    expect(working).toContain('<span class="review-side turn">Agent fixing</span>');
   });
 
-  it("carries one label with the round and both lines", () => {
-    const html = reviewRing({ ...PR, paneStatus: "idle", reviewCycles: 3, lastAction: "pushed <fix>" }, { pane_status: "working" });
+  it("carries the round, and one tooltip with the round and both sides", () => {
+    const html = reviewNote({ ...PR, paneStatus: "idle", reviewCycles: 3, lastAction: "pushed <fix>" }, { pane_status: "working" });
 
-    expect(html).toContain('aria-label="Review round 3. Agent: pushed &lt;fix&gt;. Reviewer: reviewing."');
-    expect(html).toContain('<span class="ring-round">3</span>');
+    expect(html).toContain('title="Review round 3. Agent: pushed &lt;fix&gt;. Reviewer: reviewing."');
+    expect(html).toContain('<span class="review-round">Round 3</span>');
   });
 
   it("writes each line for its column: who acts and a short verb", () => {
@@ -328,19 +327,19 @@ describe("the review loop", () => {
   });
 
   it("keeps ringo's last action in the tooltip, not the line", () => {
-    const html = reviewRing({ ...PR, paneStatus: "idle", reviewCycles: 1, lastAction: "Claude review #1 (6 comments)" }, { pane_id: "%9", pane_status: "working" });
+    const html = reviewNote({ ...PR, paneStatus: "idle", reviewCycles: 1, lastAction: "Claude review #1 (6 comments)" }, { pane_id: "%9", pane_status: "working" });
 
     expect(html).toContain('title="Review round 1. Agent: Claude review #1 (6 comments). Reviewer: reviewing."');
-    expect(html).toContain('<span class="ring-line agent-line"><b>Agent</b> waiting</span>');
-    expect(html).toContain('<span class="ring-line reviewer-line"><b>Reviewer</b> %9 reviewing</span>');
+    expect(html).toContain('<span class="review-side">Agent waiting</span>');
+    expect(html).toContain('<span class="review-side turn">Reviewer %9 reviewing</span>');
   });
 
-  it("stands in for the icon at Reviewer convergence and nowhere else", () => {
+  it("sits under the stage label at Reviewer convergence and nowhere else", () => {
     const reviewers = reviewersByKey([{ owner: PR.owner, repo: PR.repo, pr: PR.pr, agent: "codex" }]);
 
-    expect(sessionCard(PR, context({ reviewers }))).toContain('class="ring');
-    expect(sessionCard({ ...PR, ciStatus: "success" }, context())).not.toContain('class="ring');
-    expect(sessionCard({ ...PR, merged: true, reviewCycles: 2 }, context({ reviewers }))).not.toContain('class="ring');
+    expect(sessionCard(PR, context({ reviewers }))).toContain('class="review-note"');
+    expect(sessionCard({ ...PR, ciStatus: "success" }, context())).not.toContain('class="review-note"');
+    expect(sessionCard({ ...PR, merged: true, reviewCycles: 2 }, context({ reviewers }))).not.toContain('class="review-note"');
   });
 });
 
@@ -366,7 +365,7 @@ describe("the CI fixer as a session", () => {
     expect(html).toContain("session-drafting fixer");
   });
 
-  it("is tinted and labelled, and sorts first in its repo whatever its stage", () => {
+  it("is labelled, and sorts first in its repo whatever its stage", () => {
     const ready = { ...PR, pr: 1, ciStatus: "success" };
     const fixed = { ...PR, ciStatus: "failure" };
     const { byKey } = joinFixers([{ ...fixer, pr: 9958 }], [ready, fixed], []);
@@ -457,21 +456,24 @@ describe("the session log", () => {
 });
 
 describe("sessionCard", () => {
-  it("links the PR, shows the stage by its stepper, and the note and its age", () => {
+  it("links the PR, shows the stage by its label, and the note and its age", () => {
     const html = sessionCard({ ...PR, lastAction: "pushed <fix>", lastTime: minutesAgo(6) }, context());
 
     expect(html).toContain('<a class="pr-link" href="https://github.com/blazetrailsdev/trails/pull/9958" target="_blank">trails#9958</a>');
-    expect(html).toContain('aria-label="Stage: Getting CI green"');
+    expect(html).toContain('<span class="Label stage st-ci">');
+    expect(html).toContain("Getting CI green</span>");
+    expect(html).toContain('<span class="ricon" title="Open pull request">');
     expect(html).toContain('class="session session-ci"');
     expect(html).toContain("pushed &lt;fix&gt;");
     expect(html).toContain(">6m ago</button>");
   });
 
-  it("flags a failed check beside the PR link", () => {
+  it("marks a failed check beside the title, ahead of the PR link", () => {
     const html = sessionCard({ ...PR, ciStatus: "failure" }, context());
 
     expect(html).toContain("check failed</span>");
-    expect(html.indexOf("pr-link")).toBeLessThan(html.indexOf("check failed"));
+    expect(html.indexOf("check failed")).toBeLessThan(html.indexOf("pr-link"));
+    expect(html).toContain('class="ci ci-failure"');
     expect(sessionCard({ ...PR, ciStatus: "pending" }, context())).not.toContain("check failed");
   });
 
@@ -613,7 +615,7 @@ describe("the list", () => {
   it("heads each repo with its count of active sessions", () => {
     const list = sessionList(repoSections([PR, { ...PR, pr: 1, merged: true }], [SPAWN]), ctx);
 
-    expect(list.html).toContain('<h2>blazetrailsdev/trails</h2><span class="muted">2 active</span>');
+    expect(list.html).toContain('<h2>blazetrailsdev/trails</h2><span class="Counter">2</span><span class="sr-only"> active</span>');
     expect(list.active).toBe(2);
   });
 
@@ -640,8 +642,8 @@ describe("the filter", () => {
   it("draws both chips with their counts and which one is pressed", () => {
     const html = filterChips(7, 2, "needs");
 
-    expect(html).toContain('data-filter="all" aria-pressed="false">All 7</button>');
-    expect(html).toContain('data-filter="needs" aria-pressed="true">Needs you 2</button>');
+    expect(html).toContain('data-filter="all" aria-pressed="false">All <span class="Counter">7</span></button>');
+    expect(html).toContain('data-filter="needs" aria-pressed="true">Needs you <span class="Counter">2</span></button>');
   });
 
   it("opens filtered from ?filter=needs, and writes it back", () => {

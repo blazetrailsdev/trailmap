@@ -744,10 +744,20 @@ export function broadcastButtons(counts) {
  * GitHub octicons, inlined so a PR, spawn or merged row shows the same status
  * circle the backlog list does. Fill comes from `.ricon svg` in the shell CSS.
  */
+const OCTICON = (paths) => '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">' + paths + "</svg>";
+
 export const ICONS = {
-  issue: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"></path></svg>',
-  pr: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.677-.177L9.573.677A.25.25 0 0 1 10 .854V2.5h1A2.5 2.5 0 0 1 13.5 5v5.628a2.251 2.251 0 1 1-1.5 0V5a1 1 0 0 0-1-1h-1v1.646a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"></path></svg>',
-  merge: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218ZM4.25 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8.5-4a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"></path></svg>',
+  issue: OCTICON('<path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"></path>'),
+  pr: OCTICON('<path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.677-.177L9.573.677A.25.25 0 0 1 10 .854V2.5h1A2.5 2.5 0 0 1 13.5 5v5.628a2.251 2.251 0 1 1-1.5 0V5a1 1 0 0 0-1-1h-1v1.646a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"></path>'),
+  draft: OCTICON('<path d="M3.25 1A2.25 2.25 0 0 1 4 5.372v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.251 2.251 0 0 1 3.25 1Zm9.5 14a2.25 2.25 0 1 1 0-4.5 2.25 2.25 0 0 1 0 4.5ZM2.5 3.25a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0ZM3.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm9.5 0a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM14 7.5a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm0-4.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z"></path>'),
+  merge: OCTICON('<path d="M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218ZM4.25 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8.5-4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0 0 .005V3.25Z"></path>'),
+  eye: OCTICON('<path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.473 0 2.825-.742 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5c-1.473 0-2.825.742-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"></path>'),
+  review: OCTICON('<path d="M1.75 1h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 13H8.061l-2.574 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25v-8.5C0 1.784.784 1 1.75 1ZM1.5 2.75v8.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25Zm5.28 1.72a.75.75 0 0 1 0 1.06L5.31 7l1.47 1.47a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018l-2-2a.75.75 0 0 1 0-1.06l2-2a.75.75 0 0 1 1.06 0Zm2.44 0a.75.75 0 0 1 1.06 0l2 2a.75.75 0 0 1 0 1.06l-2 2a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L10.69 7 9.22 5.53a.75.75 0 0 1 0-1.06Z"></path>'),
+  sync: OCTICON('<path d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"></path>'),
+  ready: OCTICON('<path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm1.5 0a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm10.28-1.72-4.5 4.5a.75.75 0 0 1-1.06 0l-2-2a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l1.47 1.47 3.97-3.97a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042Z"></path>'),
+  check: OCTICON('<path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>'),
+  x: OCTICON('<path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path>'),
+  dot: OCTICON('<path d="M8 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z"></path>'),
 };
 
 export const CI_TITLES = { success: "CI passing", failure: "CI failing", pending: "CI running" };
@@ -818,7 +828,7 @@ export function cleanupControl(pr, now = Date.now()) {
 
 /**
  * The six stages a session moves through, in order. `sessionStage` returns
- * one of these ids; the card's stepper draws them left to right.
+ * one of these ids; the row's stage label names it.
  */
 export const STAGES = [
   ["drafting", "Drafting"],
@@ -850,52 +860,32 @@ export function sessionStage(row, reviewers = null, reported = null) {
 }
 
 
-const STEP = (body) => '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' + body + "</svg>";
-const LINE = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
-
-/** Each stage's mark: pencil, magnifier, converging arrows, CI loop, flag, merge (RFC 0232). */
+/** Each stage's octicon: draft PR, eye, code review, sync, check-circle, merge. */
 export const STAGE_ICONS = {
-  drafting: STEP('<path ' + LINE + ' d="M10.5 2.5l3 3L6 13H3v-3z"></path>'),
-  self: STEP('<circle ' + LINE + ' cx="7" cy="7" r="4.5"></circle><path ' + LINE + ' d="M10.5 10.5l3.5 3.5"></path>'),
-  ringo: STEP('<path ' + LINE + ' d="M1 8h5M4 5l3 3-3 3M15 8h-5M12 5l-3 3 3 3"></path>'),
-  ci: STEP('<path ' + LINE + ' d="M13 8a5 5 0 1 1-1.5-3.5M13 2v3h-3"></path>'),
-  ready: STEP('<path ' + LINE + ' d="M3.5 14.5V2h9l-2 3 2 3h-9"></path>'),
-  merged: STEP('<circle ' + LINE + ' cx="4" cy="3" r="1.5"></circle><circle ' + LINE + ' cx="4" cy="13" r="1.5"></circle><circle ' + LINE + ' cx="12" cy="9" r="1.5"></circle><path ' + LINE + ' d="M4 4.5v7M4 5c0 3 3 4 6.5 4"></path>'),
+  drafting: ICONS.draft,
+  self: ICONS.eye,
+  ringo: ICONS.review,
+  ci: ICONS.sync,
+  ready: ICONS.ready,
+  merged: ICONS.merge,
 };
 
-/**
- * The six steps, left to right: a stage already passed is a filled disc with
- * its icon, the current one the same with a ring, and one still to come a
- * small dot, so the current stage is the loudest mark in the row.
- */
-export function stepper(stage, mark = "") {
-  const at = STAGES.findIndex(([id]) => id === stage);
+/** A session's stage as a GitHub label: the stage's octicon and its name, in the stage's colour. */
+export function stageLabel(stage) {
+  return '<span class="Label stage st-' + stage + '">' + STAGE_ICONS[stage] + stageName(stage) + "</span>";
+}
+
+/** A PR's CI rollup as GitHub draws it beside a title: a green check, a red x, or a yellow dot. */
+export function ciMark(status) {
+  const icon = { success: "check", failure: "x", pending: "dot" }[status];
+  if (!icon) return "";
   return (
-    '<span class="stepper" role="img" aria-label="Stage: ' + STAGES[at][1] + '">' +
-    STAGES.map(([id], i) => {
-      if (i > at) return '<span class="step"><span class="node todo"></span></span>';
-      if (i === at && mark) return '<span class="step done">' + mark + "</span>";
-      return '<span class="step done"><span class="node st-' + id + (i === at ? " current" : "") + '">' + STAGE_ICONS[id] + "</span></span>";
-    }).join("") +
-    "</span>"
+    '<span class="ci ci-' + status + '" title="' + CI_TITLES[status] + '">' + ICONS[icon] +
+    '<span class="sr-only">' + (status === "failure" ? "check failed" : CI_TITLES[status]) + "</span></span>"
   );
 }
 
-/**
- * The one stage header above the list: each stage's icon and name, in
- * columns that line up with the cards' steppers.
- */
-export function stageHeader() {
-  return (
-    '<span class="stepper stage-names" aria-hidden="true">' +
-    STAGES.map(([id, name]) =>
-      '<span class="step"><span class="node st-' + id + '">' + STAGE_ICONS[id] + '</span><span class="stage-name">' + name + "</span></span>",
-    ).join("") +
-    "</span>"
-  );
-}
-
-/** A stage's name, for a phone's row that names its current stage under the stepper. */
+/** A stage's name. */
 export const stageName = (stage) => (STAGES.find(([id]) => id === stage) || ["", ""])[1];
 
 /**

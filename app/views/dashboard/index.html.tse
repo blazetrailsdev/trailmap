@@ -22,10 +22,6 @@
     <span class="pill" id="pullFailPill" style="display:none"><span class="connected off" id="pullFailDot"></span><span class="label" id="pullFailLabel">pull failed</span></span>
     <span id="agentPills"></span>
   </div>
-  <input type="search" id="fleetSearch" class="ctl" placeholder="Search  ⌘K" aria-label="Search sessions, stories and PRs" data-ui="palette-open" data-mode="search" readonly>
-  <button type="button" id="fleetSearchBtn" class="btn btn-sm" data-ui="palette-open" data-mode="search" aria-label="Search" title="Search sessions, stories and PRs (⌘K)">&#9906;</button>
-  <button type="button" class="btn btn-sm" id="broadcastBtn" data-ui="palette-open" data-mode="broadcast">Broadcast</button>
-  <button type="button" class="btn btn-sm" id="spawnBtn" data-ui="palette-open" data-mode="spawn">Spawn</button>
 </div>
 
 <!-- Usage and Loop fold to their summary line below 700px; on a wide page
@@ -60,7 +56,7 @@
     <label class="field" title="Bundle mode: each tick spawns ONE worker for the whole next-bundle (a PR closing several stories). Off: one worker per single story.">Bundle
       <input id="slBundle" class="switch" type="checkbox" role="switch">
     </label>
-    <button type="button" class="btn btn-red btn-sm" id="pauseBtn" data-action="pause" data-paused="false" title="Hold every agent's next prompt in the usage queue, or release them" style="display:none">Pause</button>
+    <button type="button" class="btn btn-red" id="pauseBtn" data-action="pause" data-paused="false" title="Hold every agent's next prompt in the usage queue, or release them" style="display:none">Pause</button>
   </div>
   <div class="loop-line">
     <span class="loop-controls" id="slControls"></span>
@@ -85,12 +81,15 @@
 
 <div id="queueSection" class="card" style="display:none"></div>
 
-<!-- One stage header for the whole list, pinned while it scrolls: the
-     filter chips, and the six stages in columns over the cards' steppers. -->
-<div class="stage-header list-grid">
-  <div class="filters" id="filterChips" role="group" aria-label="Filter sessions"></div>
-  <div id="stageNames"></div>
-  <span></span>
+<!-- The list's toolbar, as GitHub's pull request list has one: the two
+     filters as a subnav, the search field, and the actions, the primary one
+     last. -->
+<div class="list-toolbar">
+  <div class="subnav filters" id="filterChips" role="group" aria-label="Filter sessions"></div>
+  <input type="search" id="fleetSearch" class="ctl" placeholder="Search sessions, stories and PRs" aria-label="Search sessions, stories and PRs" data-ui="palette-open" data-mode="search" readonly>
+  <button type="button" id="fleetSearchBtn" class="btn" data-ui="palette-open" data-mode="search" aria-label="Search" title="Search sessions, stories and PRs (⌘K)"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"></path></svg></button>
+  <button type="button" class="btn" id="broadcastBtn" data-ui="palette-open" data-mode="broadcast">Broadcast</button>
+  <button type="button" class="btn btn-primary" id="spawnBtn" data-ui="palette-open" data-mode="spawn">Spawn</button>
 </div>
 
 <div id="repoSections"></div>
@@ -99,7 +98,7 @@
      that used to be forms on the page. A modal dialog, so focus stays in it. -->
 <dialog id="palette" class="palette" aria-label="Search">
   <div class="palette-input">
-    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M10.5 10.5l3.5 3.5" stroke="currentColor" stroke-width="1.8"></path></svg>
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"></path></svg>
     <input id="paletteInput" type="text" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="paletteResults" aria-autocomplete="list" aria-label="Search sessions, stories and PRs" placeholder="Search sessions, stories and PRs">
     <kbd>esc</kbd>
     <button type="button" class="palette-cancel" data-ui="palette-close">Cancel</button>
@@ -112,8 +111,8 @@
   <div class="palette-body" id="paletteResults" role="listbox" aria-label="Results"></div>
   <div class="palette-pane" data-pane-mode="broadcast" hidden>
     <span class="field-note" title="Typed into each agent's pane exactly as if you had typed it there">&#128227; Typed into each agent's pane. &#8629; sends to all, &#8984;&#8629; to the CI-red ones.</span>
-    <button class="btn btn-sm" id="bcastAll" data-action="broadcast" data-target="all" title="Send to every live worker pane">all</button>
-    <button class="btn btn-sm" id="bcastCIRed" data-action="broadcast" data-target="ci-red" title="Send only to workers whose PR is failing CI" style="display:none">CI red</button>
+    <button class="btn btn-primary" id="bcastAll" data-action="broadcast" data-target="all" title="Send to every live worker pane">all</button>
+    <button class="btn" id="bcastCIRed" data-action="broadcast" data-target="ci-red" title="Send only to workers whose PR is failing CI" style="display:none">CI red</button>
     <span class="field-note" id="bcastNote"></span>
   </div>
   <div class="palette-pane" data-pane-mode="spawn" hidden>
@@ -125,11 +124,11 @@
         <option value="<%= repo.path %>"><%= repo.name %></option>
       <% } %>
     </select>
-    <button class="btn btn-sm" id="spawn" data-action="spawn">Spawn</button>
+    <button class="btn btn-primary" id="spawn" data-action="spawn">Spawn</button>
     <span class="field-status" id="spawnStatus"></span>
   </div>
   <div class="palette-pane" data-pane-mode="message" hidden>
-    <button class="btn btn-sm" id="messageSend" data-action="pane-send" data-pane="" data-key="" data-source="paletteInput" data-clears="paletteInput" data-says="messageNote">Send</button>
+    <button class="btn btn-primary" id="messageSend" data-action="pane-send" data-pane="" data-key="" data-source="paletteInput" data-clears="paletteInput" data-says="messageNote">Send</button>
     <span class="field-status" id="messageNote"></span>
   </div>
   <div class="palette-foot"><span><kbd>&uarr;</kbd> <kbd>&darr;</kbd> move</span><span><kbd>&#8629;</kbd> open</span><span><kbd>&#8984;</kbd> <kbd>&#8629;</kbd> message session</span><span><kbd>esc</kbd> close</span></div>

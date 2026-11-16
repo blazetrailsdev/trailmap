@@ -43,7 +43,10 @@ import {
   rfcSpawnRow,
   row,
   stageFigure,
-  stepper,
+  stageLabel,
+  STAGES,
+  STAGE_ICONS,
+  ciMark,
   spawnLoopControls,
   spawnLoopView,
   statusClass,
@@ -68,7 +71,6 @@ import {
   queuedUnder,
   resetDate,
   PALETTE_INPUT,
-  stageHeader,
   stageName,
   usageSummary,
 } from "../../app/assets/javascripts/fleet-format.js";
@@ -802,48 +804,27 @@ describe("the spawn loop's controls", () => {
   });
 });
 
-describe("stepper", () => {
-  it("draws passed and current stages with their icons, and one still to come as a dot", () => {
-    const html = stepper("ringo");
+describe("stageLabel", () => {
+  it("names the stage in a label that carries its octicon and its colour class", () => {
+    const html = stageLabel("ringo");
 
-    expect(html).toContain('aria-label="Stage: Reviewer convergence"');
-    expect(html.match(/class="node st-/g)).toHaveLength(3);
-    expect(html.match(/class="node todo"><\/span>/g)).toHaveLength(3);
-    expect(html.match(/ current"/g)).toHaveLength(1);
-    expect(html).toContain('class="node st-ringo current"');
-  });
-
-  it("marks every step on a merged session", () => {
-    expect(stepper("merged")).not.toContain("todo");
-  });
-});
-
-describe("stepper, with a mark", () => {
-  it("puts the mark in the current step in place of its icon", () => {
-    const html = stepper("ringo", '<span class="ring"></span>');
-
-    expect(html).toContain('<span class="step done"><span class="ring"></span></span>');
-    expect(html).not.toContain(' current"');
-    expect(html.match(/class="node st-/g)).toHaveLength(2);
-  });
-
-  it("marks every step reached as done, so its connector draws solid, and none ahead", () => {
-    const html = stepper("ci");
-
-    expect(html.match(/class="step done"/g)).toHaveLength(4);
-    expect(html.match(/<span class="step"><span class="node todo">/g)).toHaveLength(2);
-  });
-});
-
-describe("stageHeader", () => {
-  it("names all six stages in order, each with its mark, for the columns over the steppers", () => {
-    const html = stageHeader();
-
-    expect(html.match(/class="step"/g)).toHaveLength(6);
-    const names = [...html.matchAll(/class="stage-name">([^<]+)</g)].map((m) => m[1]);
-    expect(names).toEqual(["Drafting", "Self review", "Reviewer convergence", "Getting CI green", "Ready to merge", "Merged"]);
+    expect(html).toMatch(/^<span class="Label stage st-ringo"><svg /);
+    expect(html).toContain("</svg>Reviewer convergence</span>");
     expect(stageName("ci")).toBe("Getting CI green");
     expect(stageName("nope")).toBe("");
+  });
+
+  it("has an octicon for every stage", () => {
+    expect(Object.keys(STAGE_ICONS)).toEqual(STAGES.map(([id]) => id));
+  });
+});
+
+describe("ciMark", () => {
+  it("draws a titled mark for each CI state, and none without one", () => {
+    expect(ciMark("success")).toContain('class="ci ci-success" title="CI passing"');
+    expect(ciMark("failure")).toContain('<span class="sr-only">check failed</span>');
+    expect(ciMark("pending")).toContain('class="ci ci-pending" title="CI running"');
+    expect(ciMark(undefined)).toBe("");
   });
 });
 
