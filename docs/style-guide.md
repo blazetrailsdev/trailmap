@@ -105,7 +105,7 @@ for the nearest concept:
 
 | GitHub component | Class | Notes |
 | --- | --- | --- |
-| Header | `.nav` | `--surface-2` bar; the signpost icon at 24px and the wordmark, then weight-600 links with a grey hover; the current page underlined in `--tab`. The icon is the only artwork on a page and the only place its oranges appear |
+| Header | `.nav` | `--surface-2` bar; the signpost icon at 24px and the wordmark, then weight-600 links with a grey hover; the current page (`isCurrentPage`, an exact match) underlined in `--tab` and marked `aria-current`. The icon is the only artwork on a page and the only place its oranges appear |
 | Box | `.box`, `.card`, `.sessions` | 1px border, 6px radius; its header (`.box-header`, `.repo-head`, a folding card's `summary`) is `--surface-2` with a bottom border and a 600 title |
 | Box row | `.session`, `.row`, `.item-row` | divided by a 1px top border; hover is `--surface-2` |
 | Button | `.btn` | see below |

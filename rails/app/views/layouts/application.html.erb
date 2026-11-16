@@ -15,19 +15,13 @@
 </head>
 <body>
   <nav class="nav">
-    <a class="nav-brand" href="<%= root_path %>"><img src="/icon.png" width="24" height="24" alt="">trailmap</a>
+    <a class="nav-brand" href="<%= root_path %>"><%= image_tag "/icon.png", size: 24, alt: "" %>trailmap</a>
     <input type="checkbox" id="navToggle" class="nav-toggle">
     <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">
-      <a href="<%= rfcs_path %>">RFCs</a>
-      <a href="<%= backlog_path %>">Backlog</a>
-      <a href="<%= dashboard_path %>">Dashboard</a>
-      <a href="<%= parity_graph_path %>">Parity</a>
-      <a href="<%= packages_path %>">Packages</a>
-      <a href="<%= audits_path %>">Audits</a>
-      <a href="<%= deploys_path %>">Deploys</a>
-      <a href="<%= sessions_path %>">Sessions</a>
-      <a href="<%= search_path %>">Search</a>
+      <% [ [ "RFCs", rfcs_path ], [ "Backlog", backlog_path ], [ "Dashboard", dashboard_path ], [ "Parity", parity_graph_path ], [ "Packages", packages_path ], [ "Audits", audits_path ], [ "Deploys", deploys_path ], [ "Sessions", sessions_path ], [ "Search", search_path ] ].each do |label, path| %>
+        <a href="<%= path %>"<% if current_page?(path) %> class="active" aria-current="page"<% end %>><%= label %></a>
+      <% end %>
     </nav>
   </nav>
 

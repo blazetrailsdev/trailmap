@@ -14,19 +14,13 @@
 </head>
 <body>
   <nav class="nav">
-    <a class="nav-brand" href="<%= rootPath() %>"><img src="/icon.png" width="24" height="24" alt="">trailmap</a>
+    <a class="nav-brand" href="<%= rootPath() %>"><%= imageTag("/icon.png", { size: 24, alt: "" }) %>trailmap</a>
     <input type="checkbox" id="navToggle" class="nav-toggle">
     <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">
-      <a href="<%= rfcsPath() %>">RFCs</a>
-      <a href="<%= backlogPath() %>">Backlog</a>
-      <a href="<%= dashboardPath() %>">Dashboard</a>
-      <a href="<%= parityGraphPath() %>">Parity</a>
-      <a href="<%= packagesPath() %>">Packages</a>
-      <a href="<%= auditsPath() %>">Audits</a>
-      <a href="<%= deploysPath() %>">Deploys</a>
-      <a href="<%= sessionsPath() %>">Sessions</a>
-      <a href="<%= searchPath() %>">Search</a>
+      <% for (const [label, path] of [["RFCs", rfcsPath()], ["Backlog", backlogPath()], ["Dashboard", dashboardPath()], ["Parity", parityGraphPath()], ["Packages", packagesPath()], ["Audits", auditsPath()], ["Deploys", deploysPath()], ["Sessions", sessionsPath()], ["Search", searchPath()]]) { %>
+        <a href="<%= path %>"<% if (isCurrentPage(path)) { %> class="active" aria-current="page"<% } %>><%= label %></a>
+      <% } %>
     </nav>
   </nav>
 

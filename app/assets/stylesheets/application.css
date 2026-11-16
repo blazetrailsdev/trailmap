@@ -158,7 +158,8 @@ code { font-family: var(--font-mono); font-size: 12px; }
  * Page chrome -- GitHub's header, which is also ringo's
  * (`webhook/nav.go:12-52`): a sticky bar on `--surface` over the content
  * column, the signpost icon and the wordmark on the left, page links beside
- * them, the current page marked by Primer's `--tab` underline. The links are
+ * them, the current page marked by Primer's `--tab` underline (the layout asks
+ * `isCurrentPage`, Rails' `current_page?`, for each link). The links are
  * plain text at weight 600 with GitHub's grey hover, not pills.
  *
  * ringo full-bleeds the bar by pulling it out of the body's padding with

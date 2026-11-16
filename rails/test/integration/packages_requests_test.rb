@@ -17,7 +17,7 @@ class PackagesRequestsTest < ActionDispatch::IntegrationTest
     get "/packages"
     assert_response :success
     assert_includes response.body, 'href="/packages/arel"'
-    assert_includes response.body, '<a href="/packages">Packages</a>'
+    assert_includes response.body, '<a href="/packages" class="active" aria-current="page">Packages</a>'
   end
 
   test "answers a package's page with links to its tabs" do
