@@ -34,9 +34,9 @@ export const ApplicationHelper = {
       if (!["GET", "HEAD"].includes(request.method.toUpperCase())) return null;
       current = request.path;
     }
-    const target = unescape(path);
-    let here = unescape(current);
-    if (here.length > 1) here = here.replace(/\/+$/, "");
+    const strip = (value: string): string => (value.length > 1 ? value.replace(/\/+$/, "") : value);
+    const target = strip(unescape(path));
+    const here = strip(unescape(current));
     if (here === target) return "page";
     const extra = headerSections[path];
     const prefixes = [target + "/", ...(Array.isArray(extra) ? (extra as string[]) : [])];

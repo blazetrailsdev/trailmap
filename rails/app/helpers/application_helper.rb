@@ -12,9 +12,9 @@ module ApplicationHelper
       return nil unless request.get? || request.head?
       current = request.path
     end
-    target = URI::RFC2396_PARSER.unescape(path)
-    here = URI::RFC2396_PARSER.unescape(current)
-    here = here.sub(%r{/+\z}, "") if here.length > 1
+    strip = ->(value) { value.length > 1 ? value.sub(%r{/+\z}, "") : value }
+    target = strip.(URI::RFC2396_PARSER.unescape(path))
+    here = strip.(URI::RFC2396_PARSER.unescape(current))
     return "page" if here == target
     extra = HEADER_SECTIONS[path]
     prefixes = ["#{target}/", *(extra.is_a?(Array) ? extra : [])]

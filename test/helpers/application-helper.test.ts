@@ -25,5 +25,6 @@ describe("ApplicationHelper", () => {
   it("nav_mark unescapes both sides", () => {
     expect(navMark("/rfcs", "/rfc%73")).toBe("page");
     expect(navMark("/packages", "/packages/a%20b")).toBe("section");
+    expect(navMark("/rfcs/", "/rfcs")).toBe("page");
   });
 });
