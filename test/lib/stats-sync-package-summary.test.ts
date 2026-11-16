@@ -9,6 +9,7 @@ const BARE = getPath().resolve("test/fixtures/stats-sync/package-summary-bare.js
 // the artifact, run 2's has expired, runs 3 and 5 carry FIXTURE, run 4 BARE
 // (no tag sites, no ratios, no skips) and run 6 an artifact with no summary.
 const FAKE_GH = `#!/bin/sh
+echo "$*" >> "$(dirname "$0")/calls"
 case "$*" in
   "run download 1 "*|"run download 3 "*|"run download 5 "*)
     for last; do :; done
@@ -141,7 +142,10 @@ describe("syncPackageSummaries", () => {
         { merge_commit_sha: "abc" },
       ]);
 
+      getFs().writeFileSync(getPath().join(dir, "calls"), "");
       expect(await syncPackageSummaries("latest")).toBe(0);
+      // An artifact recorded as gone is not asked for again.
+      expect(getFs().readFileSync(getPath().join(dir, "calls"), "utf-8")).not.toContain("run download 2 ");
 
       // A newer PR replaces all three, even with no tag sites, ratios or skips; an
       // older one after it does not; an artifact with no summary is recorded.
@@ -177,6 +181,16 @@ describe("syncPackageSummaries", () => {
       expect(await q("SELECT DISTINCT merge_commit_sha FROM claude_md_sections")).toEqual([
         { merge_commit_sha: "new" },
       ]);
+      // A run that fills the 50-row cap says so in STATS_SYNC_LOG.
+      const values = Array.from({ length: 50 }, (_, i) => `(${100 + i}, 'cap${i}', ${100 + i}, 'push', 'success', 'CI')`);
+      await adapter.execute(`INSERT INTO workflow_runs (id, head_sha, pr_number, event, conclusion, workflow_name)
+        VALUES ${values.join(", ")}`);
+      writable["STATS_SYNC_LOG"] = getPath().join(dir, "sync.log");
+      await syncPackageSummaries("latest");
+      expect(getFs().readFileSync(writable["STATS_SYNC_LOG"], "utf-8")).toContain(
+        "[sync-stats] package summaries: filled the 50-row cap; any rows left wait for the next run\n",
+      );
+      delete writable["STATS_SYNC_LOG"];
       await StatsSyncRecord.removeConnection();
     } finally {
       writable["PATH"] = path;

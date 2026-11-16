@@ -5,6 +5,41 @@ import { StatsSyncMailer } from "../mailers/stats-sync-mailer.ts";
 import { ApplicationJob } from "./application-job.ts";
 
 const STALE_HOURS = 3;
+// Below the 2h lock, leaving 20 minutes for the work around the sync (log trim,
+// missing-data check). A retry is a new job (retry_on re-enqueues it) that takes
+// the lock again once this execution releases it, so each execution gets its own
+// lock and its own deadline: a run that hangs stops before its lock expires.
+export const RUN_DEADLINE_MINUTES = 100;
+// STATS_SYNC_LOG keeps whole runs from the last LOG_KEEP_DAYS, trimmed once it
+// passes LOG_TRIM_BYTES, so most runs never rewrite it.
+export const LOG_KEEP_DAYS = 14;
+export const LOG_TRIM_BYTES = 4 * 1024 * 1024;
+const RUN_HEADER = /^=== (\d{4}-\d{2}-\d{2}T\S+) ===$/gm;
+
+/**
+ * Drop the runs whose `=== <time> ===` header is older than LOG_KEEP_DAYS. The
+ * cut falls on a header, so every kept run keeps its header and `[cron-wrapper]`
+ * lines, the ones btwhooks' stats watcher reads. Written beside it and renamed
+ * over it, so a reader never sees half a log.
+ */
+export async function trimLog(log: string, now = Date.now()): Promise<void> {
+  const fs = getFs();
+  if (!(await fs.exists(log)) || (await fs.stat!(log)).size <= LOG_TRIM_BYTES) return;
+  const text = await fs.readFile(log, "utf-8");
+  const cutoff = now - LOG_KEEP_DAYS * 86_400_000;
+  const headers = [...text.matchAll(RUN_HEADER)];
+  // The last run is always kept, so reportGap still sees an outage longer than LOG_KEEP_DAYS.
+  const first = headers.find((m) => Date.parse(m[1]) >= cutoff) ?? headers.at(-1);
+  const start = first?.index ?? 0;
+  if (start === 0) return;
+  try {
+    await fs.writeFile!(`${log}.trim`, text.slice(start));
+    await fs.rename!(`${log}.trim`, log);
+  } catch (error) {
+    await fs.rm!(`${log}.trim`, { force: true });
+    throw error;
+  }
+}
 // A GitHub outage fails every hourly run; mail once it has outlasted a few of them.
 const FAILED_RUNS_BEFORE_MAIL = 3;
 
@@ -74,14 +109,19 @@ export class StatsSyncJob extends ApplicationJob {
   async perform(): Promise<void> {
     const log = requiredEnv("STATS_SYNC_LOG");
     requiredEnv("STATS_SYNC_DB");
-    const { currentStage, syncLatest } = await import("../../lib/stats-sync/sync.ts");
+    const { currentStage, SyncDeadlineExceededError, syncLatest } = await import("../../lib/stats-sync/sync.ts");
     getFs().mkdirSync(getPath().dirname(log), { recursive: true });
+    try {
+      await trimLog(log);
+    } catch (error) {
+      getFs().appendFileSync(log, `[cron-wrapper] log trim failed: ${error instanceof Error ? error.message : error}\n`);
+    }
     this.reportGap(log);
     // Whole seconds, as the wrapper's `date -Iseconds`: btwhooks' run-header pattern has no `.`.
     getFs().appendFileSync(log, `=== ${new Date().toISOString().replace(/\.\d+Z$/, "Z")} ===\n`);
 
     try {
-      await syncLatest();
+      await syncLatest({ deadlineMinutes: RUN_DEADLINE_MINUTES });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const retried = /rate limit|secondary rate|abuse detection/i.test(message)
@@ -92,7 +132,9 @@ export class StatsSyncJob extends ApplicationJob {
       const attempts = retried?.attempts ?? 1;
       const execution = this.executions ?? 1;
       const verdict =
-        execution < attempts
+        error instanceof SyncDeadlineExceededError
+          ? `stats sync failed at stage "${currentStage()}" (execution ${execution}): deadline of ${RUN_DEADLINE_MINUTES} min exceeded`
+          : execution < attempts
           ? `retrying at stage "${currentStage()}" (execution ${execution} of ${attempts})`
           : `stats sync failed at stage "${currentStage()}" (execution ${execution}): ${message.split("\n")[0]}`;
       getFs().appendFileSync(log, `${message}\n[cron-wrapper] ${verdict}\n`);
