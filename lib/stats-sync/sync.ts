@@ -79,6 +79,50 @@ export function logGhFailure(error: unknown): void {
   }
 }
 
+/**
+ * Every `--latest` work query takes at most this many rows. Each was kept, not
+ * raised or paged: an hourly run drains 1,200 rows a day per queue, and the run
+ * deadline (`syncLatest`) bounds a run's length better than a smaller cap could.
+ * A run that fills a cap says so, so a backlog is visible in STATS_SYNC_LOG.
+ */
+export const LATEST_BATCH = 50;
+
+function latestLimit(mode: string): string {
+  return mode === "latest" ? `LIMIT ${LATEST_BATCH}` : "";
+}
+
+async function noteCap(mode: string, queue: string, rows: number): Promise<void> {
+  if (mode !== "latest" || rows < LATEST_BATCH) return;
+  const line = `[sync-stats] ${queue}: hit the ${LATEST_BATCH}-row cap; the rest wait for the next run\n`;
+  console.log(`  ${line.trimEnd()}`);
+  const log = env.STATS_SYNC_LOG;
+  if (!log) return;
+  try {
+    await getFs().writeFile!(log, line, { flag: "a" });
+  } catch {
+    // The console line above is the fallback.
+  }
+}
+
+/** Raised by `gh` once `syncLatest`'s wall-clock deadline has passed. */
+export class SyncDeadlineExceededError extends Error {
+  constructor(minutes: number) {
+    super(`Stopping: the run passed its ${minutes}-minute deadline`);
+  }
+}
+
+// A per-item `catch` rethrows these: each ends the whole run, not one item.
+function stopsTheRun(err: unknown): boolean {
+  return err instanceof RateLimitExhaustedError || err instanceof SyncDeadlineExceededError;
+}
+
+let deadlineAt: number | null = null;
+let deadlineMinutes = 0;
+
+function checkDeadline(): void {
+  if (deadlineAt !== null && Date.now() >= deadlineAt) throw new SyncDeadlineExceededError(deadlineMinutes);
+}
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 let lastGhCallAt = 0;
 let rateLimitCooldownUntil = 0;
@@ -90,6 +134,7 @@ void GH_REQ_PER_MIN; // documented for future reference; intentionally unused
 let stage = "startup";
 
 function banner(name: string) {
+  checkDeadline();
   stage = name;
   console.log(`\n=== ${name} ===`);
 }
@@ -165,13 +210,17 @@ async function gh(args: string): Promise<string> {
     ghCallCount++;
     await checkRateLimitBudget();
     await waitForCooldownAndInterval();
+    checkDeadline();
+    // A hung call is killed at the deadline, so the run cannot outlive its lock.
+    const timeout = deadlineAt === null ? "" : `timeout ${Math.max(1, Math.ceil((deadlineAt - Date.now()) / 1000))} `;
     try {
-      const result = await run(`gh ${args}`);
+      const result = await run(`${timeout}gh ${args}`);
       lastGhCallAt = Date.now();
       return result;
     } catch (err) {
       lastGhCallAt = Date.now();
       logGhFailure(err);
+      checkDeadline();
       const msg = err instanceof Error ? err.message : String(err);
       if (/rate limit|secondary rate|abuse detection/i.test(msg) && attempt < MAX_RETRIES) {
         const backoffMs = Math.min(120_000, 5_000 * Math.pow(2, attempt));
@@ -436,7 +485,7 @@ async function syncPullRequests(mode: "latest" | "refresh"): Promise<number> {
         const pr = await ghJson<GhPrData>(`pr view ${num} --repo ${REPO} --json ${fields}`);
         await PullRequest.upsertAll([mapPr(pr)], { uniqueBy: "number" });
       } catch (err) {
-        if (err instanceof RateLimitExhaustedError) throw err;
+        if (stopsTheRun(err)) throw err;
         console.warn(`  Failed to refresh PR #${num}: ${err instanceof Error ? err.message : err}`);
       }
     }
@@ -478,7 +527,7 @@ async function syncPrFiles() {
         );
       }
     } catch (err) {
-      if (err instanceof RateLimitExhaustedError) throw err;
+      if (stopsTheRun(err)) throw err;
       console.warn(
         `  Failed to fetch files for PR #${number}: ${err instanceof Error ? err.message : err}`,
       );
@@ -514,7 +563,7 @@ async function syncPrCommits() {
       }
       await PullRequest.where({ number }).updateAll({ commit_count: commits.length });
     } catch (err) {
-      if (err instanceof RateLimitExhaustedError) throw err;
+      if (stopsTheRun(err)) throw err;
       console.warn(
         `  Failed to fetch commits for PR #${number}: ${err instanceof Error ? err.message : err}`,
       );
@@ -598,7 +647,7 @@ async function syncPrComments() {
         review_count: reviews.length,
       });
     } catch (err) {
-      if (err instanceof RateLimitExhaustedError) throw err;
+      if (stopsTheRun(err)) throw err;
       console.warn(
         `  Failed to fetch comments for PR #${number}: ${err instanceof Error ? err.message : err}`,
       );
@@ -649,7 +698,7 @@ async function syncPrRequestedReviewers() {
       }
       await PullRequest.where({ number }).updateAll({ reviewers_synced: 1 });
     } catch (err) {
-      if (err instanceof RateLimitExhaustedError) throw err;
+      if (stopsTheRun(err)) throw err;
       console.warn(
         `  Failed to fetch requested reviewers for PR #${number}: ${err instanceof Error ? err.message : err}`,
       );
@@ -706,7 +755,7 @@ async function syncPrLinkedIssues() {
       }
       await PullRequest.where({ number }).updateAll({ linked_issues_synced: 1 });
     } catch (err) {
-      if (err instanceof RateLimitExhaustedError) throw err;
+      if (stopsTheRun(err)) throw err;
       console.warn(
         `  Failed to fetch linked issues for PR #${number}: ${err instanceof Error ? err.message : err}`,
       );
@@ -745,7 +794,7 @@ async function syncPrTimelineEvents() {
       }
       await PullRequest.where({ number }).updateAll({ timeline_synced: 1 });
     } catch (err) {
-      if (err instanceof RateLimitExhaustedError) throw err;
+      if (stopsTheRun(err)) throw err;
       console.warn(
         `  Failed to fetch timeline events for PR #${number}: ${err instanceof Error ? err.message : err}`,
       );
@@ -760,7 +809,7 @@ async function syncPrReactions() {
 }
 
 async function syncWorkflowRuns(mode: "latest" | "refresh" | "backfill"): Promise<number> {
-  const limitClause = mode === "latest" ? "LIMIT 50" : "";
+  const limitClause = latestLimit(mode);
   const missingRuns = await PullRequest.findBySql(`
     SELECT DISTINCT merge_commit_sha, number FROM pull_requests
     WHERE merge_commit_sha IS NOT NULL
@@ -777,6 +826,7 @@ async function syncWorkflowRuns(mode: "latest" | "refresh" | "backfill"): Promis
     ${limitClause}
   `);
 
+  await noteCap(mode, "workflow runs", missingRuns.length);
   if (missingRuns.length === 0) {
     console.log("All workflow runs already synced");
     return 0;
@@ -882,7 +932,7 @@ async function syncWorkflowRuns(mode: "latest" | "refresh" | "backfill"): Promis
         synced++;
       }
     } catch (err) {
-      if (err instanceof RateLimitExhaustedError) throw err;
+      if (stopsTheRun(err)) throw err;
       console.warn(
         `  Failed to fetch workflow runs for PR #${number} (${sha}): ${err instanceof Error ? err.message : err}`,
       );
@@ -1003,7 +1053,7 @@ export function parseApiCompareFromLogs(logs: string) {
 }
 
 async function syncCheckAnnotations(mode: "latest" | "refresh" | "backfill") {
-  const limitClause = mode === "latest" ? "LIMIT 50" : "";
+  const limitClause = latestLimit(mode);
   const jobsToSync = (
     await (
       await StatsSyncRecord.leaseConnection()
@@ -1020,6 +1070,7 @@ async function syncCheckAnnotations(mode: "latest" | "refresh" | "backfill") {
   `)
   ).toArray();
 
+  await noteCap(mode, "check annotations", jobsToSync.length);
   if (jobsToSync.length === 0) return;
   console.log(`Backfilling annotations for ${jobsToSync.length} jobs...`);
 
@@ -1048,7 +1099,7 @@ async function syncCheckAnnotations(mode: "latest" | "refresh" | "backfill") {
         );
       }
     } catch (err) {
-      if (err instanceof RateLimitExhaustedError) throw err;
+      if (stopsTheRun(err)) throw err;
       console.warn(
         `  Failed to fetch annotations for job ${jobId}: ${err instanceof Error ? err.message : err}`,
       );
@@ -1057,7 +1108,7 @@ async function syncCheckAnnotations(mode: "latest" | "refresh" | "backfill") {
 }
 
 async function syncJobLogs(mode: "latest" | "refresh" | "backfill"): Promise<number> {
-  const limitClause = mode === "latest" ? "LIMIT 50" : "";
+  const limitClause = latestLimit(mode);
   const jobsToFetch = (
     await (
       await StatsSyncRecord.leaseConnection()
@@ -1079,6 +1130,7 @@ async function syncJobLogs(mode: "latest" | "refresh" | "backfill"): Promise<num
   `)
   ).toArray();
 
+  await noteCap(mode, "job logs", jobsToFetch.length);
   if (jobsToFetch.length === 0) {
     console.log("All job logs already synced");
     return 0;
@@ -1116,7 +1168,7 @@ async function syncJobLogs(mode: "latest" | "refresh" | "backfill"): Promise<num
         console.log(`  Fetched ${fetched}/${jobsToFetch.length} job logs...`);
       }
     } catch (err) {
-      if (err instanceof RateLimitExhaustedError) throw err;
+      if (stopsTheRun(err)) throw err;
       const message = err instanceof Error ? err.message : String(err);
       if (isExpiredJobLogError(message)) {
         await ExpiredJobLog.upsertAll(
@@ -1200,7 +1252,7 @@ const MISSING_STATS_PREDICATE = `
 async function syncCompareStats(
   mode: "latest" | "refresh" | "backfill" | "reparse",
 ): Promise<number> {
-  const limitClause = mode === "latest" ? "LIMIT 50" : "";
+  const limitClause = latestLimit(mode);
   const missingStatsClause = mode === "reparse" ? "" : `AND (${MISSING_STATS_PREDICATE})`;
   const runsToProcess = (
     await (
@@ -1226,6 +1278,7 @@ async function syncCompareStats(
   `)
   ).toArray();
 
+  await noteCap(mode, "compare stats", runsToProcess.length);
   if (runsToProcess.length === 0) {
     console.log("All compare stats already synced");
     return 0;
@@ -1415,7 +1468,7 @@ async function recordMissingArtifact(sha: string): Promise<void> {
 export async function syncPackageSummaries(
   mode: "latest" | "refresh" | "backfill",
 ): Promise<number> {
-  const limitClause = mode === "latest" ? "LIMIT 50" : "";
+  const limitClause = latestLimit(mode);
   const connection = await StatsSyncRecord.leaseConnection();
   const commits = (
     await connection.selectAll(`
@@ -1430,6 +1483,7 @@ export async function syncPackageSummaries(
   `)
   ).toArray();
 
+  await noteCap(mode, "package summaries", commits.length);
   if (commits.length === 0) {
     console.log("All package summaries already synced");
     return 0;
@@ -1467,7 +1521,7 @@ export async function syncPackageSummaries(
       if (isLatest) latestPr = prNumber;
       stored++;
     } catch (err) {
-      if (err instanceof RateLimitExhaustedError) throw err;
+      if (stopsTheRun(err)) throw err;
       const message = err instanceof Error ? err.message : String(err);
       if (MISSING_ARTIFACT_ERROR_RE.test(message)) {
         await recordMissingArtifact(sha);
@@ -1649,8 +1703,14 @@ async function printSummary() {
  * module opens STATS_SYNC_DB on its own connection, apart from the read-only
  * `Stats` pool, because this one writes.
  */
-export async function syncLatest(): Promise<void> {
+/**
+ * `deadlineMinutes`, when given, stops the run with a SyncDeadlineExceededError
+ * at the first `gh` call past it, and kills a call still running at it.
+ */
+export async function syncLatest(options: { deadlineMinutes?: number } = {}): Promise<void> {
   stage = "startup";
+  deadlineMinutes = options.deadlineMinutes ?? 0;
+  deadlineAt = options.deadlineMinutes ? Date.now() + options.deadlineMinutes * 60_000 : null;
   try {
     banner("Syncing PR data");
     const prsSynced = await syncPullRequests("latest");
@@ -1690,5 +1750,7 @@ export async function syncLatest(): Promise<void> {
     console.warn(`\n${err.message}`);
     console.warn("Run again later to continue syncing remaining data.");
     await printSummary();
+  } finally {
+    deadlineAt = null;
   }
 }

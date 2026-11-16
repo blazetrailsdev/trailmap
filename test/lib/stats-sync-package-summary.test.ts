@@ -9,6 +9,7 @@ const BARE = getPath().resolve("test/fixtures/stats-sync/package-summary-bare.js
 // the artifact, run 2's has expired, runs 3 and 5 carry FIXTURE, run 4 BARE
 // (no tag sites, no ratios, no skips) and run 6 an artifact with no summary.
 const FAKE_GH = `#!/bin/sh
+echo "$*" >> "$(dirname "$0")/calls"
 case "$*" in
   "run download 1 "*|"run download 3 "*|"run download 5 "*)
     for last; do :; done
@@ -141,7 +142,10 @@ describe("syncPackageSummaries", () => {
         { merge_commit_sha: "abc" },
       ]);
 
+      getFs().writeFileSync(getPath().join(dir, "calls"), "");
       expect(await syncPackageSummaries("latest")).toBe(0);
+      // An artifact recorded as gone is not asked for again.
+      expect(getFs().readFileSync(getPath().join(dir, "calls"), "utf-8")).not.toContain("run download 2 ");
 
       // A newer PR replaces all three, even with no tag sites, ratios or skips; an
       // older one after it does not; an artifact with no summary is recorded.

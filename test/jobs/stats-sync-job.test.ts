@@ -2,13 +2,18 @@ import { getFs, getOs, getPath } from "@blazetrails/ruby-compat";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const syncLatest = vi.hoisted(() => vi.fn());
-vi.mock("../../lib/stats-sync/sync.ts", () => ({ syncLatest, currentStage: () => "Syncing job logs" }));
+const SyncDeadlineExceededError = vi.hoisted(() => class SyncDeadlineExceededError extends Error {});
+vi.mock("../../lib/stats-sync/sync.ts", () => ({
+  syncLatest,
+  SyncDeadlineExceededError,
+  currentStage: () => "Syncing job logs",
+}));
 const packagesMissingCompareData = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/stats-sync/missing-compare-data.ts", () => ({ packagesMissingCompareData }));
 
 import { constantize } from "@blazetrails/activesupport";
 import { env } from "@blazetrails/ruby-compat";
-import { StatsSyncJob } from "../../app/jobs/stats-sync-job.ts";
+import { LOG_TRIM_BYTES, RUN_DEADLINE_MINUTES, StatsSyncJob, trimLog } from "../../app/jobs/stats-sync-job.ts";
 import { ApplicationMailer } from "../../app/mailers/application-mailer.ts";
 
 describe("StatsSyncJob", () => {
@@ -66,6 +71,38 @@ describe("StatsSyncJob", () => {
   it("writes its run header in whole seconds, as the wrapper did", async () => {
     await new StatsSyncJob().perform();
     expect(read()).toMatch(/^=== \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z ===\n/);
+  });
+
+  it("gives the sync a deadline below the lock's 2 hours", async () => {
+    await new StatsSyncJob().perform();
+    expect(syncLatest).toHaveBeenCalledWith({ deadlineMinutes: RUN_DEADLINE_MINUTES });
+    expect(RUN_DEADLINE_MINUTES).toBeLessThan(120);
+  });
+
+  it("fails a run that passes its deadline with its own verdict, and does not retry it", async () => {
+    syncLatest.mockRejectedValue(new SyncDeadlineExceededError("Stopping: the run passed its 100-minute deadline"));
+    const job = new StatsSyncJob() as unknown as { performNow(): Promise<unknown> };
+    await expect(job.performNow()).rejects.toThrow("deadline");
+    expect(read()).toContain(
+      `[cron-wrapper] stats sync failed at stage "Syncing job logs" (execution 1): deadline of ${RUN_DEADLINE_MINUTES} min exceeded\n`,
+    );
+  });
+
+  it("trims runs older than two weeks once the log passes its size limit, cutting on a run header", async () => {
+    const now = Date.parse("2026-11-16T12:00:00Z");
+    const pad = "x".repeat(LOG_TRIM_BYTES);
+    getFs().writeFileSync(
+      log,
+      `=== 2026-10-01T00:00:00Z ===\n${pad}\n[cron-wrapper] ok\n=== 2026-11-10T00:00:00Z ===\n[cron-wrapper] ok\n`,
+    );
+    await trimLog(log, now);
+    expect(read()).toBe("=== 2026-11-10T00:00:00Z ===\n[cron-wrapper] ok\n");
+  });
+
+  it("leaves a log under its size limit alone", async () => {
+    getFs().writeFileSync(log, "=== 2020-01-01T00:00:00Z ===\n[cron-wrapper] ok\n");
+    await trimLog(log);
+    expect(read()).toBe("=== 2020-01-01T00:00:00Z ===\n[cron-wrapper] ok\n");
   });
 
   it("names the stage and error in a failed verdict and rethrows", async () => {
