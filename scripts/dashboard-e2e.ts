@@ -265,7 +265,7 @@ await until("the loop's toggle to say ringo has not answered", () =>
 loop = { ...LOOP };
 // The panel polls every fifteen seconds; `until` waits a minute.
 await until("the loop's toggle once ringo answered", () =>
-  evaluate(`!${toggle}.disabled && ${toggle}.textContent === "play" && ${byId("slLiveCap")}.value === "4"`),
+  evaluate(`!${toggle}.disabled && ${toggle}.textContent === "Play" && ${byId("slLiveCap")}.value === "4"`),
 );
 console.log("ok  spawn loop, the toggle waits for ringo's first answer");
 
@@ -290,6 +290,17 @@ await until("↓ to move the selection", () => evaluate(`document.querySelector(
 await pressEscape();
 await until("Esc to close the palette", () => evaluate(`!${byId("palette")}.open`));
 console.log("ok  palette, ⌘K opens it, ↓ moves, Esc closes");
+
+// The footer's key hints follow the mode: Enter opens in search, spawns in
+// spawn, sends to all in broadcast.
+const shownFoot = `[...document.querySelectorAll("#palette .palette-foot")].filter((f) => !f.hidden).map((f) => f.textContent).join("|")`;
+const openSearch = `document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }))`;
+for (const [opener, hint] of [[openSearch, "↵ open"], [`${byId("spawnBtn")}.click()`, "↵ spawn"], [`${byId("broadcastBtn")}.click()`, "↵ send to all"]] as const) {
+  await evaluate(`${opener}; true`);
+  await until(`the footer to say "${hint}"`, () => evaluate(`${shownFoot}.includes(${JSON.stringify(hint)}) && !${shownFoot}.includes("|")`));
+  await evaluate(`${byId("palette")}.close(); true`);
+}
+console.log("ok  palette footer hints follow the mode");
 
 
 // A declined confirm sends nothing and leaves the button as it was.
@@ -320,14 +331,14 @@ await evaluate(`${button("loop-now")}.click(); true`);
 await until("the re-read after spawn now", async () => loopHeldReads.length >= 1);
 let before = posts.length;
 await evaluate(`${toggle}.click(); true`);
-await until("the toggle's answer", () => evaluate(`${toggle}.textContent === "pause"`));
+await until("the toggle's answer", () => evaluate(`${toggle}.textContent === "Pause"`));
 if (JSON.stringify(posts[before]) !== JSON.stringify(["/spawnloop/config", { enabled: true }])) {
   throw new Error(`dashboard-e2e: the toggle sent ${JSON.stringify(posts[before])}`);
 }
 loopHeld = false;
 for (const release of loopHeldReads.splice(0)) release();
 await new Promise((resolve) => setTimeout(resolve, 500));
-if ((await evaluate(`${toggle}.textContent`)) !== "pause") {
+if ((await evaluate(`${toggle}.textContent`)) !== "Pause") {
   throw new Error("dashboard-e2e: a poll that started before the toggle answered drew over it");
 }
 console.log("ok  spawn loop, a poll older than a control's answer is dropped");

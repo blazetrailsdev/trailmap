@@ -159,7 +159,7 @@ code { font-family: var(--font-mono); font-size: 12px; }
  * (`webhook/nav.go:12-52`): a sticky bar on `--surface` over the content
  * column, the signpost icon and the wordmark on the left, page links beside
  * them, the current page marked by Primer's `--tab` underline (the layout asks
- * `isCurrentPage`, Rails' `current_page?`, for each link). The links are
+ * `navMark`, Rails' `nav_mark`, for each link). The links are
  * plain text at weight 600 with GitHub's grey hover, not pills.
  *
  * ringo full-bleeds the bar by pulling it out of the body's padding with
@@ -873,7 +873,7 @@ details.fold > summary::-webkit-details-marker { display: none; }
 .palette-x { flex: none; display: inline-flex; padding: 4px; border: 0; border-radius: 6px; background: none; color: var(--ink-2); cursor: pointer; }
 .palette-x:hover { background: var(--line); color: var(--ink); }
 .palette-mode { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 600; }
-.palette-mode[hidden], .palette-pane[hidden], .palette-scopes[hidden], .palette-body[hidden] { display: none; }
+.palette-foot[hidden], .palette-mode[hidden], .palette-pane[hidden], .palette-scopes[hidden], .palette-body[hidden] { display: none; }
 .palette-scopes { display: flex; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--line); overflow-x: auto; }
 .chip {
   display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 0 10px; border: 1px solid var(--line); border-radius: 2em;

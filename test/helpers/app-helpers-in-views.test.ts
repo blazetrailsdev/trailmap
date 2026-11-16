@@ -18,10 +18,16 @@
  * the trailtie.
  */
 import { describe, expect, it } from "vitest";
-import { getChildProcessAsync, env } from "@blazetrails/ruby-compat";
+import { getChildProcessAsync, getFs, env } from "@blazetrails/ruby-compat";
+
+// The probe renders a test fixture that only `pnpm views` compiles, and that
+// build boots the initializers, so it needs both database variables. Missing,
+// the probe fails with a LoadError that names no cause.
+const fixtureBuilt = await getFs().exists("test/fixtures/views/helper-probes/show.html.tse.js");
+if (!fixtureBuilt) console.warn("app/helpers: test/fixtures/views is not compiled; run pnpm views");
 
 describe("app/helpers", () => {
-  it("reaches a template without the controller naming the helper", async () => {
+  it.skipIf(!fixtureBuilt)("reaches a template without the controller naming the helper", async () => {
     const child = await getChildProcessAsync();
     const result = child.spawnSync("node_modules/.bin/tsx", ["scripts/app-helpers-probe.ts"], {
       encoding: "utf8",

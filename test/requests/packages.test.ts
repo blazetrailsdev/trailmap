@@ -25,9 +25,9 @@ describe("GET /packages and each package's pages", () => {
     expect(body).toContain('href="/packages/arel"');
   });
 
-  it("links the nav to the index, marked as the current page there and nowhere else", async () => {
+  it("links the nav to the index, marked as the current page there and as the section on its pages", async () => {
     expect((await get("/packages")).body).toContain('<a href="/packages" class="active" aria-current="page">Packages</a>');
-    expect((await get("/packages/arel")).body).toContain('<a href="/packages">Packages</a>');
+    expect((await get("/packages/arel")).body).toContain('<a href="/packages" class="active">Packages</a>');
   });
 
   it("answers a package's page with links to its tabs", async () => {

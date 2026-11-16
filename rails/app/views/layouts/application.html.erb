@@ -7,6 +7,7 @@
   <link rel="icon" href="/favicon.ico" sizes="48x48">
   <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="icon" href="/mark.svg" type="image/svg+xml">
   <link rel="icon" href="/icon.png" type="image/png" sizes="512x512">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <%= csrf_meta_tags %>
@@ -15,12 +16,13 @@
 </head>
 <body>
   <nav class="nav">
-    <a class="nav-brand" href="<%= root_path %>"><%= image_tag "/icon.png", size: 24, alt: "" %>trailmap</a>
+    <a class="nav-brand" href="<%= root_path %>"><%= image_tag "/mark.svg", size: 24, alt: "" %>trailmap</a>
     <input type="checkbox" id="navToggle" class="nav-toggle">
     <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">
       <% [ [ "RFCs", rfcs_path ], [ "Backlog", backlog_path ], [ "Dashboard", dashboard_path ], [ "Parity", parity_graph_path ], [ "Packages", packages_path ], [ "Audits", audits_path ], [ "Deploys", deploys_path ], [ "Sessions", sessions_path ], [ "Search", search_path ] ].each do |label, path| %>
-        <a href="<%= path %>"<% if current_page?(path) %> class="active" aria-current="page"<% end %>><%= label %></a>
+        <% mark = nav_mark(path) %>
+        <a href="<%= path %>"<% if mark %> class="active"<% end %><% if mark == "page" %> aria-current="page"<% end %>><%= label %></a>
       <% end %>
     </nav>
   </nav>

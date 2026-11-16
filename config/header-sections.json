@@ -1,0 +1,6 @@
+{
+  "//": "The pages each header link's section holds besides the paths under its own (`/packages` holds `/packages/*`). Read by both layouts' navMark helpers.",
+  "/rfcs": ["/rfc/"],
+  "/backlog": ["/story/"],
+  "/sessions": ["/panes/"]
+}

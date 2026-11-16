@@ -7,6 +7,7 @@
   <link rel="icon" href="/favicon.ico" sizes="48x48">
   <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="icon" href="/mark.svg" type="image/svg+xml">
   <link rel="icon" href="/icon.png" type="image/png" sizes="512x512">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <%= csrfMetaTags() %>
@@ -14,12 +15,13 @@
 </head>
 <body>
   <nav class="nav">
-    <a class="nav-brand" href="<%= rootPath() %>"><%= imageTag("/icon.png", { size: 24, alt: "" }) %>trailmap</a>
+    <a class="nav-brand" href="<%= rootPath() %>"><%= imageTag("/mark.svg", { size: 24, alt: "" }) %>trailmap</a>
     <input type="checkbox" id="navToggle" class="nav-toggle">
     <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">
       <% for (const [label, path] of [["RFCs", rfcsPath()], ["Backlog", backlogPath()], ["Dashboard", dashboardPath()], ["Parity", parityGraphPath()], ["Packages", packagesPath()], ["Audits", auditsPath()], ["Deploys", deploysPath()], ["Sessions", sessionsPath()], ["Search", searchPath()]]) { %>
-        <a href="<%= path %>"<% if (isCurrentPage(path)) { %> class="active" aria-current="page"<% } %>><%= label %></a>
+        <% const mark = navMark(path); %>
+        <a href="<%= path %>"<% if (mark) { %> class="active"<% } %><% if (mark === "page") { %> aria-current="page"<% } %>><%= label %></a>
       <% } %>
     </nav>
   </nav>

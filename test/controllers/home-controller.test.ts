@@ -3,6 +3,7 @@ import { ActionController } from "@blazetrails/actionpack";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { HomeController } from "../../app/controllers/home-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
+import { staleAssets } from "../support/stale-assets.ts";
 
 /**
  * The engine's `add_view_paths` initializer prepends `app/views` at boot; a
@@ -27,7 +28,7 @@ describe("HomeController", () => {
     // the link is not asserted `/assets`-prefixed or digested here.
     // scripts/smoke-boot.sh is
     // the ONLY guard on the digested link and its cache header.
-    expect(body).toMatch(/<link rel="stylesheet" href="[^"]*\/stylesheets\/application\.css"/);
+    expect(body, staleAssets).toMatch(/<link rel="stylesheet" href="[^"]*\/stylesheets\/application\.css"/);
   });
 
   it("renders the nav bar, the task-domain links and the footer", async () => {
