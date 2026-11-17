@@ -16,7 +16,7 @@
   </nav>
 </div>
 
-<div class="box">
+<div class="box rfc-list">
   <% if (this.rows.length === 0) { %>
     <div class="empty">Nothing <%= this.filter %>.</div>
   <% } %>
