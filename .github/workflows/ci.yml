@@ -295,12 +295,6 @@ jobs:
           # ingest writes rows; it does not create the schema.
           pnpm db:migrate
           ./bin/tasks ingest
-          # WAL, as the live tasks.db is. Every connection asks for it
-          # (config/database.ts), and switching a rollback-journal file needs
-          # an exclusive lock: three vitest workers opening this file at once
-          # then fail each other with SQLITE_BUSY. Done once, here, it is
-          # already the file's mode when they connect.
-          sqlite3 "$TASKS_DB" 'PRAGMA journal_mode = wal;'
           # index.json from the same rows, for story-json.test.ts below.
           # reindex writes it into this checkout (publishReadModels'
           # mainWorktree()), wherever TASKS_DB is. Checked here, because the
@@ -318,6 +312,11 @@ jobs:
       #
       # story-json.test.ts diffs the serializer against the index.json the
       # CLI published from this database, named by TASKS_INDEX_JSON.
+      # The test environment's own primary, storage/test.sqlite3, prepared
+      # before the workers boot, as the test job prepares it: each worker's
+      # boot maintains the test schema, and three of them creating one fresh
+      # file at once lock each other out. Primary only: this job has no hub.
+      - run: NODE_ENV=test bin/trails db:migrate:primary
       - name: The live-database tests, against the ingested database
         env:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
