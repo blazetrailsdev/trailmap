@@ -25,11 +25,21 @@ class SharedController extends ApplicationController {
   }
 }
 
+/**
+ * `pnpm views` bakes `annotateRenderedViewWithFilenames` into the compiled
+ * template from the env it boots under, so a build under development wraps the
+ * partial in `<!-- BEGIN ... -->` / `<!-- END ... -->` and one under test does
+ * not. The badge is the markup between them, whichever build last ran.
+ */
+function withoutAnnotations(html: string): string {
+  return html.replace(/<!-- (BEGIN|END) [^>]*-->\n?/g, "").trim();
+}
+
 async function renderBadge(status: unknown): Promise<string> {
   badgeStatus = status;
   const tc = await controllerTestCase(SharedController);
   await tc.get("show");
-  return tc.response.body.trim();
+  return withoutAnnotations(tc.response.body);
 }
 
 describe("shared/_status-badge", () => {

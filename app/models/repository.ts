@@ -208,7 +208,14 @@ export class Repository extends Hub {
     }
   }
 
-  /** The rows with a checkout, or none at all when there is no hub to ask. */
+  /**
+   * The rows with a checkout, or none at all when there is no hub to ask.
+   *
+   * `ConnectionNotEstablished` as well as `ConnectionNotDefined`, as Rails'
+   * `checkouts_or_none` rescues both: a hub that is configured but unreachable
+   * still leaves the picker the environment's entries rather than raising, the
+   * same answer `missingCheckout` gives for it.
+   */
   private static async checkoutsOrNone(): Promise<FleetRepo[]> {
     try {
       const rows = await Repository.where({ archived: false })
@@ -225,7 +232,7 @@ export class Repository extends Hub {
       );
       return checkouts.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
-      if (error instanceof ConnectionNotDefined) return [];
+      if (error instanceof ConnectionNotDefined || error instanceof ConnectionNotEstablished) return [];
       throw error;
     }
   }

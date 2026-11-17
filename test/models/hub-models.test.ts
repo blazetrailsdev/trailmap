@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConnectionNotEstablished } from "@blazetrails/activerecord";
 import { setX } from "../support/config-x.ts";
 import { setEnv } from "@blazetrails/ruby-compat";
 import {
@@ -378,6 +379,20 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
       expect(await Repository.spawnChoices()).toEqual([
         { name: "blazetrailsdev/trails", path: "/checkout/trails" },
       ]);
+    });
+
+    it("is the environment's entries when the hub is unreachable", async () => {
+      setX("fleet", "repoPaths", "blazetrailsdev/trails=/checkout/trails");
+      const where = vi.spyOn(Repository, "where").mockImplementation(() => {
+        throw new ConnectionNotEstablished("hub is unreachable");
+      });
+      try {
+        expect(await Repository.spawnChoices()).toEqual([
+          { name: "blazetrailsdev/trails", path: "/checkout/trails" },
+        ]);
+      } finally {
+        where.mockRestore();
+      }
     });
 
     it("lets a row OVERRIDE the environment entry of the same name", async () => {

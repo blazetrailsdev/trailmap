@@ -62,6 +62,15 @@ class HubModelsTest < ActiveSupport::TestCase
     end
   end
 
+  test "spawn_choices is the environment's entries when the hub is unreachable" do
+    with_fleet_repo_paths("blazetrailsdev/trails=/checkout/trails") do
+      unreachable = ->(*) { raise ActiveRecord::ConnectionNotEstablished, "hub is unreachable" }
+      Repository.stub(:where, unreachable) do
+        assert_equal [ [ "blazetrailsdev/trails", "/checkout/trails" ] ], Repository.spawn_choices.map(&:to_a)
+      end
+    end
+  end
+
   test "missing_checkout names the first unarchived repository by name, or nil when the hub has none" do
     assert_nil Repository.missing_checkout
     hub_repo!("archived", archived: true)
