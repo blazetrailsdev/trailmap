@@ -115,7 +115,9 @@
   </div>
   <div class="palette-pane" data-pane-mode="spawn" hidden>
     <select id="repo" class="ctl" aria-label="Repository">
-      <% if (repos.length === 0) { %>
+      <% if (repos.length === 0 && missingCheckout) { %>
+        <option value="" disabled selected>no repository has a checkout path</option>
+      <% } else if (repos.length === 0) { %>
         <option value="" disabled selected>no repos configured (FLEET_REPO_PATHS)</option>
       <% } %>
       <% for (const repo of repos) { %>
@@ -124,6 +126,9 @@
     </select>
     <button class="btn btn-primary" id="spawn" data-action="spawn">Spawn</button>
     <span class="field-status" id="spawnStatus"></span>
+    <% if (repos.length === 0 && missingCheckout) { %>
+      <span class="field-note" id="checkoutNote">Set one in <a href="/<%= missingCheckout %>/settings"><%= missingCheckout %>'s settings</a>.</span>
+    <% } %>
   </div>
   <div class="palette-pane" data-pane-mode="message" hidden>
     <button class="btn btn-primary" id="messageSend" data-action="pane-send" data-pane="" data-key="" data-source="paletteInput" data-clears="paletteInput" data-says="messageNote">Send</button>

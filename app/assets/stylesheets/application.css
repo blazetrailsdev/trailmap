@@ -1007,15 +1007,13 @@ kbd {
 .agent-chip { color: var(--muted); font-size: 11px; }
 .agent-chip.blocked { color: var(--red); background: var(--red-bg); border-radius: 10px; padding: 0 5px; cursor: help; }
 
-/* Status pills. `limit-reached` is purple: blocked, but nothing is broken. */
-.status { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; white-space: nowrap; }
-.status-waiting-for-ci, .status-ready-to-merge, .status-spawned { background: var(--green-bg); color: var(--green); }
-.status-waiting-for-fixes { background: var(--red-bg); color: var(--red); }
-.status-waiting-for-pr, .status-waiting-for-review { background: var(--yellow-bg); color: var(--yellow-ink); }
-.status-waiting-for-answer { background: var(--yellow-bg); color: var(--yellow-ink); font-weight: 600; }
-.status-done { background: var(--surface); color: var(--muted); }
-.status-limit-reached { background: var(--surface); color: var(--purple); border: 1px solid var(--purple); font-weight: 600; }
-.status-refining, .status-sunsetting { background: var(--surface); color: var(--accent); }
+/*
+ * Status pills: GitHub's Label, coloured. One rule per phrase in
+ * `PILL_STATUSES`. `limit-reached` is purple: blocked, but nothing is broken.
+ */
+.status-limit-reached { color: var(--purple); border-color: color-mix(in srgb, var(--purple) 45%, transparent); }
+.status-waiting-for-answer { color: var(--yellow-ink); border-color: color-mix(in srgb, var(--yellow-ink) 45%, transparent); }
+.status-refining, .status-sunsetting { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 
 /*
  * The per-PR CI rollup, right after the title. Distinct from the main-CI pills

@@ -235,6 +235,21 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     }
   });
 
+  it("says the spawn picker is empty because no repository has a checkout path", async () => {
+    await Repository.where({}).updateAll({ checkout_path: null });
+    try {
+      const { body } = await get(DashboardController, "index", {});
+
+      expect(body).toContain("no repository has a checkout path");
+      expect(body).not.toContain("no repos configured (FLEET_REPO_PATHS)");
+      expect(body).toContain('Set one in <a href="/blazetrailsdev/tasks/settings">blazetrailsdev/tasks\'s settings</a>.');
+    } finally {
+      for (const name of ["trails", "tasks"]) {
+        await (await Repository.findByNwo("blazetrailsdev", name))!.update({ checkout_path: `/checkout/${name}` });
+      }
+    }
+  });
+
   it("serves one issue, and 404s a story that is not there", async () => {
     const found = await get(RepoIssuesController, "show", { ...TRAILS, id: "open-in-trails" });
     expect(found.status).toBe(200);
@@ -413,6 +428,23 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
       await patchSettings({ repository_setting: { wiki_enabled: "1" } });
       await RepositoryCollaborator.where({ repository_id: tasks!.id }).deleteAll();
       await Owner.where({ login: ["settings-reader", "settings-admin"] }).deleteAll();
+    }
+  });
+
+  it("sets and clears a repository's checkout path from its settings page", async () => {
+    const tasks = () => Repository.findByNwo("blazetrailsdev", "tasks");
+    try {
+      const { body } = await get(RepoSettingsController, "show", TASKS, OWNER);
+      expect(body).toContain('name="repository[checkout_path]"');
+
+      expect((await patchSettings({ repository: { checkout_path: " /srv/tasks " } })).status).toBe(303);
+      expect((await tasks())!.checkout_path).toBe("/srv/tasks");
+
+      await patchSettings({ repository: { checkout_path: "" } });
+      expect((await tasks())!.checkout_path).toBeNull();
+      await expect(patchSettings({ repository: { checkout_path: "/x" } }, {})).rejects.toThrow(RecordNotFound);
+    } finally {
+      await (await tasks())!.update({ checkout_path: "/checkout/tasks" });
     }
   });
 

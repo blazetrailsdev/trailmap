@@ -63,6 +63,14 @@ class Repository < Hub
     by_name.values.sort_by(&:name)
   end
 
+  # The first hub repository by name, as owner/name, when the picker would be
+  # empty although the hub has repositories: none has a checkout.
+  def self.missing_checkout
+    where(archived: false).includes(:owner).map(&:name_with_owner).min
+  rescue ActiveRecord::ConnectionNotEstablished, ActiveRecord::ConnectionNotDefined
+    nil
+  end
+
   def self.checkouts_or_none
     where(archived: false).where.not(checkout_path: [ nil, "" ]).includes(:owner)
       .map { |r| FleetRepo.new(r.name_with_owner, r.checkout_path) }

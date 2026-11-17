@@ -66,6 +66,30 @@ class PagesTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, 'href="/blazetrailsdev/tasks/wiki"'
   end
 
+  test "sets and clears a repository's checkout path from its settings page" do
+    require_hub!
+    tasks = hub_repo!("tasks", checkout_path: "/checkout/tasks")
+    get "/blazetrailsdev/tasks/settings", headers: OWNER
+    assert_includes response.body, 'name="repository[checkout_path]"'
+    patch "/blazetrailsdev/tasks/settings", params: { repository: { checkout_path: " /srv/tasks " } }, headers: OWNER
+    assert_response :see_other
+    assert_equal "/srv/tasks", tasks.reload.checkout_path
+    patch "/blazetrailsdev/tasks/settings", params: { repository: { checkout_path: "" } }, headers: OWNER
+    assert_nil tasks.reload.checkout_path
+    patch "/blazetrailsdev/tasks/settings", params: { repository: { checkout_path: "/x" } }
+    assert_response :not_found
+  end
+
+  test "says the spawn picker is empty because no repository has a checkout path" do
+    require_hub!
+    hub_repo!("trails")
+    hub_repo!("tasks")
+    get "/dashboard"
+    assert_includes response.body, "no repository has a checkout path"
+    assert_not_includes response.body, "no repos configured (FLEET_REPO_PATHS)"
+    assert_includes response.body, %(Set one in <a href="/blazetrailsdev/tasks/settings">blazetrailsdev/tasks's settings</a>.)
+  end
+
   test "assigns only the six switches, never repository_id or id" do
     require_hub!
     tasks = hub_repo!("tasks")

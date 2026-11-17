@@ -300,6 +300,23 @@ for (const [opener, hint] of [[openSearch, "↵ open"], [`${byId("spawnBtn")}.cl
   await until(`the footer to say "${hint}"`, () => evaluate(`${shownFoot}.includes(${JSON.stringify(hint)}) && !${shownFoot}.includes("|")`));
   await evaluate(`${byId("palette")}.close(); true`);
 }
+// Message mode, for #8's session, whose card is expanded above and whose
+// worker has a pane: the palette's "Message …" action for it.
+await until("#8's card to be expanded", () => evaluate(`!!document.querySelector('#s-pr-o-r-8 .composer')`));
+await evaluate(`${openSearch}; ${byId("paletteInput")}.value = "r#8"; ${byId("paletteInput")}.dispatchEvent(new Event("input")); true`);
+await until("the palette to offer Message", () =>
+  evaluate(`[...document.querySelectorAll(".palette-item")].some((i) => i.textContent.includes("Message"))`),
+);
+await until("the Message action to be selected", async () => {
+  if (await evaluate(`(document.querySelector('.palette-item[aria-selected="true"]')?.textContent ?? "").includes("Message")`)) return true;
+  await evaluate(`${byId("paletteInput")}.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })); true`);
+  return false;
+});
+await evaluate(`${byId("paletteInput")}.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); true`);
+await until(`the footer to say only "↵ send"`, () =>
+  evaluate(`${shownFoot} === "↵ sendesc close"`),
+);
+await evaluate(`${byId("palette")}.close(); true`);
 console.log("ok  palette footer hints follow the mode");
 
 

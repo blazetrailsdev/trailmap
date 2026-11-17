@@ -4,6 +4,7 @@
 class DashboardController < ApplicationController
   def index
     @repos = Repository.spawn_choices
+    @missing_checkout = @repos.empty? ? Repository.missing_checkout : nil
     @socket_path = Fleet::SOCKET_PATH
     @control_path = Fleet::CONTROL_PATH
     @reviewers_path = Fleet::REVIEWERS_PATH

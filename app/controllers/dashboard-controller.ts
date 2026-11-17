@@ -23,9 +23,11 @@ import { Repository } from "../models/repository.ts";
  */
 export class DashboardController extends ApplicationController {
   async index(): Promise<void> {
+    const repos = await Repository.spawnChoices();
     await this.render({
       locals: {
-        repos: await Repository.spawnChoices(),
+        repos,
+        missingCheckout: repos.length === 0 ? await Repository.missingCheckout() : null,
         socketPath: FLEET_SOCKET_PATH,
         controlPath: FLEET_CONTROL_PATH,
         reviewersPath: FLEET_REVIEWERS_PATH,
