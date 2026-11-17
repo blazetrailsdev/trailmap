@@ -12,7 +12,7 @@
  *     tc.response.status; tc.response.body;
  *
  * The routes are the application's own, loaded by the boot in
- * `test/test-helper.ts`, so a test fails if the action it calls
+ * `test/test-helper.ts` (or by the import below, for the gate scripts), so a test fails if the action it calls
  * is not routed — as it would in Rails. A controller that exists only inside
  * a test has no route there, and gets a route set of its own with one
  * catch-all, so nothing a test needs is ever drawn into the application's.
@@ -25,6 +25,8 @@ import { RouteSet } from "@blazetrails/actionpack";
 import { TestCase } from "@blazetrails/actionpack/testing";
 import { Trails } from "@blazetrails/trailties";
 import { getFs } from "@blazetrails/ruby-compat";
+import "../../config/environment.ts";
+import { withoutTransactionalTests } from "./transactional-tests.ts";
 import { STYLESHEET, boxRules, classListsIn, collisionsInList, type BoxRules } from "../../scripts/class-collisions.ts";
 
 let rules: Promise<BoxRules> | undefined;
@@ -58,11 +60,8 @@ export async function controllerTestCase(
   // (test-help's autorun), and it holds the test's fixture transaction. This
   // case is built inside it and never torn down, so a transaction of its own
   // would be left open, and the outer rollback would undo only that level.
-  class ControllerTest extends TestCase {
-    static {
-      this.useTransactionalTests = false;
-    }
-  }
+  class ControllerTest extends TestCase {}
+  withoutTransactionalTests(ControllerTest);
   ControllerTest.tests(controller);
   const tc = new ControllerTest(`${controller.name}Test`);
   await tc.beforeSetup();
@@ -73,6 +72,9 @@ export async function controllerTestCase(
     return answer;
   };
 
+  // Under vitest the helper booted the app already; a gate script booting
+  // through the import above has not drawn its routes yet.
+  await Trails.application!.reloadRoutesUnlessLoaded();
   const application = Trails.application!.routes();
   const routed = [...application.routes()].some(
     (route) => route.defaults.controller === controller.controllerPath(),

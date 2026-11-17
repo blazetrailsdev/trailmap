@@ -334,11 +334,13 @@ jobs:
       #
       # story-json.test.ts diffs the serializer against the index.json the
       # CLI published from this database, named by TASKS_INDEX_JSON.
-      # The test environment's own primary, storage/test.sqlite3, prepared
-      # before the workers boot, as the test job prepares it: each worker's
-      # boot maintains the test schema, and three of them creating one fresh
-      # file at once lock each other out. Primary only: this job has no hub.
-      - run: NODE_ENV=test bin/trails db:migrate:primary
+      # The test environment's own primary, storage/test.sqlite3. The suite's
+      # test/global-setup.ts maintains it once per run as well; migrating here
+      # keeps this job's schema built by the migrations. This job has no
+      # HUB_DATABASE_URL, so the test `hub` takes no part in `trails db`
+      # (config/database.ts) and `db:migrate` reaches the primary alone. With
+      # one database there is no `db:migrate:primary`.
+      - run: NODE_ENV=test bin/trails db:migrate
       - name: The live-database tests, against the ingested database
         env:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
