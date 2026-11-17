@@ -6,6 +6,7 @@
  */
 import { Base } from "@blazetrails/activerecord";
 import { Trails } from "@blazetrails/trailties";
+import "@blazetrails/actionpack/testing";
 import "../../config/environment.ts";
 import { Hub } from "../../app/models/hub.ts";
 
