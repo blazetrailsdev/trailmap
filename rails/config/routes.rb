@@ -48,6 +48,7 @@ Rails.application.routes.draw do
   get "search", to: "searches#show", as: :search
 
   get "rfc/:id", to: "rfc_pages#show", format: false, as: :rfc
+  get "rfc/:id/refinements", to: "rfc_pages#refinements", format: false, as: :rfc_refinements
   post "rfc/:id/status", to: "rfc_pages#move", format: false, as: :rfc_status
   post "rfc/:id/ready-drafts", to: "rfc_pages#ready_drafts", format: false, as: :rfc_ready_drafts
   get "story/:id", to: "story_pages#show", format: false, as: :story
@@ -85,6 +86,7 @@ Rails.application.routes.draw do
     get "index", to: "read_models#index"
     get "events", to: "read_models#events"
 
+    post "rfc-refines", to: "rfc_refines#create"
     post "stories/claim", to: "mutations#claim"
     post "stories/release", to: "mutations#release"
     post "stories/in-progress", to: "mutations#in_progress"

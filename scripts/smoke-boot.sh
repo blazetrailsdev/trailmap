@@ -30,7 +30,8 @@ fi
 
 cd "$work"
 pnpm install --frozen-lockfile
-pnpm exec trails-tsc-views build --views app/views
+# The views build boots the app, and sqlite3 refuses to start with no file.
+TASKS_DATABASE="${TASKS_DATABASE:-$work/views-build.db}" pnpm exec trails-tsc-views build --views app/views
 
 # A DATABASE, because the deployment has one and a boot without one is not the
 # boot being smoke-tested. Until the boot began
@@ -103,7 +104,7 @@ grep -qi "<html" "$work/rfcs.html"
 # Every asset the page asks for, fetched. A page whose stylesheet 404s still
 # answers 200 with a body full of HTML, which is how the unstyled site passed.
 echo "smoke-boot: the assets /rfcs links"
-assets="$({ grep -oE '(href|src)="/assets/[^"]+"' "$work/rfcs.html" || true; } | cut -d'"' -f2 | sort -u)"
+assets="$({ grep -oE '(href|src)="/vite/assets/[^"]+"' "$work/rfcs.html" || true; } | cut -d'"' -f2 | sort -u)"
 if [ -z "$assets" ]; then
   echo "smoke-boot: /rfcs links no asset, so this check is testing nothing" >&2
   exit 1
@@ -141,7 +142,7 @@ done
 echo "smoke-boot: every built asset arrives intact"
 checked=0
 while IFS= read -r file; do
-  asset="/assets/${file#public/assets/}"
+  asset="/vite/${file#public/vite/}"
   curl -fsS -o "$work/served-asset" "http://127.0.0.1:$port$asset"
   if ! cmp -s "$file" "$work/served-asset"; then
     echo "smoke-boot: $asset was not served as built:" >&2
@@ -150,12 +151,12 @@ while IFS= read -r file; do
     exit 1
   fi
   checked=$((checked + 1))
-done < <(find public/assets -type f ! -name '.gitkeep' ! -path '*/.vite/*' | sort)
+done < <(find public/vite -type f ! -name '.gitkeep' ! -path '*/.vite/*' | sort)
 if [ "$checked" -eq 0 ]; then
   echo "smoke-boot: no built asset to check, so this check is testing nothing" >&2
   exit 1
 fi
-if ! LC_ALL=C grep -rq $'[\x80-\xff]' public/assets; then
+if ! LC_ALL=C grep -rq $'[\x80-\xff]' public/vite; then
   echo "smoke-boot: no built asset holds a non-ASCII byte, so a server that" >&2
   echo "  corrupts them would pass the comparison above" >&2
   exit 1

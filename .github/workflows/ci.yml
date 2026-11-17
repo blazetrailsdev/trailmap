@@ -12,6 +12,11 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # trails-tsc boots the initializers, and the sqlite3 adapter raises
+    # "No database file specified" without one, as Rails' does. A scratch
+    # file is enough: nothing is read from it.
+    env:
+      TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-typecheck.db
     steps:
       - uses: actions/checkout@v4
       # A version is required here; package.json deliberately carries no
@@ -69,8 +74,8 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec trails-tsc-views build --views app/views
-      - run: pnpm exec trails-tsc-views build --views test/fixtures/views --in-place
+      - run: NODE_ENV=test pnpm exec trails-tsc-views build --views app/views
+      - run: NODE_ENV=test pnpm exec trails-tsc-views build --views test/fixtures/views --in-place
       # The hub schema, through the real entry point. `test/support/hub-schema.ts`
       # connects and truncates but does not migrate — see the note there — and
       # fails with this command in its message when the schema is missing.
@@ -230,6 +235,22 @@ jobs:
   page-snapshot:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Postgres: the RFC page counts its refine reports, which live in the hub.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trailmap_hub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      HUB_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
     steps:
       - uses: actions/checkout@v4
       # A version is required here; package.json deliberately carries no
@@ -242,7 +263,13 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec trails-tsc-views build --views app/views
+      - run: NODE_ENV=test pnpm exec trails-tsc-views build --views app/views
+      # No `--database hub` — see the note on the test job.
+      - name: Prepare the hub schema
+        env:
+          HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+          NODE_ENV: test
+        run: pnpm db:migrate
       - name: The show pages still say what ringo said
         run: NODE_ENV=test pnpm gate:snapshot
       # Proves the gate still detects a difference, rather than passing because
@@ -278,7 +305,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec trails-tsc-views build --views app/views
+      - run: NODE_ENV=test pnpm exec trails-tsc-views build --views app/views
       - run: pnpm install --frozen-lockfile
         working-directory: tasks
       - name: Ingest the content tree into a database both sides can read
@@ -307,6 +334,11 @@ jobs:
       #
       # story-json.test.ts diffs the serializer against the index.json the
       # CLI published from this database, named by TASKS_INDEX_JSON.
+      # The test environment's own primary, storage/test.sqlite3, prepared
+      # before the workers boot, as the test job prepares it: each worker's
+      # boot maintains the test schema, and three of them creating one fresh
+      # file at once lock each other out. Primary only: this job has no hub.
+      - run: NODE_ENV=test bin/trails db:migrate:primary
       - name: The live-database tests, against the ingested database
         env:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
@@ -402,7 +434,7 @@ jobs:
           go-version-file: vendor/ringo/go/.go-version
           cache: false
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec trails-tsc-views build --views app/views
+      - run: NODE_ENV=test pnpm exec trails-tsc-views build --views app/views
       # No `--database hub` — see the note on the test job.
       - name: Prepare the hub schema
         env:

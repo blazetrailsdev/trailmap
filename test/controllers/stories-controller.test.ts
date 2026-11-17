@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { ActionController } from "@blazetrails/actionpack";
+import type { TestCase } from "@blazetrails/actionpack/testing";
 import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
@@ -12,7 +12,7 @@ import { controllerTestCase } from "../support/controller-test-case.ts";
 /** Every request the API is meant to answer arrives on loopback. */
 const LOOPBACK = { Host: "127.0.0.1" };
 
-function testCase(headers: Record<string, string> = LOOPBACK): Promise<ActionController.TestCase> {
+function testCase(headers: Record<string, string> = LOOPBACK): Promise<TestCase> {
   return controllerTestCase(StoriesController, headers);
 }
 

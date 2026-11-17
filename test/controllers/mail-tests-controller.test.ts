@@ -80,7 +80,7 @@ describe("MailTestsController", () => {
   it("enqueues FailingProbeJob and names where its failure is mailed", async () => {
     writable["EMAIL"] = "ops@example.com";
     const was = FailingProbeJob.queueAdapter;
-    FailingProbeJob.setQueueAdapter("test");
+    FailingProbeJob.queueAdapter = "test";
     const adapter = FailingProbeJob.queueAdapter as { enqueuedJobs: Array<Record<string, unknown>> };
     try {
       const { status, body } = await request("post", "enqueue");
@@ -88,7 +88,7 @@ describe("MailTestsController", () => {
       expect(body).toMatch(/Enqueued FailingProbeJob [0-9a-f-]+\. When the worker runs it, its failure is mailed to ops@example\.com\./);
       expect(adapter.enqueuedJobs).toHaveLength(1);
     } finally {
-      FailingProbeJob.setQueueAdapter(was);
+      FailingProbeJob.queueAdapter = was;
     }
   });
 });

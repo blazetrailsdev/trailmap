@@ -61,4 +61,4 @@
   <% } %>
 </div>
 
-<script src="<%= javascriptPath("rfc-sort") %>" type="module"></script>
+<script src="<%= await viteAssetPath("rfc-sort.js") %>" type="module"></script>

@@ -3,7 +3,6 @@ import { setEnv } from "@blazetrails/ruby-compat";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { PanesController } from "../../app/controllers/panes-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
-import { staleAssets } from "../support/stale-assets.ts";
 
 /**
  * `/panes/<n>`, the live view of one tmux pane.
@@ -55,7 +54,7 @@ describe("PanesController", () => {
     expect(body).toContain('<pre id="paneScreen" class="terminal"');
     expect(body).toContain("last ~2000 rows");
     // Logical name only; scripts/smoke-boot.sh guards the digested link.
-    expect(body, staleAssets).toMatch(/<script src="[^"]*\/javascripts\/pane\.js" type="module"><\/script>/);
+    expect(body).toMatch(/<script src="\/vite-test\/assets\/pane-[\w-]+\.js" type="module"><\/script>/);
   });
 
   it("says so on the page when no ringo is configured", async () => {

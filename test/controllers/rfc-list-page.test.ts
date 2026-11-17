@@ -82,7 +82,7 @@ describe("RfcPagesController#index", () => {
     // The whole point of the port: ringo's shell fetches its rows.
     expect(body).not.toContain("fetch(");
     // The rows are in the HTML; the only script is the sort menu's.
-    expect(body.match(/<script[^>]*>/g)).toEqual(['<script src="/assets/javascripts/rfc-sort.js" type="module">']);
+    expect(body.match(/<script[^>]*>/g)).toEqual([expect.stringMatching(/^<script src="\/vite-test\/assets\/rfc-sort-[\w-]+\.js" type="module">$/)]);
   });
 
   it("shows the active RFCs by default, and ranks them the way ringo does", async () => {

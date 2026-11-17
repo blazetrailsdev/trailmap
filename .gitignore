@@ -20,6 +20,9 @@
 !/storage/.gitkeep
 
 /public/assets/
+/public/vite/
+/public/vite-dev/
+/public/vite-test/
 
 *.tsbuildinfo
 

@@ -21,7 +21,8 @@
  * is where the framework's own tests put them: `headers` here is the
  * convenience of writing `Host` instead of `HTTP_HOST`.
  */
-import { ActionController, RouteSet } from "@blazetrails/actionpack";
+import { RouteSet } from "@blazetrails/actionpack";
+import { TestCase } from "@blazetrails/actionpack/testing";
 import { Trails } from "@blazetrails/trailties";
 import "./boot.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
@@ -36,7 +37,7 @@ let rules: Promise<BoxRules> | undefined;
  * page family are checked by the tests that already build its data — the
  * repo tabs and owner page included, under `HUB_TEST_DATABASE_URL`.
  */
-async function assertNoClassCollisions(tc: ActionController.TestCase): Promise<void> {
+async function assertNoClassCollisions(tc: TestCase): Promise<void> {
   const body = String(tc.response.body ?? "");
   if (!body.includes("<html")) return;
   rules ??= getFs().readFile(STYLESHEET, "utf8").then(boxRules);
@@ -45,7 +46,7 @@ async function assertNoClassCollisions(tc: ActionController.TestCase): Promise<v
   if (found.length) throw new Error(`class collision in ${tc.request.path}: ${[...new Set(found)].join(", ")}`);
 }
 
-type Controller = Parameters<typeof ActionController.TestCase.tests>[0] & {
+type Controller = Parameters<typeof TestCase.tests>[0] & {
   name: string;
   controllerPath(): string;
   actionMethods(): ReadonlySet<string>;
@@ -54,8 +55,8 @@ type Controller = Parameters<typeof ActionController.TestCase.tests>[0] & {
 export async function controllerTestCase(
   controller: Controller,
   headers: Record<string, string> = {},
-): Promise<ActionController.TestCase> {
-  class ControllerTest extends ActionController.TestCase {}
+): Promise<TestCase> {
+  class ControllerTest extends TestCase {}
   ControllerTest.tests(controller);
   const tc = new ControllerTest(`${controller.name}Test`);
   await tc.beforeSetup();

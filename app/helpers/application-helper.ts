@@ -1,9 +1,10 @@
 import { getFs } from "@blazetrails/ruby-compat";
+import { Trails } from "@blazetrails/trailties";
 
-// Anchored to this file, not the working directory, as Rails' copy is to
-// `Rails.root`.
+// Anchored to the application root, as Rails' copy is to `Rails.root`, not
+// to this file's URL: under a DOM test environment that URL is not a file.
 const headerSections: Record<string, unknown> = JSON.parse(
-  await getFs().readFile(decodeURIComponent(new URL("../../config/header-sections.json", import.meta.url).pathname), "utf8"),
+  await getFs().readFile(`${Trails.root()}/config/header-sections.json`, "utf8"),
 );
 
 const unescape = (value: string): string => {

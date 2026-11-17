@@ -14,12 +14,13 @@ ringo="${E2E_RINGO_PORT:-8141}" app="${E2E_APP_PORT:-8142}" cdp="${E2E_CDP_PORT:
 chrome="${CHROME_BIN:-$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)}"
 [ -n "$chrome" ] || { echo "dashboard-e2e: no Chrome on PATH (set CHROME_BIN)" >&2; exit 1; }
 
-pnpm exec trails-tsc-views build --views app/views
-# public/assets is what this run builds, and a build left behind makes the
+# The views build boots the app, and sqlite3 refuses to start with no file.
+TASKS_DATABASE="${TASKS_DATABASE:-$work/views-build.db}" pnpm exec trails-tsc-views build --views app/views
+# public/vite is what this run builds, and a build left behind makes the
 # layout link digested names, which the controller tests do not expect. So the
 # trap removes it again, unless it was already there before the run.
 hadAssets=0
-[ -e public/assets ] && hadAssets=1
+[ -e public/vite ] && hadAssets=1
 ./scripts/build-assets.sh
 
 # Each in a session of its own, so the trap can take the whole process group:
@@ -39,7 +40,7 @@ cleanup() {
   for pid in "${pids[@]}"; do kill -KILL -- "-$pid" 2>/dev/null || true; done
   wait 2>/dev/null || true
   rm -rf "$work" || true
-  [ "$hadAssets" = 1 ] || rm -rf public/assets || true
+  [ "$hadAssets" = 1 ] || rm -rf public/vite || true
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM

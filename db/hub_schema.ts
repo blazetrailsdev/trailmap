@@ -13,7 +13,7 @@
 import { Schema } from "@blazetrails/activerecord";
 import type { PostgreSQLAdapter } from "@blazetrails/activerecord/connection-adapters/postgresql-adapter.js";
 
-await Schema.get(8).define<PostgreSQLAdapter>({ version: 2026_10_11_000006 }, async (ctx) => {
+await Schema.get(8).define<PostgreSQLAdapter>({ version: 2026_11_17_000007 }, async (ctx) => {
   // These are extensions that must be enabled in order to support this database
   await ctx.enableExtension("pg_catalog.plpgsql");
 
@@ -80,6 +80,15 @@ await Schema.get(8).define<PostgreSQLAdapter>({ version: 2026_10_11_000006 }, as
     t.datetime("created_at", { null: false });
     t.datetime("updated_at", { null: false });
     t.index(["repository_id"], { name: "index_repository_settings_on_repository_id", unique: true });
+  });
+
+  await ctx.createTable("rfc_refines", { force: "cascade" }, (t) => {
+    t.string("rfc_id", { null: false });
+    t.string("outcome", { null: false });
+    t.text("summary", { default: "", null: false });
+    t.datetime("created_at", { null: false });
+    t.datetime("updated_at", { null: false });
+    t.index(["rfc_id", "created_at"], { name: "index_rfc_refines_on_rfc_id_and_created_at" });
   });
 
   await ctx.createTable("settings", { primaryKey: "key", id: "string", force: "cascade" }, (t) => {

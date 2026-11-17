@@ -140,4 +140,4 @@
   <div class="palette-foot" data-foot-mode="message" hidden><span><kbd>&#8629;</kbd> send</span><span><kbd>esc</kbd> close</span></div>
 </dialog>
 
-<script src="<%= javascriptPath("dashboard") %>" type="module"></script>
+<script src="<%= await viteAssetPath("dashboard.js") %>" type="module"></script>

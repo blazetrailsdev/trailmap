@@ -16,8 +16,46 @@
     <p class="flash flash-error"><%= this.refusal %></p>
   <% } %>
 
+  <% const rfcTabs = [
+    { key: "stories", label: "Stories", href: rfcPath(rfc.id), count: counts.total as number | null },
+    { key: "refinements", label: "Refinements", href: rfcRefinementsPath(rfc.id), count: this.refineCount },
+  ]; %>
+  <div class="tabs">
+    <% for (const tab of rfcTabs) { %>
+      <a class="tab<%= tab.key === this.tab ? " active" : "" %>" href="<%= tab.href %>"<% if (tab.key === this.tab) { %> aria-current="page"<% } %>><%= tab.label %><% if (tab.count !== null) { %> <span class="Counter"><%= tab.count %></span><% } %></a>
+    <% } %>
+  </div>
+
   <div class="layout">
     <div>
+      <% if (this.tab === "refinements") { %>
+        <% const [latest, ...earlier] = this.refines; %>
+        <% if (latest === undefined) { %>
+          <div class="box"><div class="empty">No refine report yet. Run “Refine stories” to have an agent groom this RFC’s stories.</div></div>
+        <% } else { %>
+          <div class="box refine-latest">
+            <div class="box-header">
+              <span class="Label refine-<%= latest.outcome %>"><%= latest.outcome %></span>
+              <time class="muted" datetime="<%= latest.at %>"><%= latest.at.slice(0, 16).replace("T", " ") %> UTC</time>
+            </div>
+            <article class="markdown"><% if (latest.html) { %><%= latest.html %><% } else { %><p class="muted">The report has no summary.</p><% } %></article>
+          </div>
+          <% if (earlier.length > 0) { %>
+            <h2 class="section-title">Earlier reports</h2>
+            <div class="box">
+              <% for (const refine of earlier) { %>
+                <div class="item-row"><details class="refine-earlier">
+                  <summary>
+                    <span class="Label refine-<%= refine.outcome %>"><%= refine.outcome %></span>
+                    <time class="muted" datetime="<%= refine.at %>"><%= refine.at.slice(0, 16).replace("T", " ") %> UTC</time>
+                  </summary>
+                  <article class="markdown"><% if (refine.html) { %><%= refine.html %><% } else { %><p class="muted">The report has no summary.</p><% } %></article>
+                </details></div>
+              <% } %>
+            </div>
+          <% } %>
+        <% } %>
+      <% } else { %>
       <% if (counts.total > 0) { %>
         <div class="progress-line">
           <span class="pct"><%= counts.donePct %>% complete</span>
@@ -49,6 +87,7 @@
 
       <h2 class="section-title">Document</h2>
       <%= render({ partial: "shared/document", locals: { body: this.html, error: this.documentError } }) %>
+      <% } %>
     </div>
 
     <div class="side">
@@ -92,4 +131,4 @@
     </div>
   </div>
 <% } %>
-<script src="<%= javascriptPath("rfc-actions") %>" type="module"></script>
+<script src="<%= await viteAssetPath("rfc-actions.js") %>" type="module"></script>

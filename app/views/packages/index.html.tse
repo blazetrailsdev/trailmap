@@ -36,7 +36,7 @@
               <% if (ratio === null) { %>
                 <span class="muted">no data</span>
               <% } else { %>
-                <span><strong><%= ratio.percent %>%</strong> <span class="muted"><%= ratio.matched.toLocaleString("en-US") %> / <%= ratio.total.toLocaleString("en-US") %></span></span>
+                <span><strong><%= String(ratio.percent).replace(/\.0$/, "") %>%</strong> <span class="muted"><%= ratio.matched.toLocaleString("en-US") %> / <%= ratio.total.toLocaleString("en-US") %></span></span>
               <% } %>
             </div>
             <div class="pkg-track"><% if (ratio !== null) { %><span class="pkg-fill <%= ratio.percent >= 95 ? "good" : ratio.percent >= 75 ? "fair" : "poor" %>" style="width:<%= Math.min(100, Math.max(0, ratio.percent)) %>%"></span><% } %></div>

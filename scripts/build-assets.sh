@@ -1,20 +1,18 @@
 #!/usr/bin/env bash
 # Build the stylesheets and scripts production serves: `vite build`, the
-# precompile `trails new` generates (vite.config.ts has the inputs).
+# precompile.
 #
-# Production mounts no Vite: the framework mounts it only in development, and
-# NODE_ENV=production is honoured. So the assets have to exist under
-# public/assets, where the static middleware looks, and under digest-stamped
-# names only: production serves them with a year-long cache header
-# (config/environments/production.ts), so a fixed name would hide a deploy's
-# change behind a cached old file. `vite build` empties public/assets first,
-# writes the stamped files and `.vite/manifest.json`, and trails'
-# `computeAssetPath` reads that manifest at boot, which is how
-# `stylesheetLinkTag` and `javascriptPath` link the stamped names.
+# vite_rails' precompile: vite-plugin-ruby reads config/vite.json and writes
+# digest-stamped files and `.vite/manifest.json` under public/vite, where the
+# static middleware serves them with a year-long cache header
+# (config/environments/production.ts). vite-trails' tag helpers read that
+# manifest, which is how `viteStylesheetTag` and `viteAssetPath` link the
+# stamped names. vite-plugin-ruby picks the config/vite.json section from
+# RAILS_ENV, then RACK_ENV; both are set so an exported RAILS_ENV cannot win.
 #
 # One script, run by the Dockerfile and by scripts/smoke-boot.sh, so the boot CI
 # tests is laid out exactly as the image is.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-pnpm exec vite build --logLevel warn
+RAILS_ENV=production RACK_ENV=production pnpm exec vite build --logLevel warn

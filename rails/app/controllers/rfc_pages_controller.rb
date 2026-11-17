@@ -10,6 +10,7 @@ class RfcPagesController < ApplicationController
   Row = Struct.new(:id, :title, :owner, :priority, :superseded_by, :clusters, :counts, :bar, :bar_length,
                    :stalled, :ticks, :story_total, :open_days, keyword_init: true)
   StoryRow = Struct.new(:id, :title, :status, :est_loc, :cluster, :priority, keyword_init: true)
+  RefineRow = Struct.new(:at, :outcome, :html, keyword_init: true)
 
   def index
     rfcs = Rfc.all.to_a
@@ -67,6 +68,13 @@ class RfcPagesController < ApplicationController
     render_show(params[:id].to_s, nil, :ok)
   end
 
+  # `/rfc/<id>/refinements` — ringo's Refinements tab: the newest refine
+  # report, then the earlier ones, newest first. An unknown id is a 404.
+  def refinements
+    @tab = "refinements"
+    render_show(params[:id].to_s, nil, :ok)
+  end
+
   # `POST /rfc/<id>/status` — ringo's `HandleRFCStatus`: only a move
   # `RfcStatus.moves` offers, then the CLI's rules (`RfcStatus.set`).
   def move
@@ -96,6 +104,9 @@ class RfcPagesController < ApplicationController
   end
 
   def render_show(id, refusal, status)
+    @tab ||= "stories"
+    @refines = []
+    @refine_count = nil
     @id = id
     @refusal = refusal
     @moves = []
@@ -127,6 +138,15 @@ class RfcPagesController < ApplicationController
     end
     # A sunset winds down an active RFC; the others are iceboxed or ended.
     @can_sunset = @rfc.status == "active"
+    if @tab == "refinements"
+      @refines = RfcRefine.for_rfc(@id).map do |r|
+        RefineRow.new(at: r.created_at, outcome: r.outcome,
+                      html: r.summary.empty? ? nil : helpers.render_markdown(r.summary))
+      end
+      @refine_count = @refines.size
+    else
+      @refine_count = RfcRefine.where(rfc_id: @id).count
+    end
     render :show, status: status
   end
 end

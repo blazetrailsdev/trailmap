@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
@@ -8,6 +8,12 @@ import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";
+import {
+  connectHubTestDatabase,
+  HUB_SETUP_TIMEOUT,
+  hasHubTestDatabase,
+  releaseHubTestDatabase,
+} from "../support/hub-schema.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
 /**
@@ -80,8 +86,14 @@ beforeAll(async () => {
   await StoryDep.create({ story_id: "held", depends_on_id: "iced" });
 });
 
+// The RFC page counts its refine reports, which live in the hub.
+beforeAll(async () => {
+  if (hasHubTestDatabase()) await connectHubTestDatabase();
+}, HUB_SETUP_TIMEOUT);
+afterAll(releaseHubTestDatabase);
+
 describe("one status vocabulary", () => {
-  it("shows the RFC page's row as the draft the queue sees", async () => {
+  it.skipIf(!hasHubTestDatabase())("shows the RFC page's row as the draft the queue sees", async () => {
     const body = await get(RfcPagesController, "show", { id: "0900-idea" });
 
     // Two stories, two badges — the RFC's own status is a state pill, not a badge.
@@ -111,7 +123,7 @@ describe("one status vocabulary", () => {
     expect(badges(body)).not.toContain("ready");
   });
 
-  it("shows a ready story held on an unfinished dep as blocked, everywhere", async () => {
+  it.skipIf(!hasHubTestDatabase())("shows a ready story held on an unfinished dep as blocked, everywhere", async () => {
     expect(pill(await get(StoryPagesController, "show", { id: "held" }))).toBe("blocked");
     expect(badges(await get(RfcPagesController, "show", { id: "0140-waits" }))).toEqual(["blocked"]);
     expect([...bar(await get(RfcPagesController, "index", { status: "active" }), "0140-waits")]).toEqual([
@@ -127,7 +139,7 @@ describe("one status vocabulary", () => {
     expect([...bar(draft, "0900-idea")]).toEqual([["draft", "100%"]]);
   });
 
-  it("leaves the same authored status alone under an active RFC", async () => {
+  it.skipIf(!hasHubTestDatabase())("leaves the same authored status alone under an active RFC", async () => {
     // The control. Without it every assertion above passes for an
     // implementation that simply prints `draft` everywhere.
     const active = await get(RfcPagesController, "index", { status: "active" });
