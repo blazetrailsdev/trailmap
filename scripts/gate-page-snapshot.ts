@@ -68,6 +68,7 @@ import {
   type StoryRecord,
 } from "./page-snapshot.ts";
 import { controllerTestCase } from "../test/support/controller-test-case.ts";
+import { connectHubTestDatabase, releaseHubTestDatabase } from "../test/support/hub-schema.ts";
 
 /** How many mismatching ids to print before saying how many more there are. */
 const REPORTED = 20;
@@ -86,6 +87,9 @@ async function loadRecordedRows(rows: readonly RowRecord[]): Promise<void> {
   const path = getPath();
   await Base.establishConnection({ adapter: "sqlite3", database: ":memory:", pool: 1 });
   await new MigrationContext([path.resolve(Dir.pwd(), "db", "migrate")]).migrate();
+  // The RFC page counts its refine reports, which live in the hub; an empty
+  // one renders the count every snapshot was recorded with.
+  await connectHubTestDatabase();
   for (const { table, row } of rows) {
     const columns = Object.keys(row);
     (await Base.leaseConnection()).execQuery(
@@ -179,6 +183,7 @@ async function main(args: readonly string[]): Promise<number> {
   console.log(`ok  story (${stories.length} pages, ${exempt} exempt)`);
 
   (await Base.leaseConnection()).disconnectBang();
+  await releaseHubTestDatabase();
 
   const report = `${Dir.pwd()}/${REPORT_FILE}`;
   await fs.mkdir!(report.slice(0, report.lastIndexOf("/")), { recursive: true });

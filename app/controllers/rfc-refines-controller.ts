@@ -11,7 +11,8 @@ import { RfcRefine } from "../models/rfc-refine.ts";
  * tab reads.
  *
  * Loopback only, like the rest of the API. An unknown RFC is a 404, a kind
- * other than `rfc-refine` a 400, and an outcome outside the three a 422.
+ * other than `rfc-refine` a 400, and an outcome outside the three, or a
+ * summary that is not a string, a 422.
  */
 export class RfcRefinesController extends ApiController {
   async create(): Promise<void> {
@@ -25,11 +26,12 @@ export class RfcRefinesController extends ApiController {
       await this.render({ json: { error: `no RFC "${rfcId}"` }, status: 404 });
       return;
     }
-    const refine = new RfcRefine({
-      rfc_id: rfcId,
-      outcome: presentParam(this.params, "outcome") ?? "",
-      summary: String(this.params.get("summary") ?? ""),
-    });
+    const summary = this.params.get("summary") ?? "";
+    if (typeof summary !== "string") {
+      await this.render({ json: { error: "summary must be a string" }, status: 422 });
+      return;
+    }
+    const refine = new RfcRefine({ rfc_id: rfcId, outcome: presentParam(this.params, "outcome") ?? "", summary });
     if (!(await refine.save())) {
       await this.render({ json: { error: refine.errors.fullMessages.join(", ") }, status: 422 });
       return;

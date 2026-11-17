@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { ActionController } from "@blazetrails/actionpack";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
@@ -8,6 +8,12 @@ import { Story } from "../../app/models/story.ts";
 import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
+import {
+  connectHubTestDatabase,
+  HUB_SETUP_TIMEOUT,
+  hasHubTestDatabase,
+  releaseHubTestDatabase,
+} from "../support/hub-schema.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
 async function show(id: string): Promise<{ status: number; body: string }> {
@@ -69,7 +75,13 @@ beforeAll(async () => {
   await Story.create({ id: "held", rfc_id: "0003-parked", status: "blocked", priority: 1 });
 });
 
-describe("RfcPagesController", () => {
+// The RFC page counts its refine reports, which live in the hub.
+beforeAll(async () => {
+  if (hasHubTestDatabase()) await connectHubTestDatabase();
+}, HUB_SETUP_TIMEOUT);
+afterAll(releaseHubTestDatabase);
+
+describe.skipIf(!hasHubTestDatabase())("RfcPagesController", () => {
   it("renders the RFC's title and status through the app layout", async () => {
     const { status, body } = await show("0136-trailmap");
 

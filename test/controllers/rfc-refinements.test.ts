@@ -84,11 +84,13 @@ describe.skipIf(!hasHubTestDatabase())("RfcRefinements", () => {
     expect(body).not.toContain("Earlier reports");
   });
 
-  it("links the Refinements tab from the Stories tab", async () => {
+  it("counts the reports on the Stories tab too", async () => {
+    await RfcRefine.create({ rfc_id: "0136-trailmap", outcome: "changed", summary: "s" });
+
     const { body } = await page("show", "0136-trailmap");
 
     expect(body).toMatch(/class="tab active" href="\/rfc\/0136-trailmap" aria-current="page">Stories <span class="Counter">0<\/span>/);
-    expect(body).toContain('<a class="tab" href="/rfc/0136-trailmap/refinements">Refinements</a>');
+    expect(body).toContain('<a class="tab" href="/rfc/0136-trailmap/refinements">Refinements <span class="Counter">1</span></a>');
   });
 
   it("answers 404 for an unknown id on the Refinements tab", async () => {
@@ -113,10 +115,12 @@ describe.skipIf(!hasHubTestDatabase())("RfcRefinements", () => {
     expect(stored.map((r) => [r.outcome, r.summary])).toEqual([["changed", "# Report"]]);
   });
 
-  it("refuses a report for an unknown RFC, another kind, or an unknown outcome", async () => {
+  it("refuses a report for an unknown RFC, another kind, an unknown outcome, or a summary that is not a string", async () => {
     expect((await report({ kind: "rfc-refine", id: "9999-nope", outcome: "changed" })).status).toBe(404);
     expect((await report({ kind: "story", id: "0136-trailmap", outcome: "changed" })).status).toBe(400);
     expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "maybe" })).status).toBe(422);
+    expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", summary: { a: 1 } })).status).toBe(422);
+    expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", summary: ["a"] })).status).toBe(422);
     expect(await RfcRefine.count()).toBe(0);
   });
 });

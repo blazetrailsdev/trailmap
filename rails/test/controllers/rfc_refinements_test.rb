@@ -41,11 +41,13 @@ class RfcRefinementsTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "Earlier reports"
   end
 
-  test "links the Refinements tab from the Stories tab" do
+  test "counts the reports on the Stories tab too" do
+    RfcRefine.create!(rfc_id: "0136-trailmap", outcome: "changed", summary: "s")
+
     get "/rfc/0136-trailmap"
 
     assert_match %r{class="tab active" href="/rfc/0136-trailmap" aria-current="page">Stories <span class="Counter">0</span>}, response.body
-    assert_includes response.body, '<a class="tab" href="/rfc/0136-trailmap/refinements">Refinements</a>'
+    assert_includes response.body, '<a class="tab" href="/rfc/0136-trailmap/refinements">Refinements <span class="Counter">1</span></a>'
   end
 
   test "answers 404 for an unknown id on the Refinements tab" do
@@ -63,12 +65,16 @@ class RfcRefinementsTest < ActionDispatch::IntegrationTest
     assert_equal [ [ "changed", "# Report" ] ], RfcRefine.for_rfc("0136-trailmap").pluck(:outcome, :summary)
   end
 
-  test "refuses a report for an unknown RFC, another kind, or an unknown outcome" do
+  test "refuses a report for an unknown RFC, another kind, an unknown outcome, or a summary that is not a string" do
     report(kind: "rfc-refine", id: "9999-nope", outcome: "changed")
     assert_response :not_found
     report(kind: "story", id: "0136-trailmap", outcome: "changed")
     assert_response :bad_request
     report(kind: "rfc-refine", id: "0136-trailmap", outcome: "maybe")
+    assert_response :unprocessable_entity
+    report(kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", summary: { a: 1 })
+    assert_response :unprocessable_entity
+    report(kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", summary: [ "a" ])
     assert_response :unprocessable_entity
     assert_equal 0, RfcRefine.count
   end

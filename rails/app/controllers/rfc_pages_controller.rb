@@ -144,6 +144,8 @@ class RfcPagesController < ApplicationController
                       html: r.summary.empty? ? nil : helpers.render_markdown(r.summary))
       end
       @refine_count = @refines.size
+    else
+      @refine_count = RfcRefine.where(rfc_id: @id).count
     end
     render :show, status: status
   end

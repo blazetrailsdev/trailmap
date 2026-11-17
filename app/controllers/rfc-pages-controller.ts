@@ -273,5 +273,8 @@ export class RfcPagesController extends ApplicationController {
     );
     // A sunset winds down an active RFC; the others are iceboxed or ended.
     this.canSunset = rfc.status === "active";
+    // The tab bar counts the reports on both tabs, as ringo's does; the
+    // Refinements tab sets it from the rows it loads.
+    if (this.tab === "stories") this.refineCount = await RfcRefine.where({ rfc_id: id }).count();
   }
 }

@@ -104,8 +104,10 @@ non-action helper (trails#9833). `before_action :require_loopback` is
   correspond line for line.
 - **`:owner` in routes.** trails writes `this.get("/:owner")` because a bare
   `":owner"` is read as a Symbol (trails#8875). Rails writes `get ":owner"`.
-- **Assets.** trails serves through Vite: source paths in development, a
-  manifest in production. Rails uses Propshaft, which fingerprints in every
+- **Assets.** trails serves through `@blazetrails/vite-trails`, the port of
+  `vite_rails`: `config/vite.json`, `viteStylesheetTag`/`viteAssetPath`, and
+  stamped files under `public/vite` (`public/vite-dev` and `public/vite-test`
+  built on demand). Rails uses Propshaft, which fingerprints in every
   environment, plus an import map so the shared ES modules' relative imports
   (`./fleet-format.js`) resolve to fingerprinted files. The JS, CSS and
   vendored ringo files are the same bytes: `app/javascript/*.js`,

@@ -1,4 +1,10 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  connectHubTestDatabase,
+  HUB_SETUP_TIMEOUT,
+  hasHubTestDatabase,
+  releaseHubTestDatabase,
+} from "../support/hub-schema.ts";
 import { getFs } from "@blazetrails/ruby-compat";
 import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
@@ -27,7 +33,13 @@ import { controllerTestCase } from "../support/controller-test-case.ts";
 type Page = [string, Parameters<typeof controllerTestCase>[0], string, Record<string, string>];
 const PAGES: Page[] = [
   ["/rfcs", RfcPagesController, "index", {}],
-  ["/rfc/0136-trailmap", RfcPagesController, "show", { id: "0136-trailmap" }],
+  // The RFC page counts its refine reports, which live in the hub.
+  ...(hasHubTestDatabase()
+    ? ([
+        ["/rfc/0136-trailmap", RfcPagesController, "show", { id: "0136-trailmap" }],
+        ["/rfc/0136-trailmap/refinements", RfcPagesController, "refinements", { id: "0136-trailmap" }],
+      ] as Page[])
+    : []),
   ["/backlog", StoryPagesController, "index", {}],
   ["/story/working", StoryPagesController, "show", { id: "working" }],
   ["/story/stuck", StoryPagesController, "show", { id: "stuck" }],
@@ -44,7 +56,9 @@ beforeAll(async () => {
   await Story.create({ id: "working", rfc_id: "0136-trailmap", status: "in-progress" });
   await Story.create({ id: "stuck", rfc_id: "0136-trailmap", status: "blocked" });
   await Story.create({ id: "finished", rfc_id: "0136-trailmap", status: "done" });
-});
+  if (hasHubTestDatabase()) await connectHubTestDatabase();
+}, HUB_SETUP_TIMEOUT);
+afterAll(releaseHubTestDatabase);
 
 describe("the rendered pages' class lists", () => {
   it("have no element wearing two classes that each lay out their own box", async () => {
