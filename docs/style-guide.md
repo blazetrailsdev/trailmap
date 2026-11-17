@@ -72,6 +72,11 @@ Three sizes. No size between them, no uppercase, no letter-spacing, no serif.
 Sentence case everywhere, as GitHub writes it: "Needs you", not "NEEDS YOU".
 Monospace is for code, ids a person would paste, and terminal output only.
 
+The one exception is rendered Markdown (`.markdown`, and the raw audit page's
+`.md`). Its headings follow GitHub's `markdown-body`: h1 24px, h2 20px, h3 16px,
+all weight 600. That is how GitHub draws a README, and a document should read
+like one.
+
 ## Shape and space
 
 - **Radius**: 6px on boxes, buttons, inputs and menu rows; 12px on an overlay;
