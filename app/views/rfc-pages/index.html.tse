@@ -7,13 +7,17 @@
 </div>
 
 <div class="list-controls">
-  <%= render({ partial: "shared/filter-tabs", locals: { tabs: this.tabs } }) %>
-  <nav class="sort-links" aria-label="Sort">
-    <span class="muted">Sort</span>
-    <% for (const option of this.sorts) { %>
-      <a class="sort-link<%= option.active ? " active" : "" %>" href="<%= option.href %>" title="<%= option.title %>"<% if (option.active) { %> aria-current="true"<% } %>><%= option.label %></a>
-    <% } %>
-  </nav>
+  <%= render({ partial: "shared/underline-nav", locals: { tabs: this.tabs } }) %>
+  <form class="sort-menu" method="get" action="<%= rfcsPath() %>">
+    <input type="hidden" name="status" value="<%= this.filter %>">
+    <label for="rfc-sort" class="muted">Sort</label>
+    <select id="rfc-sort" name="sort" class="ctl" data-sort-menu>
+      <% for (const option of this.sorts) { %>
+        <option value="<%= option.key %>" data-href="<%= option.href %>" title="<%= option.title %>"<% if (option.active) { %> selected<% } %>><%= option.label %></option>
+      <% } %>
+    </select>
+    <noscript><button type="submit" class="ctl">Sort</button></noscript>
+  </form>
 </div>
 
 <div class="box rfc-list">
@@ -56,3 +60,5 @@
     </div>
   <% } %>
 </div>
+
+<script src="<%= javascriptPath("rfc-sort") %>" type="module"></script>

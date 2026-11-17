@@ -414,12 +414,15 @@ ul { margin: 0 0 10px 20px; }
 .tabs .tab.active { color: var(--fg); font-weight: 600; }
 
 /* A list's filter tabs and its sort, on one row: tabs left, sort right. */
-.list-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; }
-.list-controls .tabs { margin-bottom: 0; }
-.sort-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 13px; }
-.sort-links .sort-link { color: var(--muted); }
-.sort-links .sort-link:hover { color: var(--fg); text-decoration: none; }
-.sort-links .sort-link.active { color: var(--fg); font-weight: 600; }
+.list-controls { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+.list-controls .sort-menu { padding-bottom: 8px; }
+/* GitHub's UnderlineNav: the current tab sits on the row's rule, underlined. */
+.underline-nav { display: flex; gap: 8px; min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; margin-bottom: -1px; }
+.underline-nav-item { display: inline-flex; align-items: center; gap: 6px; padding: 8px 8px 10px; border-bottom: 2px solid transparent; color: var(--fg); font-size: 14px; white-space: nowrap; }
+.underline-nav-item:hover { text-decoration: none; border-bottom-color: var(--line); }
+.underline-nav-item.active { font-weight: 600; border-bottom-color: var(--tab); }
+.sort-menu { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.sort-menu .ctl { height: 28px; padding: 3px 8px; font-size: 13px; line-height: 20px; }
 /* GitHub's Counter: a count beside a heading, quieter than the heading. */
 .page-title .counter { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 2em; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 500; line-height: 18px; text-align: center; vertical-align: middle; }
 
