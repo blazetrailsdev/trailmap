@@ -18,7 +18,7 @@
   <% const navCurrent = navItems.find(([, , mark]) => mark)?.[0] ?? ""; %>
   <nav class="nav">
     <a class="nav-brand" href="<%= rootPath() %>"><%= imageTag("/mark.svg", { size: 24, alt: "" }) %>trailmap</a>
-    <span class="nav-current"><%= navCurrent %></span>
+    <span class="nav-current" aria-hidden="true"><%= navCurrent %></span>
     <input type="checkbox" id="navToggle" class="nav-toggle">
     <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">

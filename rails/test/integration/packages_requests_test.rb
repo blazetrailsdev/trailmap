@@ -22,9 +22,9 @@ class PackagesRequestsTest < ActionDispatch::IntegrationTest
 
   test "names the current section beside the brand, for a phone" do
     get "/packages"
-    assert_includes response.body, '<span class="nav-current">Packages</span>'
+    assert_includes response.body, '<span class="nav-current" aria-hidden="true">Packages</span>'
     get "/packages/arel"
-    assert_includes response.body, '<span class="nav-current">Packages</span>'
+    assert_includes response.body, '<span class="nav-current" aria-hidden="true">Packages</span>'
   end
 
   test "answers a package's page with links to its tabs" do

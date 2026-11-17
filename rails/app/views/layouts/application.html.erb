@@ -19,7 +19,7 @@
   <% nav_current = nav_items.find { |_, _, mark| mark }&.first.to_s %>
   <nav class="nav">
     <a class="nav-brand" href="<%= root_path %>"><%= image_tag "/mark.svg", size: 24, alt: "" %>trailmap</a>
-    <span class="nav-current"><%= nav_current %></span>
+    <span class="nav-current" aria-hidden="true"><%= nav_current %></span>
     <input type="checkbox" id="navToggle" class="nav-toggle">
     <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">
