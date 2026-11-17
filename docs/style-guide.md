@@ -117,7 +117,7 @@ for the nearest concept:
 | Form control | `.ctl` | 32px, 1px border, 6px radius; focus is a 2px `--accent` outline |
 | Label | `.Label`, `.flag`, `.badge` | a 12px outlined pill. `.Label.stage.st-*` is a stage; `.flag` is attention, `.flag.bad` danger; `.badge.s-*` is a story or RFC status (`shared/_status-badge`), the same Label hued by status |
 | Counter | `.Counter` | a count beside a title |
-| State | `.state` | the solid pill at the top of a show page, hued like its `.badge`: ready and active are open (green), done and closed are merged (purple), claimed, in progress and blocked are pending (attention), draft is grey |
+| State | `.state` | the solid pill at the top of a show page, in the same hue as its `.badge`: `ready`, `active` green (open); `done`, `closed`, `superseded` purple (done); `claimed`, `in-progress`, `blocked` attention (pending); `draft`, `postponed`, `unknown` grey |
 | Flash | `.strip` | a `--yellow-bg` banner inside the thing it is about |
 | Progress bar | `.meter` | 8px, 6px radius, on a neutral track |
 | Toggle switch | `.switch` | rounded-rectangle track, `--accent` when on |

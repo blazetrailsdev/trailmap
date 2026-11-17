@@ -303,7 +303,7 @@ ul { margin: 0 0 10px 20px; }
 .badge.s-in-progress { color: var(--yellow-ink); border-color: color-mix(in srgb, var(--yellow-ink) 45%, transparent); }
 .badge.s-blocked { color: var(--yellow-ink); border-color: color-mix(in srgb, var(--yellow-ink) 45%, transparent); }
 .badge.s-done { color: var(--purple); border-color: color-mix(in srgb, var(--purple) 45%, transparent); }
-.badge.s-active { color: var(--yellow-ink); border-color: color-mix(in srgb, var(--yellow-ink) 45%, transparent); }
+.badge.s-active { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); }
 .badge.s-closed { color: var(--purple); border-color: color-mix(in srgb, var(--purple) 45%, transparent); }
 .badge.s-unknown { color: var(--muted); border-color: color-mix(in srgb, var(--muted) 45%, transparent); }
 .badge.s-postponed { color: var(--muted); border-color: color-mix(in srgb, var(--muted) 45%, transparent); }
