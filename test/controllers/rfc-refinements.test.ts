@@ -129,6 +129,7 @@ describe.skipIf(!hasHubTestDatabase())("RfcRefinements", () => {
     expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "maybe" })).status).toBe(422);
     expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", summary: { a: 1 } })).status).toBe(422);
     expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", summary: ["a"] })).status).toBe(422);
+    expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", summary: false })).status).toBe(422);
     expect(await RfcRefine.count()).toBe(0);
   });
 });
