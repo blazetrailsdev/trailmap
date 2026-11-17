@@ -1,10 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -26,9 +23,6 @@ async function story(id: string, status: string, priority: number | null = null)
 }
 
 beforeAll(async () => {
-  ApplicationController.prependViewPath("app/views");
-  await migrateScratchDatabase();
-  await loadModelSchemas();
   await Rfc.create({ id: "0001-a", status: "active", title: "A" });
   await story("a-draft", "draft");
   await story("a-ready", "ready");

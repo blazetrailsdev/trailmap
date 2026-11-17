@@ -1,10 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Notifications } from "@blazetrails/activesupport";
-import { migrateScratchDatabase } from "./schema.ts";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import {
   CONTENT_REPO,
   eventsForRepo,
@@ -27,8 +25,6 @@ import { StoryPath } from "../../app/models/story-path.ts";
  * controllers that call it.
  */
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
 
   await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
   await Story.create({

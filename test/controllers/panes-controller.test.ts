@@ -1,6 +1,5 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { PanesController } from "../../app/controllers/panes-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -16,10 +15,6 @@ async function show(id: string) {
   await tc.get("show", { params: { id } });
   return tc.response;
 }
-
-beforeAll(() => {
-  ApplicationController.prependViewPath("app/views");
-});
 
 describe("PanesController", () => {
   it("renders the pane's page through the application layout", async () => {

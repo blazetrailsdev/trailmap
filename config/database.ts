@@ -36,7 +36,12 @@ export const STATS_SYNC_MIGRATIONS_PATH = "db/stats-sync-migrate";
  *
  * The served environments' `primary` IS the CLI's live `tasks.db`
  * (`tasksEntry`), with `databaseTasks: false` so `trails db` never migrates,
- * creates or drops it. `test` keeps a scratch file `trails db` may build.
+ * creates or drops it. `test` keeps a scratch file `trails db` may build,
+ * copied per vitest worker by test/test-helper.ts as Rails' `parallelize` does.
+ * Its `hub` takes part in `trails db` and the suite's schema maintenance only
+ * when `HUB_DATABASE_URL` names one (CI's postgres service): without it the
+ * entry has no database for them to reach, the hub tests skip
+ * (test/support/hub-schema.ts), and `pnpm test` needs no Postgres.
  */
 const databaseConfigurations = {
   development: {
@@ -47,8 +52,9 @@ const databaseConfigurations = {
     primary: {
       adapter: "sqlite3",
       database: "storage/test.sqlite3",
+      timeout: 5000,
     },
-    hub: hubEntry(),
+    hub: { ...hubEntry(), databaseTasks: hasHubDatabase() },
   },
   production: {
     primary: tasksEntry(),

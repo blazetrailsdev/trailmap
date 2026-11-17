@@ -2,11 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { ActionController } from "@blazetrails/actionpack";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import {
   connectHubTestDatabase,
@@ -23,13 +20,10 @@ async function show(id: string): Promise<{ status: number; body: string }> {
 }
 
 beforeAll(async () => {
-  ApplicationController.prependViewPath("app/views");
   // The document lives on disk, not in the database: `ingest` stores the path
   // and leaves the body in the checkout. This repo stands in for one.
   setX("tasks", "dir", Dir.pwd());
 
-  await migrateScratchDatabase();
-  await loadModelSchemas();
 
   await Rfc.create({
     id: "0136-trailmap",

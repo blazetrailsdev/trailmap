@@ -6,11 +6,8 @@ import {
   releaseHubTestDatabase,
 } from "../support/hub-schema.ts";
 import { getFs } from "@blazetrails/ruby-compat";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";
 import { STYLESHEET, boxRules, classListsIn, collisionsInList } from "../../scripts/class-collisions.ts";
@@ -46,9 +43,6 @@ const PAGES: Page[] = [
 ];
 
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
-  ApplicationController.prependViewPath("app/views");
 
   await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap", owner: "dean", priority: 2 });
   await Rfc.create({ id: "0002-empty", status: "draft", title: "An idea" });

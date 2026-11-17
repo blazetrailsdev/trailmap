@@ -79,7 +79,7 @@ const REPORT_FILE = "tmp/page-snapshot-problems.txt";
 /**
  * A scratch database holding exactly the rows the recording was made from.
  *
- * `db/migrate` builds the schema, the same way `test/models/schema.ts` does, so
+ * `db/migrate` builds the schema, as `trails db:migrate` does, so
  * the replay runs against the migrations rather than a hand-written schema that
  * could drift from them.
  */

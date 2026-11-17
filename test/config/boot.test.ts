@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { getFs } from "@blazetrails/ruby-compat";
-import { ALL_MODELS, loadModelSchemas } from "../../lib/model-schemas.ts";
+import { ALL_MODELS } from "../../lib/model-schemas.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { migrateScratchDatabase } from "../models/schema.ts";
 
 describe("the schema warm-up lists", () => {
   // Compared with lib/model-schemas' own lists, not the constant registry: the
@@ -33,8 +32,6 @@ describe("the schema warm-up lists", () => {
 
 describe("the suite boots the application", () => {
   it("requires belongs_to by default", async () => {
-    await migrateScratchDatabase();
-    await loadModelSchemas();
     const story = new Story({ id: "orphan", rfc_id: "0000-none", status: "draft" });
     expect(await story.save()).toBe(false);
     await Rfc.create({ id: "0000-none", status: "active", title: "T" });

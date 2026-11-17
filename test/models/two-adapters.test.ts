@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { migrateScratchDatabase } from "./schema.ts";
 import {
   connectHubTestDatabase,
   HUB_SETUP_TIMEOUT,
@@ -30,7 +29,6 @@ import { Story } from "../../app/models/story.ts";
  */
 describe.skipIf(!hasHubTestDatabase())("two adapters in one process", () => {
   beforeAll(async () => {
-    await migrateScratchDatabase();
     await connectHubTestDatabase();
     await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
     await Story.create({ id: "a-story", rfc_id: "0136-trailmap", status: "ready" });

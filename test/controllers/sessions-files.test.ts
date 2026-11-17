@@ -5,7 +5,6 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { getHttpAsync, setEnv, type HttpServer } from "@blazetrails/ruby-compat";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { PANE_VIEW_MAX_BYTES, SessionsController, TRANSCRIPT_MAX_BYTES } from "../../app/controllers/sessions-controller.ts";
 import { archivePathProblem } from "../../lib/archive-read.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
@@ -46,7 +45,6 @@ let ringoBaseUrl = "";
 let asked: string[] = [];
 
 beforeAll(async () => {
-  ApplicationController.prependViewPath("app/views");
   const http = await getHttpAsync();
   ringo = http.createServer((req, res) => {
     asked.push(req.url ?? "");

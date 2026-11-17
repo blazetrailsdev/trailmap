@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { migrateScratchDatabase } from "./schema.ts";
 import { Event } from "../../app/models/event.ts";
 import { Meta } from "../../app/models/meta.ts";
 import { RESOLVED_DEP_STATUSES, STORY_STATUSES, Story } from "../../app/models/story.ts";
@@ -9,11 +8,8 @@ import { StoryDep } from "../../app/models/story-dep.ts";
 import { StoryPackage } from "../../app/models/story-package.ts";
 import { StoryPath } from "../../app/models/story-path.ts";
 import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
 
   await Rfc.create({ id: "0061-ci-failures", status: "active", title: "CI failures" });
   await Rfc.create({ id: "0002-draft-rfc", status: "draft", title: "Draft" });

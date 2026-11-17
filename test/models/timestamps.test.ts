@@ -1,14 +1,7 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
-import { migrateScratchDatabase } from "./schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-
-beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
-});
 
 interface TimestampedModel {
   timestampAttributesForUpdateInModel(): string[];

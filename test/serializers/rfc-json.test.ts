@@ -3,16 +3,9 @@
  * `rfc` struct, so the fields and their emptiness rules are a cross-repo
  * contract — which is what this pins.
  */
-import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.ts";
+import { describe, expect, it } from "vitest";
 import { Rfc } from "../../app/models/rfc.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { serializeRfc, serializeRfcs } from "../../app/serializers/rfc-json.ts";
-
-beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
-});
 
 describe("serializeRfc", () => {
   it("carries every field index.json carried, with the date columns at ISO midnight", async () => {

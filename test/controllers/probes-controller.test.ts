@@ -3,10 +3,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { setX } from "../support/config-x.ts";
 import { env, getChildProcess, getFs, setEnv, type FsAdapter } from "@blazetrails/ruby-compat";
 import { MigrationContext } from "@blazetrails/activerecord";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ProbesController } from "../../app/controllers/probes-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 import {
@@ -70,8 +68,6 @@ beforeAll(async () => {
   tasksDir = checkout();
   dirs.push(tasksDir);
 
-  await migrateScratchDatabase();
-  await loadModelSchemas();
   await Rfc.create({ id: "0143-production-smoke", status: "active", title: "smoke" });
   await Story.create({ id: "claimable", rfc_id: "0143-production-smoke", status: "ready" });
   await Story.create({ id: "finished", rfc_id: "0143-production-smoke", status: "done" });

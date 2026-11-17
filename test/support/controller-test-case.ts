@@ -12,7 +12,7 @@
  *     tc.response.status; tc.response.body;
  *
  * The routes are the application's own, loaded by the boot in
- * `test/support/boot.ts`, so a test fails if the action it calls
+ * `test/test-helper.ts`, so a test fails if the action it calls
  * is not routed — as it would in Rails. A controller that exists only inside
  * a test has no route there, and gets a route set of its own with one
  * catch-all, so nothing a test needs is ever drawn into the application's.
@@ -24,8 +24,6 @@
 import { RouteSet } from "@blazetrails/actionpack";
 import { TestCase } from "@blazetrails/actionpack/testing";
 import { Trails } from "@blazetrails/trailties";
-import "./boot.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { getFs } from "@blazetrails/ruby-compat";
 import { STYLESHEET, boxRules, classListsIn, collisionsInList, type BoxRules } from "../../scripts/class-collisions.ts";
 
@@ -56,7 +54,15 @@ export async function controllerTestCase(
   controller: Controller,
   headers: Record<string, string> = {},
 ): Promise<TestCase> {
-  class ControllerTest extends TestCase {}
+  // The vitest test calling this is already an `ActiveSupport::TestCase`
+  // (test-help's autorun), and it holds the test's fixture transaction. This
+  // case is built inside it and never torn down, so a transaction of its own
+  // would be left open, and the outer rollback would undo only that level.
+  class ControllerTest extends TestCase {
+    static {
+      this.useTransactionalTests = false;
+    }
+  }
   ControllerTest.tests(controller);
   const tc = new ControllerTest(`${controller.name}Test`);
   await tc.beforeSetup();

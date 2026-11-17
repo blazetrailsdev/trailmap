@@ -4,17 +4,13 @@
  * its agent reported; and the palette's search.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { FleetController } from "../../app/controllers/fleet-controller.ts";
 import { FLEET_STORIES_MAX_HITS, FleetStories, storiesForIds, storiesForPrs, storiesMatching } from "../../app/models/concerns/fleet-stories.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
   await Rfc.create({ id: "0188-mailer", status: "active", title: "Mailer" });
   await Story.create({ id: "preview-interceptors", rfc_id: "0188-mailer", status: "in-progress", pr: "trails#9958", title: "Preview interceptors" });
   await Story.create({ id: "interceptor-string-arm", rfc_id: "0188-mailer", status: "in-progress", pr: "trails#9958", title: "String arm" });

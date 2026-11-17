@@ -3,7 +3,6 @@ import { Base } from "@blazetrails/activerecord";
 import { primaryDatabaseConfig, tasksDatabasePath } from "../../config/database.ts";
 import { RFC_STATUSES, Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 
 /**
  * Spot-check the moved models against the LIVE database the CLI writes.
@@ -20,7 +19,6 @@ const withLiveDatabase = tasksDatabasePath() ? describe : describe.skip;
 withLiveDatabase("the live tasks database", () => {
   beforeAll(async () => {
     await Base.establishConnection(primaryDatabaseConfig("development").configurationHash);
-    await loadModelSchemas();
   });
 
   it("reads RFCs the CLI wrote", async () => {

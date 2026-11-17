@@ -8,12 +8,10 @@
  * would let one bad row block every verb that touches it.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { migrateScratchDatabase } from "./schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { StoryDep } from "../../app/models/story-dep.ts";
 import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { effectiveStoryStatus } from "../../app/models/concerns/effective-status.ts";
 import {
   MAX_EST_LOC,
@@ -35,8 +33,6 @@ async function seed(id: string, rfcId: string, status: string, attrs: object = {
 }
 
 beforeEach(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
   await Rfc.create({ id: "0136-trailmap", status: "active", title: "Trailmap" });
 });
 

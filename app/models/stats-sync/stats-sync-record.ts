@@ -11,5 +11,9 @@ import { ApplicationRecord } from "../application-record.ts";
 export class StatsSyncRecord extends ApplicationRecord {
   static {
     this.abstractClass = true;
+    // Named before anything connects it, as app/models/hub.ts names `Hub`:
+    // unnamed, it resolves through `ActiveRecord::Base`'s pool until its
+    // connection registers, and the writers query the task database.
+    this.connectionSpecificationName = "StatsSync::StatsSyncRecord";
   }
 }

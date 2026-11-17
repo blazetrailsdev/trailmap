@@ -3,7 +3,6 @@ import { setX } from "../support/config-x.ts";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
 import { Notifications } from "@blazetrails/activesupport";
 import { RecordNotFound } from "@blazetrails/activerecord";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import {
   connectHubTestDatabase,
   HUB_SETUP_TIMEOUT,
@@ -14,7 +13,6 @@ import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { Event } from "../../app/models/event.ts";
 import { StoryPath } from "../../app/models/story-path.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { Owner } from "../../app/models/owner.ts";
 import { Repository } from "../../app/models/repository.ts";
 import { RepositorySetting } from "../../app/models/repository-setting.ts";
@@ -64,13 +62,10 @@ const TASKS = { owner: "blazetrailsdev", repo: "tasks" };
 
 describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
   beforeAll(async () => {
-    ApplicationController.prependViewPath("app/views");
     // The wiki reads the content tree off disk; this repo stands in for one,
     // as it does in the RFC page's test.
     setX("tasks", "dir", Dir.pwd());
 
-    await migrateScratchDatabase();
-    await loadModelSchemas();
     await connectHubTestDatabase();
 
     const owner = await Owner.create({

@@ -1,6 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { env } from "@blazetrails/ruby-compat";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { MailTestsController } from "../../app/controllers/mail-tests-controller.ts";
 import { FailingProbeJob } from "../../app/jobs/failing-probe-job.ts";
 import { ApplicationMailer } from "../../app/mailers/application-mailer.ts";
@@ -15,10 +14,6 @@ async function request(
   await tc[method](action, { params });
   return { status: tc.response.status, body: String(tc.response.body) };
 }
-
-beforeAll(() => {
-  ApplicationController.prependViewPath("app/views");
-});
 
 describe("MailTestsController", () => {
   const writable = env as Record<string, string | undefined>;

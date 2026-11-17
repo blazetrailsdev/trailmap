@@ -2,6 +2,14 @@ import { env, getFs, getOs, getPath } from "@blazetrails/ruby-compat";
 import { Base, MigrationContext } from "@blazetrails/activerecord";
 import { describe, expect, it, vi } from "vitest";
 import { STATS_SYNC_MIGRATIONS_PATH, statsSyncDatabaseConfig } from "../../config/database.ts";
+import { TestCase } from "@blazetrails/activesupport/test-case";
+
+// Rails' `self.use_transactional_tests = false`: this file opens, migrates and
+// deletes its own stats-sync database, which a test's fixture transaction
+// would outlive. vitest isolates each file, so this reaches no other. It
+// borrows `Base` to migrate that database, then hands `Base` back the suite's
+// `primary` with `establishConnection()`, which fixture setup reads.
+TestCase.useTransactionalTests = false;
 
 const FIXTURE = getPath().resolve("test/fixtures/stats-sync/package-summary.json");
 const BARE = getPath().resolve("test/fixtures/stats-sync/package-summary-bare.json");
@@ -43,7 +51,7 @@ describe("syncPackageSummaries", () => {
       try {
         await new MigrationContext([getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)]).migrate();
       } finally {
-        await Base.removeConnection();
+        await Base.establishConnection();
       }
       const adapter = await StatsSyncRecord.leaseConnection();
       await adapter.execute(`INSERT INTO workflow_runs (id, head_sha, pr_number, event, conclusion, workflow_name)

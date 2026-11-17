@@ -1,11 +1,7 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
-
-beforeAll(() => {
-  ApplicationController.prependViewPath("app/views");
-});
 
 /**
  * The partial is rendered the way a page renders it — through a controller —

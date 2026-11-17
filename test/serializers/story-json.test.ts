@@ -2,20 +2,16 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { env, getFs } from "@blazetrails/ruby-compat";
 import { primaryDatabaseConfig, tasksDatabasePath } from "../../config/database.ts";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { StoryDep } from "../../app/models/story-dep.ts";
 import { StoryPackage } from "../../app/models/story-package.ts";
 import { StoryPath } from "../../app/models/story-path.ts";
 import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { integerOrNull, isoMidnight, serializeStories, serializeStory } from "../../app/serializers/story-json.ts";
 
 describe("the serializer", () => {
   beforeAll(async () => {
-    await migrateScratchDatabase();
-    await loadModelSchemas();
 
     await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
     await Rfc.create({ id: "0002-draft", status: "draft", title: "Draft" });
@@ -140,7 +136,6 @@ const withLiveDatabase = tasksDatabasePath() && env.TASKS_INDEX_JSON ? describe 
 withLiveDatabase("the published index.json", () => {
   beforeAll(async () => {
     await Base.establishConnection(primaryDatabaseConfig("development").configurationHash);
-    await loadModelSchemas();
   });
 
   async function readPublished(): Promise<string> {

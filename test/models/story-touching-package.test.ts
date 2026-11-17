@@ -1,12 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "./schema.ts";
 import { Story } from "../../app/models/story.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { StoryPackage } from "../../app/models/story-package.ts";
 import { StoryPath } from "../../app/models/story-path.ts";
 import { OPEN_STORY_STATUSES } from "../../app/models/concerns/ranking.ts";
 import { effectiveStoryStatus } from "../../app/models/concerns/effective-status.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 
 async function story(id: string, rfcId: string, paths: string[] = [], packages: string[] = []) {
   await Story.create({ id, rfc_id: rfcId, status: "ready" });
@@ -17,8 +15,6 @@ async function story(id: string, rfcId: string, paths: string[] = [], packages: 
 const ids = (stories: Story[]) => stories.map((s) => s.id).sort();
 
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
   await Rfc.create({ id: "0001-wide", status: "active", packages: ["activerecord", "actionpack"] });
   await Rfc.create({ id: "0002-narrow", status: "active", packages: ["activerecord"] });
   await story("own", "0001-wide", ["packages/activerecord/src/base.ts"], ["activesupport"]);

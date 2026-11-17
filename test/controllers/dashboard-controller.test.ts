@@ -1,8 +1,7 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { ActionController } from "@blazetrails/actionpack";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { DashboardController } from "../../app/controllers/dashboard-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -20,10 +19,6 @@ async function index(): Promise<string> {
   await tc.get("index");
   return tc.response.body;
 }
-
-beforeAll(() => {
-  ApplicationController.prependViewPath("app/views");
-});
 
 describe("DashboardController", () => {
   it("renders through the application layout", async () => {

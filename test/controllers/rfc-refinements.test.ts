@@ -3,11 +3,8 @@
  * shows. The reports live in the hub, so these need the hub test database.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { RfcRefine } from "../../app/models/rfc-refine.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import { RfcRefinesController } from "../../app/controllers/rfc-refines-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
@@ -33,9 +30,6 @@ async function report(body: Record<string, unknown>): Promise<{ status: number; 
 
 describe.skipIf(!hasHubTestDatabase())("RfcRefinements", () => {
   beforeAll(async () => {
-    ApplicationController.prependViewPath("app/views");
-    await migrateScratchDatabase();
-    await loadModelSchemas();
     await connectHubTestDatabase();
     await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
     await Rfc.create({ id: "0002-quiet", status: "active", title: "Quiet" });

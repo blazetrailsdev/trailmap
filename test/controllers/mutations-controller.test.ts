@@ -9,11 +9,9 @@
  * codes onto HTTP status.
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { MutationsController } from "../../app/controllers/mutations-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
@@ -42,8 +40,6 @@ async function post(
 const find = async (id: string): Promise<Story> => (await Story.findBy({ id }))!;
 
 beforeEach(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
   await Rfc.create({ id: "0136-trailmap", status: "active", title: "Trailmap" });
   await Story.create({ id: "s1", rfc_id: "0136-trailmap", status: "ready", est_loc: 10 });
   await Story.create({ id: "s2", rfc_id: "0136-trailmap", status: "ready", est_loc: 20 });

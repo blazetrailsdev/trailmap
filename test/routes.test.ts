@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { RouteSet } from "@blazetrails/actionpack";
+import { assertRecognizes } from "@blazetrails/actionpack/testing";
 import { Trails } from "@blazetrails/trailties";
 import { RESERVED_OWNER_NAMES } from "../config/routes.ts";
 
@@ -9,90 +10,62 @@ function routeSet(): RouteSet {
 }
 
 /**
- * Where a request goes: Rails' `recognize_path`, in the shape these cases
- * read. It raises when nothing matches, so an unrouted path fails its test
- * loudly rather than as an `undefined` three assertions later.
+ * Rails' `assert_recognizes`, against the application's own routes, where
+ * test-help points `ActionDispatch::IntegrationTest`. The expected options are
+ * the WHOLE recognized hash, so a stray `format` or segment fails the case.
  */
-function recognize(
-  routes: RouteSet,
-  method: string,
-  path: string,
-): { route: { controller: unknown; action: unknown }; params: Record<string, unknown> } {
-  const params = routes.recognizePath(path, { method });
-  return { route: { controller: params.controller, action: params.action }, params };
+function recognizes(expected: Record<string, unknown>, path: string, method = "GET"): void {
+  assertRecognizes.call({ routes: routeSet() }, expected, { path, method });
+}
+
+/**
+ * The JSON APIs' `defaults: { format: "json" }`: `stories`, `read_models` and
+ * `mutations` answer JSON without a `.json` suffix, and recognition says so.
+ */
+const json = { format: "json" };
+
+/** `assert_raises(ActionController::RoutingError) { assert_recognizes … }`. */
+function unrecognized(path: string, method = "GET"): () => void {
+  return () => recognizes({}, path, method);
 }
 
 describe("config/routes", () => {
   it("routes the dashboard root to home#index", () => {
-    const match = recognize(routeSet(), "GET", "/");
-
-    expect(match?.route.controller).toBe("home");
-    expect(match?.route.action).toBe("index");
+    recognizes({ controller: "home", action: "index" }, "/");
   });
 
   // The framework's controller, from `@blazetrails/trailties`.
   it("routes the health endpoint to trails/health#show", () => {
-    const match = recognize(routeSet(), "GET", "/up");
-
-    expect(match?.route.controller).toBe("trails/health");
-    expect(match?.route.action).toBe("show");
+    recognizes({ controller: "trails/health", action: "show" }, "/up");
   });
 
   it("routes the readiness and deep probes beside it, to probes", () => {
-    const routes = routeSet();
-
-    expect(recognize(routes, "GET", "/up/ready").route).toEqual({
-      controller: "probes",
-      action: "ready",
-    });
-    expect(recognize(routes, "GET", "/up/deep").route).toEqual({
-      controller: "probes",
-      action: "deep",
-    });
+    recognizes({ controller: "probes", action: "ready" }, "/up/ready");
+    recognizes({ controller: "probes", action: "deep" }, "/up/deep");
   });
 
   it("routes the plural list paths to the same page controllers", () => {
-    const routes = routeSet();
-
-    const rfcs = recognize(routes, "GET", "/rfcs");
-    expect(rfcs?.route.controller).toBe("rfc_pages");
-    expect(rfcs?.route.action).toBe("index");
-
-    const backlog = recognize(routes, "GET", "/backlog");
-    expect(backlog?.route.controller).toBe("story_pages");
-    expect(backlog?.route.action).toBe("index");
+    recognizes({ controller: "rfc_pages", action: "index" }, "/rfcs");
+    recognizes({ controller: "story_pages", action: "index" }, "/backlog");
   });
 
   it("routes the fleet dashboard, which is not the root", () => {
-    const routes = routeSet();
-
-    const dashboard = recognize(routes, "GET", "/dashboard");
-    expect(dashboard?.route.controller).toBe("dashboard");
-    expect(dashboard?.route.action).toBe("index");
+    recognizes({ controller: "dashboard", action: "index" }, "/dashboard");
 
     // ringo keeps serving its own `/` until this page is verified, so
     // trailmap's root is still its landing page.
-    expect(recognize(routes, "GET", "/")?.route.controller).toBe("home");
+    recognizes({ controller: "home", action: "index" }, "/");
   });
 
   it("routes audits as a resource whose id is the whole filename", () => {
-    const routes = routeSet();
-
-    expect(recognize(routes, "GET", "/audits").route).toEqual({ controller: "audits", action: "index" });
+    recognizes({ controller: "audits", action: "index" }, "/audits");
 
     // The extension is part of the id, not a `.md` format.
-    const show = recognize(routes, "GET", "/audits/a-tie.md");
-    expect(show.route).toEqual({ controller: "audits", action: "show" });
-    expect(show.params.id).toBe("a-tie.md");
-    expect(show.params.format).toBeUndefined();
-
-    const raw = recognize(routes, "GET", "/audits/b-tie.html/raw");
-    expect(raw.route).toEqual({ controller: "audits", action: "raw" });
-    expect(raw.params.id).toBe("b-tie.html");
+    recognizes({ controller: "audits", action: "show", id: "a-tie.md" }, "/audits/a-tie.md");
+    recognizes({ controller: "audits", action: "raw", id: "b-tie.html" }, "/audits/b-tie.html/raw");
   });
 
   it("refuses a path traversal, a dotfile and any name auditFileRe rejects", () => {
-    const routes = routeSet();
     for (const path of [
       "/audits/..%2Fsecret.md",
       "/audits/.hidden.md",
@@ -103,7 +76,7 @@ describe("config/routes", () => {
       "/audits/view/..%2Fsecret.md",
       "/audits/view/.hidden.md",
     ]) {
-      expect(() => recognize(routes, "GET", path), path).toThrow(/No route matches/);
+      expect(unrecognized(path), path).toThrow(/No route matches/);
     }
   });
 
@@ -124,49 +97,29 @@ describe("config/routes", () => {
   });
 
   it("routes a pane's live view, and the screen relay it polls", () => {
-    const routes = routeSet();
-
-    const page = recognize(routes, "GET", "/panes/42");
-    expect(page.route).toEqual({ controller: "panes", action: "show" });
-    expect(page.params.id).toBe("42");
-
-    const screen = recognize(routes, "GET", "/fleet/pane/42/screen");
-    expect(screen.route).toEqual({ controller: "fleet", action: "screen" });
-    expect(screen.params.id).toBe("42");
+    recognizes({ controller: "panes", action: "show", id: "42" }, "/panes/42");
+    recognizes({ controller: "fleet", action: "screen", id: "42" }, "/fleet/pane/42/screen");
   });
 
   it("routes the reviewer relay the PR rows poll", () => {
-    const routes = routeSet();
-
-    const reviewers = recognize(routes, "GET", "/fleet/reviewers");
-    expect(reviewers.route).toEqual({ controller: "fleet", action: "reviewers" });
-    const usage = recognize(routes, "GET", "/fleet/read/codex-usage");
-    expect(usage.route).toEqual({ controller: "fleet", action: "read" });
-    expect(usage.params.name).toBe("codex-usage");
+    recognizes({ controller: "fleet", action: "reviewers" }, "/fleet/reviewers");
+    recognizes({ controller: "fleet", action: "read", name: "codex-usage" }, "/fleet/read/codex-usage");
   });
 
   it("routes the singular show-page paths to their page controllers", () => {
-    const routes = routeSet();
-
-    const rfc = recognize(routes, "GET", "/rfc/0136-trailmap");
-    expect(rfc?.route.controller).toBe("rfc_pages");
-    expect(rfc?.route.action).toBe("show");
-    expect(rfc?.params.id).toBe("0136-trailmap");
-
-    const story = recognize(routes, "GET", "/story/render-the-rfc-and-story-show-pages");
-    expect(story?.route.controller).toBe("story_pages");
-    expect(story?.params.id).toBe("render-the-rfc-and-story-show-pages");
+    recognizes({ controller: "rfc_pages", action: "show", id: "0136-trailmap" }, "/rfc/0136-trailmap");
+    recognizes(
+      { controller: "story_pages", action: "show", id: "render-the-rfc-and-story-show-pages" },
+      "/story/render-the-rfc-and-story-show-pages",
+    );
   });
 
   it("keeps the plural stories JSON routes distinct from the show pages", () => {
-    const routes = routeSet();
-
-    expect(recognize(routes, "GET", "/stories/anything")?.route.controller).toBe("stories");
-    expect(recognize(routes, "GET", "/story/anything")?.route.controller).toBe("story_pages");
+    recognizes({ ...json, controller: "stories", action: "show", id: "anything" }, "/stories/anything");
+    recognizes({ controller: "story_pages", action: "show", id: "anything" }, "/story/anything");
   });
 
   it("routes each read verb to the stories controller", () => {
-    const routes = routeSet();
     const verbs: [string, string][] = [
       ["/stories", "index"],
       ["/stories/ready", "ready"],
@@ -174,22 +127,15 @@ describe("config/routes", () => {
       ["/stories/touching", "touching"],
     ];
 
-    for (const [path, action] of verbs) {
-      const match = recognize(routes, "GET", path);
-      expect(match?.route.controller).toBe("stories");
-      expect(match?.route.action).toBe(action);
-    }
+    for (const [path, action] of verbs) recognizes({ ...json, controller: "stories", action }, path);
   });
 
   it("routes the whole read-models to the read_models controller", () => {
-    const routes = routeSet();
-
-    expect(recognize(routes, "GET", "/index")?.route.controller).toBe("read_models");
-    expect(recognize(routes, "GET", "/events")?.route.action).toBe("events");
+    recognizes({ ...json, controller: "read_models", action: "index" }, "/index");
+    recognizes({ ...json, controller: "read_models", action: "events" }, "/events");
   });
 
   it("routes each mutation verb to the mutations controller", () => {
-    const routes = routeSet();
     const verbs: [string, string][] = [
       ["/stories/claim", "claim"],
       ["/stories/release", "release"],
@@ -202,48 +148,35 @@ describe("config/routes", () => {
       ["/stories/priority", "priority"],
     ];
 
-    for (const [path, action] of verbs) {
-      const match = recognize(routes, "POST", path);
-      expect(match?.route.controller).toBe("mutations");
-      expect(match?.route.action).toBe(action);
-    }
+    for (const [path, action] of verbs) recognizes({ ...json, controller: "mutations", action }, path, "POST");
   });
 
   // The mutation paths sit under `/stories/`, where `stories#show` also lives.
   // A GET of one must stay a `show` lookup rather than being recognized as the
   // verb — the method is the only thing separating them.
   it("keeps a GET of a mutation path on stories#show", () => {
-    const match = recognize(routeSet(), "GET", "/stories/claim");
-
-    expect(match?.route.controller).toBe("stories");
-    expect(match?.route.action).toBe("show");
+    recognizes({ ...json, controller: "stories", action: "show", id: "claim" }, "/stories/claim");
   });
 
   // The named routes are drawn first for exactly this reason: `/stories/ready`
   // is a well-formed story id as far as `stories/:id` is concerned.
   it("routes an id to stories#show without swallowing the named routes", () => {
-    const match = recognize(routeSet(), "GET", "/stories/serve-the-read-verbs-as-json");
-
-    expect(match?.route.action).toBe("show");
-    expect(match?.params.id).toBe("serve-the-read-verbs-as-json");
+    recognizes(
+      { ...json, controller: "stories", action: "show", id: "serve-the-read-verbs-as-json" },
+      "/stories/serve-the-read-verbs-as-json",
+    );
   });
   // ──────────────── the GitHub-shaped hierarchy ────────────────
 
   it("routes an owner and a repository, and names the segments", () => {
-    const routes = routeSet();
-
-    const owner = recognize(routes, "GET", "/blazetrailsdev");
-    expect(owner.route).toEqual({ controller: "owners", action: "show" });
-    expect(owner.params.owner).toBe("blazetrailsdev");
-
-    const repo = recognize(routes, "GET", "/blazetrailsdev/trails");
-    expect(repo.route).toEqual({ controller: "repo_code", action: "show" });
-    expect(repo.params.owner).toBe("blazetrailsdev");
-    expect(repo.params.repo).toBe("trails");
+    recognizes({ controller: "owners", action: "show", owner: "blazetrailsdev" }, "/blazetrailsdev");
+    recognizes(
+      { controller: "repo_code", action: "show", owner: "blazetrailsdev", repo: "trails" },
+      "/blazetrailsdev/trails",
+    );
   });
 
   it("routes each repo tab to its own controller", () => {
-    const routes = routeSet();
     const tabs: [string, string, string][] = [
       ["/blazetrailsdev/trails/issues", "repo_issues", "index"],
       ["/blazetrailsdev/trails/pulls", "repo_pulls", "index"],
@@ -256,26 +189,22 @@ describe("config/routes", () => {
     ];
 
     for (const [path, controller, action] of tabs) {
-      const match = recognize(routes, "GET", path);
-      expect(match.route, path).toEqual({ controller, action });
-      expect(match.params.repo, path).toBe("trails");
+      recognizes({ controller, action, owner: "blazetrailsdev", repo: "trails" }, path);
     }
   });
 
   it("routes a member of the three resourceful tabs", () => {
-    const routes = routeSet();
+    const repo = { owner: "blazetrailsdev", repo: "trails" };
 
-    const issue = recognize(routes, "GET", "/blazetrailsdev/trails/issues/a-story");
-    expect(issue.route).toEqual({ controller: "repo_issues", action: "show" });
-    expect(issue.params.id).toBe("a-story");
-
-    const pull = recognize(routes, "GET", "/blazetrailsdev/trails/pulls/7228");
-    expect(pull.route).toEqual({ controller: "repo_pulls", action: "show" });
-    expect(pull.params.id).toBe("7228");
-
-    const project = recognize(routes, "GET", "/blazetrailsdev/trails/projects/0136-trailmap");
-    expect(project.route).toEqual({ controller: "repo_projects", action: "show" });
-    expect(project.params.id).toBe("0136-trailmap");
+    recognizes(
+      { controller: "repo_issues", action: "show", ...repo, id: "a-story" },
+      "/blazetrailsdev/trails/issues/a-story",
+    );
+    recognizes({ controller: "repo_pulls", action: "show", ...repo, id: "7228" }, "/blazetrailsdev/trails/pulls/7228");
+    recognizes(
+      { controller: "repo_projects", action: "show", ...repo, id: "0136-trailmap" },
+      "/blazetrailsdev/trails/projects/0136-trailmap",
+    );
   });
 
   // THE REGRESSION TEST for the owner route. `/:owner` matches one segment, so
@@ -284,40 +213,37 @@ describe("config/routes", () => {
   // and RESERVED_OWNER_NAMES. A page added above the hierarchy without being
   // reserved would pass the first and fail this.
   it("leaves every reserved top-level path with its own controller", () => {
-    const routes = routeSet();
-    const pages: [string, string][] = [
-      ["/up", "trails/health"],
-      ["/dashboard", "dashboard"],
-      ["/rfcs", "rfc_pages"],
-      ["/backlog", "story_pages"],
-      ["/index", "read_models"],
-      ["/events", "read_models"],
-      ["/stories", "stories"],
-      ["/rfc/0136-trailmap", "rfc_pages"],
-      ["/story/a-story", "story_pages"],
-      ["/panes/42", "panes"],
-      ["/fleet/reviewers", "fleet"],
+    const pages: [string, Record<string, unknown>][] = [
+      ["/up", { controller: "trails/health", action: "show" }],
+      ["/dashboard", { controller: "dashboard", action: "index" }],
+      ["/rfcs", { controller: "rfc_pages", action: "index" }],
+      ["/backlog", { controller: "story_pages", action: "index" }],
+      ["/index", { ...json, controller: "read_models", action: "index" }],
+      ["/events", { ...json, controller: "read_models", action: "events" }],
+      ["/stories", { ...json, controller: "stories", action: "index" }],
+      ["/rfc/0136-trailmap", { controller: "rfc_pages", action: "show", id: "0136-trailmap" }],
+      ["/story/a-story", { controller: "story_pages", action: "show", id: "a-story" }],
+      ["/panes/42", { controller: "panes", action: "show", id: "42" }],
+      ["/fleet/reviewers", { controller: "fleet", action: "reviewers" }],
     ];
 
-    for (const [path, controller] of pages) {
-      expect(recognize(routes, "GET", path).route.controller, path).toBe(controller);
-    }
+    for (const [path, expected] of pages) recognizes(expected, path);
   });
 
   it("refuses a reserved name as an owner rather than serving it as one", () => {
-    const routes = routeSet();
-
     // `/rfcs` is a page, so `/rfcs/0136-trailmap` is NOT a repository under an
     // owner called `rfcs` — nothing matches it at all. Without the constraint
     // it would reach `repo_code#show` and 404 there, which is the same status
     // for the wrong reason: a `/rfcs/<id>` page added later would then be
     // shadowed silently.
-    expect(() => recognize(routes, "GET", "/rfcs/0136-trailmap")).toThrow();
+    expect(unrecognized("/rfcs/0136-trailmap")).toThrow(/No route matches/);
 
+    // "Recognized as anything but owners#show" has no `assert_recognizes`
+    // spelling, so this one reads the recognized controller directly.
     for (const name of RESERVED_OWNER_NAMES) {
       let controller = "(unrouted)";
       try {
-        controller = String(recognize(routes, "GET", `/${name}`).route.controller);
+        controller = String(routeSet().recognizePath(`/${name}`, { method: "GET" }).controller);
       } catch {
         // Not every reserved name is a route of its own — `assets` is served
         // by the asset middleware, `fleet` and `panes` only under a segment.
@@ -327,10 +253,8 @@ describe("config/routes", () => {
   });
 
   it("refuses an owner segment that is not login-shaped", () => {
-    const routes = routeSet();
-
     for (const bad of ["/-leading", "/trailing-", "/two--hyphens", "/has_underscore"]) {
-      expect(() => recognize(routes, "GET", bad), bad).toThrow();
+      expect(unrecognized(bad), bad).toThrow(/No route matches/);
     }
   });
 });

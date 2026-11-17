@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import {
   createScratchStatsDatabase,
   seedApiCompare,
@@ -9,8 +8,6 @@ import { Stats } from "../../app/models/stats.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { StoryPackage } from "../../app/models/story-package.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { PackagesController } from "../../app/controllers/packages-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -34,9 +31,6 @@ function group(body: string, title: string): string {
 }
 
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
-  ApplicationController.prependViewPath("app/views");
   await createScratchStatsDatabase();
   setEnv("STATS_DB", ":memory:");
 

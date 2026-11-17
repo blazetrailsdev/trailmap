@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { setX } from "../support/config-x.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { DashboardController } from "../../app/controllers/dashboard-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -31,7 +30,6 @@ function answer(url: string, init?: RequestInit): Response {
 }
 
 beforeAll(async () => {
-  ApplicationController.prependViewPath("app/views");
   setX("fleet", "repoPaths", "blazetrailsdev/trails=/srv/trails");
   const tc = await controllerTestCase(DashboardController);
   await tc.get("index");
