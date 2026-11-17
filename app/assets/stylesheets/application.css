@@ -1282,6 +1282,5 @@ kbd {
 
 /* The RFC page's priority control: the field and its Set/Clear buttons on one line. */
 .rfc-priority-form { display: inline-flex; gap: 6px; align-items: center; margin-right: 6px; }
-.rfc-priority .button_to { display: inline-block; }
-.rfc-priority .ctl.num { width: 84px; }
+.rfc-priority select.ctl { width: 72px; }
 .rfc-priority .field-note { margin-top: 6px; }

@@ -73,8 +73,9 @@ describe.skipIf(!hasHubTestDatabase())("POST /rfc/<id>/priority", () => {
     expect(location).toContain("/rfc/0001-p");
     expect((await Rfc.find("0001-p")).priority).toBe(2);
     const body = await show("0001-p");
-    expect(body).toMatch(/name="priority"[^>]*value="2"|value="2"[^>]*name="priority"/);
-    expect(body).toContain(">Clear<");
+    expect(body).toMatch(/<select[^>]*name="priority"/);
+    expect(body).toMatch(/<option selected="selected" value="2">2<\/option>/);
+    expect(body).toContain('<option value="">-</option>');
   });
 
   it("clears it with clear or a blank field", async () => {
@@ -83,7 +84,7 @@ describe.skipIf(!hasHubTestDatabase())("POST /rfc/<id>/priority", () => {
     await post({ id: "0001-p", priority: "4" });
     await post({ id: "0001-p", priority: "" });
     expect((await Rfc.find("0001-p")).priority).toBeNull();
-    expect(await show("0001-p")).not.toContain(">Clear<");
+    expect(await show("0001-p")).toMatch(/<option selected="selected" value="">-<\/option>/);
   });
 
   it("refuses a value that is not a non-negative integer", async () => {
@@ -96,6 +97,13 @@ describe.skipIf(!hasHubTestDatabase())("POST /rfc/<id>/priority", () => {
 
   it("refuses a priority past the safe-integer bound", async () => {
     expect((await post({ id: "0001-p", priority: "99999999999999999999" })).status).toBe(422);
+  });
+
+  it("keeps a priority outside 1-9 selectable, so the select does not misreport it", async () => {
+    await post({ id: "0001-p", priority: "12" });
+    const body = await show("0001-p");
+    expect(body).toMatch(/<option selected="selected" value="12">12<\/option>/);
+    expect(body.match(/<option /g)?.length).toBe(11);
   });
 
   it("404s an unknown RFC", async () => {

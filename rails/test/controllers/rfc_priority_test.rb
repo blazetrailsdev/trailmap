@@ -43,8 +43,9 @@ class RfcPriorityTest < ActionDispatch::IntegrationTest
     assert_redirected_to rfc_path("0001-p")
     assert_equal 2, Rfc.find("0001-p").priority
     get rfc_path("0001-p")
-    assert_select "input[name=priority][value='2']"
-    assert_select "button", text: "Clear"
+    assert_select "select[name=priority] option[selected][value='2']", text: "2"
+    assert_select "select[name=priority] option[value='']", text: "-"
+    assert_select "select[name=priority] option", count: 10
   end
 
   test "clears it with clear or a blank field" do
@@ -55,7 +56,7 @@ class RfcPriorityTest < ActionDispatch::IntegrationTest
     post rfc_priority_path("0001-p"), params: { priority: "" }
     assert_nil Rfc.find("0001-p").priority
     get rfc_path("0001-p")
-    assert_select "button", text: "Clear", count: 0
+    assert_select "select[name=priority] option[selected][value='']", text: "-"
   end
 
   test "refuses a value that is not a non-negative integer" do
@@ -64,6 +65,13 @@ class RfcPriorityTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_includes response.body, "priority must be a non-negative integer"
     assert_equal 5, Rfc.find("0001-p").priority
+  end
+
+  test "keeps a priority outside 1-9 selectable" do
+    post rfc_priority_path("0001-p"), params: { priority: "12" }
+    get rfc_path("0001-p")
+    assert_select "select[name=priority] option[selected][value='12']", text: "12"
+    assert_select "select[name=priority] option", count: 11
   end
 
   test "404s an unknown RFC" do
