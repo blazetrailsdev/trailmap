@@ -30,6 +30,11 @@ describe("GET /packages and each package's pages", () => {
     expect((await get("/packages/arel")).body).toContain('<a href="/packages" class="active">Packages</a>');
   });
 
+  it("names the current section beside the brand, for a phone", async () => {
+    expect((await get("/packages")).body).toContain('<span class="nav-current">Packages</span>');
+    expect((await get("/packages/arel")).body).toContain('<span class="nav-current">Packages</span>');
+  });
+
   it("answers a package's page with links to its tabs", async () => {
     const { status, body } = await get("/packages/arel");
     expect(status).toBe(200);

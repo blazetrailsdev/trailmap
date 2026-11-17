@@ -29,7 +29,11 @@ class SharedController extends ApplicationController {
  * `pnpm views` bakes `annotateRenderedViewWithFilenames` into the compiled
  * template from the env it boots under, so a build under development wraps the
  * partial in `<!-- BEGIN ... -->` / `<!-- END ... -->` and one under test does
- * not. The badge is the markup between them, whichever build last ran.
+ * not. The literals are emitted by `tseHandlerScope` in
+ * `@blazetrails/trails-tsc/dist/plugins/tse.js` (`<!-- BEGIN ${id} -->` and
+ * `<!-- END ${id} -->`), from `Base.annotateRenderedViewWithFilenames` as
+ * `build-views.js` reads it at build time. The badge is the markup between
+ * them, whichever build last ran.
  */
 function withoutAnnotations(html: string): string {
   return html.replace(/<!-- (BEGIN|END) [^>]*-->\n?/g, "").trim();

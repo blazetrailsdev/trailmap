@@ -3,10 +3,12 @@ import { getFs } from "@blazetrails/ruby-compat";
 import { STYLESHEET } from "../../scripts/class-collisions.ts";
 
 /**
- * The phone full-bleed rule was dead for months: a second `.box { ... }` came
- * later in the file and won the cascade, and nothing noticed. These hold the
- * two things that keep it alive — one `.box` declaration, and the phone rule
- * after it.
+ * The phone full-bleed rule was dead for months: it was spelled `.box`, and a
+ * second `.box { ... }` later in the file won the cascade on source order.
+ * What keeps it alive now is that one `.box` declaration exists and the
+ * phone rule is `.wrap > .box`, which outranks it on specificity. Order no
+ * longer decides the cascade; the ordering check only keeps the two rules
+ * reading together, base first.
  */
 async function stylesheet(): Promise<string> {
   return getFs().readFile(STYLESHEET, "utf8");

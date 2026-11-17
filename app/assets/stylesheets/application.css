@@ -213,10 +213,21 @@ code { font-family: var(--font-mono); font-size: 12px; }
  */
 .nav-toggle { position: absolute; opacity: 0; pointer-events: none; }
 .nav-burger { display: none; }
+/* The current section beside the brand, for a phone, where the links hide
+   behind the burger; above 640px the active link in the row says it. */
+.nav-current { display: none; }
 
 @media (max-width: 640px) {
   .nav { flex-wrap: wrap; padding: 0 16px; }
-  .nav-brand { margin-right: auto; }
+  .nav-current {
+    display: block;
+    margin: 0 auto 0 10px;
+    padding-left: 10px;
+    border-left: 1px solid var(--border);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .nav-current:empty { margin-left: 0; padding-left: 0; border-left: none; }
   .nav-burger {
     display: inline-flex;
     align-items: center;
@@ -268,14 +279,21 @@ h2 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; padding-bottom: 8px;
 p { margin-bottom: 10px; }
 ul { margin: 0 0 10px 20px; }
 
-/* Primer's `.Box` -- the bordered panel every GitHub list and detail sits in;
-   declared once, below. */
+/* Primer's `.Box` -- the bordered panel every GitHub list and detail sits in:
+   bordered, rounded, with a grey count strip like the issue list. */
+.box { border: 1px solid var(--border); border-radius: 6px; background: var(--bg); overflow: hidden; }
 .box-row { padding: 12px 16px; border-top: 1px solid var(--border); }
 .box-row:first-child { border-top: none; }
 
 @media (max-width: 640px) {
   .wrap { padding: 0 16px; }
   h1 { font-size: 24px; }
+  /* A boxed list runs full bleed on a phone: edge to edge, top and bottom
+     rules only. Only a box that is a direct child of `.wrap`, whose 16px
+     padding the negative margin cancels; a box in a sidebar or column keeps
+     its border. `.wrap > .box` outranks `.box` on specificity, so it wins
+     wherever it sits; it lives here, after `.box`, so the two read together. */
+  .wrap > .box { border-radius: 0; border-left: none; border-right: none; margin: 0 -16px; }
 }
 
 /* status vocabulary -- ringo's `.badge` block, defined once */
@@ -361,15 +379,6 @@ ul { margin: 0 0 10px 20px; }
 .side-value a { overflow-wrap: anywhere; }
 .side-list { display: flex; flex-wrap: wrap; gap: 4px; }
 
-/* The Box: bordered, rounded, with a grey count strip like the issue list. */
-.box { border: 1px solid var(--border); border-radius: 6px; background: var(--bg); overflow: hidden; }
-/* A boxed list runs full bleed on a phone: edge to edge, top and bottom rules
-   only. Only a box that is a direct child of `.wrap`, whose 16px padding the
-   negative margin cancels; a box in a sidebar or column keeps its border. It
-   comes after the rule above so that it wins. */
-@media (max-width: 640px) {
-  .wrap > .box { border-radius: 0; border-left: none; border-right: none; margin: 0 -16px; }
-}
 .box-header {
   display: flex;
   align-items: center;
