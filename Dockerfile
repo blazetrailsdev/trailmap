@@ -25,8 +25,10 @@ COPY vendor/ ./vendor/
 RUN npm install -g corepack && corepack enable pnpm && pnpm install --frozen-lockfile
 
 COPY . .
-RUN pnpm exec trails-tsc-views build --views app/views
-RUN pnpm run build
+# Both boot the app, and sqlite3 refuses to start with no database file. The
+# real one is mounted at run time; a scratch file is enough to build against.
+RUN TASKS_DATABASE=/tmp/build.db pnpm exec trails-tsc-views build --views app/views
+RUN TASKS_DATABASE=/tmp/build.db pnpm run build && rm -f /tmp/build.db
 
 # Assets go under public/, where production serves them; see the script.
 RUN ./scripts/build-assets.sh

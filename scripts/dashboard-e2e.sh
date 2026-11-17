@@ -14,7 +14,8 @@ ringo="${E2E_RINGO_PORT:-8141}" app="${E2E_APP_PORT:-8142}" cdp="${E2E_CDP_PORT:
 chrome="${CHROME_BIN:-$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)}"
 [ -n "$chrome" ] || { echo "dashboard-e2e: no Chrome on PATH (set CHROME_BIN)" >&2; exit 1; }
 
-pnpm exec trails-tsc-views build --views app/views
+# The views build boots the app, and sqlite3 refuses to start with no file.
+TASKS_DATABASE="${TASKS_DATABASE:-$work/views-build.db}" pnpm exec trails-tsc-views build --views app/views
 # public/assets is what this run builds, and a build left behind makes the
 # layout link digested names, which the controller tests do not expect. So the
 # trap removes it again, unless it was already there before the run.

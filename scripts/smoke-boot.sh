@@ -30,7 +30,8 @@ fi
 
 cd "$work"
 pnpm install --frozen-lockfile
-pnpm exec trails-tsc-views build --views app/views
+# The views build boots the app, and sqlite3 refuses to start with no file.
+TASKS_DATABASE="${TASKS_DATABASE:-$work/views-build.db}" pnpm exec trails-tsc-views build --views app/views
 
 # A DATABASE, because the deployment has one and a boot without one is not the
 # boot being smoke-tested. Until the boot began
