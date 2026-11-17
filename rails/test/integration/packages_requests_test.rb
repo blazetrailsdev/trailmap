@@ -20,6 +20,13 @@ class PackagesRequestsTest < ActionDispatch::IntegrationTest
     assert_includes response.body, '<a href="/packages" class="active" aria-current="page">Packages</a>'
   end
 
+  test "names the current section beside the brand, for a phone" do
+    get "/packages"
+    assert_includes response.body, '<span class="nav-current" aria-hidden="true">Packages</span>'
+    get "/packages/arel"
+    assert_includes response.body, '<span class="nav-current" aria-hidden="true">Packages</span>'
+  end
+
   test "answers a package's page with links to its tabs" do
     get "/packages/arel"
     assert_response :success

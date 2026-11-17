@@ -15,13 +15,15 @@
   <%= javascript_inline_importmap_tag %>
 </head>
 <body>
+  <% nav_items = [ [ "RFCs", rfcs_path ], [ "Backlog", backlog_path ], [ "Dashboard", dashboard_path ], [ "Parity", parity_graph_path ], [ "Packages", packages_path ], [ "Audits", audits_path ], [ "Deploys", deploys_path ], [ "Sessions", sessions_path ], [ "Search", search_path ] ].map { |label, path| [ label, path, nav_mark(path) ] } %>
+  <% nav_current = nav_items.find { |_, _, mark| mark }&.first.to_s %>
   <nav class="nav">
     <a class="nav-brand" href="<%= root_path %>"><%= image_tag "/mark.svg", size: 24, alt: "" %>trailmap</a>
+    <span class="nav-current" aria-hidden="true"><%= nav_current %></span>
     <input type="checkbox" id="navToggle" class="nav-toggle">
     <label for="navToggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
     <nav class="nav-links">
-      <% [ [ "RFCs", rfcs_path ], [ "Backlog", backlog_path ], [ "Dashboard", dashboard_path ], [ "Parity", parity_graph_path ], [ "Packages", packages_path ], [ "Audits", audits_path ], [ "Deploys", deploys_path ], [ "Sessions", sessions_path ], [ "Search", search_path ] ].each do |label, path| %>
-        <% mark = nav_mark(path) %>
+      <% nav_items.each do |label, path, mark| %>
         <a href="<%= path %>"<% if mark %> class="active"<% end %><% if mark == "page" %> aria-current="page"<% end %>><%= label %></a>
       <% end %>
     </nav>
