@@ -33,8 +33,10 @@ class RfcListPageTest < ActionDispatch::IntegrationTest
 
   test "marks the current sort, and defaults to priority" do
     get "/rfcs"
-    assert_match(%r{class="sort-link active"[^>]*aria-current="true">priority</a>}, response.body)
-    assert_includes response.body, 'href="/rfcs?sort=open&amp;status=active"'
+    assert_match(/<select id="rfc-sort" name="sort"/, response.body)
+    assert_match(%r{<option value="priority" data-href="/rfcs\?status=active"[^>]* selected>priority</option>}, response.body)
+    assert_includes response.body, 'data-href="/rfcs?sort=open&amp;status=active"'
+    assert_includes response.body, '<input type="hidden" name="status" value="active">'
   end
 
   test "re-sorts by the requested key, falling back to priority order on ties" do
@@ -47,7 +49,7 @@ class RfcListPageTest < ActionDispatch::IntegrationTest
   test "keeps the sort across tabs, and ignores an unknown one" do
     get "/rfcs", params: { status: "draft", sort: "open" }
     assert_includes response.body, 'href="/rfcs?sort=open&amp;status=active"'
-    assert_match(%r{class="sort-link active"[^>]*>most open</a>}, response.body)
+    assert_match(%r{<option value="open"[^>]* selected>most open</option>}, response.body)
     assert_equal %w[0100-alpha 0136-trailmap 0200-zeta], listed(sort: "bogus")
   end
 

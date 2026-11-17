@@ -27,6 +27,7 @@ export default defineConfig({
         pane: entry("app/assets/javascripts/pane.js"),
         deploys: entry("app/assets/javascripts/deploys.js"),
         "rfc-actions": entry("app/assets/javascripts/rfc-actions.js"),
+        "rfc-sort": entry("app/assets/javascripts/rfc-sort.js"),
         // ringo's parity chart, from the pinned snapshot (scripts/vendor-ringo.sh).
         "ringo-parity-css": entry("vendor/ringo/parity.css"),
         "ringo-parity": entry("vendor/ringo/parity-draw.js"),

@@ -5,12 +5,16 @@
 
 <div class="list-controls">
   <%= render "shared/filter_tabs", tabs: @tabs %>
-  <nav class="sort-links" aria-label="Sort">
-    <span class="muted">Sort</span>
-    <% @sorts.each do |option| %>
-      <a class="sort-link<%= option.active ? " active" : "" %>" href="<%= option.href %>" title="<%= option.title %>"<% if option.active %> aria-current="true"<% end %>><%= option.label %></a>
-    <% end %>
-  </nav>
+  <form class="sort-menu" method="get" action="<%= rfcs_path %>">
+    <input type="hidden" name="status" value="<%= @filter %>">
+    <label for="rfc-sort" class="muted">Sort</label>
+    <select id="rfc-sort" name="sort" class="ctl" data-sort-menu>
+      <% @sorts.each do |option| %>
+        <option value="<%= option.key %>" data-href="<%= option.href %>" title="<%= option.title %>"<% if option.active %> selected<% end %>><%= option.label %></option>
+      <% end %>
+    </select>
+    <noscript><button type="submit" class="ctl">Sort</button></noscript>
+  </form>
 </div>
 
 <div class="box rfc-list">
@@ -47,3 +51,5 @@
     </div>
   <% end %>
 </div>
+
+<script src="<%= javascript_path("rfc-sort") %>" type="module"></script>

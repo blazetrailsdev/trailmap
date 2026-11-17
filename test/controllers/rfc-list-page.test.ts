@@ -81,7 +81,8 @@ describe("RfcPagesController#index", () => {
     expect(body).toContain("trailmap");
     // The whole point of the port: ringo's shell fetches its rows.
     expect(body).not.toContain("fetch(");
-    expect(body).not.toContain("<script");
+    // The rows are in the HTML; the only script is the sort menu's.
+    expect(body.match(/<script[^>]*>/g)).toEqual(['<script src="/assets/javascripts/rfc-sort.js" type="module">']);
   });
 
   it("shows the active RFCs by default, and ranks them the way ringo does", async () => {
@@ -158,8 +159,10 @@ describe("RfcPagesController#index", () => {
   it("marks the current sort, and defaults to priority", async () => {
     const { body } = await index();
 
-    expect(body).toMatch(/class="sort-link active"[^>]*aria-current="true">priority<\/a>/);
-    expect(body).toContain('href="/rfcs?sort=open&amp;status=active"');
+    expect(body).toMatch(/<select id="rfc-sort" name="sort"/);
+    expect(body).toMatch(/<option value="priority" data-href="\/rfcs\?status=active"[^>]* selected>priority<\/option>/);
+    expect(body).toContain('data-href="/rfcs?sort=open&amp;status=active"');
+    expect(body).toContain('<input type="hidden" name="status" value="active">');
   });
 
   it("re-sorts by the requested key, falling back to priority order on ties", async () => {
@@ -175,7 +178,7 @@ describe("RfcPagesController#index", () => {
   it("keeps the sort across tabs, and ignores an unknown one", async () => {
     const { body } = await index("draft", "open");
     expect(body).toContain('href="/rfcs?sort=open&amp;status=active"');
-    expect(body).toMatch(/class="sort-link active"[^>]*>most open<\/a>/);
+    expect(body).toMatch(/<option value="open"[^>]* selected>most open<\/option>/);
 
     expect(listed((await index(undefined, "bogus")).body)).toEqual(["0100-alpha", "0136-trailmap", "0200-zeta"]);
   });
