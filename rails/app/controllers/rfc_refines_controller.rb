@@ -10,7 +10,7 @@ class RfcRefinesController < ApiController
     rfc_id = param(:id).to_s
     return render json: { error: %(no RFC "#{rfc_id}") }, status: :not_found unless Rfc.exists?(id: rfc_id)
 
-    summary = params.fetch(:summary, "")
+    summary = params[:summary] || ""
     return render json: { error: "summary must be a string" }, status: :unprocessable_entity unless summary.is_a?(String)
 
     refine = RfcRefine.new(rfc_id: rfc_id, outcome: param(:outcome).to_s, summary: summary)

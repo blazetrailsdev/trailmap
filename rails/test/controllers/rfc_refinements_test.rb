@@ -65,6 +65,13 @@ class RfcRefinementsTest < ActionDispatch::IntegrationTest
     assert_equal [ [ "changed", "# Report" ] ], RfcRefine.for_rfc("0136-trailmap").pluck(:outcome, :summary)
   end
 
+  test "stores a null summary as an empty one" do
+    report(kind: "rfc-refine", id: "0136-trailmap", outcome: "no-change", summary: nil)
+
+    assert_response :created
+    assert_equal [ [ "no-change", "" ] ], RfcRefine.for_rfc("0136-trailmap").pluck(:outcome, :summary)
+  end
+
   test "refuses a report for an unknown RFC, another kind, an unknown outcome, or a summary that is not a string" do
     report(kind: "rfc-refine", id: "9999-nope", outcome: "changed")
     assert_response :not_found

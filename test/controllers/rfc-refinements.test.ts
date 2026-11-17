@@ -115,6 +115,14 @@ describe.skipIf(!hasHubTestDatabase())("RfcRefinements", () => {
     expect(stored.map((r) => [r.outcome, r.summary])).toEqual([["changed", "# Report"]]);
   });
 
+  it("stores a null summary as an empty one", async () => {
+    const { status } = await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "no-change", summary: null });
+
+    expect(status).toBe(201);
+    const stored = await RfcRefine.forRfc("0136-trailmap").toArray();
+    expect(stored.map((r) => [r.outcome, r.summary])).toEqual([["no-change", ""]]);
+  });
+
   it("refuses a report for an unknown RFC, another kind, an unknown outcome, or a summary that is not a string", async () => {
     expect((await report({ kind: "rfc-refine", id: "9999-nope", outcome: "changed" })).status).toBe(404);
     expect((await report({ kind: "story", id: "0136-trailmap", outcome: "changed" })).status).toBe(400);
