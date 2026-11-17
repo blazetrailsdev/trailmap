@@ -3,6 +3,7 @@ import { ApplicationController } from "./application-controller.ts";
 import { Event } from "../models/event.ts";
 import { Rfc } from "../models/rfc.ts";
 import { Story } from "../models/story.ts";
+import { RfcRefine } from "../models/rfc-refine.ts";
 import { collectRfcMarks, type MarkEvent } from "../models/concerns/rfc-marks.ts";
 import { readDocument } from "../models/concerns/document.ts";
 import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet, type RfcStatusMove } from "../models/rfc-status.ts";
@@ -38,8 +39,10 @@ const RFC_STATUS_TABS: readonly string[] = ["active", "draft", "postponed", "clo
  * "Spawn batch", "Refine stories" and "Sunset" start an agent, which is ringo's
  * dispatch and not a database write, so they are NOT ported: the page posts
  * them through the `fleet/control` relay to ringo
- * (`app/assets/javascripts/rfc-actions.js`). What is still missing: the
- * refinements tab and the charts tab, each ringo's own local state.
+ * (`app/assets/javascripts/rfc-actions.js`). The Refinements tab
+ * (`/rfc/<id>/refinements`) reads the refine reports trailmap stores in the
+ * hub (`RfcRefine`); ringo kept only the newest, in a local file. What is
+ * still missing: the charts tab.
  *
  * A missing RFC renders the page with a 404 rather than an error page — same
  * as ringo, and it is what makes a stale link say which id it was looking for.
@@ -64,6 +67,9 @@ export class RfcPagesController extends ApplicationController {
   canBatch = false;
   canSunset = false;
   refusal: string | null = null;
+  tab: "stories" | "refinements" = "stories";
+  refineCount: number | null = null;
+  refines: { at: string; outcome: string; html: SafeBuffer | null }[] = [];
 
   /**
    * `/rfcs` — the RFC list, server-rendered.
@@ -172,6 +178,28 @@ export class RfcPagesController extends ApplicationController {
   async show(): Promise<void> {
     await this._loadShow(String(this.params.get("id") ?? ""));
     if (this.rfc === null) await this.render({ action: "show", status: 404 });
+  }
+
+  /**
+   * `/rfc/<id>/refinements` — ringo's Refinements tab: the newest refine
+   * report (when, outcome, the summary rendered), then the earlier ones,
+   * newest first. An unknown id is the same 404 as the Stories tab.
+   */
+  async refinements(): Promise<void> {
+    this.tab = "refinements";
+    await this._loadShow(String(this.params.get("id") ?? ""));
+    if (this.rfc === null) {
+      await this.render({ action: "show", status: 404 });
+      return;
+    }
+    const rows = await RfcRefine.forRfc(this.rfc.id).toArray();
+    this.refines = rows.map((row) => ({
+      at: row.created_at.utc().iso8601(3),
+      outcome: row.outcome,
+      html: row.summary === "" ? null : renderMarkdown(row.summary),
+    }));
+    this.refineCount = rows.length;
+    await this.render({ action: "show" });
   }
 
   /**

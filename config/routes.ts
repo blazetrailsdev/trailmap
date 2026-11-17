@@ -112,6 +112,7 @@ Trails.application!.routes().draw(function () {
   // are distinct from the plural `stories/:id` JSON route below, which is the
   // loopback-only read verb and not a page.
   this.get("rfc/:id", { to: "rfc_pages#show", as: "rfc" });
+  this.get("rfc/:id/refinements", { to: "rfc_pages#refinements", as: "rfc_refinements" });
   // The lifecycle buttons on that page. Page POSTs, not loopback API verbs:
   // the page is their caller, and a refusal renders on it.
   this.post("rfc/:id/status", { to: "rfc_pages#move", as: "rfc_status" });
@@ -196,6 +197,8 @@ Trails.application!.routes().draw(function () {
     // that is not a field write (`record-spawn`, `claim`) is not dressed up as
     // one. Ids travel in the JSON body, never in the path, because every batch
     // verb takes a list.
+    // A refine agent's report, stored for the RFC page's Refinements tab.
+    this.post("rfc-refines", { to: "rfc_refines#create" });
     this.post("stories/claim", { to: "mutations#claim" });
     this.post("stories/release", { to: "mutations#release" });
     this.post("stories/in-progress", { to: "mutations#inProgress" });
