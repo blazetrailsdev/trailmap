@@ -2,7 +2,7 @@
 // default sort stays off the URL. Without JavaScript the form's button submits.
 for (const select of document.querySelectorAll("select[data-sort-menu]")) {
   select.addEventListener("change", () => {
-    const href = select.selectedOptions[0]?.dataset.href;
+    const href = select.options[select.selectedIndex]?.dataset.href;
     if (href) window.location.assign(href);
   });
 }

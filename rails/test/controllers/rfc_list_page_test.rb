@@ -31,6 +31,11 @@ class RfcListPageTest < ActionDispatch::IntegrationTest
     assert_no_match(/\d+ RFCs/, response.body)
   end
 
+  test "renders the status tabs as an underline nav with counters" do
+    get "/rfcs", params: { status: "draft" }
+    assert_match(%r{class="underline-nav-item active"[^>]*aria-current="page">draft <span class="Counter">\d+</span></a>}, response.body)
+  end
+
   test "marks the current sort, and defaults to priority" do
     get "/rfcs"
     assert_match(/<select id="rfc-sort" name="sort"/, response.body)

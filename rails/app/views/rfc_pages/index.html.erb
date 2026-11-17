@@ -4,7 +4,7 @@
 </div>
 
 <div class="list-controls">
-  <%= render "shared/filter_tabs", tabs: @tabs %>
+  <%= render "shared/underline_nav", tabs: @tabs %>
   <form class="sort-menu" method="get" action="<%= rfcs_path %>">
     <input type="hidden" name="status" value="<%= @filter %>">
     <label for="rfc-sort" class="muted">Sort</label>

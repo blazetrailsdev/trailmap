@@ -94,10 +94,10 @@ describe("RfcPagesController#index", () => {
   it("counts every status on the tabs, not just the one on show", async () => {
     const { body } = await index();
 
-    expect(body).toContain(">3 active</a>");
-    expect(body).toContain(">1 draft</a>");
-    expect(body).toContain(">0 postponed</a>");
-    expect(body).toContain(">1 superseded</a>");
+    expect(body).toContain('>active <span class="Counter">3</span></a>');
+    expect(body).toContain('>draft <span class="Counter">1</span></a>');
+    expect(body).toContain('>postponed <span class="Counter">0</span></a>');
+    expect(body).toContain('>superseded <span class="Counter">1</span></a>');
     expect(body).toContain('href="/rfcs?status=draft"');
   });
 
@@ -108,7 +108,7 @@ describe("RfcPagesController#index", () => {
       expect(listed(body).length, status).toBeGreaterThan(0);
       expect(body, status).not.toContain('class="badge s-');
       // The one place the status is stated: the tab the list is filtered to.
-      expect(body, status).toMatch(new RegExp(`class="tab active"[^>]*>\\d+ ${status}</a>`));
+      expect(body, status).toMatch(new RegExp(`class="underline-nav-item active"[^>]*aria-current="page">${status} <span class="Counter">\\d+</span></a>`));
     }
   });
 

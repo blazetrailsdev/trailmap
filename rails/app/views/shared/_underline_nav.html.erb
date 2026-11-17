@@ -1,0 +1,6 @@
+<%# GitHub's UnderlineNav: label, then its count in a Counter; the current tab is underlined. %>
+<nav class="underline-nav" aria-label="Status">
+  <% tabs.each do |tab| %>
+    <a class="underline-nav-item<%= tab.active ? " active" : "" %>" href="<%= tab.href %>"<% if tab.active %> aria-current="page"<% end %>><%= tab.label %> <span class="Counter"><%= tab.count %></span></a>
+  <% end %>
+</nav>
