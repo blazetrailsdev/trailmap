@@ -27,10 +27,10 @@ export class RepoSettingsController extends RepoController {
 
     // One `resolve` per key: it answers the value and its source together,
     // so this page cannot disagree with the resolver about what is in effect.
-    const global = [];
+    const appSettings = [];
     for (const key of Object.keys(Setting.FALLBACKS)) {
       const { value, source } = await Setting.resolve(key);
-      global.push({
+      appSettings.push({
         key,
         value,
         from:
@@ -74,7 +74,7 @@ export class RepoSettingsController extends RepoController {
           tab,
           enabled: switches === null ? true : switches.enabled(tab),
         })),
-        global,
+        appSettings,
       }),
     });
   }
@@ -95,9 +95,23 @@ export class RepoSettingsController extends RepoController {
     if (!(await this.repo.isAdministrableBy(await viewerOf(this.request)))) {
       throw new RecordNotFound(`${this.nwo} has no settings this viewer may change`);
     }
-    const row = (await this.repo.settings) ?? this.repo.buildSettings();
-    await row.updateBang(this._switchParams());
+    if (this.params.get("repository") !== undefined) {
+      await this.repo.updateBang(this._checkoutParams());
+    } else {
+      const row = (await this.repo.settings) ?? this.repo.buildSettings();
+      await row.updateBang(this._switchParams());
+    }
     this.redirectTo(this.repoSettingsPath(this.repoOwner.login, this.repo.name), { status: 303 });
+  }
+
+  /**
+   * The checkout path alone, the directory the dashboard spawns a session in.
+   * A blank field clears it, so the column holds NULL and not "".
+   */
+  private _checkoutParams(): Record<string, unknown> {
+    const scoped = this.params.require("repository") as ActionController.Parameters;
+    const path = String((scoped.permit("checkout_path").toHash() as Record<string, unknown>).checkout_path ?? "").trim();
+    return { checkout_path: path === "" ? null : path };
   }
 
   /**

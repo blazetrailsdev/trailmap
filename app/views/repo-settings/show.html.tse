@@ -10,6 +10,17 @@
     <% if (repo.checkout_path) { %><code><%= repo.checkout_path %></code><% } else { %><span class="muted">not set</span><% } %>
   </div>
 </div>
+<% if (canAdminister) { %>
+<%= formWith({ model: repo, url: repoSettingsPath(owner.login, repo.name), method: "patch", scope: "repository" }, (f) => { %>
+  <div class="box">
+    <div class="box-row">
+      <label for="repository_checkout_path"><strong>Checkout path</strong></label>
+      <span class="muted">Where the dashboard spawns a session for this repository. Leave it blank to clear it.</span>
+    </div>
+    <div class="box-row"><%= f.textField("checkout_path", { class: "ctl" }) %> <%= f.submit("Save checkout path", { class: "btn btn-sm" }) %></div>
+  </div>
+<% }) %>
+<% } %>
 
 <h2>Features</h2>
 <p class="muted">A tab turned off is not drawn above and answers 404.</p>
@@ -63,7 +74,7 @@ Postgres enforces as the table's real PRIMARY KEY.</p>
 <p class="muted">One row per setting, and where its value is coming from: a row in this
 database overrides the environment variable of the same meaning.</p>
 <div class="box">
-  <% for (const row of global) { %>
+  <% for (const row of appSettings) { %>
     <div class="box-row">
       <code><%= row.key %></code> &middot;
       <% if (row.value) { %><%= row.value %><% } else { %><span class="muted">unset</span><% } %>

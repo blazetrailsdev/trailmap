@@ -10,7 +10,7 @@ class RepoSettingsController < RepoController
 
   def show
     row = @repo.settings
-    @global = Setting::FALLBACKS.map do |key, env|
+    @app_settings = Setting::FALLBACKS.map do |key, env|
       resolved = Setting.resolve(key)
       Global.new(key: key, value: resolved.value,
                  from: resolved.source == "database" ? "this database" : "#{env} (environment)")
@@ -27,8 +27,12 @@ class RepoSettingsController < RepoController
 
   def update
     raise ActiveRecord::RecordNotFound, "#{@repo.name_with_owner} has no settings this viewer may change" unless @repo.administrable_by?(viewer)
-    row = @repo.settings || @repo.build_settings
-    row.update!(switch_params)
+    if params.key?(:repository)
+      @repo.update!(checkout_path: params.require(:repository).permit(:checkout_path)[:checkout_path].to_s.strip.presence)
+    else
+      row = @repo.settings || @repo.build_settings
+      row.update!(switch_params)
+    end
     redirect_to repo_settings_path(@owner.login, @repo.name), status: :see_other
   end
 

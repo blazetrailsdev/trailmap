@@ -62,6 +62,15 @@ class HubModelsTest < ActiveSupport::TestCase
     end
   end
 
+  test "missing_checkout names the first unarchived repository by name, or nil when the hub has none" do
+    assert_nil Repository.missing_checkout
+    hub_repo!("archived", archived: true)
+    assert_nil Repository.missing_checkout
+    hub_repo!("trails")
+    hub_repo!("ringo")
+    assert_equal "blazetrailsdev/ringo", Repository.missing_checkout
+  end
+
   private
 
   def with_fleet_repo_paths(value)

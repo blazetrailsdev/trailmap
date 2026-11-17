@@ -358,6 +358,19 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
     });
   });
 
+  describe("Repository.missingCheckout", () => {
+    it("names the first unarchived repository by name, or null when the hub has none", async () => {
+      expect(await Repository.missingCheckout()).toBeNull();
+      const owner = await Owner.createBang({ login: "blazetrailsdev", kind: "organization" });
+      await Repository.createBang({ owner_id: owner.id, name: "archived", archived: true });
+      expect(await Repository.missingCheckout()).toBeNull();
+      await Repository.createBang({ owner_id: owner.id, name: "trails" });
+      await Repository.createBang({ owner_id: owner.id, name: "ringo" });
+
+      expect(await Repository.missingCheckout()).toBe("blazetrailsdev/ringo");
+    });
+  });
+
   describe("Repository.spawnChoices", () => {
     it("is the environment's entries when the hub holds no checkout", async () => {
       setX("fleet", "repoPaths", "blazetrailsdev/trails=/checkout/trails");

@@ -51,6 +51,7 @@
   "devDependencies": {
     "@blazetrails/activerecord-cli": "file:vendor/blazetrails-activerecord-cli-0.1.0.tgz",
     "@blazetrails/trails-tsc": "file:vendor/blazetrails-trails-tsc-0.1.0.tgz",
+    "happy-dom": "20.0.10",
     "tsx": "^4.20.0",
     "typescript": "7.1.0-dev.20260920.1",
     "typescript-5": "npm:typescript@5.9.3",

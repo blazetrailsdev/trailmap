@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { getFs } from "@blazetrails/ruby-compat";
+import { STYLESHEET } from "../../scripts/class-collisions.ts";
 import {
   CI_TITLES,
   paneOverridePill,
@@ -49,6 +51,7 @@ import {
   spawnLoopControls,
   spawnLoopView,
   statusClass,
+  PILL_STATUSES,
   timeAgo,
   visibleSpawns,
   barColor,
@@ -108,12 +111,32 @@ describe("timeAgo", () => {
 
 describe("statusClass", () => {
   it("slugs a next-action phrase into ringo's class name", () => {
-    expect(statusClass("waiting for CI")).toBe("status status-waiting-for-ci");
-    expect(statusClass("limit reached")).toBe("status status-limit-reached");
+    expect(statusClass("waiting for CI")).toBe("Label status-waiting-for-ci");
+    expect(statusClass("limit reached")).toBe("Label status-limit-reached");
   });
 
   it("survives a missing next action rather than emitting `status-null`", () => {
-    expect(statusClass(null)).toBe("status status-");
+    expect(statusClass(null)).toBe("Label status-");
+  });
+
+  it("has a stylesheet rule for every status it is called with, and none for any other", async () => {
+    const css = await getFs().readFile(STYLESHEET, "utf8");
+    const ruled = new Set([...css.matchAll(/\.(status-[a-z-]+)/g)].map((m) => m[1]).filter((c) => c !== "status-group"));
+    const source = await getFs().readFile(new URL("../../app/assets/javascripts/fleet-format.js", import.meta.url), "utf8");
+    // Every call site: a literal must be listed, and the one variable is
+    // rfcSpawnRow's verb, whose values are checked through its output below.
+    const args = [...source.matchAll(/(?<!function )(?<![.\w])statusClass\(([^)]*)\)/g)].map((m) => m[1].trim());
+    expect(args).toHaveLength(3);
+    for (const arg of args) {
+      if (arg.startsWith('"')) expect(PILL_STATUSES).toContain(JSON.parse(arg));
+      else expect(arg).toBe("verb");
+    }
+    for (const kind of ["rfc-refine", "rfc-sunset"]) {
+      const cls = rfcSpawnRow({ kind, story_id: "0001-x" }).match(/class="Label (status-[a-z-]+)"/)[1];
+      expect(PILL_STATUSES.map((s) => statusClass(s).split(" ")[1])).toContain(cls);
+    }
+    const emitted = PILL_STATUSES.map((s) => statusClass(s).split(" ")[1]);
+    expect([...ruled].sort()).toEqual([...emitted].sort());
   });
 });
 

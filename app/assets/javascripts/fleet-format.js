@@ -31,8 +31,11 @@ export function timeAgo(ts, now = Date.now()) {
   return Math.floor(h / 24) + "d ago";
 }
 
+/** Every phrase `statusClass` is called with; each has a `.status-*` rule. */
+export const PILL_STATUSES = ["limit reached", "waiting for answer", "refining", "sunsetting"];
+
 export function statusClass(next) {
-  return "status status-" + String(next || "").toLowerCase().replace(/\s+/g, "-");
+  return "Label status-" + String(next || "").toLowerCase().replace(/\s+/g, "-");
 }
 
 /*
@@ -816,7 +819,7 @@ export function cleanupControl(pr, now = Date.now()) {
   if (!cleanupPending(pr, now)) return "";
   const seconds = Math.max(0, Math.round((Date.parse(pr.teardownAt) - now) / 1000));
   return (
-    '<span class="status" title="Pane cleanup pending">closing in ' + seconds + "s</span>" +
+    '<span class="Label" title="Pane cleanup pending">closing in ' + seconds + "s</span>" +
     control("cancel-cleanup", { pane: pr.pane }, { cls: "act", title: "Keep this pane open", label: "cancel cleanup" })
   );
 }

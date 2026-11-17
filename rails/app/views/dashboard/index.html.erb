@@ -115,7 +115,9 @@
   </div>
   <div class="palette-pane" data-pane-mode="spawn" hidden>
     <select id="repo" class="ctl" aria-label="Repository">
-      <% if @repos.empty? %>
+      <% if @repos.empty? && @missing_checkout %>
+        <option value="" disabled selected>no repository has a checkout path</option>
+      <% elsif @repos.empty? %>
         <option value="" disabled selected>no repos configured (FLEET_REPO_PATHS)</option>
       <% end %>
       <% @repos.each do |repo| %>
@@ -124,6 +126,9 @@
     </select>
     <button class="btn btn-primary" id="spawn" data-action="spawn">Spawn</button>
     <span class="field-status" id="spawnStatus"></span>
+    <% if @repos.empty? && @missing_checkout %>
+      <span class="field-note" id="checkoutNote">Set one in <a href="<%= repo_settings_path(*@missing_checkout.split("/", 2)) %>"><%= @missing_checkout %>'s settings</a>.</span>
+    <% end %>
   </div>
   <div class="palette-pane" data-pane-mode="message" hidden>
     <button class="btn btn-primary" id="messageSend" data-action="pane-send" data-pane="" data-key="" data-source="paletteInput" data-clears="paletteInput" data-says="messageNote">Send</button>
