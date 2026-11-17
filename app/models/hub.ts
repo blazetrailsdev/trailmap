@@ -40,12 +40,15 @@ export class Hub extends ApplicationRecord {
     // reads `abstractClass === true` and `Owner.create()` raises "Owner is an
     // abstract class and cannot be instantiated". Assignment runs the setter.
     this.abstractClass = true;
-    // Named "Hub" before anything connects it, which is the name
-    // `establishConnection` gives it anyway. Unnamed, a process that never
-    // connects the hub (the test environment declares none) resolves `Hub`
-    // through `ActiveRecord::Base`'s pool instead, and every hub model
-    // silently queries the task database, failing on "no such table" where its
-    // callers handle `ConnectionNotDefined`.
+    // TEMPORARY, tracked by trails' story
+    // `connects-to-in-a-model-body-races-configurations`. Rails names this pool with
+    // `connects_to database: { writing: :hub }` (as rails/app/models/hub.rb
+    // does); here that raises "'{ test => hub }' is not a valid configuration"
+    // at class load, because trails assigns `Base.configurations` after an
+    // await in its `on_load` hook. Assigning the name `establishConnection`
+    // gives it anyway stands in until then: unnamed, a process that never
+    // connects the hub resolves `Hub` through `ActiveRecord::Base`'s pool, and
+    // every hub model silently queries the task database.
     this.connectionSpecificationName = "Hub";
   }
 }

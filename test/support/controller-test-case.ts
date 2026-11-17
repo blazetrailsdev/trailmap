@@ -12,8 +12,8 @@
  *     tc.response.status; tc.response.body;
  *
  * The routes are the application's own, loaded by the boot in
- * `test/test-helper.ts` (or by the import below, for the gate scripts), so a test fails if the action it calls
- * is not routed — as it would in Rails. A controller that exists only inside
+ * `test/test-helper.ts` (or by the import below, for the gate scripts), so a
+ * test fails if the action it calls is not routed — as it would in Rails. A controller that exists only inside
  * a test has no route there, and gets a route set of its own with one
  * catch-all, so nothing a test needs is ever drawn into the application's.
  *
