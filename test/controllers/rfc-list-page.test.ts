@@ -18,9 +18,12 @@ import { controllerTestCase } from "../support/controller-test-case.ts";
  * enough stories to make a progress bar, which is the wrong shape for any of
  * that.
  */
-async function index(status?: string): Promise<{ status: number; body: string }> {
+async function index(status?: string, sort?: string): Promise<{ status: number; body: string }> {
   const tc = await controllerTestCase(RfcPagesController);
-  await tc.get("index", { params: status === undefined ? {} : { status } });
+  const params: Record<string, string> = {};
+  if (status !== undefined) params.status = status;
+  if (sort !== undefined) params.sort = sort;
+  await tc.get("index", { params });
   return { status: tc.response.status, body: tc.response.body };
 }
 
@@ -72,7 +75,9 @@ describe("RfcPagesController#index", () => {
 
     expect(status).toBe(200);
     expect(body).toContain("<!DOCTYPE html>");
-    expect(body).toContain('<h1 class="page-title">RFCs</h1>');
+    expect(body).toMatch(/<h1 class="page-title">RFCs <span class="counter"[^>]*>5<\/span><\/h1>/);
+    // Said once, in the title: no "N RFCs" subhead, no "No x RFCs." empty state.
+    expect(body).not.toMatch(/\d+ RFCs/);
     expect(body).toContain("trailmap");
     // The whole point of the port: ringo's shell fetches its rows.
     expect(body).not.toContain("fetch(");
@@ -150,10 +155,35 @@ describe("RfcPagesController#index", () => {
     expect((await index("superseded")).body).not.toMatch(/open \d+d/);
   });
 
+  it("marks the current sort, and defaults to priority", async () => {
+    const { body } = await index();
+
+    expect(body).toMatch(/class="sort-link active"[^>]*aria-current="true">priority<\/a>/);
+    expect(body).toContain('href="/rfcs?sort=open&amp;status=active"');
+  });
+
+  it("re-sorts by the requested key, falling back to priority order on ties", async () => {
+    // trailmap has 3 open stories, alpha 1, zeta 0.
+    expect(listed((await index(undefined, "open")).body)).toEqual(["0136-trailmap", "0100-alpha", "0200-zeta"]);
+    // trailmap is 25% done; the others 0%, left in priority order.
+    expect(listed((await index(undefined, "progress")).body)).toEqual(["0136-trailmap", "0100-alpha", "0200-zeta"]);
+    // Only trailmap is dated; the undated keep priority order behind it.
+    expect(listed((await index(undefined, "newest")).body)).toEqual(["0136-trailmap", "0100-alpha", "0200-zeta"]);
+    expect(listed((await index(undefined, "id")).body)).toEqual(["0100-alpha", "0136-trailmap", "0200-zeta"]);
+  });
+
+  it("keeps the sort across tabs, and ignores an unknown one", async () => {
+    const { body } = await index("draft", "open");
+    expect(body).toContain('href="/rfcs?sort=open&amp;status=active"');
+    expect(body).toMatch(/class="sort-link active"[^>]*>most open<\/a>/);
+
+    expect(listed((await index(undefined, "bogus")).body)).toEqual(["0100-alpha", "0136-trailmap", "0200-zeta"]);
+  });
+
   it("says which slice is empty rather than showing a blank list", async () => {
     const { body } = await index("postponed");
 
-    expect(body).toContain("No postponed RFCs.");
+    expect(body).toContain("Nothing postponed.");
   });
 
   // The page counts statuses; it has no use for the records. Loading them is

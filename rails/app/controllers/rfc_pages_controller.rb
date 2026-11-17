@@ -5,6 +5,7 @@ class RfcPagesController < ApplicationController
   STATUS_TABS = %w[active draft postponed closed superseded].freeze
 
   Tab = Struct.new(:key, :label, :count, :href, :active, keyword_init: true)
+  SortLink = Struct.new(:key, :label, :title, :href, :active, keyword_init: true)
   Tick = Struct.new(:kind, :pct, :title, keyword_init: true)
   Row = Struct.new(:id, :title, :owner, :priority, :superseded_by, :clusters, :counts, :bar, :bar_length,
                    :stalled, :ticks, :story_total, :open_days, keyword_init: true)
@@ -26,17 +27,24 @@ class RfcPagesController < ApplicationController
     end
 
     tab_counts = rfcs.map(&:status).tally
-    open_count = rfcs.to_h { |r| [ r.id, RfcProgress.story_counts(by_rfc.fetch(r.id, [])).open ] }
+    story_counts = rfcs.to_h { |r| [ r.id, RfcProgress.story_counts(by_rfc.fetch(r.id, [])) ] }
     # Over every RFC, not the tab's: the scale must not move with the tab.
     bar_scale = RfcProgress.bar_scale(rfcs.map { |r| by_rfc.fetch(r.id, []).size })
     marks = RfcMarks.collect(rfcs.to_set(&:id), story_rfc, events)
 
     @filter = STATUS_TABS.include?(params[:status]) ? params[:status] : "active"
+    @sort = RfcProgress::INDEX_SORTS.any? { |o| o.key == params[:sort] } ? params[:sort] : "priority"
+    # The default is left off a URL, so `/rfcs` stays the canonical address.
+    sort_param = @sort == "priority" ? {} : { sort: @sort }
     @total = rfcs.size
     @tabs = STATUS_TABS.map do |s|
-      Tab.new(key: s, label: s, count: tab_counts.fetch(s, 0), href: rfcs_path(status: s), active: s == @filter)
+      Tab.new(key: s, label: s, count: tab_counts.fetch(s, 0), href: rfcs_path(status: s, **sort_param), active: s == @filter)
     end
-    shown = RfcProgress.order_rfcs_for_index(rfcs.select { |r| r.status == @filter }, open_count)
+    @sorts = RfcProgress::INDEX_SORTS.map do |o|
+      SortLink.new(key: o.key, label: o.label, title: o.title, active: o.key == @sort,
+                   href: rfcs_path(status: @filter, **(o.key == "priority" ? {} : { sort: o.key })))
+    end
+    shown = RfcProgress.sort_rfcs_for_index(rfcs.select { |r| r.status == @filter }, @sort, story_counts)
     @rows = shown.map do |rfc|
       own = by_rfc.fetch(rfc.id, [])
       bar_length = RfcProgress.bar_length(own.size, bar_scale)

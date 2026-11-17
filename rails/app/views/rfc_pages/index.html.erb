@@ -1,15 +1,21 @@
+<%# "RFCs" is said once, in the title; the tabs carry the counts. %>
 <div class="page-header">
-  <h1 class="page-title">RFCs</h1>
-  <div class="page-subhead">
-    <span class="muted"><%= @total %> <%= @total == 1 ? "RFC" : "RFCs" %></span>
-  </div>
+  <h1 class="page-title">RFCs <span class="counter" title="every RFC, across all statuses"><%= @total %></span></h1>
 </div>
 
-<%= render "shared/filter_tabs", tabs: @tabs %>
+<div class="list-controls">
+  <%= render "shared/filter_tabs", tabs: @tabs %>
+  <nav class="sort-links" aria-label="Sort">
+    <span class="muted">Sort</span>
+    <% @sorts.each do |option| %>
+      <a class="sort-link<%= option.active ? " active" : "" %>" href="<%= option.href %>" title="<%= option.title %>"<% if option.active %> aria-current="true"<% end %>><%= option.label %></a>
+    <% end %>
+  </nav>
+</div>
 
-<div class="box">
+<div class="box rfc-list">
   <% if @rows.empty? %>
-    <div class="empty">No <%= @filter %> RFCs.</div>
+    <div class="empty">Nothing <%= @filter %>.</div>
   <% end %>
   <% @rows.each do |row| %>
     <div class="item-row">

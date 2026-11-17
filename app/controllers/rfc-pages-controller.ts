@@ -8,7 +8,8 @@ import { readDocument } from "../models/concerns/document.ts";
 import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet, type RfcStatusMove } from "../models/rfc-status.ts";
 import { VerbExit } from "../models/verb-exit.ts";
 import {
-  orderRfcsForIndex,
+  RFC_INDEX_SORTS,
+  sortRfcsForIndex,
   orderStoriesForRfc,
   rfcStoryCounts,
   storyBarScale,
@@ -48,6 +49,8 @@ export class RfcPagesController extends ApplicationController {
   declare total: number;
   declare tabs: { key: string; label: string; count: number; href: string; active: boolean }[];
   declare rows: RfcRow[];
+  declare sort: string;
+  declare sorts: { key: string; label: string; title: string; href: string; active: boolean }[];
 
   rfcId = "";
   rfc: Rfc | null = null;
@@ -115,10 +118,10 @@ export class RfcPagesController extends ApplicationController {
     }
 
     const tabCounts = new Map<string, number>();
-    const openCount = new Map<string, number>();
+    const storyCounts = new Map<string, RfcStoryCounts>();
     for (const rfc of rfcs) {
       tabCounts.set(rfc.status, (tabCounts.get(rfc.status) ?? 0) + 1);
-      openCount.set(rfc.id, rfcStoryCounts(byRfc.get(rfc.id) ?? []).open);
+      storyCounts.set(rfc.id, rfcStoryCounts(byRfc.get(rfc.id) ?? []));
     }
 
     // Over every RFC, not the tab's: the scale must not move when the tab does.
@@ -136,15 +139,29 @@ export class RfcPagesController extends ApplicationController {
 
     const requested = String(this.params.get("status") ?? "");
     const filter = RFC_STATUS_TABS.includes(requested) ? requested : "active";
-    const shown = orderRfcsForIndex(rfcs.filter((rfc) => rfc.status === filter), openCount);
+    const requestedSort = String(this.params.get("sort") ?? "");
+    const sort = RFC_INDEX_SORTS.some((option) => option.key === requestedSort) ? requestedSort : "priority";
+    const shown = sortRfcsForIndex(
+      rfcs.filter((rfc) => rfc.status === filter),
+      sort,
+      storyCounts,
+    );
+    // The default is left off a URL, so `/rfcs` stays the canonical address.
+    const sortParam = sort === "priority" ? {} : { sort };
 
     this.filter = filter;
+    this.sort = sort;
+    this.sorts = RFC_INDEX_SORTS.map((option) => ({
+      ...option,
+      href: this.rfcsPath({ status: filter, ...(option.key === "priority" ? {} : { sort: option.key }) }),
+      active: option.key === sort,
+    }));
     this.total = rfcs.length;
     this.tabs = RFC_STATUS_TABS.map((status) => ({
       key: status,
       label: status,
       count: tabCounts.get(status) ?? 0,
-      href: this.rfcsPath({ status }),
+      href: this.rfcsPath({ status, ...sortParam }),
       active: status === filter,
     }));
     this.rows = shown.map((rfc) =>

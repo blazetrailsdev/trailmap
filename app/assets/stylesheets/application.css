@@ -364,6 +364,12 @@ ul { margin: 0 0 10px 20px; }
 
 /* The Box: bordered, rounded, with a grey count strip like the issue list. */
 .box { border: 1px solid var(--border); border-radius: 6px; background: var(--bg); overflow: hidden; }
+/* The RFC list runs full bleed on a phone: edge to edge, top and bottom rules
+   only. Scoped to that list, a direct child of `.wrap`, so the bleed matches
+   the wrap's 16px padding. It comes after the rule above so that it wins. */
+@media (max-width: 640px) {
+  .box.rfc-list { border-radius: 0; border-left: none; border-right: none; margin: 0 -16px; }
+}
 .box-header {
   display: flex;
   align-items: center;
@@ -406,6 +412,16 @@ ul { margin: 0 0 10px 20px; }
 .tabs .tab { color: var(--muted); font-weight: 500; font-size: 13px; }
 .tabs .tab:hover { color: var(--fg); text-decoration: none; }
 .tabs .tab.active { color: var(--fg); font-weight: 600; }
+
+/* A list's filter tabs and its sort, on one row: tabs left, sort right. */
+.list-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; }
+.list-controls .tabs { margin-bottom: 0; }
+.sort-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 13px; }
+.sort-links .sort-link { color: var(--muted); }
+.sort-links .sort-link:hover { color: var(--fg); text-decoration: none; }
+.sort-links .sort-link.active { color: var(--fg); font-weight: 600; }
+/* GitHub's Counter: a count beside a heading, quieter than the heading. */
+.page-title .counter { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 2em; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 500; line-height: 18px; text-align: center; vertical-align: middle; }
 
 /* A list's page links, above and below it. Muted like the tabs: where you are
    in a list is a fact about the list, not a call to action. */

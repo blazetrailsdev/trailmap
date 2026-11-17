@@ -99,6 +99,28 @@ module RfcProgress
     end
   end
 
+  # The list's alternate orders, `/rfcs?sort=<key>`; each re-sorts the
+  # priority order stably, so ties fall back to it.
+  Sort = Struct.new(:key, :label, :title, keyword_init: true)
+  INDEX_SORTS = [
+    Sort.new(key: "priority", label: "priority", title: "priority, unset last; then fewest open stories; then id"),
+    Sort.new(key: "open", label: "most open", title: "most open stories first"),
+    Sort.new(key: "progress", label: "progress", title: "highest share of stories done first"),
+    Sort.new(key: "newest", label: "newest", title: "most recently written first, undated last"),
+    Sort.new(key: "id", label: "number", title: "RFC number, ascending")
+  ].freeze
+
+  def sort_rfcs_for_index(rfcs, sort, counts)
+    base = order_rfcs_for_index(rfcs, counts.transform_values(&:open))
+    case sort
+    when "open" then StableSort.sort(base) { |a, b| (counts[b.id]&.open || 0) <=> (counts[a.id]&.open || 0) }
+    when "progress" then StableSort.sort(base) { |a, b| (counts[b.id]&.done_pct || 0) <=> (counts[a.id]&.done_pct || 0) }
+    when "newest" then StableSort.sort(base) { |a, b| b.created_on.to_s.b <=> a.created_on.to_s.b }
+    when "id" then StableSort.sort(base) { |a, b| a.id.b <=> b.id.b }
+    else base
+    end
+  end
+
   def terminal?(status)
     status == "closed" || status == "superseded"
   end
