@@ -1,6 +1,7 @@
 import { ApplicationRecord } from "./application-record.ts";
 import { closedRfcErrors } from "./concerns/semantic-validation.ts";
 import { Event } from "./event.ts";
+import { nowIso } from "./story.ts";
 import { VerbExit } from "./verb-exit.ts";
 
 /**
@@ -84,14 +85,15 @@ export class Rfc extends ApplicationRecord {
    * event — the CLI's `updateAll`, which touches no timestamp.
    */
   async prioritySet(priority: number | null): Promise<string> {
-    if (priority !== null && (!Number.isInteger(priority) || priority < 0)) {
+    if (priority !== null && (!Number.isSafeInteger(priority) || priority < 0)) {
       throw new VerbExit(1, `priority must be a non-negative integer or "clear"`);
     }
     const label = priority === null ? "(clear)" : String(priority);
     await Rfc.transaction(async () => {
-      await Rfc.where({ id: this.id }).updateAll({ priority });
+      const written = await Rfc.where({ id: this.id }).updateAll({ priority });
+      if (written === 0) throw new VerbExit(1, `no such RFC "${this.id}"`);
       await Event.create({
-        at: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
+        at: nowIso(),
         verb: "rfc-priority",
         story_id: null,
         rfc_id: this.id,
@@ -101,6 +103,7 @@ export class Rfc extends ApplicationRecord {
       });
     });
     this.priority = priority;
+    this.clearAttributeChange("priority");
     return `rfc-priority ${label}: ${this.id}`;
   }
 }

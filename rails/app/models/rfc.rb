@@ -2,6 +2,10 @@ class Rfc < ApplicationRecord
   # Only `/search` reads it, in SQL; a loaded row should not carry 3 KB of markdown.
   self.ignored_columns = %w[body]
 
+  # JavaScript's Number.MAX_SAFE_INTEGER: the trails twin refuses anything
+  # above it, so both apps accept the same priorities.
+  MAX_PRIORITY = 2**53 - 1
+
   STATUSES = %w[draft active closed postponed superseded].freeze
 
   has_many :stories
@@ -38,12 +42,13 @@ class Rfc < ApplicationRecord
   # DB-owned, so a row write and an `rfc-priority` event; `update_all`, as the
   # CLI's, touches no timestamp.
   def priority_set(new_priority)
-    unless new_priority.nil? || (new_priority.is_a?(Integer) && new_priority >= 0)
+    unless new_priority.nil? || (new_priority.is_a?(Integer) && new_priority.between?(0, MAX_PRIORITY))
       raise VerbExit.new(1, %(priority must be a non-negative integer or "clear"))
     end
     label = new_priority.nil? ? "(clear)" : new_priority.to_s
     transaction do
-      Rfc.where(id: id).update_all(priority: new_priority)
+      written = Rfc.where(id: id).update_all(priority: new_priority)
+      raise VerbExit.new(1, %(no such RFC "#{id}")) if written.zero?
       Event.create!(at: Story.now_iso, verb: "rfc-priority", rfc_id: id, detail: { arg: label }.to_json)
     end
     self.priority = new_priority

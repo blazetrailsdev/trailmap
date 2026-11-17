@@ -48,6 +48,21 @@ describe("Rfc#prioritySet", () => {
     const rfc = await Rfc.find("0001-p");
     await expect(rfc.prioritySet(-1)).rejects.toThrow(/non-negative integer/);
     await expect(rfc.prioritySet(1.5)).rejects.toThrow(/non-negative integer/);
+    await expect(rfc.prioritySet(Number("99999999999999999999"))).rejects.toThrow(/non-negative integer/);
+  });
+
+  it("leaves the record clean, as the Rails twin does", async () => {
+    const rfc = await Rfc.find("0001-p");
+    await rfc.prioritySet(6);
+    expect(rfc.priority).toBe(6);
+    expect(rfc.changed).not.toContain("priority");
+  });
+
+  it("refuses a record whose row is gone, and logs no event", async () => {
+    const ghost = await Rfc.create({ id: "0002-ghost", status: "active", title: "g", file_path: "x" });
+    await Rfc.where({ id: "0002-ghost" }).deleteAll();
+    await expect(ghost.prioritySet(1)).rejects.toThrow(/no such RFC "0002-ghost"/);
+    expect(await Event.where({ verb: "rfc-priority", rfc_id: "0002-ghost" }).count()).toBe(0);
   });
 });
 
@@ -77,6 +92,10 @@ describe.skipIf(!hasHubTestDatabase())("POST /rfc/<id>/priority", () => {
     expect(status).toBe(422);
     expect(body).toContain("priority must be a non-negative integer");
     expect((await Rfc.find("0001-p")).priority).toBe(5);
+  });
+
+  it("refuses a priority past the safe-integer bound", async () => {
+    expect((await post({ id: "0001-p", priority: "99999999999999999999" })).status).toBe(422);
   });
 
   it("404s an unknown RFC", async () => {
