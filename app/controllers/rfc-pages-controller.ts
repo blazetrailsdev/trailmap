@@ -223,6 +223,19 @@ export class RfcPagesController extends ApplicationController {
     await this._mutate(id, () => rfcStatusSet(id, to, { reason: reason == null ? null : String(reason) }));
   }
 
+  /**
+   * `POST /rfc/<id>/priority` — ringo's RFC-page priority control, the CLI's
+   * `rfc-priority <rfc> <n|clear>`. A blank field or `clear` clears it.
+   */
+  async priority(): Promise<void> {
+    const id = String(this.params.get("id") ?? "");
+    const rfc = await Rfc.findBy({ id });
+    if (rfc === null) return this._renderShow(id, null, 404);
+    const raw = String(this.params.get("priority") ?? "").trim();
+    const priority = raw === "" || raw === "clear" ? null : /^\d+$/.test(raw) ? Number(raw) : NaN;
+    await this._mutate(id, () => rfc.prioritySet(priority));
+  }
+
   /** `POST /rfc/<id>/ready-drafts` — "Mark drafts ready", ringo's `HandleRFCReadyDrafts`. */
   async readyDrafts(): Promise<void> {
     const id = String(this.params.get("id") ?? "");

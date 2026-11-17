@@ -32,4 +32,22 @@ class Rfc < ApplicationRecord
     [ "updated_at" ]
   end
   private_class_method :timestamp_attributes_for_update
+
+  # `tasks rfc-priority <rfc> <n|clear>` (tasks/src/verbs.ts `setRfcPriority`):
+  # the priority every story without its own inherits in the ready queue.
+  # DB-owned, so a row write and an `rfc-priority` event; `update_all`, as the
+  # CLI's, touches no timestamp.
+  def priority_set(new_priority)
+    unless new_priority.nil? || (new_priority.is_a?(Integer) && new_priority >= 0)
+      raise VerbExit.new(1, %(priority must be a non-negative integer or "clear"))
+    end
+    label = new_priority.nil? ? "(clear)" : new_priority.to_s
+    transaction do
+      Rfc.where(id: id).update_all(priority: new_priority)
+      Event.create!(at: Story.now_iso, verb: "rfc-priority", rfc_id: id, detail: { arg: label }.to_json)
+    end
+    self.priority = new_priority
+    clear_attribute_change(:priority)
+    "rfc-priority #{label}: #{id}"
+  end
 end

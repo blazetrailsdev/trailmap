@@ -113,6 +113,17 @@
         <% end %>
         <div class="field-note" data-relay-status hidden></div>
       </div>
+      <div class="side-section rfc-priority">
+        <div class="side-head">Priority</div>
+        <%= form_with url: rfc_priority_path(@rfc.id), method: :post, class: "rfc-priority-form" do |f| %>
+          <%= f.number_field :priority, value: @rfc.priority, min: 0, step: 1, class: "ctl num", placeholder: "Unset", "aria-label": "RFC priority (lower = sooner)" %>
+          <%= f.submit "Set", class: "btn btn-sm" %>
+        <% end %>
+        <% unless @rfc.priority.nil? %>
+          <%= button_to "Clear", rfc_priority_path(@rfc.id), params: { priority: "clear" }, class: "btn btn-sm" %>
+        <% end %>
+        <div class="field-note">Lower is sooner. Stories without their own priority inherit it.</div>
+      </div>
       <div class="side-section">
         <div class="side-head">Owner</div>
         <div class="side-value"><%= @rfc.owner.presence || "Nobody" %></div>

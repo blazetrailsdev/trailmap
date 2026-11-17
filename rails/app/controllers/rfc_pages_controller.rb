@@ -88,6 +88,20 @@ class RfcPagesController < ApplicationController
     mutate(id) { RfcStatus.set(id, to, reason: params[:reason]) }
   end
 
+  # `POST /rfc/<id>/priority` — ringo's RFC-page priority control, the CLI's
+  # `rfc-priority <rfc> <n|clear>`. A blank field or `clear` clears it.
+  def priority
+    id = params[:id].to_s
+    rfc = Rfc.find_by(id: id)
+    return render_show(id, nil, :not_found) if rfc.nil?
+    raw = params[:priority].to_s.strip
+    value = if raw.empty? || raw == "clear" then nil
+    elsif raw.match?(/\A\d+\z/) then raw.to_i
+    else raw
+    end
+    mutate(id) { rfc.priority_set(value) }
+  end
+
   # `POST /rfc/<id>/ready-drafts` — ringo's `HandleRFCReadyDrafts`.
   def ready_drafts
     id = params[:id].to_s

@@ -50,6 +50,7 @@ Rails.application.routes.draw do
   get "rfc/:id", to: "rfc_pages#show", format: false, as: :rfc
   get "rfc/:id/refinements", to: "rfc_pages#refinements", format: false, as: :rfc_refinements
   post "rfc/:id/status", to: "rfc_pages#move", format: false, as: :rfc_status
+  post "rfc/:id/priority", to: "rfc_pages#priority", format: false, as: :rfc_priority
   post "rfc/:id/ready-drafts", to: "rfc_pages#ready_drafts", format: false, as: :rfc_ready_drafts
   get "story/:id", to: "story_pages#show", format: false, as: :story
   post "story/:id/ready", to: "story_pages#mark_ready", format: false, as: :story_ready
