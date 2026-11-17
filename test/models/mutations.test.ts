@@ -6,18 +6,14 @@
  * are what these tests are for, not the happy paths.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { migrateScratchDatabase } from "./schema.ts";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { VerbExit } from "../../app/models/verb-exit.ts";
 
 vi.spyOn(console, "log").mockImplementation(() => {});
 
 beforeEach(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
   await Rfc.create({ id: "0136-trailmap", status: "active", title: "Trailmap" });
   await Story.create({ id: "s1", rfc_id: "0136-trailmap", status: "ready", est_loc: 10 });
   await Story.create({ id: "s2", rfc_id: "0136-trailmap", status: "ready", est_loc: 20 });

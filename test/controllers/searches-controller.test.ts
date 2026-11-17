@@ -1,11 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getFs } from "@blazetrails/ruby-compat";
 import { setX } from "../support/config-x.ts";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import {
   SEARCH_PAGE_SIZE,
   SearchesController,
@@ -37,12 +34,9 @@ async function write(path: string, body: string): Promise<void> {
 }
 
 beforeAll(async () => {
-  ApplicationController.prependViewPath("app/views");
   dir = await getFs().mkdtemp!("/tmp/trailmap-search-");
   setX("tasks", "dir", dir);
 
-  await migrateScratchDatabase();
-  await loadModelSchemas();
 
   await Rfc.create({
     id: "0042-serialize",

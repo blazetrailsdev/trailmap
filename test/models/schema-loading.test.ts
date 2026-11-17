@@ -1,18 +1,6 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "./schema.ts";
+import { describe, expect, it } from "vitest";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-
-/**
- * Its own file on purpose: column information is cached per model class, so
- * the "first touch is an association" ordering only exists in a worker where
- * nothing has queried Story yet.
- */
-beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
-});
 
 describe("loadModelSchemas", () => {
   it("lets an association be the first thing that touches a model", async () => {

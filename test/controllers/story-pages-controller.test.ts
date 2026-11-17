@@ -2,14 +2,11 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { ActionController } from "@blazetrails/actionpack";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { StoryDep } from "../../app/models/story-dep.ts";
 import { StoryPackage } from "../../app/models/story-package.ts";
 import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -20,11 +17,8 @@ async function show(id: string): Promise<{ status: number; body: string }> {
 }
 
 beforeAll(async () => {
-  ApplicationController.prependViewPath("app/views");
   setX("tasks", "dir", Dir.pwd());
 
-  await migrateScratchDatabase();
-  await loadModelSchemas();
 
   await Rfc.create({
     id: "0136-trailmap",

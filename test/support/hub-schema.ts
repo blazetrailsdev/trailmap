@@ -6,7 +6,8 @@ import { Setting } from "../../app/models/setting.ts";
 
 /**
  * Connect `Hub` to a throwaway Postgres database and empty it —
- * `test/models/schema.ts`'s twin, for the other database.
+ * The suite's per-worker SQLite database (test/test-helper.ts)'s twin, for the
+ * other database.
  *
  * Three differences from that one, and all three are the adapter's:
  *

@@ -5,6 +5,12 @@ import { connectToHubDatabase } from "../../config/initializers/hub-database.ts"
 import { Hub } from "../../app/models/hub.ts";
 import { Owner } from "../../app/models/owner.ts";
 import { missingHubTables } from "../../lib/model-schemas.ts";
+import { TestCase } from "@blazetrails/activesupport/test-case";
+import { withoutTransactionalTests } from "../support/transactional-tests.ts";
+
+// Rails' `self.use_transactional_tests = false`: this file connects the hub to databases of its own, on a one-connection pool,
+// which a test's fixture transaction would hold. vitest isolates each file, so this reaches no other.
+withoutTransactionalTests(TestCase);
 
 /** See "refuses to boot against a database that has no hub schema". */
 const HUB_SCRATCH_DATABASE_TIMEOUT_MS = 30_000;

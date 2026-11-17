@@ -1,14 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { createScratchStatsDatabase } from "../models/stats-schema.ts";
 import { Stats } from "../../app/models/stats.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { get } from "./request.ts";
 
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
   await createScratchStatsDatabase();
   setEnv("STATS_DB", ":memory:");
   const adapter = await Stats.connectionPool().leaseConnection();

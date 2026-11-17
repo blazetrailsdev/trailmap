@@ -1,12 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { Dir, Open3, getFs, setEnv } from "@blazetrails/ruby-compat";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet } from "../../app/models/rfc-status.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
@@ -40,15 +38,12 @@ async function rfc(id: string, status: string, updated = "updated: 2026-01-01"):
 }
 
 beforeAll(async () => {
-  ApplicationController.prependViewPath("app/views");
   const root = Dir.mktmpdir("rfc-status");
   checkout = `${root}/tasks`;
   origin = `${root}/origin.git`;
   await sh(`git init -q --bare -b main "$ORIGIN" && git init -q -b main "$CHECKOUT"`);
   setX("tasks", "dir", checkout);
 
-  await migrateScratchDatabase();
-  await loadModelSchemas();
 
   await rfc("0001-draft", "draft");
   await rfc("0002-active", "active");

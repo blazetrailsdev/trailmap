@@ -1,16 +1,7 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { HomeController } from "../../app/controllers/home-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
-
-/**
- * The engine's `add_view_paths` initializer prepends `app/views` at boot; a
- * controller test constructs the controller directly, so it has to say so.
- */
-beforeAll(() => {
-  ApplicationController.prependViewPath("app/views");
-});
 
 async function renderIndex(): Promise<string> {
   const tc = await controllerTestCase(HomeController);

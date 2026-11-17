@@ -6,11 +6,8 @@
  * file asserts.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import {
   BACKLOG_PAGE_SIZE,
   StoryPagesController,
@@ -30,9 +27,6 @@ function rowIds(body: string): string[] {
 }
 
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
-  ApplicationController.prependViewPath("app/views");
   await Rfc.create({ id: "0136-trailmap", status: "active", title: "Trailmap" });
   for (let n = 0; n < READY; n++) {
     await Story.create({ id: `story-${String(n).padStart(3, "0")}`, rfc_id: "0136-trailmap" });

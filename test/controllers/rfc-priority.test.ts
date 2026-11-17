@@ -1,9 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 import {
@@ -26,9 +23,6 @@ async function show(id: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  ApplicationController.prependViewPath("app/views");
-  await migrateScratchDatabase();
-  await loadModelSchemas();
   await Rfc.create({ id: "0001-p", status: "active", title: "p", file_path: "rfcs/0001-p/README.md" });
   if (hasHubTestDatabase()) await connectHubTestDatabase();
 }, HUB_SETUP_TIMEOUT);

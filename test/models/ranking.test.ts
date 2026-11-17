@@ -7,13 +7,11 @@
  * anyone's work.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { migrateScratchDatabase } from "./schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { StoryDep } from "../../app/models/story-dep.ts";
 import { StoryPath } from "../../app/models/story-path.ts";
 import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { bestBundle, bundleScope, claimableIn, comparePriority, effectivePriority, emptyBundleReasonIn, isDepResolved, listFilteredIn, nextBundleIn, priorityContext, storiesTouchingIn, summarizeBundle } from "../../app/models/concerns/ranking.ts";
 
 import { serializeStories } from "../../app/serializers/story-json.ts";
@@ -28,8 +26,6 @@ async function seed(id: string, rfcId: string, status: string, attrs: object = {
 }
 
 beforeEach(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
   await Rfc.create({ id: "0136-trailmap", status: "active", title: "Trailmap" });
   await Rfc.create({ id: "0002-draft", status: "draft", title: "Draft" });
 });

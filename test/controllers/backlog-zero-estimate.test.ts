@@ -1,9 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -25,9 +22,6 @@ async function metaOf(id: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
-  ApplicationController.prependViewPath("app/views");
 
   await Rfc.create({ id: "0188-idea", status: "draft", title: "An idea" });
   await Story.create({ id: "zero", rfc_id: "0188-idea", status: "draft", est_loc: 0 });

@@ -4,10 +4,8 @@ import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { StoryDep } from "../../app/models/story-dep.ts";
 import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { shownStoryStatus } from "../../app/models/concerns/effective-status.ts";
 import { depHeldIn, isDepHeld, type RankingIndex, type RankedStory } from "../../app/models/concerns/ranking.ts";
-import { migrateScratchDatabase } from "./schema.ts";
 
 describe("shownStoryStatus", () => {
   it("shows a dep-held ready story as blocked, and nothing else", () => {
@@ -50,8 +48,6 @@ describe("depHeldIn", () => {
 
 describe("Story.depHeldIds", () => {
   beforeAll(async () => {
-    await migrateScratchDatabase();
-    await loadModelSchemas();
     await Rfc.create({ id: "0001-open", status: "active" });
     await Rfc.create({ id: "0002-shut", status: "closed" });
     await Story.create({ id: "dep-open", rfc_id: "0001-open", status: "ready" });

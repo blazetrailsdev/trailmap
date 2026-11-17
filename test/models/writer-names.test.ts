@@ -8,18 +8,11 @@
  * `5ee5760880` on, and took every test that built a story with a priority down
  * with an out-of-memory crash rather than a failure.
  */
-import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "./schema.ts";
+import { describe, expect, it } from "vitest";
 import { Event } from "../../app/models/event.ts";
 import { Meta } from "../../app/models/meta.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
-
-beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
-});
 
 describe("model method names", () => {
   it.each([Event, Meta, Rfc, Story].map((model) => [model.name, model] as const))(

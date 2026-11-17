@@ -1,10 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Notifications } from "@blazetrails/activesupport";
-import { migrateScratchDatabase } from "./schema.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { StoryDep } from "../../app/models/story-dep.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { depGraphFor } from "../../app/models/concerns/dep-graph.ts";
 
 async function chain(...ids: string[]): Promise<void> {
@@ -25,8 +23,6 @@ async function queriesFor(id: string): Promise<number> {
 }
 
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
 
   await Rfc.create({ id: "active", status: "active", title: "Active" });
   await Rfc.create({ id: "drafted", status: "draft", title: "Drafted" });

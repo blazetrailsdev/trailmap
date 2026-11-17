@@ -141,8 +141,8 @@ export class Setting extends Hub {
    * version: `config/initializers/hub-database.ts` refuses to boot without
    * `HUB_DATABASE_URL` and then reflects the hub's columns, which needs a live
    * connection — so a running server always has a pool and never reaches here.
-   * The processes that do are the suite, which drops the boot's pools
-   * (test/support/boot.ts), and `trails db`.
+   * The processes that do are the suite, whose `test` environment connects
+   * no hub unless a hub test does (test/support/hub-schema.ts), and `trails db`.
    *
    * It is narrow enough to be safe. `ConnectionNotDefined` means ONE thing —
    * no pool was ever established for `Hub`. A wrong URL, a down server or a

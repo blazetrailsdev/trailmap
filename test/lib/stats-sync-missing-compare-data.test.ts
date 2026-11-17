@@ -7,6 +7,15 @@ import { PackageMeta } from "../../app/models/stats-sync/package-meta.ts";
 import { StatsSyncRecord } from "../../app/models/stats-sync/stats-sync-record.ts";
 import { TestCompareStat } from "../../app/models/stats-sync/test-compare-stat.ts";
 import { packagesMissingCompareData } from "../../lib/stats-sync/missing-compare-data.ts";
+import { TestCase } from "@blazetrails/activesupport/test-case";
+import { withoutTransactionalTests } from "../support/transactional-tests.ts";
+
+// Rails' `self.use_transactional_tests = false`: this file opens, migrates and
+// deletes its own stats-sync database, which a test's fixture transaction
+// would outlive. vitest isolates each file, so this reaches no other. It
+// borrows `Base` to migrate that database, then hands `Base` back the suite's
+// `primary` with `establishConnection()`, which fixture setup reads.
+withoutTransactionalTests(TestCase);
 
 interface Row {
   package: string;
@@ -42,7 +51,7 @@ describe("packagesMissingCompareData", () => {
     try {
       await new MigrationContext([getPath().resolve(STATS_SYNC_MIGRATIONS_PATH)]).migrate();
     } finally {
-      await Base.removeConnection();
+      await Base.establishConnection();
     }
   });
 

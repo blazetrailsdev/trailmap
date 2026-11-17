@@ -40,5 +40,12 @@ export class Hub extends ApplicationRecord {
     // reads `abstractClass === true` and `Owner.create()` raises "Owner is an
     // abstract class and cannot be instantiated". Assignment runs the setter.
     this.abstractClass = true;
+    // Named "Hub" before anything connects it, which is the name
+    // `establishConnection` gives it anyway. Unnamed, a process that never
+    // connects the hub (the test environment declares none) resolves `Hub`
+    // through `ActiveRecord::Base`'s pool instead, and every hub model
+    // silently queries the task database, failing on "no such table" where its
+    // callers handle `ConnectionNotDefined`.
+    this.connectionSpecificationName = "Hub";
   }
 }

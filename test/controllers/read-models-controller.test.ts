@@ -5,11 +5,9 @@
  * structs that parsed those files are reused verbatim against these responses.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateScratchDatabase } from "../models/schema.ts";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { loadModelSchemas } from "../../lib/model-schemas.ts";
 import { ReadModelsController } from "../../app/controllers/read-models-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -23,8 +21,6 @@ async function get(
 }
 
 beforeAll(async () => {
-  await migrateScratchDatabase();
-  await loadModelSchemas();
 
   await Rfc.create({
     id: "0136-trailmap",
