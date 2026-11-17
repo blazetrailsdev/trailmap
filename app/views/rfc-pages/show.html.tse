@@ -114,6 +114,17 @@
         <% } %>
         <div class="field-note" data-relay-status hidden></div>
       </div>
+      <div class="side-section rfc-priority">
+        <div class="side-head">Priority</div>
+        <%= formWith({ url: rfcPriorityPath(rfc.id), method: "post", class: "rfc-priority-form" }, (f) => { %>
+          <%= f.numberField("priority", { value: rfc.priority ?? "", min: 0, step: 1, class: "ctl num", placeholder: "Unset", "aria-label": "RFC priority (lower = sooner)" }) %>
+          <%= f.submit("Set", { class: "btn btn-sm" }) %>
+        <% }) %>
+        <% if (rfc.priority !== null) { %>
+          <%= buttonTo("Clear", rfcPriorityPath(rfc.id), { params: { priority: "clear" }, class: "btn btn-sm" }) %>
+        <% } %>
+        <div class="field-note">Lower is sooner. Stories without their own priority inherit it.</div>
+      </div>
       <div class="side-section">
         <div class="side-head">Owner</div>
         <div class="side-value"><%= rfc.owner ? rfc.owner : "Nobody" %></div>

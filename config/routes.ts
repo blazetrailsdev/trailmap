@@ -116,6 +116,7 @@ Trails.application!.routes().draw(function () {
   // The lifecycle buttons on that page. Page POSTs, not loopback API verbs:
   // the page is their caller, and a refusal renders on it.
   this.post("rfc/:id/status", { to: "rfc_pages#move", as: "rfc_status" });
+  this.post("rfc/:id/priority", { to: "rfc_pages#priority", as: "rfc_priority" });
   this.post("rfc/:id/ready-drafts", { to: "rfc_pages#readyDrafts", as: "rfc_ready_drafts" });
   this.get("story/:id", { to: "story_pages#show", as: "story" });
   this.post("story/:id/ready", { to: "story_pages#markReady", as: "story_ready" });

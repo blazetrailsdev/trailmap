@@ -1,5 +1,8 @@
 import { ApplicationRecord } from "./application-record.ts";
 import { closedRfcErrors } from "./concerns/semantic-validation.ts";
+import { Event } from "./event.ts";
+import { nowIso } from "./story.ts";
+import { VerbExit } from "./verb-exit.ts";
 
 /**
  * The coder of the JSON array columns (`packages`, `clusters`,
@@ -73,5 +76,34 @@ export class Rfc extends ApplicationRecord {
 
   static override timestampAttributesForUpdate(): string[] {
     return ["updated_at"];
+  }
+
+  /**
+   * `tasks rfc-priority <rfc> <n|clear>` (tasks/src/verbs.ts `setRfcPriority`):
+   * the priority every story without its own inherits in the ready queue.
+   * DB-owned, like a story's, so it is a row write and an `rfc-priority`
+   * event — the CLI's `updateAll`, which touches no timestamp.
+   */
+  async prioritySet(priority: number | null): Promise<string> {
+    if (priority !== null && (!Number.isSafeInteger(priority) || priority < 0)) {
+      throw new VerbExit(1, `priority must be a non-negative integer or "clear"`);
+    }
+    const label = priority === null ? "(clear)" : String(priority);
+    await Rfc.transaction(async () => {
+      const written = await Rfc.where({ id: this.id }).updateAll({ priority });
+      if (written === 0) throw new VerbExit(1, `no such RFC "${this.id}"`);
+      await Event.create({
+        at: nowIso(),
+        verb: "rfc-priority",
+        story_id: null,
+        rfc_id: this.id,
+        pr: null,
+        actor: null,
+        detail: JSON.stringify({ arg: label }),
+      });
+    });
+    this.priority = priority;
+    this.clearAttributeChange("priority");
+    return `rfc-priority ${label}: ${this.id}`;
   }
 }

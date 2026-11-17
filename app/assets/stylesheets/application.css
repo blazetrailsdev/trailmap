@@ -1279,3 +1279,9 @@ kbd {
 .refine-earlier > .markdown { margin-top: 12px; }
 .refine-earlier > summary { display: flex; gap: 8px; align-items: center; cursor: pointer; }
 .tabs .tab .Counter { margin-left: 4px; }
+
+/* The RFC page's priority control: the field and its Set/Clear buttons on one line. */
+.rfc-priority-form { display: inline-flex; gap: 6px; align-items: center; margin-right: 6px; }
+.rfc-priority .button_to { display: inline-block; }
+.rfc-priority .ctl.num { width: 84px; }
+.rfc-priority .field-note { margin-top: 6px; }
