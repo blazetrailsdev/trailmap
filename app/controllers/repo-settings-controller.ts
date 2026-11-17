@@ -27,10 +27,10 @@ export class RepoSettingsController extends RepoController {
 
     // One `resolve` per key: it answers the value and its source together,
     // so this page cannot disagree with the resolver about what is in effect.
-    const global = [];
+    const appSettings = [];
     for (const key of Object.keys(Setting.FALLBACKS)) {
       const { value, source } = await Setting.resolve(key);
-      global.push({
+      appSettings.push({
         key,
         value,
         from:
@@ -74,7 +74,7 @@ export class RepoSettingsController extends RepoController {
           tab,
           enabled: switches === null ? true : switches.enabled(tab),
         })),
-        global,
+        appSettings,
       }),
     });
   }

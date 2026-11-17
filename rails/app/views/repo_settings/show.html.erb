@@ -74,7 +74,7 @@ Postgres enforces as the table's real PRIMARY KEY.</p>
 <p class="muted">One row per setting, and where its value is coming from: a row in this
 database overrides the environment variable of the same meaning.</p>
 <div class="box">
-  <% @global.each do |row| %>
+  <% @app_settings.each do |row| %>
     <div class="box-row">
       <code><%= row.key %></code> &middot;
       <% if row.value.present? %><%= row.value %><% else %><span class="muted">unset</span><% end %>

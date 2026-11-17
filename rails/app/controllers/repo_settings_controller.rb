@@ -10,7 +10,7 @@ class RepoSettingsController < RepoController
 
   def show
     row = @repo.settings
-    @global = Setting::FALLBACKS.map do |key, env|
+    @app_settings = Setting::FALLBACKS.map do |key, env|
       resolved = Setting.resolve(key)
       Global.new(key: key, value: resolved.value,
                  from: resolved.source == "database" ? "this database" : "#{env} (environment)")
