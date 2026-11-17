@@ -85,7 +85,7 @@ curl -fsS -H 'Host: trailmap.deanoftech.com' "http://127.0.0.1:$port/up" >/dev/n
 # The stylesheet the page links, from the runtime stage's own public/.
 echo "smoke-image: GET /rfcs and its stylesheet"
 page="$(curl -fsS "http://127.0.0.1:$port/rfcs")" || fail "/rfcs did not answer 200"
-sheet="$(grep -oE 'href="/assets/[^"]+\.css"' <<<"$page" | head -1 | cut -d'"' -f2)"
+sheet="$(grep -oE 'href="/vite/assets/[^"]+\.css"' <<<"$page" | head -1 | cut -d'"' -f2)"
 [ -n "$sheet" ] || fail "/rfcs links no stylesheet"
 curl -fsS -o /dev/null "http://127.0.0.1:$port$sheet" || fail "$sheet did not answer 200"
 

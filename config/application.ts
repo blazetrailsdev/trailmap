@@ -16,6 +16,10 @@ import "@blazetrails/trailties/all";
 // (config/environments/production.ts, config/database.ts).
 import "@blazetrails/solid-queue";
 
+// vite_rails' engine, loaded as Bundler.require would: the vite* tag helpers
+// and the dev-server proxy. Its config is config/vite.json.
+import "@blazetrails/vite-trails";
+
 export class Trailmap extends Application {
   static {
     // Initialize configuration defaults for originally generated trails version.

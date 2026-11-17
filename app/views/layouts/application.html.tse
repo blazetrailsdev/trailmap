@@ -11,7 +11,7 @@
   <link rel="icon" href="/icon.png" type="image/png" sizes="512x512">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <%= csrfMetaTags() %>
-  <%= stylesheetLinkTag("application") %>
+  <%= await viteStylesheetTag("~/stylesheets/application.css") %>
 </head>
 <body>
   <% const navItems = [["RFCs", rfcsPath()], ["Backlog", backlogPath()], ["Dashboard", dashboardPath()], ["Parity", parityGraphPath()], ["Packages", packagesPath()], ["Audits", auditsPath()], ["Deploys", deploysPath()], ["Sessions", sessionsPath()], ["Search", searchPath()]].map(([label, path]) => [label, path, navMark(path)] as const); %>

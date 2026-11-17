@@ -153,4 +153,4 @@
     </div>
   </div>
 <% } %>
-<script src="<%= javascriptPath("rfc-actions") %>" type="module"></script>
+<script src="<%= await viteAssetPath("rfc-actions.js") %>" type="module"></script>

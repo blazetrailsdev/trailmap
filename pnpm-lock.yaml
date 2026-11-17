@@ -30,6 +30,7 @@ overrides:
   '@blazetrails/nokogiri': file:./vendor/blazetrails-nokogiri-0.1.0.tgz
   '@blazetrails/raabro': file:./vendor/blazetrails-raabro-0.1.0.tgz
   '@blazetrails/rack': file:./vendor/blazetrails-rack-0.1.0.tgz
+  '@blazetrails/rack-proxy': file:./vendor/blazetrails-rack-proxy-0.1.0.tgz
   '@blazetrails/rack-session': file:./vendor/blazetrails-rack-session-0.1.0.tgz
   '@blazetrails/rack-test': file:./vendor/blazetrails-rack-test-0.1.0.tgz
   '@blazetrails/rackup': file:./vendor/blazetrails-rackup-0.1.0.tgz
@@ -41,6 +42,8 @@ overrides:
   '@blazetrails/trailties': file:./vendor/blazetrails-trailties-0.1.0.tgz
   '@blazetrails/tse-compiler': file:./vendor/blazetrails-tse-compiler-0.1.0.tgz
   '@blazetrails/tzinfo': file:./vendor/blazetrails-tzinfo-0.1.0.tgz
+  '@blazetrails/vite-assets': file:./vendor/blazetrails-vite-assets-0.1.0.tgz
+  '@blazetrails/vite-trails': file:./vendor/blazetrails-vite-trails-0.1.0.tgz
   '@blazetrails/zeitwerk': file:./vendor/blazetrails-zeitwerk-0.1.0.tgz
 
 importers:
@@ -83,6 +86,12 @@ importers:
       '@blazetrails/trailties':
         specifier: file:vendor/blazetrails-trailties-0.1.0.tgz
         version: file:vendor/blazetrails-trailties-0.1.0.tgz(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+      '@blazetrails/vite-assets':
+        specifier: file:vendor/blazetrails-vite-assets-0.1.0.tgz
+        version: file:vendor/blazetrails-vite-assets-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))
+      '@blazetrails/vite-trails':
+        specifier: file:vendor/blazetrails-vite-trails-0.1.0.tgz
+        version: file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3
@@ -114,6 +123,9 @@ importers:
       vite:
         specifier: ^7.0.0
         version: 7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0)
+      vite-plugin-ruby:
+        specifier: 5.2.6
+        version: 5.2.6(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))
       vitest:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0)
@@ -276,6 +288,11 @@ packages:
     version: 0.1.0
     engines: {node: '>=26'}
 
+  '@blazetrails/rack-proxy@file:vendor/blazetrails-rack-proxy-0.1.0.tgz':
+    resolution: {integrity: sha512-Cr+5Aflf39mWZA68jaEuuHQweclHPzB46+GW1w5kRS7VMoI14XOrdpMUln3E4Z59Hp/eSiRMB6fjepIOBwOcdA==, tarball: file:vendor/blazetrails-rack-proxy-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=26'}
+
   '@blazetrails/rack-session@file:vendor/blazetrails-rack-session-0.1.0.tgz':
     resolution: {integrity: sha512-TSpy/EaDNz9qz9H2bVEiABwtebdZQIesBeiEDxx+oB/qBaettC9QGx2rx95bNe/h/ZIpl1qF1rSFsGE2HhdIFg==, tarball: file:vendor/blazetrails-rack-session-0.1.0.tgz}
     version: 0.1.0
@@ -356,6 +373,21 @@ packages:
 
   '@blazetrails/tzinfo@file:vendor/blazetrails-tzinfo-0.1.0.tgz':
     resolution: {integrity: sha512-W+zd1lsf9TFYOd30rSwMK+SxHOisIWv6zN607hNCKoF5gqMICP6adUhQW8gR341he0KiBTUFITDwhER3m/jrSQ==, tarball: file:vendor/blazetrails-tzinfo-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=26'}
+
+  '@blazetrails/vite-assets@file:vendor/blazetrails-vite-assets-0.1.0.tgz':
+    resolution: {integrity: sha512-wmg1ygIwR5nqed5H9BJ9BgUJAAPGQ0znZen0qwGixRb9iistKjKOdMGmmIogw//Fy3lvKLF8mR7K7zSqwGQRSg==, tarball: file:vendor/blazetrails-vite-assets-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=26'}
+    peerDependencies:
+      '@blazetrails/vite-trails': 0.1.0
+    peerDependenciesMeta:
+      '@blazetrails/vite-trails':
+        optional: true
+
+  '@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz':
+    resolution: {integrity: sha512-aTe+IcIsWs+XNLKKUIOXSgxwytOz+DgtyUW+Q221VIDoF9KDzAywG5zvy3dtrZyPlU9w/g8MrYjNSxoKxwGmpw==, tarball: file:vendor/blazetrails-vite-trails-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
@@ -893,6 +925,10 @@ packages:
     resolution: {integrity: sha512-uF0AFsJC07Y1vdW7p580DKAnh7rAO+4UPSSB3mDCPNDufoiaOebV6JmrzpxB14OjEEEiBsNdYoM2Y+fN8M7BBA==}
     engines: {node: '>=20.0.0'}
 
+  obug@2.2.1:
+    resolution: {integrity: sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q==}
+    engines: {node: '>=12.20.0'}
+
   parse-srcset@1.0.2:
     resolution: {integrity: sha512-/2qh0lav6CmI15FzA3i/2Bzk2zCgQhGMkvhOhKNcBVQ1ldgpbfiNTVslmooUmWJcADi1f1kIeynbDRVzNlfR6Q==}
 
@@ -1054,6 +1090,11 @@ packages:
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
+
+  vite-plugin-ruby@5.2.6:
+    resolution: {integrity: sha512-bGIPoUWHwH4Ym5o5PacFUBaCGaftcUOYptdyPkyIvLfefdu0HbqIuT5aKPrFAp2p8wUMHmC4SqXF8yxtZuk6Tg==}
+    peerDependencies:
+      vite: '>=5.0.0'
 
   vite@7.3.6:
     resolution: {integrity: sha512-4XP60spRGjSZFf1qYH+dJIkK2znL3zQfl9KkOV9MkkRR/3Dls0dxaBsQPTloEc5BLXWPL9vsOxopxyKoMmDueg==}
@@ -1377,6 +1418,11 @@ snapshots:
     dependencies:
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
 
+  '@blazetrails/rack-proxy@file:vendor/blazetrails-rack-proxy-0.1.0.tgz':
+    dependencies:
+      '@blazetrails/rack': file:vendor/blazetrails-rack-0.1.0.tgz
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+
   '@blazetrails/rack-session@file:vendor/blazetrails-rack-session-0.1.0.tgz':
     dependencies:
       '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
@@ -1527,6 +1573,57 @@ snapshots:
     dependencies:
       '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+
+  '@blazetrails/vite-assets@file:vendor/blazetrails-vite-assets-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))':
+    dependencies:
+      '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
+      '@blazetrails/rack': file:vendor/blazetrails-rack-0.1.0.tgz
+      '@blazetrails/rack-proxy': file:vendor/blazetrails-rack-proxy-0.1.0.tgz
+      '@blazetrails/rake': file:vendor/blazetrails-rake-0.1.0.tgz
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+      '@blazetrails/thor': file:vendor/blazetrails-thor-0.1.0.tgz
+    optionalDependencies:
+      '@blazetrails/vite-trails': file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+    transitivePeerDependencies:
+      - '@blazetrails/msgpack'
+      - '@blazetrails/nokogiri'
+
+  '@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)':
+    dependencies:
+      '@blazetrails/actionpack': file:vendor/blazetrails-actionpack-0.1.0.tgz(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))
+      '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
+      '@blazetrails/rake': file:vendor/blazetrails-rake-0.1.0.tgz
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+      '@blazetrails/trailties': file:vendor/blazetrails-trailties-0.1.0.tgz(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+      '@blazetrails/vite-assets': file:vendor/blazetrails-vite-assets-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))
+    transitivePeerDependencies:
+      - '@blazetrails/actioncable'
+      - '@blazetrails/actionmailbox'
+      - '@blazetrails/actiontext'
+      - '@blazetrails/activestorage'
+      - '@blazetrails/msgpack'
+      - '@blazetrails/nokogiri'
+      - '@blazetrails/rack'
+      - '@types/node'
+      - better-sqlite3
+      - expo-sqlite
+      - jiti
+      - less
+      - libsql
+      - lightningcss
+      - mysql2
+      - pg
+      - playwright
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - typescript
+      - vite
+      - vitest
+      - yaml
 
   '@blazetrails/zeitwerk@file:vendor/blazetrails-zeitwerk-0.1.0.tgz':
     dependencies:
@@ -1911,6 +2008,8 @@ snapshots:
 
   nodemailer@10.3.1: {}
 
+  obug@2.2.1: {}
+
   parse-srcset@1.0.2: {}
 
   parse5@8.0.1:
@@ -2103,6 +2202,12 @@ snapshots:
       - terser
       - tsx
       - yaml
+
+  vite-plugin-ruby@5.2.6(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0)):
+    dependencies:
+      obug: 2.2.1
+      tinyglobby: 0.2.17
+      vite: 7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0)
 
   vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0):
     dependencies:
