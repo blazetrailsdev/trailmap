@@ -123,8 +123,18 @@ describe("statusClass", () => {
     const css = await getFs().readFile(STYLESHEET, "utf8");
     const ruled = new Set([...css.matchAll(/\.(status-[a-z-]+)/g)].map((m) => m[1]).filter((c) => c !== "status-group"));
     const source = await getFs().readFile(new URL("../../app/assets/javascripts/fleet-format.js", import.meta.url), "utf8");
-    const called = [...source.matchAll(/statusClass\("([^"]+)"\)/g)].map((m) => m[1]);
-    expect(called.every((c) => PILL_STATUSES.includes(c))).toBe(true);
+    // Every call site: a literal must be listed, and the one variable is
+    // rfcSpawnRow's verb, whose values are checked through its output below.
+    const args = [...source.matchAll(/(?<!function )(?<![.\w])statusClass\(([^)]*)\)/g)].map((m) => m[1].trim());
+    expect(args).toHaveLength(3);
+    for (const arg of args) {
+      if (arg.startsWith('"')) expect(PILL_STATUSES).toContain(JSON.parse(arg));
+      else expect(arg).toBe("verb");
+    }
+    for (const kind of ["rfc-refine", "rfc-sunset"]) {
+      const cls = rfcSpawnRow({ kind, story_id: "0001-x" }).match(/class="Label (status-[a-z-]+)"/)[1];
+      expect(PILL_STATUSES.map((s) => statusClass(s).split(" ")[1])).toContain(cls);
+    }
     const emitted = PILL_STATUSES.map((s) => statusClass(s).split(" ")[1]);
     expect([...ruled].sort()).toEqual([...emitted].sort());
   });

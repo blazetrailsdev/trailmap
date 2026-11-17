@@ -1,4 +1,4 @@
-import { ConnectionNotDefined } from "@blazetrails/activerecord";
+import { ConnectionNotDefined, ConnectionNotEstablished } from "@blazetrails/activerecord";
 import { Hub } from "./hub.ts";
 import { Owner } from "./owner.ts";
 import { RepositorySetting } from "./repository-setting.ts";
@@ -194,16 +194,16 @@ export class Repository extends Hub {
 
   /**
    * When the picker would be empty although the hub has repositories, the
-   * first of them (by name) as `owner/name`, so the page can link its
+   * first of them (by name, compared as bytes like Ruby's `min`) as `owner/name`, so the page can link its
    * settings: they exist, but none has a checkout. Otherwise `null`.
    */
   static async missingCheckout(): Promise<string | null> {
     try {
       const rows = await Repository.where({ archived: false }).includes("owner").toArray();
       const names = await Promise.all(rows.map((repo) => repo.nameWithOwner()));
-      return names.sort((a, b) => a.localeCompare(b))[0] ?? null;
+      return names.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))[0] ?? null;
     } catch (error) {
-      if (error instanceof ConnectionNotDefined) return null;
+      if (error instanceof ConnectionNotDefined || error instanceof ConnectionNotEstablished) return null;
       throw error;
     }
   }

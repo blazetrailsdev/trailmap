@@ -236,6 +236,7 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
   });
 
   it("says the spawn picker is empty because no repository has a checkout path", async () => {
+    const paths = new Map((await Repository.all().toArray()).map((repo) => [repo.id, repo.checkout_path]));
     await Repository.where({}).updateAll({ checkout_path: null });
     try {
       const { body } = await get(DashboardController, "index", {});
@@ -244,9 +245,7 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
       expect(body).not.toContain("no repos configured (FLEET_REPO_PATHS)");
       expect(body).toContain('Set one in <a href="/blazetrailsdev/tasks/settings">blazetrailsdev/tasks\'s settings</a>.');
     } finally {
-      for (const name of ["trails", "tasks"]) {
-        await (await Repository.findByNwo("blazetrailsdev", name))!.update({ checkout_path: `/checkout/${name}` });
-      }
+      for (const [id, path] of paths) await Repository.where({ id }).updateAll({ checkout_path: path });
     }
   });
 

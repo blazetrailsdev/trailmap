@@ -38,10 +38,10 @@ beforeAll(async () => {
   setX("fleet", "repoPaths", undefined);
   const html = tc.response.body;
   if (!html.includes("paletteInput")) throw new Error(`dashboard did not render: ${tc.response.status} ${html.slice(0, 300)}`);
-  // The page's own <script> tags are dropped: the module is imported below.
-  document.body.innerHTML = html
-    .slice(html.indexOf(">", html.indexOf("<body")) + 1, html.lastIndexOf("</body>"))
-    .replace(/<script\b[^>]*\bsrc="[^"]*"[^>]*><\/script>/g, "");
+  const page = new DOMParser().parseFromString(html, "text/html");
+  // The page's own module script is dropped: the module is imported below.
+  for (const script of page.body.querySelectorAll("script[src]")) script.remove();
+  document.body.replaceChildren(...page.body.childNodes);
 
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => answer(String(url), init)));
   vi.stubGlobal(
@@ -50,7 +50,6 @@ beforeAll(async () => {
       close(): void {}
     },
   );
-  // @ts-expect-error -- plain browser JavaScript, served as is, with no declaration file.
   await import("../../app/assets/javascripts/dashboard.js");
 });
 
