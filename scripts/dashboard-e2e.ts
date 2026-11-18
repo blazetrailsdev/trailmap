@@ -32,7 +32,7 @@ const ANSWERS: Record<string, [number, string]> = {
   "/reviewer/assign": [200, "ok"],
   "/pause": [200, JSON.stringify({ paused: true })],
   "/refresh-usage": [200, "{}"],
-  "/spawn": [200, "spawned in %5"],
+  "/spawnloop/dashboard-spawn": [200, "spawned in %5"],
   "/spawnloop/spawn-now": [200, "ok"],
   "/ask/answer": [200, ""],
 };
@@ -205,13 +205,13 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
   { name: "broadcast to CI red, by Ctrl+Enter", on: byId("bcastCIRed"), act: enter(true),
     post: ["/broadcast", { message: "rebase", target: "ci-red" }], during: bothHeld,
     after: `b.style.display === "none" && !${byId("bcastAll")}.disabled && ${sentNote}` },
-  // ringo answers with what it spawned; the report goes beside the picker,
-  // and the task box empties for the next one.
-  { name: "manual spawn, from the palette", on: byId("spawn"),
-    act: `${byId("spawnBtn")}.click(); ${byId("paletteInput")}.value = " fix the build "; ` +
-      `${byId("paletteInput")}.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))`,
-    post: ["/spawn", { repoDir: "/w/r", message: "fix the build" }],
-    after: `!b.disabled && ${byId("spawnStatus")}.textContent === "Spawned: spawned in %5" && ${byId("paletteInput")}.value === "" && (${byId("palette")}.close(), true)` },
+  // ringo answers with what it spawned; the report goes beside the button,
+  // the task box empties for the next one, and the dialog closes.
+  { name: "manual spawn, from its dialog by ⌘↵", on: byId("spawn"),
+    act: `${byId("spawnBtn")}.click(); ${byId("spawnTask")}.value = " fix the build "; ` +
+      `${byId("spawnTask")}.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true }))`,
+    post: ["/spawnloop/dashboard-spawn", { repoDir: "/w/r", message: "fix the build" }],
+    after: `!b.disabled && ${byId("spawnStatus")}.textContent === "Spawned: spawned in %5" && ${byId("spawnTask")}.value === "" && !${byId("spawnDialog")}.open` },
   { name: "answer a question in its session's row, by option",
     on: `document.querySelector('#s-pr-o-r-8 .strip.ask button[data-answer="Rebase"]')`,
     post: ["/ask/answer", { id: "ask-1", answer: "Rebase" }], after: `b.textContent === "sent"` },
@@ -291,15 +291,22 @@ await pressEscape();
 await until("Esc to close the palette", () => evaluate(`!${byId("palette")}.open`));
 console.log("ok  palette, ⌘K opens it, ↓ moves, Esc closes");
 
-// The footer's key hints follow the mode: Enter opens in search, spawns in
-// spawn, sends to all in broadcast.
+// The footer's key hints follow the mode: Enter opens in search, sends to
+// all in broadcast. Spawn is its own dialog, where ⌘↵ spawns and ↵ is a newline.
 const shownFoot = `[...document.querySelectorAll("#palette .palette-foot")].filter((f) => !f.hidden).map((f) => f.textContent).join("|")`;
 const openSearch = `document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }))`;
-for (const [opener, hint] of [[openSearch, "↵ open"], [`${byId("spawnBtn")}.click()`, "↵ spawn"], [`${byId("broadcastBtn")}.click()`, "↵ send to all"]] as const) {
+for (const [opener, hint] of [[openSearch, "↵ open"], [`${byId("broadcastBtn")}.click()`, "↵ send to all"]] as const) {
   await evaluate(`${opener}; true`);
   await until(`the footer to say "${hint}"`, () => evaluate(`${shownFoot}.includes(${JSON.stringify(hint)}) && !${shownFoot}.includes("|")`));
   await evaluate(`${byId("palette")}.close(); true`);
 }
+await evaluate(`${byId("spawnBtn")}.click(); true`);
+await until("the spawn dialog to open on the task box, trails first, ⌘↵ in its footer", () =>
+  evaluate(`${byId("spawnDialog")}.open && document.activeElement === ${byId("spawnTask")} && ` +
+    `document.querySelector("#spawnDialog .palette-foot").textContent.includes("⌘ ↵ spawn")`),
+);
+await evaluate(`${byId("spawnDialog")}.close(); true`);
+console.log("ok  spawn dialog opens on its task box");
 // Message mode, for #8's session, whose card is expanded above and whose
 // worker has a pane: the palette's "Message …" action for it.
 await until("#8's card to be expanded", () => evaluate(`!!document.querySelector('#s-pr-o-r-8 .composer')`));

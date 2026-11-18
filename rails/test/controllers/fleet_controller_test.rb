@@ -80,14 +80,14 @@ class FleetControllerTest < ActionDispatch::IntegrationTest
     end
     with_ringo({}) do
       Fleet::Relay.stub(:post, relay) do
-        post "/fleet/control/spawn", params: "x=1", headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded" }
+        post "/fleet/control/spawnloop/dashboard-spawn", params: "x=1", headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded" }
         assert_response :success
         assert_equal "ok", response.body
         post "/fleet/control/rm-rf"
         assert_response :not_found
       end
     end
-    assert_equal [ [ "#{StandInRingo::BASE}/spawn", "x=1" ] ], posted
+    assert_equal [ [ "#{StandInRingo::BASE}/spawnloop/dashboard-spawn", "x=1" ] ], posted
   end
 
   test "message forwards one line to ringo's send endpoint and passes refusals through" do

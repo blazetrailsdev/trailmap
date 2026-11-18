@@ -62,6 +62,12 @@ class HubModelsTest < ActiveSupport::TestCase
     end
   end
 
+  test "spawn_choices puts trails, trailmap and tasks first, in that order, ahead of the alphabet" do
+    with_fleet_repo_paths("blazetrailsdev/tasks=/c/tasks,acme/abc=/c/abc,blazetrailsdev/trailmap=/c/trailmap,blazetrailsdev/trails=/c/trails") do
+      assert_equal %w[blazetrailsdev/trails blazetrailsdev/trailmap blazetrailsdev/tasks acme/abc], Repository.spawn_choices.map(&:name)
+    end
+  end
+
   test "spawn_choices is the environment's entries when the hub is unreachable" do
     with_fleet_repo_paths("blazetrailsdev/trails=/checkout/trails") do
       unreachable = ->(*) { raise ActiveRecord::ConnectionNotEstablished, "hub is unreachable" }

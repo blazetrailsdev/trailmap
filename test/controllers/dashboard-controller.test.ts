@@ -92,14 +92,15 @@ describe("DashboardController", () => {
     }
   });
 
-  it("renders the repo options from configuration, sorted by name", async () => {
-    setX("fleet", "repoPaths", "blazetrailsdev/trails=/srv/trails, blazetrailsdev/tasks=/srv/tasks");
+  it("renders the repo options from configuration, trails, trailmap and tasks first, then by name", async () => {
+    setX("fleet", "repoPaths", "acme/zed=/srv/zed, acme/abc=/srv/abc, blazetrailsdev/tasks=/srv/tasks, blazetrailsdev/trails=/srv/trails, blazetrailsdev/trailmap=/srv/trailmap");
     try {
       const body = await index();
 
       expect(body).toContain('<option value="/srv/tasks">blazetrailsdev/tasks</option>');
       expect(body).toContain('<option value="/srv/trails">blazetrailsdev/trails</option>');
-      expect(body.indexOf("/srv/tasks")).toBeLessThan(body.indexOf("/srv/trails"));
+      const order = ["/srv/trails", "/srv/trailmap", "/srv/tasks", "/srv/abc", "/srv/zed"].map((path) => body.indexOf(`value="${path}"`));
+      expect(order).toEqual([...order].sort((a, b) => a - b));
     } finally {
       setX("fleet", "repoPaths", undefined);
     }

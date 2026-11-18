@@ -3,7 +3,7 @@ import { Hub } from "./hub.ts";
 import { Owner } from "./owner.ts";
 import { RepositorySetting } from "./repository-setting.ts";
 import { RepositoryCollaborator } from "./repository-collaborator.ts";
-import { fleetRepos, type FleetRepo } from "../../config/fleet.ts";
+import { fleetRepos, SPAWN_ORDER, type FleetRepo } from "../../config/fleet.ts";
 
 export const REPOSITORY_VISIBILITIES = ["public", "private"] as const;
 export type RepositoryVisibility = (typeof REPOSITORY_VISIBILITIES)[number];
@@ -165,17 +165,11 @@ export class Repository extends Hub {
    * reseeded — the same two-sources-disagree failure this change exists to
    * remove, pointing the other way.
    *
-   * ALPHABETICAL BY NAME, deliberately, and that is the STATUS QUO rather
-   * than a change: `fleetRepos()` has sorted its entries since before this
-   * branch (config/fleet.ts, the `sort` at the end), so `FLEET_REPO_PATHS` has
-   * never decided the order an operator sees. The dashboard renders these as
-   * `<option>`s and the browser selects the first, so the head of the list is
-   * the default spawn target — on an env-only box it is the same repository
-   * after this change as before it, which is the property worth keeping.
-   *
-   * Were it ever to become meaningful, the fix belongs in `fleetRepos()`,
-   * where the environment's order still exists to preserve; by the time it
-   * reaches here it has already been sorted away.
+   * IN `SPAWN_ORDER`, then alphabetical. The head of the list is the default
+   * spawn target and the dialog's first repo, so it is the repo spawned into
+   * most: trails, then trailmap, then tasks. Any other repo follows them by
+   * name. A viewer can rearrange the dialog's row (kept in their browser);
+   * this is the order before they do, and the one ⌥0 puts back.
    *
    * The empty-hub case falls out of the merge rather than being a special
    * case: no rows, so every entry comes from the environment.
@@ -189,7 +183,11 @@ export class Repository extends Hub {
     const byName = new Map<string, FleetRepo>();
     for (const entry of fleetRepos()) byName.set(entry.name, entry);
     for (const row of await Repository.checkoutsOrNone()) byName.set(row.name, row);
-    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+    const rank = (name: string): number => {
+      const at = SPAWN_ORDER.indexOf(name);
+      return at < 0 ? SPAWN_ORDER.length : at;
+    };
+    return [...byName.values()].sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name));
   }
 
   /**

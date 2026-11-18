@@ -15,6 +15,7 @@ import {
   CLEAR_FAILED_ID,
   DEFAULT_REPO,
   PALETTE_INPUT,
+  SPAWN_TASK,
   anyFailedSpawn,
   broadcastButtons,
   claudeUsage,
@@ -64,6 +65,7 @@ import {
   repoName,
   scopeChips,
 } from "./fleet-palette.js";
+import { SPAWN_ORDER_KEY, derivedName, modelOptions, moveRepo, orderRepos, repoChips, spawnKey, taskHeight } from "./fleet-spawn.js";
 
 const config = document.getElementById("fleetConfig");
 const socketPath = (config && config.dataset.socketPath) || "/fleet/socket";
@@ -461,6 +463,8 @@ async function pollReviewers() {
  */
 let nextReviewer = "";
 let audiences = {};
+/** The last `reviewer/config` answer: the loop's model and the models ringo takes. */
+let spawnConfig = null;
 
 /*
  * Each session's bundle stories, and a spawn's reported stage, from the tasks
@@ -532,6 +536,8 @@ function poll(name, everyMs, onAnswer, onFailure = () => {}) {
 polls.reviewers = pollReviewers;
 poll("reviewer-config", REVIEWERS_POLL_MS, (cfg) => {
   nextReviewer = cfg.next_reviewer || nextReviewer;
+  // Drawn into the model picker when the spawn dialog opens.
+  spawnConfig = cfg;
 });
 poll("broadcast-targets", REVIEWERS_POLL_MS, (counts) => {
   audiences = counts;
@@ -664,11 +670,16 @@ document.addEventListener("click", async (event) => {
     nextReviewer,
     audiences,
     message: byId(PALETTE_INPUT).value,
-    task: byId(PALETTE_INPUT).value,
+    task: byId(SPAWN_TASK).value,
     repoDir: byId("repo").value,
+    model: byId("spawnModel").value,
+    name: byId("spawnName").value,
   });
   if (!request) return;
-  if (request.focus) return byId(request.focus).focus();
+  if (request.focus) {
+    if (request.hint) byId(request.says).textContent = request.hint;
+    return byId(request.focus).focus();
+  }
   if (request.note) byId("bcastNote").textContent = request.note;
   if (!request.path) return;
   if (request.confirm && !window.confirm(request.confirm)) {
@@ -710,6 +721,14 @@ document.addEventListener("click", async (event) => {
   if (outcome.note !== undefined) byId("bcastNote").textContent = outcome.note;
   if (outcome.say !== undefined) byId(request.says).textContent = outcome.say;
   if (outcome.clear) byId(outcome.clear).value = "";
+  if (outcome.closeSpawn) {
+    byId("spawnName").value = "";
+    byId("paletteDone").textContent = outcome.say ?? "";
+    closeSpawn();
+    // Closed, the box has no layout to measure; openSpawn grows it again.
+    spawnTask.style.height = "";
+    syncName();
+  }
   if (outcome.clearMessage) byId(PALETTE_INPUT).value = "";
   // The palette is about to go, and its report with it: say it on the page.
   if (outcome.closePalette) {
@@ -811,7 +830,6 @@ const paletteInput = byId(PALETTE_INPUT);
 const PALETTE_LABELS = {
   search: "Search sessions, stories and PRs",
   broadcast: "Message to broadcast to the agents",
-  spawn: "Describe the task for a new session",
   message: "Message to type into the session's pane",
 };
 let paletteMode = "search";
@@ -859,8 +877,6 @@ function openPalette(mode, extra = {}) {
     byId("messageNote").textContent = "";
   } else if (mode === "broadcast") {
     byId("paletteModeLabel").textContent = "Broadcast";
-  } else if (mode === "spawn") {
-    byId("paletteModeLabel").textContent = "Spawn a session";
   }
   byId("paletteDone").textContent = "";
   if (!palette.open) palette.showModal();
@@ -889,7 +905,11 @@ function pick(result, withMeta) {
       paletteInput.value = "";
       return openPalette("message", result);
     }
-    if (result.action === "spawn") return openPalette("spawn");
+    if (result.action === "spawn") {
+      const task = paletteInput.value.trim();
+      closePalette();
+      return openSpawn(task);
+    }
     if (result.action === "broadcast") {
       openPalette("broadcast");
       if (result.target === "ci-red") byId("bcastCIRed").focus();
@@ -937,7 +957,6 @@ paletteInput.addEventListener("keydown", (event) => {
     if (paletteMode === "search") pick(paletteShown[paletteSelected], event.metaKey || event.ctrlKey);
     // Enter sends to everyone; with Ctrl or Cmd, to the CI-red audience.
     else if (paletteMode === "broadcast") byId(event.metaKey || event.ctrlKey ? "bcastCIRed" : "bcastAll").click();
-    else if (paletteMode === "spawn") byId("spawn").click();
     else if (paletteMode === "message") byId("messageSend").click();
   }
 });
@@ -1080,4 +1099,136 @@ poll("spawn-loop", 15000, (state, started) => {
   if (started >= loopWrittenAt) renderSpawnLoop(state);
 }, () => {
   if (byId("slToggle").disabled) byId("slToggle").title = "ringo has not answered for the loop's state yet";
+});
+
+// ---------------------------------------------------------------------------
+// The spawn dialog: a growing task box, the repos in the viewer's order, and
+// the spawn's options starting at the loop's own.
+// ---------------------------------------------------------------------------
+
+const spawnDialog = byId("spawnDialog");
+const spawnTask = byId(SPAWN_TASK);
+const repoSelect = byId("repo");
+
+/** The repos the server offered, in its order (trails, trailmap, tasks, then by name). */
+const offeredRepos = [...repoSelect.options].filter((o) => !o.disabled).map((o) => ({ name: o.textContent.trim(), path: o.value }));
+// No repo to offer: the select's own option says why, so it shows instead of an empty row.
+if (!offeredRepos.length) repoSelect.hidden = false;
+
+/** The viewer's saved order, or none: storage can be missing or refuse. */
+function savedOrder() {
+  try {
+    return JSON.parse(localStorage.getItem(SPAWN_ORDER_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function saveOrder(names) {
+  try {
+    if (names) localStorage.setItem(SPAWN_ORDER_KEY, JSON.stringify(names));
+    else localStorage.removeItem(SPAWN_ORDER_KEY);
+  } catch {
+    // The order lasts this page, then.
+  }
+}
+
+let spawnOrder = orderRepos(offeredRepos, savedOrder());
+
+function pickRepo(name) {
+  const repo = spawnOrder.find((r) => r.name === name);
+  if (repo) repoSelect.value = repo.path;
+  renderSpawnRepos();
+}
+
+const pickedRepo = () => (spawnOrder.find((r) => r.path === repoSelect.value) || spawnOrder[0] || {}).name;
+
+function renderSpawnRepos() {
+  const host = byId("spawnRepos");
+  const hadFocus = host.contains(document.activeElement);
+  host.innerHTML = repoChips(spawnOrder, pickedRepo());
+  if (hadFocus) {
+    const on = host.querySelector('[aria-checked="true"]');
+    if (on) on.focus();
+  }
+}
+
+function growTask() {
+  spawnTask.style.height = "auto";
+  spawnTask.style.height = taskHeight(spawnTask.scrollHeight + 2, window.innerHeight) + "px";
+}
+
+function syncName() {
+  byId("spawnName").placeholder = derivedName(spawnTask.value);
+}
+
+/** Open the dialog on the first repo in the viewer's order, with `task` carried in. */
+function openSpawn(task = "") {
+  if (task) spawnTask.value = task;
+  if (!spawnOrder.some((r) => r.path === repoSelect.value) && spawnOrder[0]) repoSelect.value = spawnOrder[0].path;
+  if (spawnConfig) byId("spawnModel").innerHTML = modelOptions(spawnConfig, byId("spawnModel").value);
+  byId("spawnStatus").textContent = "";
+  byId("paletteDone").textContent = "";
+  renderSpawnRepos();
+  if (!spawnDialog.open) spawnDialog.showModal();
+  growTask();
+  syncName();
+  spawnTask.focus();
+}
+
+function closeSpawn() {
+  if (spawnDialog.open) spawnDialog.close();
+}
+
+// Picked once, at load: the head of the viewer's order.
+if (spawnOrder[0]) repoSelect.value = spawnOrder[0].path;
+
+spawnTask.addEventListener("input", () => {
+  growTask();
+  syncName();
+});
+
+spawnDialog.addEventListener("keydown", (event) => {
+  const key = spawnKey(event);
+  if (!key) {
+    // Arrow keys move along the repo row, as in any radio group.
+    const chip = event.target instanceof Element && event.target.closest('[data-ui="spawn-repo"]');
+    if (chip && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      event.preventDefault();
+      const at = spawnOrder.findIndex((r) => r.name === chip.dataset.name);
+      const next = spawnOrder[(at + (event.key === "ArrowLeft" ? -1 : 1) + spawnOrder.length) % spawnOrder.length];
+      if (next) pickRepo(next.name);
+    }
+    return;
+  }
+  event.preventDefault();
+  if (key.kind === "spawn") byId("spawn").click();
+  else if (key.kind === "pick" && spawnOrder[key.index]) pickRepo(spawnOrder[key.index].name);
+  else if (key.kind === "move") {
+    const names = moveRepo(spawnOrder.map((r) => r.name), pickedRepo(), key.step);
+    spawnOrder = orderRepos(offeredRepos, names);
+    saveOrder(names);
+    renderSpawnRepos();
+  } else if (key.kind === "reset") {
+    spawnOrder = orderRepos(offeredRepos, null);
+    saveOrder(null);
+    renderSpawnRepos();
+  }
+});
+
+spawnDialog.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  // A click on the backdrop is a click on the dialog itself.
+  if (target === spawnDialog) return closeSpawn();
+  const ui = target && target.closest("[data-ui]");
+  if (!ui) return;
+  if (ui.dataset.ui === "spawn-close") closeSpawn();
+  else if (ui.dataset.ui === "spawn-repo") pickRepo(ui.dataset.name);
+});
+
+document.addEventListener("click", (event) => {
+  const opener = event.target instanceof Element ? event.target.closest('[data-ui="spawn-open"]') : null;
+  if (!opener) return;
+  event.preventDefault();
+  openSpawn();
 });

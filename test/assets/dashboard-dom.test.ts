@@ -8,7 +8,7 @@ import { controllerTestCase } from "../support/controller-test-case.ts";
  * The dashboard's page code (`dashboard.js`) against the page the controller
  * renders, in a DOM. The outcome rules are unit-tested in `fleet-format`;
  * this is the wiring: the palette opening and closing, the header field
- * carrying a key or a paste into it, and a spawn's report.
+ * carrying a key or a paste into it, and the spawn dialog.
  */
 const posts: Array<{ url: string; body: unknown }> = [];
 const searches: string[] = [];
@@ -30,7 +30,7 @@ function answer(url: string, init?: RequestInit): Response {
 }
 
 beforeAll(async () => {
-  setX("fleet", "repoPaths", "blazetrailsdev/trails=/srv/trails");
+  setX("fleet", "repoPaths", "blazetrailsdev/tasks=/srv/tasks,blazetrailsdev/trailmap=/srv/trailmap,blazetrailsdev/trails=/srv/trails");
   const tc = await controllerTestCase(DashboardController);
   await tc.get("index");
   setX("fleet", "repoPaths", undefined);
@@ -41,6 +41,12 @@ beforeAll(async () => {
   for (const script of page.body.querySelectorAll("script[src]")) script.remove();
   document.body.replaceChildren(...page.body.childNodes);
 
+  const stored = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (k: string) => stored.get(k) ?? null,
+    setItem: (k: string, v: string) => void stored.set(k, String(v)),
+    removeItem: (k: string) => void stored.delete(k),
+  });
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => answer(String(url), init)));
   vi.stubGlobal(
     "WebSocket",
@@ -108,15 +114,77 @@ describe("the dashboard palette", () => {
     palette().close();
   });
 
-  it("closes on a successful spawn and writes its report beside the page's search", async () => {
+});
+
+describe("the spawn dialog", () => {
+  const dialog = (): HTMLDialogElement => byId("spawnDialog") as HTMLDialogElement;
+  const task = (): HTMLTextAreaElement => byId("spawnTask") as HTMLTextAreaElement;
+  const chips = (): string[] => [...byId("spawnRepos").querySelectorAll("[data-name]")].map((c) => (c as HTMLElement).dataset.name ?? "");
+  const picked = (): string | undefined => (byId("spawnRepos").querySelector('[aria-checked="true"]') as HTMLElement | null)?.dataset.name;
+  const key = (init: KeyboardEventInit): void => {
+    task().dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init }));
+  };
+
+  it("offers trails, trailmap and tasks in that order, trails picked", () => {
     byId("spawnBtn").click();
-    expect(palette().open).toBe(true);
-    input().value = " fix the build ";
-    byId("spawn").click();
+    expect(dialog().open).toBe(true);
+    expect(palette().open).toBe(false);
+    expect(chips()).toEqual(["blazetrailsdev/trails", "blazetrailsdev/trailmap", "blazetrailsdev/tasks"]);
+    expect(picked()).toBe("blazetrailsdev/trails");
+    expect(document.activeElement).toBe(task());
+  });
+
+  it("picks a repo by its place and moves it along the row, keeping the order", () => {
+    key({ altKey: true, code: "Digit3", key: "£" });
+    expect(picked()).toBe("blazetrailsdev/tasks");
+    key({ altKey: true, code: "BracketLeft", key: "“" });
+    expect(chips()).toEqual(["blazetrailsdev/trails", "blazetrailsdev/tasks", "blazetrailsdev/trailmap"]);
+    expect(JSON.parse(localStorage.getItem("trailmap.spawnRepoOrder") ?? "null")).toEqual(chips());
+    key({ altKey: true, code: "Digit0", key: "º" });
+    expect(chips()).toEqual(["blazetrailsdev/trails", "blazetrailsdev/trailmap", "blazetrailsdev/tasks"]);
+    expect(localStorage.getItem("trailmap.spawnRepoOrder")).toBeNull();
+    key({ altKey: true, code: "Digit1", key: "¡" });
+  });
+
+  it("leaves a bare Enter to the task box, and suggests the worktree name from its first line", () => {
+    task().value = "Fix the build\nand more";
+    task().dispatchEvent(new Event("input"));
+    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    task().dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(false);
+    expect((byId("spawnName") as HTMLInputElement).placeholder).toBe("fix-the-build");
+  });
+
+  it("asks for a task on ⌘↵ with an empty box, and posts nothing", () => {
+    const before = posts.length;
+    task().value = "  ";
+    key({ key: "Enter", metaKey: true });
+    expect(posts.length).toBe(before);
+    expect(byId("spawnStatus").textContent).toBe("Describe the task first.");
+    expect(document.activeElement).toBe(task());
+  });
+
+  it("spawns on ⌘↵ the way the loop does, closes, and writes its report beside the page's search", async () => {
+    task().value = " fix the build ";
+    key({ key: "Enter", metaKey: true });
     await settle(50);
 
-    expect(posts.at(-1)).toEqual({ url: "/fleet/control/spawn", body: { repoDir: "/srv/trails", message: "fix the build" } });
-    expect(palette().open).toBe(false);
+    expect(posts.at(-1)).toEqual({ url: "/fleet/control/spawnloop/dashboard-spawn", body: { repoDir: "/srv/trails", message: "fix the build" } });
+    expect(dialog().open).toBe(false);
+    expect(task().value).toBe("");
+    expect((byId("spawnName") as HTMLInputElement).placeholder).toBe("task");
     expect(byId("paletteDone").textContent).toContain("spawned in %5");
+  });
+
+  it("carries the palette's text into the dialog from its spawn action", () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }));
+    input().value = "a long task";
+    input().dispatchEvent(new Event("input"));
+    const spawn = [...palette().querySelectorAll('[data-ui="palette-pick"]')].find((el) => el.textContent?.includes("Spawn")) as HTMLElement;
+    spawn.click();
+    expect(palette().open).toBe(false);
+    expect(dialog().open).toBe(true);
+    expect(task().value).toBe("a long task");
+    dialog().close();
   });
 });

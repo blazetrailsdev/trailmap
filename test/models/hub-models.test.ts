@@ -424,16 +424,14 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
       });
 
       expect(await Repository.spawnChoices()).toEqual([
-        { name: "blazetrailsdev/ringo", path: "/checkout/ringo" },
         { name: "blazetrailsdev/trails", path: "/moved/trails" },
+        { name: "blazetrailsdev/ringo", path: "/checkout/ringo" },
       ]);
     });
 
-    it("is alphabetical, as the environment reader already was", async () => {
-      // NOT a change this branch makes: `fleetRepos()` sorts (config/fleet.ts),
-      // so `FLEET_REPO_PATHS` never decided the order. The dashboard's first
-      // `<option>` is the default spawn target, and on an env-only box it must
-      // be the same repository after this change as before it.
+    it("is alphabetical past SPAWN_ORDER, as the environment reader is", async () => {
+      // `fleetRepos()` sorts (config/fleet.ts), so `FLEET_REPO_PATHS` never
+      // decided the order; only SPAWN_ORDER's repos jump the alphabet.
       setX("fleet", "repoPaths",
         "blazetrailsdev/zebra=/checkout/zebra,blazetrailsdev/alpha=/checkout/alpha",
       );
@@ -444,6 +442,19 @@ describe.skipIf(!hasHubTestDatabase())("the hub models", () => {
       ]);
       // The merge agrees with the reader it merges over.
       expect(await Repository.spawnChoices()).toEqual(fleetRepos());
+    });
+
+    it("puts trails, trailmap and tasks first, in that order, ahead of the alphabet", async () => {
+      setX("fleet", "repoPaths",
+        "blazetrailsdev/tasks=/c/tasks,acme/abc=/c/abc,blazetrailsdev/trailmap=/c/trailmap,blazetrailsdev/trails=/c/trails",
+      );
+
+      expect((await Repository.spawnChoices()).map((choice) => choice.name)).toEqual([
+        "blazetrailsdev/trails",
+        "blazetrailsdev/trailmap",
+        "blazetrailsdev/tasks",
+        "acme/abc",
+      ]);
     });
 
     it("sorts a row-only entry in with the environment's, not after them", async () => {

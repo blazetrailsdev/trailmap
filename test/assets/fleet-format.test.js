@@ -643,18 +643,28 @@ describe("controlRequest", () => {
     });
   });
 
-  it("spawns the typed task in the picked repo, reporting beside the picker", () => {
+  it("spawns the typed task in the picked repo the way the loop does, reporting beside the button", () => {
     expect(controlRequest("spawn", {}, { task: "  fix the build ", repoDir: "/w/trails" })).toEqual({
-      path: "/spawn",
+      path: "/spawnloop/dashboard-spawn",
       body: { repoDir: "/w/trails", message: "fix the build" },
       says: "spawnStatus",
       saying: "Spawning...",
-      clears: "paletteInput",
+      clears: "spawnTask",
     });
   });
 
-  it("sends no spawn with no task", () => {
-    expect(controlRequest("spawn", {}, { task: "   ", repoDir: "/w/trails" })).toBeNull();
+  it("sends a model and a worktree name only when the viewer chose one", () => {
+    expect(controlRequest("spawn", {}, { task: "t", repoDir: "/w", model: "sonnet", name: " my-branch " }).body).toEqual({
+      repoDir: "/w",
+      message: "t",
+      model: "sonnet",
+      name: "my-branch",
+    });
+    expect(controlRequest("spawn", {}, { task: "t", repoDir: "/w", model: "", name: "  " }).body).toEqual({ repoDir: "/w", message: "t" });
+  });
+
+  it("sends no spawn with no task, and asks for one beside the button", () => {
+    expect(controlRequest("spawn", {}, { task: "   ", repoDir: "/w/trails" })).toEqual({ focus: "spawnTask", says: "spawnStatus", hint: "Describe the task first." });
   });
 
   it("is null for a button that is not a control", () => {
@@ -663,14 +673,14 @@ describe("controlRequest", () => {
 });
 
 describe("controlOutcome", () => {
-  it("says a manual spawn landed, clears the task, gives the button back and closes the palette", () => {
+  it("says a manual spawn landed, clears the task, gives the button back and closes the dialog", () => {
     const spawn = controlRequest("spawn", {}, { task: "t", repoDir: "/w" });
 
     expect(controlOutcome(spawn, { ok: true, text: "spawned %5" }, "Spawn")).toEqual({
       disabled: false,
       say: "Spawned: spawned %5",
-      clear: "paletteInput",
-      closePalette: true,
+      clear: "spawnTask",
+      closeSpawn: true,
     });
     expect(controlOutcome(spawn, { ok: false, text: "no such repo" }, "Spawn")).toEqual({ disabled: false, say: "Error: no such repo" });
     expect(controlOutcome(spawn, { error: "offline" }, "Spawn")).toEqual({ disabled: false, say: "Error: offline" });
