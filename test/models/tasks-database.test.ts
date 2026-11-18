@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { withoutFixturesIn } from "../support/transactional-tests.ts";
 import { Base } from "@blazetrails/activerecord";
 import { primaryDatabaseConfig, tasksDatabasePath } from "../../config/database.ts";
@@ -21,6 +21,12 @@ withLiveDatabase("the live tasks database", () => {
   beforeAll(withoutFixturesIn);
   beforeAll(async () => {
     await Base.establishConnection(primaryDatabaseConfig("development").configurationHash);
+  });
+  // Hand `Base` back to the suite's test database: fixtures load COMMITTED,
+  // outside the test transaction, so a later block in this file would
+  // otherwise write them into the live database the gate goes on to compare.
+  afterAll(async () => {
+    await Base.establishConnection();
   });
 
   it("reads RFCs the CLI wrote", async () => {

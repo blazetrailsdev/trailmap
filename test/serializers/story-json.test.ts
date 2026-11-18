@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { withoutFixturesIn } from "../support/transactional-tests.ts";
 import { Base } from "@blazetrails/activerecord";
 import { env, getFs } from "@blazetrails/ruby-compat";
@@ -134,6 +134,12 @@ withLiveDatabase("the published index.json", () => {
   beforeAll(withoutFixturesIn);
   beforeAll(async () => {
     await Base.establishConnection(primaryDatabaseConfig("development").configurationHash);
+  });
+  // Hand `Base` back to the suite's test database: fixtures load COMMITTED,
+  // outside the test transaction, so a later block in this file would
+  // otherwise write them into the live database the gate goes on to compare.
+  afterAll(async () => {
+    await Base.establishConnection();
   });
 
   async function readPublished(): Promise<string> {
