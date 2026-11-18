@@ -66,9 +66,8 @@ dokku config:set --no-restart trailmap SECRET_KEY_BASE="$(openssl rand -hex 64)"
 # endpoint, through the IngestToken concern) answers 401 to a request whose
 # `Authorization: Bearer <t>` is not this value, and refuses EVERY request
 # while it is unset: the endpoints fail closed, and boot logs a warning. The
-# writers on the box (trails' `.claude/skills/audit-report/run.sh`, the tasks
-# repo's `scripts/rfc-refine-done.sh`) read the same value from
-# `~/.config/trailmap/ingest-token`, mode 0600.
+# writer on the box, the tasks repo's `scripts/rfc-refine-done.sh`, reads the
+# same value from `~/.config/trailmap/ingest-token`, mode 0600.
 TOKEN="$(openssl rand -hex 32)"
 dokku config:set --no-restart trailmap TRAILMAP_INGEST_TOKEN="$TOKEN"
 install -d -m 0700 ~/.config/trailmap
