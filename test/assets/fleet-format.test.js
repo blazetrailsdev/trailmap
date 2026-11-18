@@ -1224,6 +1224,8 @@ describe("the usage helpers", () => {
     expect(html).toContain("<span>Claude · week</span>");
     expect(html).toContain('<span class="usage-pace under">');
     expect(usageSummary({ sessionPercent: -1, weeklyPercent: 20 })).toBe("week 20%");
+    expect(claudeUsage({ sessionPercent: null, weeklyPercent: 20, weeklyResetsAt }, noon)).not.toContain("Claude · session");
+    expect(usageSummary({ sessionPercent: null, weeklyPercent: 20 })).toBe("week 20%");
   });
 
   it("ticks each midnight of the week's window with its day", () => {
@@ -1231,6 +1233,8 @@ describe("the usage helpers", () => {
     expect(ticks).toHaveLength(6);
     expect(ticks.every((t, i) => i === 0 || t.percent - ticks[i - 1].percent > 14)).toBe(true);
     expect(ticks.every((t) => t.percent > 0 && t.percent < 100 && /^[A-Z][a-z]$/.test(t.day))).toBe(true);
+    // A reset further off than a week starts the window now, as the now marker's 0% does.
+    expect(weekTicks("", noon + 200 * HOUR, noon)).toEqual(weekTicks("", noon + 168 * HOUR, noon));
   });
 
   it("drops a window Codex did not report, and says so when it reported neither", () => {

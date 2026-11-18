@@ -307,7 +307,7 @@ export function reviewNote(s, entry) {
 export function agentNote(s) {
   if (!paneOf(s)) return "";
   const status = paneStatusOf(s);
-  const doing = status === "working" ? "working" : BUSY.has(status) ? status : "idle";
+  const doing = BUSY.has(status) ? status : "idle";
   return '<span class="review-note"><span class="review-side' + (doing === "idle" ? "" : " turn") + '">Agent ' + esc(doing) + "</span></span>";
 }
 

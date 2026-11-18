@@ -1118,7 +1118,7 @@ function usageRow(label, percent, color, title = "", marks = "", below = "") {
  */
 export function weekTicks(weeklyResets, at, now = Date.now()) {
   const left = hoursUntilReset(weeklyResets, at, now);
-  const start = now - (WEEK_HOURS - (left === null ? WEEK_HOURS : left)) * HOUR;
+  const start = now - Math.max(0, WEEK_HOURS - (left === null ? WEEK_HOURS : left)) * HOUR;
   const midnight = new Date(start);
   midnight.setHours(24, 0, 0, 0);
   const ticks = [];
@@ -1150,16 +1150,18 @@ function weekRow(agent, u, now) {
   return usageRow(agent + " · week", u.weeklyPercent, weeklyPaceColor(diff), withPlan(title, u), marks, pace);
 }
 
-/** Below zero is a plan with no session limit (ringo's `handleUsage`): no row, rather than 0%. */
+/** Below zero is a plan with no session limit (ringo's `handleUsage`), and none is a scrape without one: either way no row, rather than 0%. */
+const hasSession = (u) => u.sessionPercent != null && u.sessionPercent >= 0;
+
 const sessionRow = (agent, u, now) =>
-  u.sessionPercent >= 0
+  hasSession(u)
     ? usageRow(agent + " · session", u.sessionPercent, barColor(clamp(u.sessionPercent)), withPlan("resets " + formatClockLabel(u.sessionResets, u.sessionResetsAt, now), u))
     : "";
 
 /** The Usage panel's one-line summary, which is all a folded panel shows on a phone. */
 export function usageSummary(u, now = Date.now()) {
   const parts = [];
-  if (u.sessionPercent != null && u.sessionPercent >= 0) parts.push("session " + clamp(u.sessionPercent) + "%");
+  if (hasSession(u)) parts.push("session " + clamp(u.sessionPercent) + "%");
   if (u.weeklyPercent != null) parts.push("week " + clamp(u.weeklyPercent) + "%");
   if (u.manualPause) parts.push("paused" + (u.queueSize ? " · " + Number(u.queueSize) + " queued" : ""));
   if (u.lastCheckTime) parts.push("updated " + timeAgo(u.lastCheckTime, now));
