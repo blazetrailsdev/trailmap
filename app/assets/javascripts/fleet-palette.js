@@ -4,7 +4,7 @@
  * with scope chips, and the actions that replaced the broadcast and spawn
  * forms. Pure: `dashboard.js` opens the dialog and assigns what this returns.
  */
-import { esc, OCTICON, STAGE_ICONS, stageName } from "./fleet-format.js";
+import { esc, isGrooming, OCTICON, STAGE_ICONS, stageName } from "./fleet-format.js";
 import { sessionKey, sessionStories, stageOf } from "./fleet-sessions.js";
 
 /** The kinds, in the order their groups are drawn. */
@@ -70,7 +70,7 @@ export const repoName = (s) => (String(s.repo || "").includes("/") ? String(s.re
 /** The frame's sessions that match, best first, ties in list order. */
 export function paletteSessions(rows, ctx, query) {
   return rows
-    .filter((s) => !s.kind && !s.merged)
+    .filter((s) => !isGrooming(s) && !s.merged)
     .map((s, at) => {
       const { lead, rest } = sessionStories(s, ctx.stories);
       const title = lead ? lead.id : s.story_id || s.title || s.repo + "#" + s.pr;

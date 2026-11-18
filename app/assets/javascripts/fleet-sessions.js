@@ -22,6 +22,7 @@
  *   since      when the page started recording, for "since <time>"
  */
 import {
+  isGrooming,
   CI_TITLES,
   STAGES,
   activeFixers,
@@ -72,13 +73,6 @@ export const prRef = (s) => s.repo + "#" + s.pr;
 const paneOf = (s) => s.pane || "";
 const paneStatusOf = (s) => (isPR(s) ? s.paneStatus : s.pane_status) || "";
 
-/**
- * A grooming agent: ringo's `rfc-refine` / `rfc-sunset` spawns, which name no
- * story and never open a PR. A `manual` spawn (/prompt-agent) also carries a
- * `kind`, but it is a worker like the loop's and renders as one.
- */
-export const isGrooming = (s) => !!s.kind && s.kind !== "manual";
-
 // ---------------------------------------------------------------------------
 // Bundle stories
 // ---------------------------------------------------------------------------
@@ -89,7 +83,7 @@ export const isGrooming = (s) => !!s.kind && s.kind !== "manual";
  */
 export function storiesQuery(prs, spawns) {
   const refs = [...new Set((prs || []).map(prRef))].map((ref) => "pr[]=" + encodeURIComponent(ref));
-  const ids = [...new Set((spawns || []).filter((s) => !s.kind && s.story_id).map((s) => s.story_id))].map(
+  const ids = [...new Set((spawns || []).filter((s) => !isGrooming(s) && s.story_id).map((s) => s.story_id))].map(
     (id) => "story[]=" + encodeURIComponent(id),
   );
   return [...refs, ...ids].slice(0, STORIES_MAX_REFS).join("&");
@@ -326,7 +320,7 @@ export function joinFixers(fixers, prs, spawns) {
   for (const f of activeFixers(fixers)) {
     const row =
       (prs || []).find((pr) => isFixerPR([f], pr)) ||
-      (spawns || []).find((s) => !s.kind && isFixerStory([f], s.story_id));
+      (spawns || []).find((s) => !isGrooming(s) && isFixerStory([f], s.story_id));
     if (row) byKey.set(sessionKey(row), f);
     else {
       const orphan = { owner: f.owner, repo: f.owner + "/" + f.repo, story_id: f.story_id, fixerOnly: true, title: "main is red" };

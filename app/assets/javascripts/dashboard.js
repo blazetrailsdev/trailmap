@@ -11,6 +11,7 @@
  * already hold -- every frame repaints from the envelope, as ringo's does.
  */
 import {
+  isGrooming,
   CLEAR_FAILED_ID,
   DEFAULT_REPO,
   PALETTE_INPUT,
@@ -832,7 +833,7 @@ function renderPalette() {
   for (const foot of palette.querySelectorAll("[data-foot-mode]")) foot.hidden = foot.dataset.footMode !== paletteMode;
   if (!searching) return;
   const results = paletteResults();
-  const repos = [...new Set(shownRows.filter((s) => !s.kind).map(repoName))];
+  const repos = [...new Set(shownRows.filter((s) => !isGrooming(s)).map(repoName))];
   byId("paletteScopes").innerHTML = scopeChips(results, paletteScope, repos);
   const groups = paletteGroups(results, paletteScope);
   paletteShown = paletteFlat(groups);

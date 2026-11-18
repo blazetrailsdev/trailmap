@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { esc, ICONS, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
+import { esc, ICONS, isGrooming, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
 import {
   canAskReady,
   canMerge,
@@ -21,7 +21,6 @@ import {
   mergedLine,
   orderSessions,
   agentNote,
-  isGrooming,
   prRef,
   reportedStage,
   reviewLines,

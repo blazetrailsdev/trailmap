@@ -948,6 +948,12 @@ describe("visibleSpawns", () => {
   it("never suppresses a grooming agent, which opens no PR to be superseded by", () => {
     expect(visibleSpawns([pr], [{ kind: "rfc-refine", branch: "a-thing" }])).toHaveLength(1);
   });
+
+  it("drops a /prompt-agent spawn once its branch or pane has a PR, as it does the loop's", () => {
+    expect(visibleSpawns([pr], [{ kind: "manual", branch: "a-thing" }])).toEqual([]);
+    expect(visibleSpawns([pr], [{ kind: "manual", branch: "other", pane: "%214" }])).toEqual([]);
+    expect(visibleSpawns([pr], [{ kind: "manual", branch: "other" }])).toHaveLength(1);
+  });
 });
 
 describe("repoSections", () => {

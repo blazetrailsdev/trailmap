@@ -1216,11 +1216,18 @@ export const repoOf = (pr) => (pr.owner ? pr.owner + "/" : "") + (pr.repo || "")
  * ringo prunes these server-side as well; this is belt-and-braces against a
  * stale frame.
  */
+/**
+ * A grooming agent: ringo's `rfc-refine` / `rfc-sunset` spawns, which name no
+ * story and never open a PR. A `manual` spawn (/prompt-agent) also carries a
+ * `kind`, but it is a worker like the loop's and renders as one.
+ */
+export const isGrooming = (s) => !!s.kind && s.kind !== "manual";
+
 export function visibleSpawns(prs, spawns) {
   const branches = new Set(prs.map((p) => p.branch).filter(Boolean));
   const panes = new Set(prs.map((p) => p.pane).filter(Boolean));
   return (spawns || []).filter(
-    (s) => s.kind || (!branches.has(s.branch) && !branches.has(s.story_id) && !(s.pane && panes.has(s.pane))),
+    (s) => isGrooming(s) || (!branches.has(s.branch) && !branches.has(s.story_id) && !(s.pane && panes.has(s.pane))),
   );
 }
 
