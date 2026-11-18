@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { withoutFixturesIn } from "../support/transactional-tests.ts";
 import { Base } from "@blazetrails/activerecord";
 import { primaryDatabaseConfig, tasksDatabasePath } from "../../config/database.ts";
 import { RFC_STATUSES, Rfc } from "../../app/models/rfc.ts";
@@ -17,6 +18,7 @@ import { Story } from "../../app/models/story.ts";
 const withLiveDatabase = tasksDatabasePath() ? describe : describe.skip;
 
 withLiveDatabase("the live tasks database", () => {
+  beforeAll(withoutFixturesIn);
   beforeAll(async () => {
     await Base.establishConnection(primaryDatabaseConfig("development").configurationHash);
   });

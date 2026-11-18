@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { withoutFixturesIn } from "../support/transactional-tests.ts";
 import { Base } from "@blazetrails/activerecord";
 import { env, getFs } from "@blazetrails/ruby-compat";
 import { primaryDatabaseConfig, tasksDatabasePath } from "../../config/database.ts";
@@ -130,6 +131,7 @@ describe("the serializer", () => {
 const withLiveDatabase = tasksDatabasePath() && env.TASKS_INDEX_JSON ? describe : describe.skip;
 
 withLiveDatabase("the published index.json", () => {
+  beforeAll(withoutFixturesIn);
   beforeAll(async () => {
     await Base.establishConnection(primaryDatabaseConfig("development").configurationHash);
   });

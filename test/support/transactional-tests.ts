@@ -1,3 +1,5 @@
+import { describe as describedClass } from "@blazetrails/activesupport/testing/autorun";
+
 /**
  * Rails' `self.use_transactional_tests = false`, on a test case class.
  *
@@ -29,4 +31,19 @@ export function withoutFixtures(testCase: object): void {
   const fixtured = testCase as { fixtureTableNames: string[]; fixtureSets: Record<string, string> };
   fixtured.fixtureTableNames = [];
   fixtured.fixtureSets = {};
+}
+
+/**
+ * `withoutFixtures` for the class of one vitest `describe` block, which
+ * test-help's autorun makes a subclass of the file's case. Pass it to that
+ * block's `beforeAll`, which vitest calls with the suite:
+ *
+ *     beforeAll(withoutFixturesIn);
+ *
+ * For a block that points `Base` at a database the fixtures are not for, such
+ * as the live `tasks.db` the gate job ingests: loading them there would
+ * replace its `rfcs` rows with the fixtures' for every test in the block.
+ */
+export function withoutFixturesIn(suite: Parameters<typeof describedClass>[0]): void {
+  withoutFixtures(describedClass(suite));
 }
