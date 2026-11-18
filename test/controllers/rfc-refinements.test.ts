@@ -3,6 +3,7 @@
  * shows. The reports live in the hub, so these need the hub test database.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { env } from "@blazetrails/ruby-compat";
 import { Rfc } from "../../app/models/rfc.ts";
 import { RfcRefine } from "../../app/models/rfc-refine.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
@@ -23,18 +24,27 @@ async function page(action: string, id: string): Promise<{ status: number; body:
 }
 
 async function report(body: Record<string, unknown>): Promise<{ status: number; body: any }> {
-  const tc = await controllerTestCase(RfcRefinesController, { Host: "127.0.0.1" });
+  const tc = await controllerTestCase(RfcRefinesController, {
+    Host: "127.0.0.1",
+    Authorization: "Bearer refine-test-token",
+  });
   await tc.post("create", { params: body, as: "json" });
   return { status: tc.response.status, body: JSON.parse(tc.response.body) };
 }
 
 describe.skipIf(!hasHubTestDatabase())("RfcRefinements", () => {
+  beforeAll(() => {
+    Object.assign(env, { TRAILMAP_INGEST_TOKEN: "refine-test-token" });
+  });
   beforeAll(connectHubTestDatabase, HUB_SETUP_TIMEOUT);
   beforeEach(async () => {
     await Rfc.create({ id: "0002-quiet", status: "active", title: "Quiet" });
   });
   beforeEach(truncateHub);
   afterAll(releaseHubTestDatabase);
+  afterAll(() => {
+    Reflect.deleteProperty(env, "TRAILMAP_INGEST_TOKEN");
+  });
 
   it("shows the latest refine report, then the earlier ones newest first", async () => {
     await RfcRefine.create({
