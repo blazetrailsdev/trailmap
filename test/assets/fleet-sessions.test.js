@@ -591,7 +591,7 @@ describe("the expanded card", () => {
     expect(html).toContain("#9958</a> draft");
     expect(html).toContain("2 cycles &middot; 1 open finding");
     expect(html).toContain("<dt>CI</dt><dd>CI running</dd>");
-    expect(html).toContain('<a class="btn btn-sm" href="/panes/214">Open pane</a>');
+    expect(html).toContain('<a class="btn btn-sm" href="/panes/214">Open pane <svg');
   });
 
   it("has a message box for a live session, posting to its pane", () => {
@@ -692,7 +692,9 @@ describe("sessionDetail / sessionGroups, directly", () => {
     expect(html).toContain('data-terminal="%214"');
     expect(html).toContain('<span class="fg2">$ pnpm test</span></pre>');
     expect(html).not.toContain("Session log");
-    expect(html).toContain('href="/panes/214">Open pane</a>');
+    expect(html).toContain('href="/panes/214">Open pane <svg');
+    expect(html).toContain('data-action="pane-end" data-pane="%214"');
+    expect(html.indexOf("End pane")).toBeGreaterThan(html.indexOf("Open pane"));
   });
 
   it("draws a live session's events beside its terminal, the operator's own lines among them", () => {

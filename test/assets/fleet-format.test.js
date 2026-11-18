@@ -865,6 +865,15 @@ describe("a pane message", () => {
     expect(controlRequest("pane-send", { pane: "%4/../2", text: "x" })).toBeNull();
   });
 
+  it("pane-end sends /exit, then exit for the shell, after a confirm", () => {
+    const request = controlRequest("pane-end", { pane: "%42", key: "k", says: "note" });
+    expect(request.url).toBe("/fleet/pane/42/send");
+    expect(request.body).toEqual({ text: "/exit" });
+    expect(request.then).toEqual({ text: "exit", afterMs: 3000 });
+    expect(request.confirm).toContain("%42");
+    expect(controlRequest("pane-end", { pane: "42" })).toBeNull();
+  });
+
   it("logs a sent line and clears its box; shows ringo's refusal beside it", () => {
     const request = controlRequest("pane-send", { pane: "%42", text: "go", key: "k", says: "note", clears: "box" });
 

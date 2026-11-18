@@ -483,6 +483,23 @@ export function controlRequest(action, data, page = {}) {
         clears: data.clears || "",
       };
     }
+    // End a session's pane: `/exit` to quit Claude, then, once it has gone,
+    // `exit` to close the fish shell it ran in.
+    case "pane-end": {
+      const id = /^%([0-9]{1,10})$/.exec(String(data.pane || ""));
+      if (!id) return null;
+      return {
+        path: "/pane/" + id[1] + "/send",
+        url: "/fleet/pane/" + id[1] + "/send",
+        body: { text: "/exit" },
+        then: { text: "exit", afterMs: 3000 },
+        confirm: "End pane " + data.pane + "? This exits Claude and closes its shell.",
+        pane: true,
+        key: data.key || "",
+        says: data.says,
+        saying: "ending…",
+      };
+    }
     case "clear-failed":
       return { path: "/spawnloop/dismiss-failed", body: null, quiet: true };
     // The manual spawn card. Its report goes beside the repo picker

@@ -683,7 +683,12 @@ document.addEventListener("click", async (event) => {
   const held = (request.holds || []).map(byId).filter((other) => other !== button);
   for (const other of held) other.disabled = true;
 
-  const result = await send(request);
+  let result = await send(request);
+  // A follow-up line, once the first has landed: End pane's shell `exit`.
+  if (request.then && result.ok) {
+    await new Promise((resolve) => setTimeout(resolve, request.then.afterMs));
+    result = await send({ ...request, body: { text: request.then.text } });
+  }
   for (const other of held) other.disabled = false;
 
   if (request.statusId) {
