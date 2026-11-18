@@ -72,6 +72,11 @@ Three sizes. No size between them, no uppercase, no letter-spacing, no serif.
 Sentence case everywhere, as GitHub writes it: "Needs you", not "NEEDS YOU".
 Monospace is for code, ids a person would paste, and terminal output only.
 
+The one exception is rendered Markdown (`.markdown`, and the raw audit page's
+`.md`). Its headings follow GitHub's `markdown-body`: h1 24px, h2 20px, h3 16px,
+all weight 600. That is how GitHub draws a README, and a document should read
+like one.
+
 ## Shape and space
 
 - **Radius**: 6px on boxes, buttons, inputs and menu rows; 12px on an overlay;
@@ -110,9 +115,9 @@ for the nearest concept:
 | Box row | `.session`, `.row`, `.item-row` | divided by a 1px top border; hover is `--surface-2` |
 | Button | `.btn` | see below |
 | Form control | `.ctl` | 32px, 1px border, 6px radius; focus is a 2px `--accent` outline |
-| Label | `.Label`, `.flag` | a 12px outlined pill. `.Label.stage.st-*` is a stage; `.flag` is attention, `.flag.bad` danger |
+| Label | `.Label`, `.flag`, `.badge` | a 12px outlined pill. `.Label.stage.st-*` is a stage; `.flag` is attention, `.flag.bad` danger; `.badge.s-*` is a story or RFC status (`shared/_status-badge`), the same Label hued by status |
 | Counter | `.Counter` | a count beside a title |
-| State | `.state` | the solid pill at the top of a show page: Open, Draft, Merged |
+| State | `.state` | the solid pill at the top of a show page, in the same hue as its `.badge`: `ready`, `active` green (open); `done`, `closed`, `superseded` purple (done); `claimed`, `in-progress`, `blocked` attention (pending); `draft`, `postponed`, `unknown` grey |
 | Flash | `.strip` | a `--yellow-bg` banner inside the thing it is about |
 | Progress bar | `.meter` | 8px, 6px radius, on a neutral track |
 | Toggle switch | `.switch` | rounded-rectangle track, `--accent` when on |
@@ -183,3 +188,4 @@ this guide. When bringing another page over:
 1. Replace anything invented with the component above that GitHub would use.
 2. Use only the three type sizes and the radii listed.
 3. Take the page's screenshots in light, dark and at 390px.
+4. A field is `.ctl`; there is no `.input`.
