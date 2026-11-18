@@ -249,7 +249,7 @@ export class RfcPagesController extends ApplicationController {
       if (!(error instanceof VerbExit)) throw error;
       return this._renderShow(id, error.message, error.code === 1 ? 422 : 409);
     }
-    this.redirectTo(this.rfcPath(id), { status: 303 });
+    await this.redirectTo(this.rfcPath(id), { status: 303 });
   }
 
   /** `/rfc/<id>` again, carrying a refusal or a not-found. */
