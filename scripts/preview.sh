@@ -89,9 +89,9 @@ up() {
     # authoring or ingest commit from the preview fails instead of landing.
     dokku storage:mount "$app" "$tasksDir:$tasksDir:ro"
     # The audits, mounted exactly as production mounts them (already :ro).
-    dokku storage:list "$PROD_APP" --format json 2>/dev/null |
-      grep -o '"[^"]*:/audits:ro"' | tr -d '"' |
-      while read -r m; do dokku storage:mount "$app" "$m"; done || true
+    local audits
+    audits="$(dokku storage:list "$PROD_APP" | awk '$1 ~ /:\/audits(:ro)?$/ {print $1}')"
+    [ -z "$audits" ] || dokku storage:mount "$app" "${audits%:ro}:ro"
     dokku ps:set "$app" restart-policy no
     dokku config:set --no-restart "$app" SECRET_KEY_BASE="$(openssl rand -hex 64)"
   fi
