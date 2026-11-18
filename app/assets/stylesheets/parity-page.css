@@ -9,6 +9,29 @@
    put on the guide's sizes and radii. */
 @import url("parity.css") layer(ringo);
 
+/* ringo's chart-only tokens. parity.css switches them on
+   prefers-color-scheme alone, so they are set again here the way
+   application.css sets its own: light on :root, dark under data-theme="dark"
+   or a dark OS that data-theme="light" does not override. */
+:root {
+  --axis: var(--line);
+  --grid: #e6eaef;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+}
+:root[data-theme="dark"] {
+  --grid: #21262d;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --grid: #21262d;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  }
+}
+
 .seg { border-radius: 6px; }
 .seg button { font-size: 12px; font-weight: 500; }
 .seg button.on { color: var(--ink); background: var(--accent-bg); box-shadow: none; }
