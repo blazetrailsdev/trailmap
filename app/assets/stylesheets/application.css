@@ -672,10 +672,18 @@ details.card.fold > :not(summary) { margin-inline: 16px; margin-bottom: 12px; }
 .usage-bar + .usage-bar { margin-top: 8px; }
 .usage-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 40px; gap: 10px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
 .usage-row + .usage-row { margin-top: 8px; }
+.usage-row:has(.day-tick) { margin-top: 14px; }
 .usage-row > span:last-child { text-align: right; color: var(--ink-2); }
 .usage-row > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meter { display: block; height: 8px; border-radius: 6px; background: color-mix(in srgb, var(--ink-3) 18%, transparent); overflow: hidden; }
 .meter .bar-fill { display: block; height: 100%; border-radius: 6px; }
+.meter:has(.day-tick) { position: relative; overflow: visible; }
+.day-tick { position: absolute; top: 0; height: 100%; width: 1px; background: color-mix(in srgb, var(--ink-3) 45%, transparent); }
+.day-tick::before { content: attr(data-day); position: absolute; top: -13px; transform: translateX(-50%); font-size: 9px; font-weight: 400; color: var(--ink-3); }
+.now-mark { position: absolute; top: -2px; height: calc(100% + 4px); width: 2px; margin-left: -1px; background: var(--ink); }
+.usage-pace { grid-column: 2 / -1; font-size: 11px; }
+.usage-pace.ahead { color: var(--yellow-ink); }
+.usage-pace.under { color: var(--green); }
 .usage-note { margin-top: 8px; font-size: 12px; color: var(--ink-3); }
 .loop-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 10px; align-items: end; }
 .loop-row .field { display: flex; flex-direction: column; align-items: stretch; gap: 4px; font-size: 12px; font-weight: 600; color: var(--ink); text-align: left; white-space: nowrap; min-width: 0; }

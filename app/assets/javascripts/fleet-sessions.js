@@ -72,6 +72,13 @@ export const prRef = (s) => s.repo + "#" + s.pr;
 const paneOf = (s) => s.pane || "";
 const paneStatusOf = (s) => (isPR(s) ? s.paneStatus : s.pane_status) || "";
 
+/**
+ * A grooming agent: ringo's `rfc-refine` / `rfc-sunset` spawns, which name no
+ * story and never open a PR. A `manual` spawn (/prompt-agent) also carries a
+ * `kind`, but it is a worker like the loop's and renders as one.
+ */
+export const isGrooming = (s) => !!s.kind && s.kind !== "manual";
+
 // ---------------------------------------------------------------------------
 // Bundle stories
 // ---------------------------------------------------------------------------
@@ -290,6 +297,18 @@ export function reviewNote(s, entry) {
     '<span class="review-round">Round ' + round + "</span>" + side("agent", "Agent", lines.agent) + side("reviewer", "Reviewer", lines.reviewer) +
     "</span>"
   );
+}
+
+/**
+ * Before review, the agent's side alone: working while its pane is busy,
+ * idle otherwise, as the review note says it at Reviewer convergence. A row
+ * with no pane says nothing.
+ */
+export function agentNote(s) {
+  if (!paneOf(s)) return "";
+  const status = paneStatusOf(s);
+  const doing = status === "working" ? "working" : BUSY.has(status) ? status : "idle";
+  return '<span class="review-note"><span class="review-side' + (doing === "idle" ? "" : " turn") + '">Agent ' + esc(doing) + "</span></span>";
 }
 
 // ---------------------------------------------------------------------------
@@ -576,7 +595,7 @@ function rowActions(s, entry, key) {
  * the bundle's other stories under the note, and its details below.
  */
 export function sessionCard(s, ctx, fixer = null) {
-  if (s.kind) return '<article class="session session-drafting grooming">' + rfcSpawnRow(s, ctx.now) + "</article>";
+  if (isGrooming(s)) return '<article class="session session-drafting grooming">' + rfcSpawnRow(s, ctx.now) + "</article>";
   const key = sessionKey(s);
   const stage = stageOf(s, ctx);
   const failed = !isPR(s) && s.status === "failed";
@@ -613,7 +632,7 @@ export function sessionCard(s, ctx, fixer = null) {
   if (rest.length && !open) note.push(rest.length + 1 + " stories");
 
   const entry = isPR(s) && ctx.reviewers ? ctx.reviewers[reviewerKey(s.owner, s.repo, s.pr)] : null;
-  const review = stage === "ringo" ? reviewNote(s, entry) : "";
+  const review = stage === "ringo" ? reviewNote(s, entry) : stage === "drafting" || stage === "self" ? agentNote(s) : "";
   const figure = stageFigure(s, stage);
   const when = isPR(s) ? s.lastTime : s.at;
   const meta =
@@ -657,7 +676,7 @@ const STAGE_ORDER = Object.fromEntries(STAGES.map(([id], i) => [id, i]));
  * stage, Drafting first, ties kept in ringo's order; grooming agents last.
  */
 export function orderSessions(rows, ctx, fixerByKey = new Map()) {
-  const rank = (s) => (s.kind ? STAGES.length + 1 : fixerByKey.has(sessionKey(s)) ? -1 : STAGE_ORDER[stageOf(s, ctx)]);
+  const rank = (s) => (isGrooming(s) ? STAGES.length + 1 : fixerByKey.has(sessionKey(s)) ? -1 : STAGE_ORDER[stageOf(s, ctx)]);
   return rows
     .map((s, at) => ({ s, at, rank: rank(s) }))
     .sort((a, b) => a.rank - b.rank || a.at - b.at)
@@ -712,7 +731,7 @@ export function sessionList(sections, ctx, extras = {}) {
       .map((g) => {
         const ordered = orderSessions(g.rows, ctx, byKey);
         const cards = ordered.map((s) => sessionCard(s, ctx, byKey.get(sessionKey(s)) || null));
-        const live = ordered.filter((s) => !s.kind).length;
+        const live = ordered.filter((s) => !isGrooming(s)).length;
         return (
           '<section class="repo" aria-label="' + esc(g.name) + '">' +
           '<div class="sessions">' +

@@ -75,6 +75,7 @@ import {
   PALETTE_INPUT,
   stageName,
   usageSummary,
+  weekTicks,
 } from "../../app/assets/javascripts/fleet-format.js";
 
 import { isPaneId } from "../../config/fleet.ts";
@@ -1207,13 +1208,29 @@ describe("the usage helpers", () => {
       noon,
     );
     expect(html.match(/class="usage-row"/g)).toHaveLength(3);
-    expect(html).toContain('<span>Claude · week</span><span class="meter"><i class="bar-fill red" style="width:70%"></i></span><span>70%</span>');
-    expect(html).toContain("50% of week elapsed (1d 10h ahead)");
+    expect(html).toContain('<span>Claude · week</span><span class="meter"><i class="bar-fill red" style="width:70%"></i><b class="day-tick"');
+    expect(html).toContain('<b class="now-mark" style="left:50%"></b></span><span>70%</span>');
+    expect(html).toContain('<span class="usage-pace ahead">50% of week elapsed (1d 10h ahead)</span>');
     expect(html).toContain('<div class="usage-row" title="resets 2:00 PM"><span>Claude · session</span>');
     expect(html).toContain("<span>&lt;b&gt;Sonnet · week</span>");
     expect(html).toContain('style="width:100%"></i></span><span>100%</span>');
     expect(html).toContain('<div class="usage-note">Extra usage on · $3.00 spent · $1.50 balance · $50 limit</div>');
     expect(claudeUsage({ extraEnabled: false, extraLimit: 50 }, noon)).not.toContain("Extra usage");
+  });
+
+  it("drops Claude's session row on a plan with no session limit, rather than show 0%", () => {
+    const html = claudeUsage({ sessionPercent: -1, weeklyPercent: 20, weeklyResetsAt }, noon);
+    expect(html).not.toContain("Claude · session");
+    expect(html).toContain("<span>Claude · week</span>");
+    expect(html).toContain('<span class="usage-pace under">');
+    expect(usageSummary({ sessionPercent: -1, weeklyPercent: 20 })).toBe("week 20%");
+  });
+
+  it("ticks each midnight of the week's window with its day", () => {
+    const ticks = weekTicks("", weeklyResetsAt, noon);
+    expect(ticks).toHaveLength(6);
+    expect(ticks.every((t, i) => i === 0 || t.percent - ticks[i - 1].percent > 14)).toBe(true);
+    expect(ticks.every((t) => t.percent > 0 && t.percent < 100 && /^[A-Z][a-z]$/.test(t.day))).toBe(true);
   });
 
   it("drops a window Codex did not report, and says so when it reported neither", () => {

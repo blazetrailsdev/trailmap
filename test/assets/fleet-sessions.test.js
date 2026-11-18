@@ -620,6 +620,22 @@ describe("the list", () => {
     ]);
   });
 
+  it("ranks a /prompt-agent spawn with the loop's, above the PRs, and draws it as a worker", () => {
+    const manual = { kind: "manual", title: "Fix the flaky test", branch: "fix-flaky-test-9b2d", at: minutesAgo(2), source: "prompt-agent", pane: "%300", pane_status: "idle" };
+    const ci = { ...PR, pr: 1 };
+
+    expect(orderSessions([ci, manual], ctx)).toEqual([manual, ci]);
+    expect(sessionCard(manual, ctx)).not.toContain("grooming");
+    expect(sessionCard(manual, ctx)).toContain("Fix the flaky test");
+  });
+
+  it("says whether the agent is working or idle while drafting and in self review", () => {
+    expect(sessionCard(SPAWN, ctx)).toContain('<span class="review-side turn">Agent working</span>');
+    expect(sessionCard({ ...SPAWN, pane_status: "idle" }, ctx)).toContain('<span class="review-side">Agent idle</span>');
+    expect(sessionCard({ ...PR, draft: true, paneStatus: "" }, ctx)).toContain("Agent idle");
+    expect(sessionCard({ ...SPAWN, pane: "" }, ctx)).not.toContain("review-side");
+  });
+
   it("folds merged sessions into one Merged line at the end of their repo, and drops it when there are none", () => {
     const merged = [{ ...PR, merged: true, lastTime: minutesAgo(30) }, { ...PR, pr: 9811, merged: true }];
     const line = mergedLine(merged, context({ stories: STORIES }));

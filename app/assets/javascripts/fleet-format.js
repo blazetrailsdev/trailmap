@@ -1103,31 +1103,63 @@ const clamp = (percent) => Math.max(0, Math.min(100, Number(percent) || 0));
  * a wider panel used to print beside the bar (when it resets, the week's
  * pace) is the row's tooltip.
  */
-function usageRow(label, percent, color, title = "") {
+function usageRow(label, percent, color, title = "", marks = "", below = "") {
   return (
     '<div class="usage-row"' + (title ? ' title="' + esc(title) + '"' : "") + "><span>" + esc(label) + "</span>" +
-    '<span class="meter"><i class="bar-fill ' + color + '" style="width:' + clamp(percent) + '%"></i></span>' +
-    "<span>" + clamp(percent) + "%</span></div>"
+    '<span class="meter"><i class="bar-fill ' + color + '" style="width:' + clamp(percent) + '%"></i>' + marks + "</span>" +
+    "<span>" + clamp(percent) + "%</span>" + below + "</div>"
   );
+}
+
+/**
+ * The week's midnights as offsets into the window, each with its day's short
+ * name: ringo's `renderDayMarkers`. The window is the 168 hours before the
+ * reset; without one it is taken to start now.
+ */
+export function weekTicks(weeklyResets, at, now = Date.now()) {
+  const left = hoursUntilReset(weeklyResets, at, now);
+  const start = now - (WEEK_HOURS - (left === null ? WEEK_HOURS : left)) * HOUR;
+  const midnight = new Date(start);
+  midnight.setHours(24, 0, 0, 0);
+  const ticks = [];
+  for (let d = new Date(midnight); ; d.setDate(d.getDate() + 1)) {
+    const hours = (d.getTime() - start) / HOUR;
+    if (hours >= WEEK_HOURS) break;
+    ticks.push({ percent: Math.round((hours / WEEK_HOURS) * 1000) / 10, day: DAYS[d.getDay()].slice(0, 2) });
+  }
+  return ticks;
 }
 
 /** A row's tooltip, after its own facts: the plan, where the agent reports one (Codex does). */
 const withPlan = (title, u) => (u.planType ? title + " · " + u.planType + " plan" : title);
 
+/**
+ * The week's row, as ringo draws it: a tick and its day at each midnight, a
+ * marker where now falls in the window, and under the bar how far usage is
+ * ahead of or under that pace, ahead in yellow.
+ */
 function weekRow(agent, u, now) {
   const elapsed = weekElapsedPercent(u.weeklyResets, u.weeklyResetsAt, now);
   const diff = clamp(u.weeklyPercent) - elapsed;
-  const title = "resets " + formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now) + " · " + paceText(elapsed, diff);
-  return usageRow(agent + " · week", u.weeklyPercent, weeklyPaceColor(diff), withPlan(title, u));
+  const title = "resets " + formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now);
+  const marks =
+    weekTicks(u.weeklyResets, u.weeklyResetsAt, now)
+      .map((t) => '<b class="day-tick" style="left:' + t.percent + '%" data-day="' + t.day + '"></b>')
+      .join("") + '<b class="now-mark" style="left:' + elapsed + '%"></b>';
+  const pace = '<span class="usage-pace ' + (diff > 0 ? "ahead" : "under") + '">' + paceText(elapsed, diff) + "</span>";
+  return usageRow(agent + " · week", u.weeklyPercent, weeklyPaceColor(diff), withPlan(title, u), marks, pace);
 }
 
+/** Below zero is a plan with no session limit (ringo's `handleUsage`): no row, rather than 0%. */
 const sessionRow = (agent, u, now) =>
-  usageRow(agent + " · session", u.sessionPercent, barColor(clamp(u.sessionPercent)), withPlan("resets " + formatClockLabel(u.sessionResets, u.sessionResetsAt, now), u));
+  u.sessionPercent >= 0
+    ? usageRow(agent + " · session", u.sessionPercent, barColor(clamp(u.sessionPercent)), withPlan("resets " + formatClockLabel(u.sessionResets, u.sessionResetsAt, now), u))
+    : "";
 
 /** The Usage panel's one-line summary, which is all a folded panel shows on a phone. */
 export function usageSummary(u, now = Date.now()) {
   const parts = [];
-  if (u.sessionPercent != null) parts.push("session " + clamp(u.sessionPercent) + "%");
+  if (u.sessionPercent != null && u.sessionPercent >= 0) parts.push("session " + clamp(u.sessionPercent) + "%");
   if (u.weeklyPercent != null) parts.push("week " + clamp(u.weeklyPercent) + "%");
   if (u.manualPause) parts.push("paused" + (u.queueSize ? " · " + Number(u.queueSize) + " queued" : ""));
   if (u.lastCheckTime) parts.push("updated " + timeAgo(u.lastCheckTime, now));
@@ -1156,7 +1188,7 @@ export function claudeUsage(u, now = Date.now()) {
  * gone one line says so.
  */
 export function codexUsage(u, now = Date.now()) {
-  const rows = (u.weeklyPercent >= 0 ? weekRow("Codex", u, now) : "") + (u.sessionPercent >= 0 ? sessionRow("Codex", u, now) : "");
+  const rows = (u.weeklyPercent >= 0 ? weekRow("Codex", u, now) : "") + sessionRow("Codex", u, now);
   return rows || '<div class="usage-note">Codex' + (u.planType ? " (" + esc(u.planType) + ")" : "") + " · no limits reported yet; it publishes them only while a session runs.</div>";
 }
 
