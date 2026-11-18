@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { env } from "@blazetrails/ruby-compat";
 import { include } from "@blazetrails/activesupport";
 import { ApiController } from "../../app/controllers/api-controller.ts";
-import { IngestToken, isIngestTokenValid, secureCompare } from "../../app/controllers/concerns/ingest-token.ts";
+import { IngestToken } from "../../app/controllers/concerns/ingest-token.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
 class IngestProbeController extends ApiController {
@@ -15,36 +15,17 @@ class IngestProbeController extends ApiController {
   }
 }
 
-async function post(headers: Record<string, string>): Promise<{ status: number; body: string }> {
+async function post(
+  headers: Record<string, string>,
+): Promise<{ status: number; body: string; challenge: unknown }> {
   const tc = await controllerTestCase(IngestProbeController, headers);
   await tc.post("create", { params: {}, as: "json" });
-  return { status: tc.response.status, body: tc.response.body };
+  return {
+    status: tc.response.status,
+    body: tc.response.body,
+    challenge: tc.response.getHeader("WWW-Authenticate"),
+  };
 }
-
-describe("secureCompare", () => {
-  it("answers true only for identical strings", () => {
-    expect(secureCompare("abc", "abc")).toBe(true);
-    expect(secureCompare("abc", "abd")).toBe(false);
-    expect(secureCompare("abc", "ab")).toBe(false);
-    expect(secureCompare("abc", "abcd")).toBe(false);
-  });
-});
-
-describe("isIngestTokenValid", () => {
-  const request = (headers: Record<string, string>) => ({ getHeader: (key: string) => headers[key] });
-
-  it("accepts only a Bearer header carrying the expected token", () => {
-    expect(isIngestTokenValid(request({ HTTP_AUTHORIZATION: "Bearer t0k" }), "t0k")).toBe(true);
-    expect(isIngestTokenValid(request({ HTTP_AUTHORIZATION: "Bearer nope" }), "t0k")).toBe(false);
-    expect(isIngestTokenValid(request({ HTTP_AUTHORIZATION: "Basic t0k" }), "t0k")).toBe(false);
-    expect(isIngestTokenValid(request({}), "t0k")).toBe(false);
-  });
-
-  it("fails closed when no token is configured", () => {
-    expect(isIngestTokenValid(request({ HTTP_AUTHORIZATION: "Bearer " }), undefined)).toBe(false);
-    expect(isIngestTokenValid(request({ HTTP_AUTHORIZATION: "Bearer x" }), "")).toBe(false);
-  });
-});
 
 describe("IngestToken", () => {
   beforeEach(() => {
@@ -59,16 +40,22 @@ describe("IngestToken", () => {
     expect(status).toBe(201);
   });
 
-  it("refuses a missing token with a bare 401", async () => {
-    const { status, body } = await post({ Host: "127.0.0.1" });
-    expect(status).toBe(401);
-    expect(body).toBe("");
+  it("accepts Rails' Token scheme too", async () => {
+    const { status } = await post({ Host: "127.0.0.1", Authorization: "Token s3cret" });
+    expect(status).toBe(201);
   });
 
-  it("refuses a wrong token with a bare 401", async () => {
-    const { status, body } = await post({ Host: "127.0.0.1", Authorization: "Bearer nope" });
+  it("refuses a missing token with the framework's challenge", async () => {
+    const { status, body, challenge } = await post({ Host: "127.0.0.1" });
     expect(status).toBe(401);
-    expect(body).toBe("");
+    expect(challenge).toBe('Token realm="Application"');
+    expect(body).toBe("HTTP Token: Access denied.\n");
+  });
+
+  it("refuses a wrong token with the framework's challenge", async () => {
+    const { status, challenge } = await post({ Host: "127.0.0.1", Authorization: "Bearer nope" });
+    expect(status).toBe(401);
+    expect(challenge).toBe('Token realm="Application"');
   });
 
   it("refuses every request when TRAILMAP_INGEST_TOKEN is unset", async () => {

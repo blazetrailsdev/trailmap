@@ -3,14 +3,20 @@ require "test_helper"
 # The RFC page's Refinements tab and the endpoint that stores its reports,
 # ported from ../../test/controllers/rfc-refinements.test.ts.
 class RfcRefinementsTest < ActionDispatch::IntegrationTest
+  INGEST = { "HTTP_AUTHORIZATION" => "Bearer refine-test-token" }.freeze
+
   setup do
+    @saved_token = ENV["TRAILMAP_INGEST_TOKEN"]
+    ENV["TRAILMAP_INGEST_TOKEN"] = "refine-test-token"
     require_hub!
     rfc!("0136-trailmap", title: "trailmap")
     rfc!("0002-quiet", title: "Quiet")
   end
 
+  teardown { ENV["TRAILMAP_INGEST_TOKEN"] = @saved_token }
+
   def report(body)
-    post "/rfc-refines", params: body.to_json, headers: LOOPBACK.merge("CONTENT_TYPE" => "application/json")
+    post "/rfc-refines", params: body.to_json, headers: LOOPBACK.merge(INGEST, "CONTENT_TYPE" => "application/json")
   end
 
   test "shows the latest refine report, then the earlier ones newest first" do
