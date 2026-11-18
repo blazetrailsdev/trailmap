@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
 import { Notifications } from "@blazetrails/activesupport";
@@ -81,8 +81,11 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
       });
       await RepositorySetting.create({ repository_id: repo.id });
     }
+  }, HUB_SETUP_TIMEOUT);
 
-    await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap", priority: 1 });
+  // The task-domain rows, inside each test's fixture transaction.
+  beforeEach(async () => {
+    await (await Rfc.find("0136-trailmap")).update({ priority: 1 });
     // Shipped in `trails`, so an issue of `trails`.
     await Story.create({
       id: "shipped-in-trails",

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { STATS_SYNC_MIGRATIONS_PATH, statsSyncDatabaseConfig } from "../../config/database.ts";
 import { SyncDeadlineExceededError, syncLatest } from "../../lib/stats-sync/sync.ts";
 import { TestCase } from "@blazetrails/activesupport/test-case";
-import { withoutTransactionalTests } from "../support/transactional-tests.ts";
+import { withoutFixtures, withoutTransactionalTests } from "../support/transactional-tests.ts";
 
 // Rails' `self.use_transactional_tests = false`: this file opens, migrates and
 // deletes its own stats-sync database, which a test's fixture transaction
@@ -12,6 +12,7 @@ import { withoutTransactionalTests } from "../support/transactional-tests.ts";
 // borrows `Base` to migrate that database, then hands `Base` back the suite's
 // `primary` with `establishConnection()`, which fixture setup reads.
 withoutTransactionalTests(TestCase);
+withoutFixtures(TestCase);
 
 describe("syncLatest", () => {
   it("stops with SyncDeadlineExceededError once its deadline has passed", async () => {

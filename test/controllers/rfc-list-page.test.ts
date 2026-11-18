@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
@@ -29,12 +29,8 @@ function listed(body: string): string[] {
   return [...body.matchAll(/href="\/rfc\/([^"]+)"/g)].map((m) => m[1]!);
 }
 
-beforeAll(async () => {
-
-  await Rfc.create({
-    id: "0136-trailmap",
-    status: "active",
-    title: "trailmap",
+beforeEach(async () => {
+  await (await Rfc.find("0136-trailmap")).update({
     owner: "dean",
     priority: 2,
     created_on: "2026-01-01",
@@ -44,7 +40,7 @@ beforeAll(async () => {
   // only when both sides set a priority.
   await Rfc.create({ id: "0100-alpha", status: "active", title: "Alpha", priority: 2 });
   await Rfc.create({ id: "0200-zeta", status: "active", title: "Zeta" });
-  await Rfc.create({ id: "0002-empty", status: "draft", title: "An idea" });
+  // The draft RFC is the `draft` fixture.
   await Rfc.create({
     id: "0014-fixtures-adoption",
     status: "superseded",

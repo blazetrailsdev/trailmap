@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Notifications } from "@blazetrails/activesupport";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
@@ -24,9 +24,7 @@ import { StoryPath } from "../../app/models/story-path.ts";
  * so it is tested here on its own rather than only through the eight
  * controllers that call it.
  */
-beforeAll(async () => {
-
-  await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
+beforeEach(async () => {
   await Story.create({
     id: "shipped-in-trails",
     rfc_id: "0136-trailmap",

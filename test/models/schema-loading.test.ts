@@ -4,7 +4,6 @@ import { Story } from "../../app/models/story.ts";
 
 describe("loadModelSchemas", () => {
   it("lets an association be the first thing that touches a model", async () => {
-    await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
     const rfc = await Rfc.findBy({ id: "0136-trailmap" });
 
     // Story has not been queried directly in this worker. Without the warm-up

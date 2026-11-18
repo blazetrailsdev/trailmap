@@ -9,10 +9,9 @@ import { serializeRfc, serializeRfcs } from "../../app/serializers/rfc-json.ts";
 
 describe("serializeRfc", () => {
   it("carries every field index.json carried, with the date columns at ISO midnight", async () => {
-    const rfc = await Rfc.create({
-      id: "0136-trailmap",
-      title: "trailmap",
-      status: "active",
+    const rfc = await Rfc.find("0136-trailmap");
+
+    await rfc.update({
       priority: 6,
       owner: "dean",
       created_on: "2026-08-25",

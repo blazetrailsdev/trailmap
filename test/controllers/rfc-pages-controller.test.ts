@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { ActionController } from "@blazetrails/actionpack";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
@@ -19,16 +19,12 @@ async function show(id: string): Promise<{ status: number; body: string }> {
   return { status: tc.response.status, body: tc.response.body };
 }
 
-beforeAll(async () => {
+beforeEach(async () => {
   // The document lives on disk, not in the database: `ingest` stores the path
   // and leaves the body in the checkout. This repo stands in for one.
   setX("tasks", "dir", Dir.pwd());
 
-
-  await Rfc.create({
-    id: "0136-trailmap",
-    status: "active",
-    title: "trailmap",
+  await (await Rfc.find("0136-trailmap")).update({
     owner: "dean",
     updated_on: "2026-09-05",
     file_path: "README.md",

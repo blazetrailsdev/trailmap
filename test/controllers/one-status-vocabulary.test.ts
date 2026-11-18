@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
@@ -61,12 +61,10 @@ function bar(body: string, rfcId: string): Map<string, string> {
   return segments;
 }
 
-beforeAll(async () => {
-
+beforeEach(async () => {
   // Two RFCs holding the SAME authored status, so every assertion below is
   // about the parent and never about the story.
   await Rfc.create({ id: "0900-idea", status: "draft", title: "An idea" });
-  await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
 
   await Story.create({ id: "iced", rfc_id: "0900-idea", status: "ready", title: "Not yet" });
   await Story.create({ id: "iced-mate", rfc_id: "0900-idea", status: "draft" });

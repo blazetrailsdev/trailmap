@@ -26,7 +26,7 @@ import { TestCase } from "@blazetrails/actionpack/testing";
 import { Trails } from "@blazetrails/trailties";
 import { getFs } from "@blazetrails/ruby-compat";
 import "../../config/environment.ts";
-import { withoutTransactionalTests } from "./transactional-tests.ts";
+import { withoutFixtures, withoutTransactionalTests } from "./transactional-tests.ts";
 import { STYLESHEET, boxRules, classListsIn, collisionsInList, type BoxRules } from "../../scripts/class-collisions.ts";
 
 let rules: Promise<BoxRules> | undefined;
@@ -62,6 +62,7 @@ export async function controllerTestCase(
   // would be left open, and the outer rollback would undo only that level.
   class ControllerTest extends TestCase {}
   withoutTransactionalTests(ControllerTest);
+  withoutFixtures(ControllerTest);
   ControllerTest.tests(controller);
   const tc = new ControllerTest(`${controller.name}Test`);
   await tc.beforeSetup();

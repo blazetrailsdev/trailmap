@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import { Event } from "../../app/models/event.ts";
 import { Meta } from "../../app/models/meta.ts";
@@ -9,18 +9,16 @@ import { StoryPackage } from "../../app/models/story-package.ts";
 import { StoryPath } from "../../app/models/story-path.ts";
 import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
 
-beforeAll(async () => {
-
-  await Rfc.create({ id: "0061-ci-failures", status: "active", title: "CI failures" });
-  await Rfc.create({ id: "0002-draft-rfc", status: "draft", title: "Draft" });
-
-  await Story.create({ id: "base", rfc_id: "0061-ci-failures", status: "done", est_loc: 10 });
-  await Story.create({ id: "dependent", rfc_id: "0061-ci-failures", status: "ready", est_loc: 20 });
-  await Story.create({ id: "blocked-one", rfc_id: "0061-ci-failures", status: "ready" });
+beforeEach(async () => {
+  await Story.create({ id: "dependent", rfc_id: "0136-trailmap", status: "ready", est_loc: 20 });
+  await Story.create({ id: "blocked-one", rfc_id: "0136-trailmap", status: "ready" });
+  // Created after the open stories: the RFC auto-closes the moment every
+  // story it has is done (rfc-close.ts).
+  await Story.create({ id: "base", rfc_id: "0136-trailmap", status: "done", est_loc: 10 });
   await StoryDep.create({ story_id: "dependent", depends_on_id: "base" });
   await StoryPath.create({ story_id: "dependent", path: "packages/activerecord/src/relation.ts" });
   await StoryPackage.create({ story_id: "dependent", package: "activerecord" });
-  await StoryRfcDep.create({ story_id: "dependent", rfc_id: "0002-draft-rfc" });
+  await StoryRfcDep.create({ story_id: "dependent", rfc_id: "0002-draft" });
 });
 
 describe("models", () => {
@@ -55,7 +53,7 @@ describe("models", () => {
   it("resolves belongsTo", async () => {
     const s = await Story.findBy({ id: "dependent" });
     const rfc = await s!.rfc;
-    expect((rfc as Rfc).id).toBe("0061-ci-failures");
+    expect((rfc as Rfc).id).toBe("0136-trailmap");
   });
 
   it("walks the self-referential has_many-through dep graph", async () => {
@@ -80,12 +78,12 @@ describe("models", () => {
   it("walks hasMany rfcDeps through the RFC-dep join", async () => {
     const s = await Story.findBy({ id: "dependent" });
     const rfcDeps = await s!.rfcDeps.toArray();
-    expect(rfcDeps.map((r) => r.id)).toEqual(["0002-draft-rfc"]);
+    expect(rfcDeps.map((r) => r.id)).toEqual(["0002-draft"]);
     expect(rfcDeps[0].isActive()).toBe(false);
   });
 
   it("walks an RFC back to its stories", async () => {
-    const rfc = await Rfc.findBy({ id: "0061-ci-failures" });
+    const rfc = await Rfc.findBy({ id: "0136-trailmap" });
     const stories = await rfc!.stories.toArray();
     expect(stories.map((s) => s.id).sort()).toEqual(["base", "blocked-one", "dependent"]);
   });

@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Notifications } from "@blazetrails/activesupport";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
@@ -22,8 +22,7 @@ async function queriesFor(id: string): Promise<number> {
   return queries;
 }
 
-beforeAll(async () => {
-
+beforeEach(async () => {
   await Rfc.create({ id: "active", status: "active", title: "Active" });
   await Rfc.create({ id: "drafted", status: "draft", title: "Drafted" });
   const story = (id: string, status: string, rfc = "active") =>

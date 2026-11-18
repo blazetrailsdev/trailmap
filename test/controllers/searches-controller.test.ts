@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getFs } from "@blazetrails/ruby-compat";
 import { setX } from "../support/config-x.ts";
 import { Rfc } from "../../app/models/rfc.ts";
@@ -33,10 +33,9 @@ async function write(path: string, body: string): Promise<void> {
   await fs.writeFile!(`${dir}/${path}`, body);
 }
 
-beforeAll(async () => {
+beforeEach(async () => {
   dir = await getFs().mkdtemp!("/tmp/trailmap-search-");
   setX("tasks", "dir", dir);
-
 
   await Rfc.create({
     id: "0042-serialize",

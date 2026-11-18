@@ -1,0 +1,12 @@
+# The RFCs every task-domain test file works under. A file that needs another
+# one creates it inline.
+
+trailmap:
+  id: 0136-trailmap
+  status: active
+  title: trailmap
+
+draft:
+  id: 0002-draft
+  status: draft
+  title: Draft

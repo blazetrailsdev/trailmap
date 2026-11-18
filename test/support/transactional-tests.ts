@@ -11,3 +11,41 @@
 export function withoutTransactionalTests(testCase: object): void {
   (testCase as { useTransactionalTests: boolean }).useTransactionalTests = false;
 }
+
+/**
+ * A test case that loads no fixtures: Rails' `fixtures :all` is inherited, and
+ * a case outside the fixture transaction would load them for real, deleting
+ * every row of each fixture table. Both kinds of opt-out want this:
+ *
+ * - a file that sets `use_transactional_tests = false` points `Base` at a
+ *   database of its own, or holds a lock or a pool that the transaction would
+ *   change, and the task-domain fixtures are not its data;
+ * - `controllerTestCase`'s nested case runs INSIDE a test that already holds
+ *   the fixtures, and reloading them would wipe the rows that test created.
+ *
+ * The same cast as above, for the same missing types. Story:
+ * test-help-types-fixture-class-attributes, which deletes both casts.
+ */
+export function withoutFixtures(testCase: object): void {
+  const fixtured = testCase as { fixtureTableNames: string[]; fixtureSets: Record<string, string> };
+  fixtured.fixtureTableNames = [];
+  fixtured.fixtureSets = {};
+}
+
+/**
+ * `withoutFixtures` for the class of one vitest `describe` block, which
+ * test-help's autorun makes a subclass of the file's case. Pass it to that
+ * block's `beforeAll`, which vitest calls with the suite:
+ *
+ *     beforeAll(withoutFixturesIn);
+ *
+ * For a block that points `Base` at a database the fixtures are not for, such
+ * as the live `tasks.db` the gate job ingests: loading them there would
+ * replace its `rfcs` rows with the fixtures' for every test in the block.
+ */
+export async function withoutFixturesIn(suite: { name: string }): Promise<void> {
+  // Imported here, not at the top: the gate scripts load this module through
+  // controller-test-case.ts outside vitest, where autorun cannot load.
+  const { describe: describedClass } = await import("@blazetrails/activesupport/testing/autorun");
+  withoutFixtures(describedClass(suite));
+}

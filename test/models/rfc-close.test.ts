@@ -17,7 +17,8 @@ beforeEach(async () => {
  * what lets a fixture state be set up rather than reached.
  */
 async function seedRfc(id: string, statuses: string[]): Promise<void> {
-  await Rfc.create({ id, status: "active", title: id });
+  // `0136-trailmap` is a fixture; any other id is created here.
+  if (!(await Rfc.findBy({ id }))) await Rfc.create({ id, status: "active", title: id });
   for (const [i, status] of statuses.entries()) {
     await Story.create({ id: `${id}-${i}`, rfc_id: id, status: "draft" });
     await Story.where({ id: `${id}-${i}` }).updateAll({ status });

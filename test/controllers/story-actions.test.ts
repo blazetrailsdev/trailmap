@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
@@ -22,7 +22,7 @@ async function story(id: string, status: string, priority: number | null = null)
   await Story.where({ id }).updateAll({ status });
 }
 
-beforeAll(async () => {
+beforeEach(async () => {
   await Rfc.create({ id: "0001-a", status: "active", title: "A" });
   await story("a-draft", "draft");
   await story("a-ready", "ready");

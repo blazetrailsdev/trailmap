@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   connectHubTestDatabase,
   HUB_SETUP_TIMEOUT,
@@ -42,14 +42,15 @@ const PAGES: Page[] = [
   ["/story/stuck", StoryPagesController, "show", { id: "stuck" }],
 ];
 
-beforeAll(async () => {
-
-  await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap", owner: "dean", priority: 2 });
+beforeEach(async () => {
+  await (await Rfc.find("0136-trailmap")).update({ owner: "dean", priority: 2 });
   await Rfc.create({ id: "0002-empty", status: "draft", title: "An idea" });
   await Story.create({ id: "queued", rfc_id: "0136-trailmap", status: "ready", title: "Queued", est_loc: 40 });
   await Story.create({ id: "working", rfc_id: "0136-trailmap", status: "in-progress" });
   await Story.create({ id: "stuck", rfc_id: "0136-trailmap", status: "blocked" });
   await Story.create({ id: "finished", rfc_id: "0136-trailmap", status: "done" });
+});
+beforeAll(async () => {
   if (hasHubTestDatabase()) await connectHubTestDatabase();
 }, HUB_SETUP_TIMEOUT);
 afterAll(releaseHubTestDatabase);

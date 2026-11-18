@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { Dir, Open3, getFs, setEnv } from "@blazetrails/ruby-compat";
 import { Event } from "../../app/models/event.ts";
@@ -37,13 +37,12 @@ async function rfc(id: string, status: string, updated = "updated: 2026-01-01"):
   await Rfc.create({ id, status, title: id, file_path: file });
 }
 
-beforeAll(async () => {
+beforeEach(async () => {
   const root = Dir.mktmpdir("rfc-status");
   checkout = `${root}/tasks`;
   origin = `${root}/origin.git`;
   await sh(`git init -q --bare -b main "$ORIGIN" && git init -q -b main "$CHECKOUT"`);
   setX("tasks", "dir", checkout);
-
 
   await rfc("0001-draft", "draft");
   await rfc("0002-active", "active");

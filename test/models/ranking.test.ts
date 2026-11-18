@@ -26,8 +26,6 @@ async function seed(id: string, rfcId: string, status: string, attrs: object = {
 }
 
 beforeEach(async () => {
-  await Rfc.create({ id: "0136-trailmap", status: "active", title: "Trailmap" });
-  await Rfc.create({ id: "0002-draft", status: "draft", title: "Draft" });
 });
 
 describe("Story.claimable", () => {

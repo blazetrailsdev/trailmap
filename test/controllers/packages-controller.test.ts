@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
 import {
   createScratchStatsDatabase,
@@ -30,7 +30,7 @@ function group(body: string, title: string): string {
   return body.slice(start, next === -1 ? undefined : next);
 }
 
-beforeAll(async () => {
+beforeEach(async () => {
   await createScratchStatsDatabase();
   setEnv("STATS_DB", ":memory:");
 

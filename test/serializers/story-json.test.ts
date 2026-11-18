@@ -1,4 +1,5 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { withoutFixturesIn } from "../support/transactional-tests.ts";
 import { Base } from "@blazetrails/activerecord";
 import { env, getFs } from "@blazetrails/ruby-compat";
 import { primaryDatabaseConfig, tasksDatabasePath } from "../../config/database.ts";
@@ -11,11 +12,7 @@ import { StoryRfcDep } from "../../app/models/story-rfc-dep.ts";
 import { integerOrNull, isoMidnight, serializeStories, serializeStory } from "../../app/serializers/story-json.ts";
 
 describe("the serializer", () => {
-  beforeAll(async () => {
-
-    await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
-    await Rfc.create({ id: "0002-draft", status: "draft", title: "Draft" });
-
+  beforeEach(async () => {
     await Story.create({
       id: "bare",
       rfc_id: "0136-trailmap",
@@ -134,8 +131,15 @@ describe("the serializer", () => {
 const withLiveDatabase = tasksDatabasePath() && env.TASKS_INDEX_JSON ? describe : describe.skip;
 
 withLiveDatabase("the published index.json", () => {
+  beforeAll(withoutFixturesIn);
   beforeAll(async () => {
     await Base.establishConnection(primaryDatabaseConfig("development").configurationHash);
+  });
+  // Hand `Base` back to the suite's test database: fixtures load COMMITTED,
+  // outside the test transaction, so a later block in this file would
+  // otherwise write them into the live database the gate goes on to compare.
+  afterAll(async () => {
+    await Base.establishConnection();
   });
 
   async function readPublished(): Promise<string> {

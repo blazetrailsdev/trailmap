@@ -5,7 +5,7 @@
  * than a page, and two hundred extra stories would change every count that
  * file asserts.
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import {
@@ -26,8 +26,7 @@ function rowIds(body: string): string[] {
   return [...body.matchAll(/class="row-title" href="\/story\/([^"]+)"/g)].map((m) => m[1]!);
 }
 
-beforeAll(async () => {
-  await Rfc.create({ id: "0136-trailmap", status: "active", title: "Trailmap" });
+beforeEach(async () => {
   for (let n = 0; n < READY; n++) {
     await Story.create({ id: `story-${String(n).padStart(3, "0")}`, rfc_id: "0136-trailmap" });
   }

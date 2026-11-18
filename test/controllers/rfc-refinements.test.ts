@@ -29,11 +29,10 @@ async function report(body: Record<string, unknown>): Promise<{ status: number; 
 }
 
 describe.skipIf(!hasHubTestDatabase())("RfcRefinements", () => {
-  beforeAll(async () => {
-    await connectHubTestDatabase();
-    await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
+  beforeAll(connectHubTestDatabase, HUB_SETUP_TIMEOUT);
+  beforeEach(async () => {
     await Rfc.create({ id: "0002-quiet", status: "active", title: "Quiet" });
-  }, HUB_SETUP_TIMEOUT);
+  });
   beforeEach(truncateHub);
   afterAll(releaseHubTestDatabase);
 

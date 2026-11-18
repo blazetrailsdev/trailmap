@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
@@ -23,9 +23,11 @@ async function show(id: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  await Rfc.create({ id: "0001-p", status: "active", title: "p", file_path: "rfcs/0001-p/README.md" });
   if (hasHubTestDatabase()) await connectHubTestDatabase();
 }, HUB_SETUP_TIMEOUT);
+beforeEach(async () => {
+  await Rfc.create({ id: "0001-p", status: "active", title: "p", file_path: "rfcs/0001-p/README.md" });
+});
 afterAll(releaseHubTestDatabase);
 
 describe("Rfc#prioritySet", () => {
