@@ -18,7 +18,7 @@ describe("previewPr", () => {
   });
 
   it("refuses a value that is not a PR number, rather than linking to it", () => {
-    for (const bad of ["", "  ", "1; rm", "pr-160", "-3", "1.5"]) {
+    for (const bad of ["", "  ", "1; rm", "pr-160", "-3", "1.5", "0", "0160", "1e3", "0x10"]) {
       setX("preview", "pr", bad);
       expect(previewPr()).toBeNull();
     }

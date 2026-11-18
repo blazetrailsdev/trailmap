@@ -1,7 +1,6 @@
 import { Hub } from "./hub.ts";
 import { env } from "@blazetrails/ruby-compat";
 import { ConnectionNotDefined } from "@blazetrails/activerecord";
-import { previewPr } from "../../config/preview.ts";
 
 /** A setting's value and which source won. */
 export interface ResolvedSetting {
@@ -82,7 +81,6 @@ export class Setting extends Hub {
    * `FLEET_CONTROL_PATH`). See `docs/fleet-dashboard.md`.
    */
   static async ringoBase(): Promise<string | null> {
-    if (previewPr() !== null) return null;
     const base = (await Setting.lookup("ringo_base"))?.replace(/\/+$/, "");
     return base ? base : null;
   }

@@ -13,6 +13,19 @@ class PureHelpersTest < ActiveSupport::TestCase
     assert_equal "::1", LoopbackOnly.strip_port("::1")
   end
 
+  test "preview_pr is the PR TRAILMAP_PREVIEW names, nil outside a preview or for anything else" do
+    original = Rails.configuration.x.preview.pr
+    assert_nil preview_pr
+    Rails.configuration.x.preview.pr = " 160 "
+    assert_equal 160, preview_pr
+    ["", "1; rm", "pr-160", "-3", "1.5", "0", "0160", "1e3", "0x10"].each do |bad|
+      Rails.configuration.x.preview.pr = bad
+      assert_nil preview_pr, bad
+    end
+  ensure
+    Rails.configuration.x.preview.pr = original
+  end
+
   test "status_word is the status, or unknown when blank" do
     assert_equal "ready", status_word(" ready ")
     assert_equal "unknown", status_word("")

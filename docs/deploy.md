@@ -770,9 +770,9 @@ the thing under review:
 | Data | In a preview |
 | --- | --- |
 | Hub (Postgres) | `trailmap-pr-<N>-hub`, a dokku postgres service re-cloned from `trailmap-hub` (`postgres:export \| postgres:import`) on **every** deploy and linked as `HUB_DATABASE` |
-| `tasks.db`, `stats.db`, `stats-job.db` | `sqlite3 .backup` copies taken at each deploy into `~/.trailmap-previews/pr-<N>/` |
+| `tasks.db`, `stats.db`, `stats-sync.db` | `sqlite3 .backup` copies taken at each deploy into `~/.trailmap-previews/pr-<N>/` |
 | Tasks checkout, audits | the production paths, mounted `:ro` |
-| ringo | none: `Setting.ringoBase()` answers null under `TRAILMAP_PREVIEW`, because the cloned `ringo_base` row names production's ringo |
+| `settings` | emptied in the clone after import. It is where an operator points trailmap at something outside itself (today `ringo_base`, production's fleet), and every outbound call the application makes resolves through it. With no row and no `RINGO_BASE`, the fleet relay, deploys and sessions pages have nothing to call |
 | Mail, `GH_TOKEN` | not configured |
 
 **Migrations are tested.** The `release` task runs in a preview as it does in
@@ -785,8 +785,10 @@ Production's hub is only ever read, by `pg_dump`, which takes a consistent
 snapshot without blocking writers. `down` destroys the app, its hub service
 and its SQLite copies.
 
-`TRAILMAP_PREVIEW=<N>` also leaves `worker` at 0 and puts a banner over every
-page naming the PR.
+`worker` is scaled to 0. It is the only process that runs jobs (the web
+process enqueues into its own container-local queue), so no job, and so no
+mail, runs in a preview. `TRAILMAP_PREVIEW=<N>` puts a banner over every page
+naming the PR, in both apps; the application uses it for nothing else.
 
 `nginx.conf.sigil` emits the loopback API block for the `trailmap` app only.
 A preview that emitted a second `listen 127.0.0.1:8080` would break nginx's

@@ -248,20 +248,14 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     }
   });
 
-  it("in a PR preview, ignores the hub's ringo row and says which PR it is", async () => {
-    // A preview reads production's hub, whose row names production's ringo;
-    // relaying to it would let a preview drive the real fleet. config/preview.ts.
-    setEnv("RINGO_BASE", "");
-    await Setting.write("ringo_base", "http://btwhooks.web:8080");
+  it("in a PR preview, says which PR every page is", async () => {
     setX("preview", "pr", "160");
     try {
       const page = await get(DashboardController, "index", {});
-      expect(page.body).toContain("No fleet data");
       expect(page.body).toContain('class="preview-banner"');
-      expect(page.body).toContain("trailmap#160");
+      expect(page.body).toContain('href="https://github.com/blazetrailsdev/trailmap/pull/160">trailmap#160</a>');
     } finally {
       setX("preview", "pr", undefined);
-      await Setting.write("ringo_base", null);
     }
 
     const production = await get(DashboardController, "index", {});

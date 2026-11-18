@@ -15,13 +15,19 @@
 #   - the SQLite databases are `.backup` copies taken at deploy time, private to
 #     this preview, so a write lands in a file `down` deletes;
 #   - the tasks checkout and the audits are mounted read-only;
-#   - no mail, GitHub token or ringo address is configured, and the worker and
-#     the fleet relay are off (TRAILMAP_PREVIEW).
+#   - the clone's `settings` table is emptied after import: it is where an
+#     operator points trailmap at something outside itself (today, ringo), and
+#     every outbound call the application makes resolves through it;
+#   - no mail, GitHub token or RINGO_BASE is configured, and the worker, which
+#     alone runs jobs (and so mail), is scaled to 0.
 #
 # Runs on the box, as a user who can run dokku, from a checkout of the PR.
 set -euo pipefail
 
-PROD_APP="${TRAILMAP_APP:-trailmap}"
+# NOT configurable, unlike deploy.sh's TRAILMAP_APP: nginx.conf.sigil emits the
+# loopback API for the app named exactly this, and a preview of any other name
+# is told apart from production by that name alone.
+PROD_APP=trailmap
 PREVIEW_ROOT="${PREVIEW_ROOT:-$HOME/.trailmap-previews}"
 DOMAIN_SUFFIX="${PREVIEW_DOMAIN_SUFFIX:-trailmap.deanoftech.com}"
 DOKKU_HOST="${DOKKU_HOST:-dokku@localhost}"
@@ -36,6 +42,9 @@ cmd="$1" pr="$2"
 [[ "$pr" =~ ^[0-9]+$ ]] || die "PR must be a number, got '$pr'"
 app="$PROD_APP-pr-$pr"
 data="$PREVIEW_ROOT/pr-$pr"
+# The path reaches a sqlite dot-command and dokku's mount syntax, neither of
+# which quotes: refuse what would need quoting rather than escape it.
+[[ "$data" =~ ^[A-Za-z0-9_./-]+$ ]] || die "PREVIEW_ROOT must be a plain path, got '$PREVIEW_ROOT'"
 hub="$app-hub"
 
 prodConfig() { dokku config:get "$PROD_APP" "$1"; }
@@ -63,7 +72,7 @@ up() {
   echo "==> snapshotting production's databases into $data"
   snapshot "$tasksDb" "$data/tasks.db"
   [ -z "$statsDb" ] || snapshot "$statsDb" "$data/stats.db"
-  [ -z "$statsSyncDb" ] || snapshot "$statsSyncDb" "$data/stats-job.db"
+  [ -z "$statsSyncDb" ] || snapshot "$statsSyncDb" "$data/stats-sync.db"
 
   # A fresh clone on every deploy, so each push migrates from production's
   # schema rather than from the last push's, and a migration that only works
@@ -76,25 +85,37 @@ up() {
   fi
   dokku postgres:create "$hub"
   dokku postgres:export "$PROD_HUB" | dokku postgres:import "$hub"
+  echo "DELETE FROM settings;" | dokku postgres:connect "$hub"
 
   if ! dokku apps:exists "$app" 2>/dev/null; then
     echo "==> creating $app"
     dokku apps:create "$app"
     dokku domains:set "$app" "pr-$pr.$DOMAIN_SUFFIX"
     dokku sso:protect "$app"
-    # The DIRECTORY, rw: SQLite needs its -wal and -shm beside the file. These
-    # are the preview's own copies.
-    dokku storage:mount "$app" "$data:$data"
-    # The checkout, at the identical path production uses and READ-ONLY, so an
-    # authoring or ingest commit from the preview fails instead of landing.
-    dokku storage:mount "$app" "$tasksDir:$tasksDir:ro"
-    # The audits, mounted exactly as production mounts them (already :ro).
-    local audits
-    audits="$(dokku storage:list "$PROD_APP" | awk '$1 ~ /:\/audits(:ro)?$/ {print $1}')"
-    [ -z "$audits" ] || dokku storage:mount "$app" "${audits%:ro}:ro"
     dokku ps:set "$app" restart-policy no
     dokku config:set --no-restart "$app" SECRET_KEY_BASE="$(openssl rand -hex 64)"
   fi
+
+  # Mounts are re-derived from production on EVERY up, so a preview follows a
+  # moved checkout or audits directory instead of keeping the old path while
+  # its environment names the new one.
+  local -a mounts=(
+    # The DIRECTORY, rw: SQLite needs its -wal and -shm beside the file. These
+    # are the preview's own copies.
+    "$data:$data"
+    # The checkout, at the identical path production uses and READ-ONLY, so an
+    # authoring or ingest commit (and so rfc-status's push) fails here.
+    "$tasksDir:$tasksDir:ro"
+  )
+  local audits
+  audits="$(dokku storage:list "$PROD_APP" | awk '$1 ~ /:\/audits(:ro)?$/ {print $1}')"
+  [ -z "$audits" ] || mounts+=("${audits%:ro}:ro")
+  local current m
+  current="$(dokku storage:list "$app" | awk 'NR > 1 {print $1}')"
+  while read -r m; do
+    [ -z "$m" ] || dokku storage:unmount "$app" "$m"
+  done <<<"$current"
+  for m in "${mounts[@]}"; do dokku storage:mount "$app" "$m"; done
 
   local -a env=(
     NODE_ENV=production
@@ -104,7 +125,7 @@ up() {
     AUTHELIA_DOMAIN="$(prodConfig AUTHELIA_DOMAIN || true)"
   )
   [ -z "$statsDb" ] || env+=(STATS_DB="$data/stats.db")
-  [ -z "$statsSyncDb" ] || env+=(STATS_SYNC_DB="$data/stats-job.db")
+  [ -z "$statsSyncDb" ] || env+=(STATS_SYNC_DB="$data/stats-sync.db")
   [ -z "$auditsDir" ] || env+=(AUDITS_DIR="$auditsDir")
   dokku config:set --no-restart "$app" "${env[@]}"
 
