@@ -21,10 +21,9 @@
 # and migrates both; `--database hub` loads the task domain's SQLite schema
 # into Postgres (docs/deploy.md).
 #
-# A PR PREVIEW APP SKIPS IT (`TRAILMAP_PREVIEW` set; docs/deploy.md, "Preview
-# apps"). A preview's hub is production's, through a read-only role: a PR's
-# migration must never reach it, and the attempt would fail the deploy anyway.
-release: sh -c 'if [ -n "$TRAILMAP_PREVIEW" ]; then echo "preview: release skipped"; else exec bin/trails db:prepare; fi'
+# A PR preview app runs it too, against its own clone of the hub
+# (docs/deploy.md, "Preview apps"): that is how a PR's migration is tested.
+release: bin/trails db:prepare
 
 # `web` is declared even though the Dockerfile's CMD says the same thing, and
 # the duplication is deliberate. A Procfile takes precedence over CMD for the

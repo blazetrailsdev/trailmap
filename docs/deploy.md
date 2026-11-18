@@ -749,9 +749,10 @@ it.
 
 A PR labelled `preview` gets its own dokku app, `trailmap-pr-<N>`, at
 `https://pr-<N>.trailmap.deanoftech.com`, built from the PR's head and
-serving **copies of production's data**. It exists so a reviewer can use the
-pages a PR changes without running it, and so a PR's screenshots can be shot
-against it.
+serving **copies of production's data**, the hub included. It exists so a
+reviewer can use the pages a PR changes without running it, so a PR's
+screenshots can be shot against it, and so a PR's migrations run against real
+data before they reach production.
 
 btwhooks drives it from GitHub's `pull_request` events: the label going on
 runs `scripts/preview.sh up <N> <sha>`, a push to a labelled PR runs it again
@@ -762,61 +763,38 @@ preview in the same diff.
 
 ### What a preview may touch
 
-Nothing in production, and the database layer enforces that. The PR's code
-is never trusted to behave, since the PR's code is the thing under review:
+Nothing in production can be written. Every database a preview opens is its
+own copy, so the PR's code is never trusted to behave, and the PR's code is
+the thing under review:
 
 | Data | In a preview |
 | --- | --- |
-| Hub (Postgres) | production's, through `trailmap_preview`, a role that can only `SELECT` and whose transactions default to read-only |
-| `tasks.db`, `stats.db`, `stats-job.db` | `sqlite3 .backup` copies taken at each deploy into `~/.trailmap-previews/pr-<N>/`, deleted by `down` |
+| Hub (Postgres) | `trailmap-pr-<N>-hub`, a dokku postgres service re-cloned from `trailmap-hub` (`postgres:export \| postgres:import`) on **every** deploy and linked as `HUB_DATABASE` |
+| `tasks.db`, `stats.db`, `stats-job.db` | `sqlite3 .backup` copies taken at each deploy into `~/.trailmap-previews/pr-<N>/` |
 | Tasks checkout, audits | the production paths, mounted `:ro` |
-| ringo | none: `Setting.ringoBase()` answers null under `TRAILMAP_PREVIEW`, because the hub's `ringo_base` row names production's ringo |
+| ringo | none: `Setting.ringoBase()` answers null under `TRAILMAP_PREVIEW`, because the cloned `ringo_base` row names production's ringo |
 | Mail, `GH_TOKEN` | not configured |
 
-`TRAILMAP_PREVIEW=<N>` also:
+**Migrations are tested.** The `release` task runs in a preview as it does in
+production, against the clone, so a PR whose hub migration fails also fails
+its preview deploy, and the deploy log says why. The clone is rebuilt on each
+push, so every deploy migrates from production's schema, never from the last
+push's. A migration that only succeeds once is caught that way.
 
-- skips the `release` task (`Procfile`), because a PR's migration must never
-  reach production's hub;
-- leaves `worker` at 0;
-- puts a banner over every page naming the PR.
+Production's hub is only ever read, by `pg_dump`, which takes a consistent
+snapshot without blocking writers. `down` destroys the app, its hub service
+and its SQLite copies.
+
+`TRAILMAP_PREVIEW=<N>` also leaves `worker` at 0 and puts a banner over every
+page naming the PR.
 
 `nginx.conf.sigil` emits the loopback API block for the `trailmap` app only.
 A preview that emitted a second `listen 127.0.0.1:8080` would break nginx's
 reload or take the CLI's and ringo's API traffic.
 
-**A PR that adds a migration previews against production's schema**, without
-it, so a page reading the new column 500s. The script warns about this in its
-output. A migration preview would need a disposable clone of the hub, and
-none exists yet.
-
 ### One-time setup
 
-```sh
-# DNS: a wildcard record, *.trailmap.deanoftech.com -> the box. Each preview
-# gets its own Let's Encrypt certificate (HTTP-01) once the name resolves.
-
-# The network a preview reaches the hub on. Production uses `postgres:link`,
-# which would hand a preview the owner's credentials. On a non-bridge network
-# the service answers to `dokku-postgres-trailmap-hub`.
-docker network create trailmap-previews   # or: dokku network:create trailmap-previews
-dokku postgres:set trailmap-hub post-start-network trailmap-previews
-dokku postgres:restart trailmap-hub       # once, when a blip is acceptable
-
-# The read-only role. `ALTER DEFAULT PRIVILEGES` covers tables a later hub
-# migration creates; it must be run as the role that runs those migrations.
-dokku postgres:connect trailmap-hub <<'SQL'
-CREATE ROLE trailmap_preview LOGIN PASSWORD '<generate one>';
-GRANT CONNECT ON DATABASE trailmap_hub TO trailmap_preview;
-GRANT USAGE ON SCHEMA public TO trailmap_preview;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO trailmap_preview;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO trailmap_preview;
-ALTER ROLE trailmap_preview SET default_transaction_read_only = on;
-SQL
-
-# btwhooks passes this to the script; it lives in btwhooks' config, never here.
-#   PREVIEW_HUB_DATABASE_URL=postgres://trailmap_preview:<pw>@dokku-postgres-trailmap-hub:5432/trailmap_hub
-```
-
-Check the database name with `dokku postgres:info trailmap-hub --dsn`. To
-prove the role cannot write, `INSERT INTO settings ...` as `trailmap_preview`
-must fail with `cannot execute INSERT in a read-only transaction`.
+A wildcard DNS record, `*.trailmap.deanoftech.com`, pointing at the box. Each
+preview requests its own Let's Encrypt certificate (HTTP-01) once its name
+resolves. Nothing else is needed: the postgres plugin creates, links and
+destroys each preview's hub service.

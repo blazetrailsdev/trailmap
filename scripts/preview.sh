@@ -8,13 +8,15 @@
 #   scripts/preview.sh down <pr>          destroy it and its data copies
 #
 # Read-only by construction, never by trusting the PR's code:
-#   - the hub is production's Postgres through a role that can only SELECT
-#     (PREVIEW_HUB_DATABASE_URL; docs/deploy.md has the one-time grant);
+#   - the hub is a dokku postgres service of its own, cloned from production's
+#     with `postgres:export | postgres:import` at each deploy, so the release
+#     task runs the PR's migrations against real data and production's hub is
+#     only ever read by pg_dump;
 #   - the SQLite databases are `.backup` copies taken at deploy time, private to
 #     this preview, so a write lands in a file `down` deletes;
 #   - the tasks checkout and the audits are mounted read-only;
-#   - no mail, GitHub token or ringo address is configured, and the release
-#     task, the worker and the fleet relay are off (TRAILMAP_PREVIEW).
+#   - no mail, GitHub token or ringo address is configured, and the worker and
+#     the fleet relay are off (TRAILMAP_PREVIEW).
 #
 # Runs on the box, as a user who can run dokku, from a checkout of the PR.
 set -euo pipefail
@@ -23,7 +25,7 @@ PROD_APP="${TRAILMAP_APP:-trailmap}"
 PREVIEW_ROOT="${PREVIEW_ROOT:-$HOME/.trailmap-previews}"
 DOMAIN_SUFFIX="${PREVIEW_DOMAIN_SUFFIX:-trailmap.deanoftech.com}"
 DOKKU_HOST="${DOKKU_HOST:-dokku@localhost}"
-PREVIEW_NETWORK="${PREVIEW_NETWORK:-trailmap-previews}"
+PROD_HUB="${TRAILMAP_HUB:-trailmap-hub}"
 
 die() { echo "PREVIEW FAILED: $*" >&2; exit 1; }
 
@@ -34,6 +36,7 @@ cmd="$1" pr="$2"
 [[ "$pr" =~ ^[0-9]+$ ]] || die "PR must be a number, got '$pr'"
 app="$PROD_APP-pr-$pr"
 data="$PREVIEW_ROOT/pr-$pr"
+hub="$app-hub"
 
 prodConfig() { dokku config:get "$PROD_APP" "$1"; }
 
@@ -50,9 +53,6 @@ snapshot() {
 up() {
   local sha="${1:-}"
   [ -n "$sha" ] || usage
-  local hubUrl="${PREVIEW_HUB_DATABASE_URL:-}"
-  [ -n "$hubUrl" ] || die "PREVIEW_HUB_DATABASE_URL is not set: the read-only hub role's URL (docs/deploy.md)"
-
   local tasksDb tasksDir statsDb statsSyncDb auditsDir
   tasksDb="$(prodConfig TASKS_DATABASE)"
   tasksDir="$(prodConfig TASKS_DIR)"
@@ -64,6 +64,18 @@ up() {
   snapshot "$tasksDb" "$data/tasks.db"
   [ -z "$statsDb" ] || snapshot "$statsDb" "$data/stats.db"
   [ -z "$statsSyncDb" ] || snapshot "$statsSyncDb" "$data/stats-job.db"
+
+  # A fresh clone on every deploy, so each push migrates from production's
+  # schema rather than from the last push's, and a migration that only works
+  # once is caught. Destroyed and re-created rather than imported over: an
+  # import into a database that already holds the tables fails on them.
+  echo "==> cloning $PROD_HUB into $hub"
+  if dokku postgres:exists "$hub" 2>/dev/null; then
+    dokku postgres:unlink "$hub" "$app" 2>/dev/null || true
+    dokku postgres:destroy "$hub" --force
+  fi
+  dokku postgres:create "$hub"
+  dokku postgres:export "$PROD_HUB" | dokku postgres:import "$hub"
 
   if ! dokku apps:exists "$app" 2>/dev/null; then
     echo "==> creating $app"
@@ -89,7 +101,6 @@ up() {
     TRAILMAP_PREVIEW="$pr"
     TASKS_DIR="$tasksDir"
     TASKS_DATABASE="$data/tasks.db"
-    HUB_DATABASE_URL="$hubUrl"
     AUTHELIA_DOMAIN="$(prodConfig AUTHELIA_DOMAIN || true)"
   )
   [ -z "$statsDb" ] || env+=(STATS_DB="$data/stats.db")
@@ -97,10 +108,9 @@ up() {
   [ -z "$auditsDir" ] || env+=(AUDITS_DIR="$auditsDir")
   dokku config:set --no-restart "$app" "${env[@]}"
 
-  # Production reaches the hub through `postgres:link`, which would also hand
-  # this app the owner's credentials. A preview instead joins the network the
-  # service is attached to once (docs/deploy.md), where its name resolves.
-  dokku network:set "$app" attach-post-create "$PREVIEW_NETWORK"
+  # Linked as production's is, under the same alias. `--no-restart`: the push
+  # below starts the app, and its release task migrates this clone.
+  dokku postgres:link "$hub" "$app" --alias HUB_DATABASE --no-restart
 
   echo "==> deploying $sha to $app"
   # Exit status is not the verdict, for the reason scripts/deploy.sh gives (the
@@ -119,18 +129,15 @@ up() {
   rev="$(dokku config:get "$app" GIT_REV || true)"
   [ "$rev" = "$sha" ] || die "$app reports GIT_REV $rev, not $sha"
 
-  # A migration in the PR has not run anywhere a preview can see, so a page
-  # that reads its column will 500. Say so instead of leaving it to be found.
-  if git diff --name-only "origin/main...$sha" -- db/migrate db/hub-migrate 2>/dev/null | grep -q .; then
-    echo "==> WARNING: this PR adds migrations; the preview serves production's schema, without them."
-  fi
-
   echo "==> preview: https://pr-$pr.$DOMAIN_SUFFIX ($app at $sha)"
 }
 
 down() {
   if dokku apps:exists "$app" 2>/dev/null; then
     dokku apps:destroy "$app" --force
+  fi
+  if dokku postgres:exists "$hub" 2>/dev/null; then
+    dokku postgres:destroy "$hub" --force
   fi
   rm -rf "$data"
   echo "==> $app destroyed"

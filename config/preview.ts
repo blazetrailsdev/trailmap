@@ -6,11 +6,11 @@
  * `config.x.preview.pr`, like trailmap's other settings, and this is its only
  * reader.
  *
- * A preview must never act on the real fleet. The hub it reads is
- * production's, so its `settings` row names production's ringo, and the
- * fleet page's controls would be forwarded there. `Setting.ringoBase()` answers
- * null in a preview for that reason; the database role being read-only is the
- * guarantee for every other write.
+ * A preview must never act on the real fleet. Its hub is a clone of
+ * production's, so its `settings` row names production's ringo, and the fleet
+ * page's controls would be forwarded there. `Setting.ringoBase()` answers null
+ * in a preview for that reason. Every other write lands in the preview's own
+ * copies, which `scripts/preview.sh down` destroys.
  */
 import { Trails } from "@blazetrails/trailties";
 
