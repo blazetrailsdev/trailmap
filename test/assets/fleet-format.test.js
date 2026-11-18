@@ -57,6 +57,7 @@ import {
   barColor,
   claudeUsage,
   codexUsage,
+  resetPassed,
   drainStatus,
   formatClockLabel,
   formatResetLabel,
@@ -1278,6 +1279,7 @@ describe("the usage helpers", () => {
   });
 
   it("reads a week whose reset has passed as stale, not 100% elapsed", () => {
+    expect([noon - 1, noon, noon + 1, 0, null].map((at) => resetPassed(at, noon))).toEqual([true, true, false, false, false]);
     const passed = noon - 2 * HOUR;
     for (const html of [
       claudeUsage({ weeklyPercent: 70, weeklyResetsAt: passed }, noon),
