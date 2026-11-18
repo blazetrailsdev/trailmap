@@ -74,7 +74,7 @@ describe("StoryPagesController", () => {
     const { status, body } = await show("with-pr");
 
     expect(status).toBe(200);
-    const link = '<a href="https://github.com/blazetrailsdev/trails/pull/7651" target="_blank" rel="noopener">trails#7651</a>';
+    const link = '<a target="_blank" rel="noopener" href="https://github.com/blazetrailsdev/trails/pull/7651">trails#7651</a>';
     expect(body.split(link).length - 1).toBe(2);
   });
 
