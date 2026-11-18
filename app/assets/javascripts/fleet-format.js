@@ -1205,6 +1205,13 @@ export const DEFAULT_REPO = "blazetrailsdev/trails";
 export const repoOf = (pr) => (pr.owner ? pr.owner + "/" : "") + (pr.repo || "");
 
 /**
+ * A grooming agent: ringo's `rfc-refine` / `rfc-sunset` spawns, which name no
+ * story and never open a PR. A `manual` spawn (/prompt-agent) also carries a
+ * `kind`, but it is a worker like the loop's and renders as one.
+ */
+export const isGrooming = (s) => !!s.kind && s.kind !== "manual";
+
+/**
  * Drop a spawn whose branch already has a real PR row -- the PR row takes over.
  *
  * Three ways to match, because none of them holds alone: the spawn's branch
@@ -1216,13 +1223,6 @@ export const repoOf = (pr) => (pr.owner ? pr.owner + "/" : "") + (pr.repo || "")
  * ringo prunes these server-side as well; this is belt-and-braces against a
  * stale frame.
  */
-/**
- * A grooming agent: ringo's `rfc-refine` / `rfc-sunset` spawns, which name no
- * story and never open a PR. A `manual` spawn (/prompt-agent) also carries a
- * `kind`, but it is a worker like the loop's and renders as one.
- */
-export const isGrooming = (s) => !!s.kind && s.kind !== "manual";
-
 export function visibleSpawns(prs, spawns) {
   const branches = new Set(prs.map((p) => p.branch).filter(Boolean));
   const panes = new Set(prs.map((p) => p.pane).filter(Boolean));
