@@ -775,11 +775,15 @@ the thing under review:
 | `settings` | emptied in the clone after import. It is where an operator points trailmap at something outside itself (today `ringo_base`, production's fleet), and every outbound call the application makes resolves through it. It is emptied again after the release task, because a PR's migration may seed a row, and then checked; a preview still holding one is stopped. With no row and no `RINGO_BASE`, the fleet relay, deploys and sessions pages have nothing to call |
 | Mail, `GH_TOKEN` | not configured |
 
-**Migrations are tested.** The `release` task runs in a preview as it does in
-production, against the clone, so a PR whose hub migration fails also fails
-its preview deploy, and the deploy log says why. The clone is rebuilt on each
-push, so every deploy migrates from production's schema, never from the last
-push's. A migration that only succeeds once is caught that way.
+**Migrations are tested, and data is kept otherwise.** Each `up` keys the
+preview's data on the git tree ids of `db/hub-migrate` and
+`db/stats-sync-migrate` at the PR's head. When they are unchanged, the preview
+keeps its databases, and whatever a reviewer did in them, and the release
+task has nothing to run. When they change, or on the first `up`, every copy
+is taken from production again: the SQLite `.backup`s, and the hub re-cloned
+into a fresh service. The release task then runs the PR's migrations on real
+data, never on the half-migrated result of an earlier push. A PR whose hub
+migration fails also fails its preview deploy, and the deploy log says why.
 
 Production's hub is only ever read, by `pg_dump`, which takes a consistent
 snapshot without blocking writers. `down` destroys the app, its hub service
@@ -790,9 +794,31 @@ process enqueues into its own container-local queue), so no job, and so no
 mail, runs in a preview. `TRAILMAP_PREVIEW=<N>` puts a banner over every page
 naming the PR, in both apps; the application uses it for nothing else.
 
-`nginx.conf.sigil` emits the loopback API block for the `trailmap` app only.
-A preview that emitted a second `listen 127.0.0.1:8080` would break nginx's
-reload or take the CLI's and ringo's API traffic.
+### nginx: a preview must never take production down
+
+**It did, once.** A new dokku app whose Dockerfile EXPOSEs 8080 gets the
+default port map `http:8080:8080`, which renders `listen 8080` on every
+interface. That collides with production's `127.0.0.1:8080` loopback API. A
+failed reload keeps the old config serving, so nothing looked wrong until
+nginx's next full restart could not bind, and production went down with it.
+Four things now stop that, each on its own:
+
+1. **`preview.sh` pins the port map** (`http:80:8080`, plus `https:443:8080`
+   once a certificate exists) before every push, and refuses to push if the
+   pin did not take.
+2. **The sigil renders http/https server blocks for ports 80 and 443 only**,
+   in both `nginx.conf.sigil` and `rails/nginx.conf.sigil`, so no port map
+   can render such a listener for any app. `scripts/check-nginx-sigil.sh`
+   (rule 4, with a self-test) fails CI if that restriction is lost.
+3. **The loopback API block renders for the `trailmap` app only**, so a
+   preview can never emit a second `listen 127.0.0.1:8080`. `PROD_APP` in the
+   script is fixed to that name for the same reason.
+4. **After every deploy, `preview.sh` checks nginx itself.** The preview's
+   rendered config must listen on 80 and 443 only, `/var/log/nginx/error.log`
+   must hold no `[emerg]` since the run started, and production's
+   `127.0.0.1:8080` listener must still be bound. On any miss it runs `down`,
+   which removes the preview's config, and fails, naming the smoke check to
+   run against production.
 
 ### One-time setup
 

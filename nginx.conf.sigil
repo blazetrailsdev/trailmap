@@ -4,7 +4,7 @@
 {{ $listen_port := index $port_map_list 1 }}
 {{ $upstream_port := index $port_map_list 2 }}
 
-{{ if or (eq $scheme "http") (eq $scheme "https") }}
+{{ if and (or (eq $scheme "http") (eq $scheme "https")) (or (eq $listen_port "80") (eq $listen_port "443")) }}
 {{ $is_ssl := eq $scheme "https" }}
 {{ $is_redirect := and (not $is_ssl) (eq $listen_port "80") $.SSL_INUSE }}
 server {
@@ -161,9 +161,15 @@ upstream {{ $.APP }}-{{ $upstream_port }} {
 
 # ---- The loopback JSON API (RFC 0136) --------------------------------------
 #
-# Everything above is dokku's stock template, copied verbatim from
+# Everything above is dokku's stock template, copied from
 # nginx-vhosts/templates/nginx.conf.sigil so a dokku upgrade can be diffed
-# against it. This block is the only addition.
+# against it, with ONE change: the http/https server blocks render for listen
+# ports 80 and 443 only. dokku's default port map for an app whose Dockerfile
+# EXPOSEs 8080 is `http:8080:8080`, which renders a listener on every
+# interface at 8080 that collides with the block below. nginx then fails its
+# next reload, and production's API and dashboard go down with it. A PR
+# preview app did exactly that. The template now cannot render it for any app.
+# This block is the only addition.
 #
 # RFC 0136 serves two audiences from one listener: the dashboard on the public
 # hostname behind SSO, and the JSON API "on loopback, bypassing the SSO that

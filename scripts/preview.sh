@@ -62,9 +62,64 @@ snapshot() {
 # Empty the clone's `settings`, the table that points trailmap outside itself.
 scrubSettings() { echo "DELETE FROM settings;" | dokku postgres:connect "$hub"; }
 
+# What decides whether a preview's data is re-copied from production: the
+# migration directories at this sha, by git tree id. Unchanged, the preview
+# keeps its data (and whatever a reviewer did to it); changed, it starts again
+# from production's, so the PR's migrations run on real data and never on
+# the half-migrated result of an earlier push.
+migrationsKey() {
+  local sha="$1" dir out=""
+  for dir in db/hub-migrate db/stats-sync-migrate; do
+    out+="$dir=$(git rev-parse --verify --quiet "$sha:$dir" || echo none) "
+  done
+  echo "$out"
+}
+
+# THE PORT MAP, pinned on every up. A new app built from a Dockerfile that
+# EXPOSEs 8080 gets dokku's default `http:8080:8080`, which renders
+# `listen 8080` on every interface, and that collides with production's
+# `127.0.0.1:8080` loopback API. nginx then refuses its next reload or
+# restart, and production goes down. That happened, from this script, before
+# this pin existed. Pinned BEFORE the push, and refused if it did not take,
+# so the deploy that would render the bad listener never starts.
+pinPorts() {
+  local -a want=(http:80:8080)
+  if dokku letsencrypt:active "$app" >/dev/null 2>&1; then want+=(https:443:8080); fi
+  dokku ports:set "$app" "${want[@]}"
+  local got
+  got="$(dokku ports:report "$app" --ports-map)"
+  [ "$(echo "$got" | tr ' ' '\n' | sort | xargs)" = "$(printf '%s\n' "${want[@]}" | sort | xargs)" ] ||
+    die "$app's port map is '$got', not '${want[*]}'; refusing to deploy"
+}
+
+# After the deploy: the preview's rendered nginx config listens on 80 and 443
+# only, nginx logged no [emerg] since this run started (a failed reload keeps
+# the OLD config serving, so a working page proves nothing), and production's
+# loopback listener is still there. Any miss tears the preview down, which
+# removes its config, and fails loudly.
+assertNginx() {
+  local since="$1" bad="" listens emerg
+  listens="$(dokku nginx:show-config "$app" | awk '$1 == "listen" {print $2}' | tr -d ';')"
+  while read -r l; do
+    [ -z "$l" ] && continue
+    case "${l##*:}" in 80|443) ;; *) bad+="listens on $l; " ;; esac
+  done <<<"$listens"
+  emerg="$(awk -v since="$since" '($1 " " $2) >= since && /\[emerg\]/' /var/log/nginx/error.log 2>/dev/null || true)"
+  [ -z "$emerg" ] || bad+="nginx logged: $(echo "$emerg" | tail -1); "
+  ss -ltn | awk '{print $4}' | grep -qx '127.0.0.1:8080' || bad+="production's 127.0.0.1:8080 listener is gone; "
+  if [ -n "$bad" ]; then
+    echo "==> NGINX CHECK FAILED: $bad" >&2
+    echo "==> tearing $app down so its config cannot break production's" >&2
+    down
+    die "nginx check failed for $app: $bad check production now: scripts/smoke-prod.sh --tier 0 --tier 1"
+  fi
+}
+
 up() {
   local sha="${1:-}"
   [ -n "$sha" ] || usage
+  local since
+  since="$(date '+%Y/%m/%d %H:%M:%S')"
   local tasksDb tasksDir statsDb statsSyncDb auditsDir
   tasksDb="$(prodConfig TASKS_DATABASE)"
   tasksDir="$(prodConfig TASKS_DIR)"
@@ -72,26 +127,35 @@ up() {
   statsSyncDb="$(prodConfig STATS_SYNC_DB || true)"
   auditsDir="$(prodConfig AUDITS_DIR || true)"
 
-  echo "==> snapshotting production's databases into $data"
-  snapshot "$tasksDb" "$data/tasks.db"
-  [ -z "$statsDb" ] || snapshot "$statsDb" "$data/stats.db"
-  [ -z "$statsSyncDb" ] || snapshot "$statsSyncDb" "$data/stats-sync.db"
-
-  # A fresh clone on every deploy, so each push migrates from production's
-  # schema rather than from the last push's, and a migration that only works
-  # once is caught. Destroyed and re-created rather than imported over: an
-  # import into a database that already holds the tables fails on them.
-  echo "==> cloning $PROD_HUB into $hub"
-  if dokku postgres:exists "$hub" 2>/dev/null; then
-    # Stopped first, so the old container does not serve errors against a
-    # database that is gone until the push replaces it.
-    dokku ps:stop "$app" 2>/dev/null || true
-    dokku postgres:unlink "$hub" "$app" 2>/dev/null || true
-    dokku postgres:destroy "$hub" --force
+  local key refresh=""
+  key="$(migrationsKey "$sha")"
+  if ! dokku postgres:exists "$hub" 2>/dev/null || [ ! -f "$data/tasks.db" ]; then
+    refresh="no copy yet"
+  elif [ "$(cat "$data/migrations.key" 2>/dev/null)" != "$key" ]; then
+    refresh="migrations changed"
   fi
-  dokku postgres:create "$hub"
-  dokku postgres:export "$PROD_HUB" | dokku postgres:import "$hub"
-  scrubSettings
+
+  if [ -n "$refresh" ]; then
+    echo "==> copying production's data ($refresh)"
+    # Stopped first, so the old container does not serve errors against
+    # databases that are being replaced until the push replaces it.
+    if dokku apps:exists "$app" 2>/dev/null; then dokku ps:stop "$app" || true; fi
+    rm -f "$data/migrations.key"
+    snapshot "$tasksDb" "$data/tasks.db"
+    [ -z "$statsDb" ] || snapshot "$statsDb" "$data/stats.db"
+    [ -z "$statsSyncDb" ] || snapshot "$statsSyncDb" "$data/stats-sync.db"
+    # Destroyed and re-created rather than imported over: an import into a
+    # database that already holds the tables fails on them.
+    if dokku postgres:exists "$hub" 2>/dev/null; then
+      dokku postgres:unlink "$hub" "$app" 2>/dev/null || true
+      dokku postgres:destroy "$hub" --force
+    fi
+    dokku postgres:create "$hub"
+    dokku postgres:export "$PROD_HUB" | dokku postgres:import "$hub"
+    scrubSettings
+  else
+    echo "==> keeping $app's data: its migrations are unchanged"
+  fi
 
   if ! dokku apps:exists "$app" 2>/dev/null; then
     echo "==> creating $app"
@@ -101,6 +165,7 @@ up() {
     dokku ps:set "$app" restart-policy no
     dokku config:set --no-restart "$app" SECRET_KEY_BASE="$(openssl rand -hex 64)"
   fi
+  pinPorts
 
   # Mounts are re-derived from production on EVERY up, so a preview follows a
   # moved checkout or audits directory instead of keeping the old path while
@@ -137,7 +202,9 @@ up() {
 
   # Linked as production's is, under the same alias. `--no-restart`: the push
   # below starts the app, and its release task migrates this clone.
-  dokku postgres:link "$hub" "$app" --alias HUB_DATABASE --no-restart
+  if ! dokku postgres:linked "$hub" "$app" >/dev/null 2>&1; then
+    dokku postgres:link "$hub" "$app" --alias HUB_DATABASE --no-restart
+  fi
 
   echo "==> deploying $sha to $app"
   # Exit status is not the verdict, for the reason scripts/deploy.sh gives (the
@@ -162,6 +229,7 @@ up() {
   if ! dokku letsencrypt:active "$app" >/dev/null 2>&1; then
     dokku letsencrypt:enable "$app" || echo "==> WARNING: no TLS certificate for $app; is pr-$pr.$DOMAIN_SUFFIX in DNS?"
   fi
+  assertNginx "$since"
 
   local running
   running="$(docker inspect "$app.web.1" --format '{{.Config.Image}}' 2>/dev/null || true)"
@@ -170,6 +238,7 @@ up() {
   rev="$(dokku config:get "$app" GIT_REV || true)"
   [ "$rev" = "$sha" ] || die "$app reports GIT_REV $rev, not $sha"
 
+  echo "$key" >"$data/migrations.key"
   echo "==> preview: https://pr-$pr.$DOMAIN_SUFFIX ($app at $sha)"
 }
 
