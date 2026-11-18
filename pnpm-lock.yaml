@@ -68,6 +68,9 @@ importers:
       '@blazetrails/activerecord':
         specifier: file:vendor/blazetrails-activerecord-0.1.0.tgz
         version: file:vendor/blazetrails-activerecord-0.1.0.tgz(@blazetrails/activejob@file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(better-sqlite3@13.0.3)(pg@8.23.1)
+      '@blazetrails/activestorage':
+        specifier: file:vendor/blazetrails-activestorage-0.1.0.tgz
+        version: file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
       '@blazetrails/activesupport':
         specifier: file:vendor/blazetrails-activesupport-0.1.0.tgz
         version: file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
@@ -82,16 +85,16 @@ importers:
         version: file:vendor/blazetrails-ruby-compat-0.1.0.tgz
       '@blazetrails/solid-queue':
         specifier: file:vendor/blazetrails-solid-queue-0.1.0.tgz
-        version: file:vendor/blazetrails-solid-queue-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+        version: file:vendor/blazetrails-solid-queue-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
       '@blazetrails/trailties':
         specifier: file:vendor/blazetrails-trailties-0.1.0.tgz
-        version: file:vendor/blazetrails-trailties-0.1.0.tgz(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+        version: file:vendor/blazetrails-trailties-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
       '@blazetrails/vite-assets':
         specifier: file:vendor/blazetrails-vite-assets-0.1.0.tgz
-        version: file:vendor/blazetrails-vite-assets-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))
+        version: file:vendor/blazetrails-vite-assets-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))
       '@blazetrails/vite-trails':
         specifier: file:vendor/blazetrails-vite-trails-0.1.0.tgz
-        version: file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+        version: file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3
@@ -138,7 +141,7 @@ packages:
     engines: {node: '>=26'}
 
   '@blazetrails/actionpack@file:vendor/blazetrails-actionpack-0.1.0.tgz':
-    resolution: {integrity: sha512-3P6l4N5OpH8JIYuTxft4wcmMSoU+kWr1zUkdBHeOu/etwpKeKA70bAUbRt604SJK51DBAEOQVwOIIBNyS6p7Og==, tarball: file:vendor/blazetrails-actionpack-0.1.0.tgz}
+    resolution: {integrity: sha512-l4Cc0Jfca1a7njNnmppF2ovZRYj7NmNk1whCUXIS0rEW50AWuPFg6QXD6e9ttsDBD/P6LYnvRCaZ8jwHxOnJvA==, tarball: file:vendor/blazetrails-actionpack-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
@@ -154,7 +157,7 @@ packages:
         optional: true
 
   '@blazetrails/actionview@file:vendor/blazetrails-actionview-0.1.0.tgz':
-    resolution: {integrity: sha512-Y8YtHEvh0bj1p97FNgCpK7mCTwsrP1cMTBgKeR+ux4CTzPVXNbnjQaXLjrQPbjiPOyEFQAgWEiqH5vAPf5nxqQ==, tarball: file:vendor/blazetrails-actionview-0.1.0.tgz}
+    resolution: {integrity: sha512-DczJKTY+FakMbCf9Yl5JWXmZmy9rt72jwBcfemZPyvYJ5AOZJS3JDIKfHSVZ2kADLFx3JYxhzmS9UW8KeoBpBg==, tarball: file:vendor/blazetrails-actionview-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
@@ -164,7 +167,7 @@ packages:
     engines: {node: '>=26'}
 
   '@blazetrails/activemodel@file:vendor/blazetrails-activemodel-0.1.0.tgz':
-    resolution: {integrity: sha512-Nq3Xg9IunQEzGXuGUsbkgE7tVUzM0C0iS2g7XKGRBZBnN5nT4vhsUS+gSTd8cJ5YMz9IPEcN/IkyucMPhvqnoQ==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
+    resolution: {integrity: sha512-C/HwqYxV3POK7pZt/u+rMkjNgIn71cZJCMJtzNx3PDhNcFe4dqHiIjy5KmXmEiCrUZEDh9IsPmsif+/wuhRfQg==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
@@ -175,7 +178,7 @@ packages:
     hasBin: true
 
   '@blazetrails/activerecord@file:vendor/blazetrails-activerecord-0.1.0.tgz':
-    resolution: {integrity: sha512-pC2xE++lKVn8fKivjC1jx+BknMoWBKWdJKdM5R9QKfGGa516WyiAUQ800SLPz2mnFHOXps0TanObX9Tpe68dCA==, tarball: file:vendor/blazetrails-activerecord-0.1.0.tgz}
+    resolution: {integrity: sha512-ZOySsqqU46y7A6HqoIURxUxfVEVji/e1zjl51SUgBg4qPjMxqSYp5nNfAUUCIe9HJV8edxSsODXmuOn3ITgT5g==, tarball: file:vendor/blazetrails-activerecord-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
@@ -202,8 +205,18 @@ packages:
       pg:
         optional: true
 
+  '@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz':
+    resolution: {integrity: sha512-s0wcYe3d9b6DFCvbtfc10BsjiqCldeodr5Ucp8wK/9hdntwie9L/zIq15ynKnW64W+bOo763yeS6346j3oZRyw==, tarball: file:vendor/blazetrails-activestorage-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=26'}
+    peerDependencies:
+      '@blazetrails/image-processing': 0.1.0
+    peerDependenciesMeta:
+      '@blazetrails/image-processing':
+        optional: true
+
   '@blazetrails/activesupport@file:vendor/blazetrails-activesupport-0.1.0.tgz':
-    resolution: {integrity: sha512-stpkz0Y2rwUEQwyCMsi4p+0CYc7hER0WTupwzYwLaVoQe0AgLXUr/mHkrg+0Q8vure5rl+LWRpD99Em1xUDt9w==, tarball: file:vendor/blazetrails-activesupport-0.1.0.tgz}
+    resolution: {integrity: sha512-oeLbjurrFb5KsoLNYb7kN995k0UeEvtBbEtTDESatp5LxDXHdDA+ZpIN5eGZqFg6vtEW+GCQPL0GvRw7031mww==, tarball: file:vendor/blazetrails-activesupport-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
@@ -224,7 +237,7 @@ packages:
     engines: {node: '>=26'}
 
   '@blazetrails/builder@file:vendor/blazetrails-builder-0.1.0.tgz':
-    resolution: {integrity: sha512-BpjNAgXpgy39/ynNSTGNkTkwlVQcNKczxB6BxomWKwo2Y9vKZlxba9GbhymA+ny4iYuo+5xLHjA4u8ZlPr8ySQ==, tarball: file:vendor/blazetrails-builder-0.1.0.tgz}
+    resolution: {integrity: sha512-aVSfjtTsEwzuaXdXzE9pNKEJi7iPtaUX4zgjv4XD0BWXndQSe0KKZkL5Nl6NCkCfKSZ0f61Mpv3ilOY94IRRMA==, tarball: file:vendor/blazetrails-builder-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
@@ -254,17 +267,22 @@ packages:
     engines: {node: '>=26'}
 
   '@blazetrails/html-sanitizer@file:vendor/blazetrails-html-sanitizer-0.1.0.tgz':
-    resolution: {integrity: sha512-AVzcqiFUZkUX285cehdEtYfP7kOquj8P02cFurjtzcaKSpnkrgFKZnqj+Jp4vQsZvDJ9WxPG+63Leolx4CnrtQ==, tarball: file:vendor/blazetrails-html-sanitizer-0.1.0.tgz}
+    resolution: {integrity: sha512-kUJ8BCewaE4wF8FKDL8W3isUtC4FjYMrP46BWedbERwvbWJ8jAnQh9GGVW+n0gWAwk70rrWqZ8Cwtn1zDoxsPQ==, tarball: file:vendor/blazetrails-html-sanitizer-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/i18n@file:vendor/blazetrails-i18n-0.1.0.tgz':
-    resolution: {integrity: sha512-wugDEItc/LqFuMUb7RoeNndoaSLDq0Ycoz74w/AYD3FvAGb0FewBcSw+g+u+2TS1CZmjY/6V30jGmk6w+TD7hQ==, tarball: file:vendor/blazetrails-i18n-0.1.0.tgz}
+    resolution: {integrity: sha512-B1ZhfhUN2Og6ZHeRMG+MCEAxH9Swrsf/uiYRnubmm2Ibs6M0VQVzzpq4neG2C0mm8Ea72GcYZ7nEfa6PjplLTA==, tarball: file:vendor/blazetrails-i18n-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/mail@file:vendor/blazetrails-mail-0.1.0.tgz':
-    resolution: {integrity: sha512-Ibxcy9vknt9ElXYhghsExfCoLRL1CHhAmo3nKZ+Tq9Ge2ds2spkC/swWMd08boe9Cd4L/LHL6UFfJIfT2cny2g==, tarball: file:vendor/blazetrails-mail-0.1.0.tgz}
+    resolution: {integrity: sha512-Qla9D8Fw0uk9NFFg/XtMiLqfG28D92lZ7slLcLSrIWq4S094cHbvdH2kiPqWlPRowMJSOKCZV0VfZZIFj8/9qQ==, tarball: file:vendor/blazetrails-mail-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=26'}
+
+  '@blazetrails/marcel@file:vendor/blazetrails-marcel-0.1.0.tgz':
+    resolution: {integrity: sha512-p5WzMdcjwzsP+MkyVMzT2niujtx1RHkCgy0krqjz0shBYJALoDV61CwliR5qC8+rgILHu6zWXt44GuxMrEmeIg==, tarball: file:vendor/blazetrails-marcel-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
@@ -279,7 +297,7 @@ packages:
     engines: {node: '>=26'}
 
   '@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz':
-    resolution: {integrity: sha512-KfyXuowQ7DQOCBN00iXKU6s12vCNMPDDOJSrfbQcGhBF+GIkl5dvbaiJGgPPFNKVCNMp3diUaVzExYqOqzdf2g==, tarball: file:vendor/blazetrails-nokogiri-0.1.0.tgz}
+    resolution: {integrity: sha512-cGI/Fq2ADq3Sy69mpF5XuNaL7myPN5Bi2KVkRTRPs0Ltvk7f1wYhpsXvFq7AmhOU5Brvd7AeahZPnoCsEQP6pQ==, tarball: file:vendor/blazetrails-nokogiri-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
@@ -294,7 +312,7 @@ packages:
     engines: {node: '>=26'}
 
   '@blazetrails/rack-session@file:vendor/blazetrails-rack-session-0.1.0.tgz':
-    resolution: {integrity: sha512-TSpy/EaDNz9qz9H2bVEiABwtebdZQIesBeiEDxx+oB/qBaettC9QGx2rx95bNe/h/ZIpl1qF1rSFsGE2HhdIFg==, tarball: file:vendor/blazetrails-rack-session-0.1.0.tgz}
+    resolution: {integrity: sha512-gSyGrwZr7LHl6tGqJFJtWAmr5WxqatopkRS3BFEOl3cpR6C+gfrdG98Y1OXnwZrR2Xqz9KMi8GRa8nGheE/VLg==, tarball: file:vendor/blazetrails-rack-session-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
@@ -304,7 +322,7 @@ packages:
     engines: {node: '>=26'}
 
   '@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz':
-    resolution: {integrity: sha512-On0GewMEGpFJVkHMF6q32wA7if06YORIONvfgwXVjl/f9Nc8WjPvWBwVsGBQRGOhrKpLDY56NHvo8rI7vWfOrA==, tarball: file:vendor/blazetrails-rack-0.1.0.tgz}
+    resolution: {integrity: sha512-tkV5LNyn+sE4o2VjzxSP8BoFPDDMj6f4OdfarPzgn/KZwAGEBnC1W5d+HX+fPzEzFPRRMjESPS38p+iRoXnwtA==, tarball: file:vendor/blazetrails-rack-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
@@ -315,28 +333,28 @@ packages:
     hasBin: true
 
   '@blazetrails/rake@file:vendor/blazetrails-rake-0.1.0.tgz':
-    resolution: {integrity: sha512-RSpGgObTBwDRrnMGUlQfHXXEQ7Barsozohfw/1cStqoR3JJ52EDHZOat/VJRzv2/1hjPykezlwb/2iHkAgrSHA==, tarball: file:vendor/blazetrails-rake-0.1.0.tgz}
+    resolution: {integrity: sha512-XfAQgOpRfkL5AKYbmjZNTga6ucwoEnp2Ng/vqQK88mj22xJscqHLW03BrtpBjIhVjsWHeUjd1qf56k3CQtHXnQ==, tarball: file:vendor/blazetrails-rake-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     hasBin: true
 
   '@blazetrails/ruby-compat@file:vendor/blazetrails-ruby-compat-0.1.0.tgz':
-    resolution: {integrity: sha512-Ng+ClW/Qpony0gpoV2lklTfbO4wpiXY2i4MDsL1w6ZVwoNQ4JwfUjsvrxVIazoWzKOQpqgCIhYKoZgBpmGpPdQ==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
+    resolution: {integrity: sha512-NfJQ99kg8i7OI7QmdBfxS7irIxpeTggNprOG6+l6IOxFFWe7KNDMB7+JQgALkSYLB5i4BbwpaHZ2zu6X4UXM8A==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/solid-queue@file:vendor/blazetrails-solid-queue-0.1.0.tgz':
-    resolution: {integrity: sha512-ucmXnNkoB4tzNFzK15fUY54j2qbSDDaowZcZKCThPx6Qy4SOHBRdnqq/vwECk9qnyAj2dUux++67nb70KX6C/g==, tarball: file:vendor/blazetrails-solid-queue-0.1.0.tgz}
+    resolution: {integrity: sha512-mxPHOAYqvVLnJ9VEA3I2NATWho0Zgfj6LAjdQRWeaTuowTIGFnfnoJPe2araLS5nJ33yBfFCpVRrVo9uIsFEwQ==, tarball: file:vendor/blazetrails-solid-queue-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/thor@file:vendor/blazetrails-thor-0.1.0.tgz':
-    resolution: {integrity: sha512-YfzygWxo1YWherlMqLqmr1z8TWKyKcSlwUReWLk/ALwTa/aOWYNPHOaBQtWV/qdhD7z/YoX2THplFYIn+JSkaQ==, tarball: file:vendor/blazetrails-thor-0.1.0.tgz}
+    resolution: {integrity: sha512-Vpv5lhB/HsYphZcm0YWw4kQmlDLIBPX1tbEjOgaqUUtaAIBrRiow/4xAXZfSSul71bMmq9kI5WJ2D2nNrS1v1A==, tarball: file:vendor/blazetrails-thor-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/trails-tsc@file:vendor/blazetrails-trails-tsc-0.1.0.tgz':
-    resolution: {integrity: sha512-oorvQ6jgVwzM6hHoY7PM7hXJ/fvxet48kP50Wy8GJp9prFbpeRKYWCsHhonJzNLhlcgmN9sQzrPRY3kWrHHGLQ==, tarball: file:vendor/blazetrails-trails-tsc-0.1.0.tgz}
+    resolution: {integrity: sha512-aHjpbgYVyDQPejxv+swgaijxNBBi7oLk3ApOWXhJRafqP4Bj7m2mHGvy1gzqKia9Bdg+UeM/tQ24VQ6GpSsk+g==, tarball: file:vendor/blazetrails-trails-tsc-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     hasBin: true
@@ -344,7 +362,7 @@ packages:
       '@blazetrails/actionview': 0.1.0
 
   '@blazetrails/trailties@file:vendor/blazetrails-trailties-0.1.0.tgz':
-    resolution: {integrity: sha512-qcXwwteKbf06QJUcFXL7IKhARmDZqb7EgfNYHF8pE7QMESX6dWn7SKX5T3mHq7XAkY2yBfWsms3eD5if6Neomw==, tarball: file:vendor/blazetrails-trailties-0.1.0.tgz}
+    resolution: {integrity: sha512-6lAhvSl5UgruJ6PJQc9EqXG5clKsI49yfbQhj3tOACZpFv2Y4AtPPufoFQDxMygA3YoYHbGDkaW0xKqmY5mSFQ==, tarball: file:vendor/blazetrails-trailties-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     hasBin: true
@@ -377,7 +395,7 @@ packages:
     engines: {node: '>=26'}
 
   '@blazetrails/vite-assets@file:vendor/blazetrails-vite-assets-0.1.0.tgz':
-    resolution: {integrity: sha512-wmg1ygIwR5nqed5H9BJ9BgUJAAPGQ0znZen0qwGixRb9iistKjKOdMGmmIogw//Fy3lvKLF8mR7K7zSqwGQRSg==, tarball: file:vendor/blazetrails-vite-assets-0.1.0.tgz}
+    resolution: {integrity: sha512-nT9Gks/i/9jtcZb0WN/eCvLDjArB2GRtg4WScweSxVRwZqgZIaP/GECXJBdyyXx7IiCATncxOPDUooRLT55Iyw==, tarball: file:vendor/blazetrails-vite-assets-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
@@ -387,7 +405,7 @@ packages:
         optional: true
 
   '@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz':
-    resolution: {integrity: sha512-aTe+IcIsWs+XNLKKUIOXSgxwytOz+DgtyUW+Q221VIDoF9KDzAywG5zvy3dtrZyPlU9w/g8MrYjNSxoKxwGmpw==, tarball: file:vendor/blazetrails-vite-trails-0.1.0.tgz}
+    resolution: {integrity: sha512-3GDbexfzYb4S6GVXNqovClYyVr1rRnOf85VIAYrVuJqFLo5FhIFzy2QyywkwUuwj/rVf4tw/iT5epTu5DnrZlw==, tarball: file:vendor/blazetrails-vite-trails-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
@@ -796,9 +814,6 @@ packages:
     resolution: {integrity: sha512-PAJdDJusoxnwm1VwW07VWwUN1sl7smmC3OKggvndJFadxxDRyFJBX/ggnu/KE4kQAB7a3Dp8f/YXC1FlUprWmA==}
     engines: {node: '>= 16'}
 
-  dayjs@1.11.23:
-    resolution: {integrity: sha512-QDTCU0M0MxR3hQfnlDJfwekQiaanm1ubOD231u73WBckQ/fsamwRLiE2GBz6D3a/xF1NgfiDLJjXBa1hYOYTtQ==}
-
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
     engines: {node: '>=6.0'}
@@ -812,28 +827,8 @@ packages:
     resolution: {integrity: sha512-h5k/5U50IJJFpzfL6nO9jaaumfjO/f2NjK/oYB2Djzm4p9L+3T9qWpZqZ2hAbLPuuYq9wrU08WQyBTL5GbPk5Q==}
     engines: {node: '>=6'}
 
-  deepmerge@4.3.1:
-    resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
-    engines: {node: '>=0.10.0'}
-
   detect-europe-js@0.1.2:
     resolution: {integrity: sha512-lgdERlL3u0aUdHocoouzT10d9I89VVhk0qNRmll7mXdGfJT1/wqZ2ZLA4oJAjeACPY5fT1wsbq2AT+GkuInsow==}
-
-  dom-serializer@3.1.1:
-    resolution: {integrity: sha512-4MEa38/QexBob6gFNwu+EGdWvhJ1OKuNwdYY3Y3NyeWDQfnGeDYQUDfIRzWu5B5gsv03so2Uxd28YC6zrsx3Lw==}
-    engines: {node: '>=20.19.0'}
-
-  domelementtype@3.0.0:
-    resolution: {integrity: sha512-umCQid3jKbDmVjx8jGaW7uUykm4DEUeyV21hPxNMo2nV955DhUThwqyOIDtreepP31hl84X7G5U9ZfsWvIB3Pg==}
-    engines: {node: '>=20.19.0'}
-
-  domhandler@6.0.1:
-    resolution: {integrity: sha512-gYzvtM72ZtxQO0T048kd6HWSbbGCNOUwcnfQ01cqIJ4X2IYKFFHZ5mKvrQETcFXxsRObZulDaKmy//R7TPtsBg==}
-    engines: {node: '>=20.19.0'}
-
-  domutils@4.0.2:
-    resolution: {integrity: sha512-qI4JLRKnSzqFqr7hAlS5xQDusBCjKSEG4t4+7aNrIQMHBcsC2TGEhuyABJdYkgSewL57PNLYEiibY2iPKhKpaA==}
-    engines: {node: '>=20.19.0'}
 
   entities@8.1.0:
     resolution: {integrity: sha512-kxL7msIffSuh9aaFAMD7rxAIuTRMAHMeBtgHW2yUdWw732ZNh4MehkF2gdjvtdmikkaIP9bFDDJOPlsvm7avrA==}
@@ -846,10 +841,6 @@ packages:
     resolution: {integrity: sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==}
     engines: {node: '>=18'}
     hasBin: true
-
-  escape-string-regexp@4.0.0:
-    resolution: {integrity: sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==}
-    engines: {node: '>=10'}
 
   estree-walker@3.0.3:
     resolution: {integrity: sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==}
@@ -876,16 +867,8 @@ packages:
     resolution: {integrity: sha512-6umCCHcjQrhP5oXhrHQQvLB0bwb1UzHAHdsXy+FjtKoYjUhmNZsQL8NivwM1vDvNEChJabVrUYxUnp/ZdYmy2g==}
     engines: {node: '>=20.0.0'}
 
-  htmlparser2@12.0.0:
-    resolution: {integrity: sha512-Tz7u1i95/g2x2jz81+x0FBVhBhY5aRTvD3tXXdFaljuNdzDLJ8UGNRrTcj2cgQvAg3iW/h77Fz15nLW0L0CrZw==}
-    engines: {node: '>=20.19.0'}
-
   http-parser-js@0.5.10:
     resolution: {integrity: sha512-Pysuw9XpUq5dVc/2SMHpuTY01RFl8fttgcyunjL7eEMhGM3cI4eOmiCycJDVCo/7O7ClfQD3SaI6ftDzqOXYMA==}
-
-  is-plain-object@5.1.0:
-    resolution: {integrity: sha512-bUi/yjmtKYcRVUtWRGr0UA6xEFh2I6zWUwMrUXB3s7bmYCaZ8a+0ZsTRkrawh/mzlSD1Y0Ph8bp/U+TvBpWDNw==}
-    engines: {node: '>=0.10.0'}
 
   is-standalone-pwa@0.1.1:
     resolution: {integrity: sha512-9Cbovsa52vNQCjdXOzeQq5CnCbAcRk05aU62K20WO372NrTv0NxibLFCK6lQ4/iZEFdEA3p3t2VNOn8AJ53F5g==}
@@ -895,9 +878,6 @@ packages:
 
   jsbi@4.3.2:
     resolution: {integrity: sha512-9fqMSQbhJykSeii05nxKl4m6Eqn2P6rOlYiS+C5Dr/HPIU/7yZxu5qzbs40tgaFORiw2Amd0mirjxatXYMkIew==}
-
-  launder@1.7.2:
-    resolution: {integrity: sha512-DLg3HPnHUfBi5/MxMLmJD12dmlMpFEC2HgMW6vkZ/9JR0RU00kXoRGvDxAvFmdO0o610OA77i4FgNTLucmhDVg==}
 
   libxml2-wasm@0.7.1:
     resolution: {integrity: sha512-aZpJJL/j6T3D+5TmhG4D0ylR3mN6UzmqmBjyb/p+zEAaouG6GpfHiUNUzKR3vKCEoJt/Z2L15XPDCVPuFJIQhg==}
@@ -928,9 +908,6 @@ packages:
   obug@2.2.1:
     resolution: {integrity: sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q==}
     engines: {node: '>=12.20.0'}
-
-  parse-srcset@1.0.2:
-    resolution: {integrity: sha512-/2qh0lav6CmI15FzA3i/2Bzk2zCgQhGMkvhOhKNcBVQ1ldgpbfiNTVslmooUmWJcADi1f1kIeynbDRVzNlfR6Q==}
 
   parse5@8.0.1:
     resolution: {integrity: sha512-z1e/HMG90obSGeidlli3hj7cbocou0/wa5HacvI3ASx34PecNjNQeaHNo5WIZpWofN9kgkqV1q5YvXe3F0FoPw==}
@@ -987,10 +964,6 @@ packages:
     resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
     engines: {node: ^10 || ^12 || >=14}
 
-  postcss@8.5.28:
-    resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
-    engines: {node: ^10 || ^12 || >=14}
-
   postgres-array@2.0.0:
     resolution: {integrity: sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==}
     engines: {node: '>=4'}
@@ -1014,10 +987,6 @@ packages:
 
   safe-buffer@5.2.1:
     resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
-
-  sanitize-html@2.18.0:
-    resolution: {integrity: sha512-CvY+PV+NBhxe3BnjFI5f//vEDKLULm9OlZArso7gdgVsWvanBuq9PNDx+/2llfL+8XFYa/UNBxvqRBg3TWU2Ug==}
-    engines: {node: '>=22.12.0'}
 
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
@@ -1200,7 +1169,7 @@ snapshots:
       '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
       '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
       '@blazetrails/i18n': file:vendor/blazetrails-i18n-0.1.0.tgz
-      '@blazetrails/mail': file:vendor/blazetrails-mail-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
+      '@blazetrails/mail': file:vendor/blazetrails-mail-0.1.0.tgz
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
     transitivePeerDependencies:
       - '@blazetrails/msgpack'
@@ -1308,6 +1277,47 @@ snapshots:
       - '@blazetrails/nokogiri'
       - '@blazetrails/rack'
 
+  '@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)':
+    dependencies:
+      '@blazetrails/actionpack': file:vendor/blazetrails-actionpack-0.1.0.tgz(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))
+      '@blazetrails/actionview': file:vendor/blazetrails-actionview-0.1.0.tgz(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
+      '@blazetrails/activejob': file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
+      '@blazetrails/activerecord': file:vendor/blazetrails-activerecord-0.1.0.tgz(@blazetrails/activejob@file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(better-sqlite3@13.0.3)(pg@8.23.1)
+      '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
+      '@blazetrails/globalid': file:vendor/blazetrails-globalid-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
+      '@blazetrails/marcel': file:vendor/blazetrails-marcel-0.1.0.tgz
+      '@blazetrails/rack': file:vendor/blazetrails-rack-0.1.0.tgz
+      '@blazetrails/rack-test': file:vendor/blazetrails-rack-test-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)
+      '@blazetrails/rake': file:vendor/blazetrails-rake-0.1.0.tgz
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
+      '@blazetrails/trailties': file:vendor/blazetrails-trailties-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+    transitivePeerDependencies:
+      - '@blazetrails/actioncable'
+      - '@blazetrails/actionmailbox'
+      - '@blazetrails/actiontext'
+      - '@blazetrails/msgpack'
+      - '@blazetrails/nokogiri'
+      - '@types/node'
+      - better-sqlite3
+      - expo-sqlite
+      - jiti
+      - less
+      - libsql
+      - lightningcss
+      - mysql2
+      - pg
+      - playwright
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - typescript
+      - vite
+      - vitest
+      - yaml
+
   '@blazetrails/activesupport@file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)':
     dependencies:
       '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
@@ -1377,7 +1387,6 @@ snapshots:
       '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
       '@blazetrails/nokogiri': file:vendor/blazetrails-nokogiri-0.1.0.tgz
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
-      sanitize-html: 2.18.0
     transitivePeerDependencies:
       - '@blazetrails/msgpack'
       - '@blazetrails/rack'
@@ -1387,17 +1396,16 @@ snapshots:
       '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
 
-  '@blazetrails/mail@file:vendor/blazetrails-mail-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)':
+  '@blazetrails/mail@file:vendor/blazetrails-mail-0.1.0.tgz':
     dependencies:
-      '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
       '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
       '@blazetrails/mini-mime': file:vendor/blazetrails-mini-mime-0.1.0.tgz
       '@blazetrails/net-smtp': file:vendor/blazetrails-net-smtp-0.1.0.tgz
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
-    transitivePeerDependencies:
-      - '@blazetrails/msgpack'
-      - '@blazetrails/nokogiri'
-      - '@blazetrails/rack'
+
+  '@blazetrails/marcel@file:vendor/blazetrails-marcel-0.1.0.tgz':
+    dependencies:
+      '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
 
   '@blazetrails/mini-mime@file:vendor/blazetrails-mini-mime-0.1.0.tgz':
     dependencies:
@@ -1458,7 +1466,7 @@ snapshots:
     optionalDependencies:
       yaml: 2.9.0
 
-  '@blazetrails/solid-queue@file:vendor/blazetrails-solid-queue-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)':
+  '@blazetrails/solid-queue@file:vendor/blazetrails-solid-queue-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)':
     dependencies:
       '@blazetrails/activejob': file:vendor/blazetrails-activejob-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
       '@blazetrails/activemodel': file:vendor/blazetrails-activemodel-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
@@ -1471,7 +1479,7 @@ snapshots:
       '@blazetrails/rake': file:vendor/blazetrails-rake-0.1.0.tgz
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
       '@blazetrails/thor': file:vendor/blazetrails-thor-0.1.0.tgz
-      '@blazetrails/trailties': file:vendor/blazetrails-trailties-0.1.0.tgz(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+      '@blazetrails/trailties': file:vendor/blazetrails-trailties-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
     transitivePeerDependencies:
       - '@blazetrails/actioncable'
       - '@blazetrails/actionmailbox'
@@ -1518,7 +1526,7 @@ snapshots:
       - '@blazetrails/nokogiri'
       - '@blazetrails/rack'
 
-  '@blazetrails/trailties@file:vendor/blazetrails-trailties-0.1.0.tgz(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)':
+  '@blazetrails/trailties@file:vendor/blazetrails-trailties-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)':
     dependencies:
       '@blazetrails/actionmailer': file:vendor/blazetrails-actionmailer-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))
       '@blazetrails/actionpack': file:vendor/blazetrails-actionpack-0.1.0.tgz(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))
@@ -1543,6 +1551,7 @@ snapshots:
       '@blazetrails/zeitwerk': file:vendor/blazetrails-zeitwerk-0.1.0.tgz
       vite: 7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0)
     optionalDependencies:
+      '@blazetrails/activestorage': file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
       typescript: 7.1.0-dev.20260920.1
     transitivePeerDependencies:
       - '@blazetrails/msgpack'
@@ -1574,7 +1583,7 @@ snapshots:
       '@blazetrails/date': file:vendor/blazetrails-date-0.1.0.tgz
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
 
-  '@blazetrails/vite-assets@file:vendor/blazetrails-vite-assets-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))':
+  '@blazetrails/vite-assets@file:vendor/blazetrails-vite-assets-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))':
     dependencies:
       '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
       '@blazetrails/rack': file:vendor/blazetrails-rack-0.1.0.tgz
@@ -1583,19 +1592,19 @@ snapshots:
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
       '@blazetrails/thor': file:vendor/blazetrails-thor-0.1.0.tgz
     optionalDependencies:
-      '@blazetrails/vite-trails': file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+      '@blazetrails/vite-trails': file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
     transitivePeerDependencies:
       - '@blazetrails/msgpack'
       - '@blazetrails/nokogiri'
 
-  '@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)':
+  '@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)':
     dependencies:
       '@blazetrails/actionpack': file:vendor/blazetrails-actionpack-0.1.0.tgz(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))
       '@blazetrails/activesupport': file:vendor/blazetrails-activesupport-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)
       '@blazetrails/rake': file:vendor/blazetrails-rake-0.1.0.tgz
       '@blazetrails/ruby-compat': file:vendor/blazetrails-ruby-compat-0.1.0.tgz
-      '@blazetrails/trailties': file:vendor/blazetrails-trailties-0.1.0.tgz(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
-      '@blazetrails/vite-assets': file:vendor/blazetrails-vite-assets-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))
+      '@blazetrails/trailties': file:vendor/blazetrails-trailties-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+      '@blazetrails/vite-assets': file:vendor/blazetrails-vite-assets-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(pg@8.23.1)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))
     transitivePeerDependencies:
       - '@blazetrails/actioncable'
       - '@blazetrails/actionmailbox'
@@ -1887,35 +1896,13 @@ snapshots:
 
   check-error@2.1.3: {}
 
-  dayjs@1.11.23: {}
-
   debug@4.4.3:
     dependencies:
       ms: 2.1.3
 
   deep-eql@5.0.2: {}
 
-  deepmerge@4.3.1: {}
-
   detect-europe-js@0.1.2: {}
-
-  dom-serializer@3.1.1:
-    dependencies:
-      domelementtype: 3.0.0
-      domhandler: 6.0.1
-      entities: 8.1.0
-
-  domelementtype@3.0.0: {}
-
-  domhandler@6.0.1:
-    dependencies:
-      domelementtype: 3.0.0
-
-  domutils@4.0.2:
-    dependencies:
-      dom-serializer: 3.1.1
-      domelementtype: 3.0.0
-      domhandler: 6.0.1
 
   entities@8.1.0: {}
 
@@ -1950,8 +1937,6 @@ snapshots:
       '@esbuild/win32-ia32': 0.28.2
       '@esbuild/win32-x64': 0.28.2
 
-  escape-string-regexp@4.0.0: {}
-
   estree-walker@3.0.3:
     dependencies:
       '@types/estree': 1.0.9
@@ -1971,26 +1956,13 @@ snapshots:
       '@types/whatwg-mimetype': 3.0.2
       whatwg-mimetype: 3.0.0
 
-  htmlparser2@12.0.0:
-    dependencies:
-      domelementtype: 3.0.0
-      domhandler: 6.0.1
-      domutils: 4.0.2
-      entities: 8.1.0
-
   http-parser-js@0.5.10: {}
-
-  is-plain-object@5.1.0: {}
 
   is-standalone-pwa@0.1.1: {}
 
   js-tokens@9.0.1: {}
 
   jsbi@4.3.2: {}
-
-  launder@1.7.2:
-    dependencies:
-      dayjs: 1.11.23
 
   libxml2-wasm@0.7.1: {}
 
@@ -2009,8 +1981,6 @@ snapshots:
   nodemailer@10.3.1: {}
 
   obug@2.2.1: {}
-
-  parse-srcset@1.0.2: {}
 
   parse5@8.0.1:
     dependencies:
@@ -2065,12 +2035,6 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postcss@8.5.28:
-    dependencies:
-      nanoid: 3.3.18
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
-
   postgres-array@2.0.0: {}
 
   postgres-bytea@1.0.1: {}
@@ -2114,16 +2078,6 @@ snapshots:
       fsevents: 2.3.3
 
   safe-buffer@5.2.1: {}
-
-  sanitize-html@2.18.0:
-    dependencies:
-      deepmerge: 4.3.1
-      escape-string-regexp: 4.0.0
-      htmlparser2: 12.0.0
-      is-plain-object: 5.1.0
-      launder: 1.7.2
-      parse-srcset: 1.0.2
-      postcss: 8.5.28
 
   siginfo@2.0.0: {}
 

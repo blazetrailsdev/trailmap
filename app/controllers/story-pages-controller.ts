@@ -299,7 +299,7 @@ export class StoryPagesController extends ApplicationController {
       if (!(error instanceof VerbExit)) throw error;
       return this._renderShow(id, error.message, error.code === 1 ? 422 : 409);
     }
-    this.redirectTo(this.storyPath(id), { status: 303 });
+    await this.redirectTo(this.storyPath(id), { status: 303 });
   }
 
   private async _renderShow(id: string, refusal: string | null, code: number): Promise<void> {
