@@ -1,5 +1,3 @@
-import { describe as describedClass } from "@blazetrails/activesupport/testing/autorun";
-
 /**
  * Rails' `self.use_transactional_tests = false`, on a test case class.
  *
@@ -44,6 +42,9 @@ export function withoutFixtures(testCase: object): void {
  * as the live `tasks.db` the gate job ingests: loading them there would
  * replace its `rfcs` rows with the fixtures' for every test in the block.
  */
-export function withoutFixturesIn(suite: Parameters<typeof describedClass>[0]): void {
+export async function withoutFixturesIn(suite: { name: string }): Promise<void> {
+  // Imported here, not at the top: the gate scripts load this module through
+  // controller-test-case.ts outside vitest, where autorun cannot load.
+  const { describe: describedClass } = await import("@blazetrails/activesupport/testing/autorun");
   withoutFixtures(describedClass(suite));
 }
