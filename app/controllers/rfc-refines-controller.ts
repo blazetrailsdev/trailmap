@@ -1,4 +1,6 @@
+import { include } from "@blazetrails/activesupport";
 import { ApiController } from "./api-controller.ts";
+import { IngestToken } from "./concerns/ingest-token.ts";
 import { presentParam } from "./concerns/api-params.ts";
 import { Rfc } from "../models/rfc.ts";
 import { RfcRefine } from "../models/rfc-refine.ts";
@@ -10,11 +12,16 @@ import { RfcRefine } from "../models/rfc-refine.ts";
  * and kept it in `refines.json`; here it is a row the RFC page's Refinements
  * tab reads.
  *
- * Loopback only, like the rest of the API. An unknown RFC is a 404, a kind
+ * Loopback only, like the rest of the API, and it needs the ingest bearer
+ * token (IngestToken). An unknown RFC is a 404, a kind
  * other than `rfc-refine` a 400, and an outcome outside the three, or a
  * summary that is not a string, a 422.
  */
 export class RfcRefinesController extends ApiController {
+  static {
+    include(this, IngestToken);
+  }
+
   async create(): Promise<void> {
     const kind = presentParam(this.params, "kind") ?? "rfc-refine";
     if (kind !== "rfc-refine") {

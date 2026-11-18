@@ -62,6 +62,17 @@ dokku config:set --no-restart trailmap NODE_ENV=production \
 # invalidates signed cookies.
 dokku config:set --no-restart trailmap SECRET_KEY_BASE="$(openssl rand -hex 64)"
 
+# The ingest bearer token. `POST /rfc-refines` (and any later ingest create
+# endpoint, through the IngestToken concern) answers 401 to a request whose
+# `Authorization: Bearer <t>` is not this value, and refuses EVERY request
+# while it is unset: the endpoints fail closed, and boot logs a warning. The
+# writer on the box, the tasks repo's `scripts/rfc-refine-done.sh`, reads the
+# same value from `~/.config/trailmap/ingest-token`, mode 0600.
+TOKEN="$(openssl rand -hex 32)"
+dokku config:set --no-restart trailmap TRAILMAP_INGEST_TOKEN="$TOKEN"
+install -d -m 0700 ~/.config/trailmap
+( umask 077; printf '%s' "$TOKEN" > ~/.config/trailmap/ingest-token )
+
 # The fleet page's data. trailmap relays ringo's event stream and forwards the
 # page's controls, so the trailmap CONTAINER has to reach ringo's. They share a
 # docker network for that, on which each is addressable by name whatever its

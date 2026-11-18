@@ -1,8 +1,10 @@
 # `POST /rfc-refines` — a refine agent's report (kind=rfc-refine): the RFC
 # id, its outcome and the summary markdown, stored for the RFC page's
 # Refinements tab. Unknown RFC 404, another kind 400, a bad outcome or a
-# summary that is not a string 422.
+# summary that is not a string 422. Needs the ingest bearer token (IngestToken).
 class RfcRefinesController < ApiController
+  include IngestToken
+
   def create
     kind = param(:kind) || "rfc-refine"
     return render json: { error: %(unsupported kind "#{kind}") }, status: :bad_request unless kind == "rfc-refine"
