@@ -15,7 +15,8 @@
  * A descendant or child rule (`.card .btn`) lays out its LAST class's box in that context, so that class
  * counts as a box class. A compound box worn beside another box class is a
  * collision too: `.a.b` and `.c` on one element are two boxes. A type, id, attribute or pseudo-class in the compound
- * (`button.a`, `.a:hover`) still makes its one class a box class.
+ * (`button.a`, `.a:hover`) still makes its one class a box class. A rule on
+ * `::before` or `::after` lays out the generated box, so it makes none.
  */
 export const STYLESHEET = "app/assets/stylesheets/application.css";
 
@@ -40,6 +41,8 @@ export function boxRules(css: string): BoxRules {
     for (const selector of selectors!.split(",")) {
       // The compound the rule styles: the last one, after any combinator.
       const last = selector.trim().split(/\s*[\s>+~]\s*/).pop() ?? "";
+      // `::before` / `::after` lay out the generated box, not the element's.
+      if (/::(?:before|after)\s*$/.test(last)) continue;
       // Pseudo-classes, attribute tests and a type (`button.a`) narrow which
       // elements the rule reaches, not which class's box it lays out.
       const compound = last.replace(/::?[\w-]+(\([^)]*\))?/g, "").replace(/\[[^\]]*\]/g, "").replace(/^[\w-]+|#[\w-]+/g, "");
