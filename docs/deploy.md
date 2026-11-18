@@ -748,7 +748,7 @@ it.
 ## Preview apps
 
 A PR labelled `preview` gets its own dokku app, `trailmap-pr-<N>`, at
-`https://pr-<N>.trailmap.deanoftech.com`, built from the PR's head and
+`https://trailmap-pr-<N>.deanoftech.com`, built from the PR's head and
 serving **copies of production's data**, the hub included. It exists so a
 reviewer can use the pages a PR changes without running it, so a PR's
 screenshots can be shot against it, and so a PR's migrations run against real
@@ -769,8 +769,8 @@ the thing under review:
 
 | Data | In a preview |
 | --- | --- |
-| Hub (Postgres) | `trailmap-pr-<N>-hub`, a dokku postgres service re-cloned from `trailmap-hub` (`postgres:export \| postgres:import`) on **every** deploy and linked as `HUB_DATABASE` |
-| `tasks.db`, `stats.db`, `stats-sync.db` | `sqlite3 .backup` copies taken at each deploy into `~/.trailmap-previews/pr-<N>/` |
+| Hub (Postgres) | `trailmap-pr-<N>-hub`, a dokku postgres service cloned from `trailmap-hub` (`postgres:export \| postgres:import`) on the first deploy and whenever the PR's migrations change, and linked as `HUB_DATABASE` |
+| `tasks.db`, `stats.db`, `stats-sync.db` | `sqlite3 .backup` copies, taken when the hub is cloned, into `~/.trailmap-previews/pr-<N>/` |
 | Tasks checkout, audits | the production paths, mounted `:ro` |
 | `settings` | emptied in the clone after import. It is where an operator points trailmap at something outside itself (today `ringo_base`, production's fleet), and every outbound call the application makes resolves through it. It is emptied again after the release task, because a PR's migration may seed a row, and then checked; a preview still holding one is stopped. With no row and no `RINGO_BASE`, the fleet relay, deploys and sessions pages have nothing to call |
 | Mail, `GH_TOKEN` | not configured |
@@ -824,7 +824,10 @@ Four things now stop that, each on its own:
 
 ### One-time setup
 
-A wildcard DNS record, `*.trailmap.deanoftech.com`, pointing at the box. Each
-preview requests its own Let's Encrypt certificate (HTTP-01) once its name
-resolves. Nothing else is needed: the postgres plugin creates, links and
-destroys each preview's hub service.
+None. The box's dokku `dns` plugin (Route53, zone `deanoftech.com`) creates
+`<app>.deanoftech.com` when an app is created, as it does for every app here,
+so a preview's name resolves without a wildcard record. Once it does, the
+preview gets its own Let's Encrypt certificate (HTTP-01). `down` deletes that
+one record by name: the plugin only queues a destroyed app's record, and
+`dns:sync:deletions --force` would also delete every other queued record. The
+postgres plugin creates, links and destroys each preview's hub service.

@@ -29,7 +29,6 @@ set -euo pipefail
 # is told apart from production by that name alone.
 PROD_APP=trailmap
 PREVIEW_ROOT="${PREVIEW_ROOT:-$HOME/.trailmap-previews}"
-DOMAIN_SUFFIX="${PREVIEW_DOMAIN_SUFFIX:-trailmap.deanoftech.com}"
 DOKKU_HOST="${DOKKU_HOST:-dokku@localhost}"
 PROD_HUB="${TRAILMAP_HUB:-trailmap-hub}"
 
@@ -46,6 +45,10 @@ data="$PREVIEW_ROOT/pr-$pr"
 # which quotes: refuse what would need quoting rather than escape it.
 [[ "$data" =~ ^[A-Za-z0-9_./-]+$ ]] || die "PREVIEW_ROOT must be a plain path, got '$PREVIEW_ROOT'"
 hub="$app-hub"
+# The box's house pattern, <app>.<global vhost>: the dokku dns plugin creates
+# that Route53 record itself when the app is created, so a preview needs no
+# wildcard record and no DNS call of its own to get one.
+domain="$app.deanoftech.com"
 
 prodConfig() { dokku config:get "$PROD_APP" "$1"; }
 
@@ -173,7 +176,10 @@ up() {
   if ! dokku apps:exists "$app" 2>/dev/null; then
     echo "==> creating $app"
     dokku apps:create "$app"
-    dokku domains:set "$app" "pr-$pr.$DOMAIN_SUFFIX"
+    # Set explicitly so the name never depends on the global vhost, and so the
+    # dns plugin's domain-add trigger drops any deletion still queued for this
+    # name by an earlier `down` of the same PR.
+    dokku domains:set "$app" "$domain"
     dokku sso:protect "$app"
     dokku ps:set "$app" restart-policy no
     dokku config:set --no-restart "$app" SECRET_KEY_BASE="$(openssl rand -hex 64)"
@@ -240,7 +246,7 @@ up() {
   fi
 
   if ! dokku letsencrypt:active "$app" >/dev/null 2>&1; then
-    dokku letsencrypt:enable "$app" || echo "==> WARNING: no TLS certificate for $app; is pr-$pr.$DOMAIN_SUFFIX in DNS?"
+    dokku letsencrypt:enable "$app" || echo "==> WARNING: no TLS certificate for $app; does $domain resolve?"
   fi
   # Re-pinned: a certificate adds https:443, and nothing the plugin does may
   # leave any other mapping behind.
@@ -255,12 +261,18 @@ up() {
   [ "$rev" = "$sha" ] || die "$app reports GIT_REV $rev, not $sha"
 
   echo "$key" >"$data/migrations.key"
-  echo "==> preview: https://pr-$pr.$DOMAIN_SUFFIX ($app at $sha)"
+  echo "==> preview: https://$domain ($app at $sha)"
 }
 
 down() {
   if dokku apps:exists "$app" 2>/dev/null; then
     dokku apps:destroy "$app" --force
+  fi
+  # The dns plugin only QUEUES a destroyed app's record for deletion, and
+  # `dns:sync:deletions --force` would also delete every other app's queued
+  # record. Delete this one record by name instead.
+  if dokku dns:records:get "$domain" A >/dev/null 2>&1; then
+    dokku dns:records:delete "$domain" A --force
   fi
   if dokku postgres:exists "$hub" 2>/dev/null; then
     dokku postgres:destroy "$hub" --force
