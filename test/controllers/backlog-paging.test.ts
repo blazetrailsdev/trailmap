@@ -68,8 +68,8 @@ describe("StoryPagesController#index, paged", () => {
   it("keeps every tab's count a count of the whole tab", async () => {
     const body = await index({ filter: "ready", page: "3" });
 
-    expect(body).toContain(`>${READY} Ready</a>`);
-    expect(body).toContain(">1 Draft</a>");
+    expect(body).toContain(`>Ready <span class="Counter">${READY}</span></a>`);
+    expect(body).toContain('>Draft <span class="Counter">1</span></a>');
   });
 
   it("shows the last page for a page past the end, and the first for nonsense", async () => {

@@ -1,6 +1,6 @@
 <%= render({ partial: "shared/repo-header", locals: { repo: repo, owner: owner, nwo: nwo, tabs: tabs } }) %>
 
-<%= render({ partial: "shared/filter-tabs", locals: { tabs: [
+<%= render({ partial: "shared/underline-nav", locals: { tabs: [
   { href: repoIssuesPath(owner.login, repo.name, { state: "open" }), label: "Open", count: tabCounts.open, active: state === "open" },
   { href: repoIssuesPath(owner.login, repo.name, { state: "closed" }), label: "Closed", count: tabCounts.closed, active: state === "closed" },
 ] } }) %>

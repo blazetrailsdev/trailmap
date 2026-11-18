@@ -170,8 +170,8 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
 
   it("counts open and closed issues as GitHub does, over the whole tab", async () => {
     const open = await get(RepoIssuesController, "index", TRAILS);
-    expect(open.body).toContain("1 Open");
-    expect(open.body).toContain("1 Closed");
+    expect(open.body).toContain('Open <span class="Counter">1</span>');
+    expect(open.body).toContain('Closed <span class="Counter">1</span>');
 
     const closed = await get(RepoIssuesController, "index", { ...TRAILS, state: "closed" });
     expect(closed.body).toContain("A shipped story");
@@ -195,7 +195,7 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
       const first = await get(RepoIssuesController, "index", TRAILS);
       // The count is the tab's, not the page's: one pre-existing open story
       // plus the bulk.
-      expect(first.body).toContain(`${extra + 1} Open`);
+      expect(first.body).toContain(`Open <span class="Counter">${extra + 1}</span>`);
       expect(first.body).toContain("Bulk story 0");
       expect(first.body).not.toContain("Bulk story 104");
       expect(first.body).toContain("page 1 of 2");

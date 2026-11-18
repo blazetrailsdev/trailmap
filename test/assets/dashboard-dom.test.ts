@@ -167,13 +167,14 @@ describe("the spawn dialog", () => {
   it("spawns on ⌘↵ the way the loop does, closes, and writes its report beside the page's search", async () => {
     task().value = " fix the build ";
     key({ key: "Enter", metaKey: true });
-    await settle(50);
 
+    // The report is the last thing the spawn writes; wait for it rather than
+    // for a fixed turn, which a loaded machine overruns.
+    await vi.waitFor(() => expect(byId("paletteDone").textContent).toContain("spawned in %5"), { timeout: 5000 });
     expect(posts.at(-1)).toEqual({ url: "/fleet/control/spawnloop/dashboard-spawn", body: { repoDir: "/srv/trails", message: "fix the build" } });
     expect(dialog().open).toBe(false);
     expect(task().value).toBe("");
     expect((byId("spawnName") as HTMLInputElement).placeholder).toBe("task");
-    expect(byId("paletteDone").textContent).toContain("spawned in %5");
   });
 
   it("carries the palette's text into the dialog from its spawn action", () => {

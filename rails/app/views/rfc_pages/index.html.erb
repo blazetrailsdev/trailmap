@@ -5,16 +5,12 @@
 
 <div class="list-controls">
   <%= render "shared/underline_nav", tabs: @tabs %>
-  <form class="sort-menu" method="get" action="<%= rfcs_path %>">
-    <input type="hidden" name="status" value="<%= @filter %>">
-    <label for="rfc-sort" class="muted">Sort</label>
-    <select id="rfc-sort" name="sort" class="ctl" data-sort-menu>
-      <% @sorts.each do |option| %>
-        <option value="<%= option.key %>" data-href="<%= option.href %>" title="<%= option.title %>"<% if option.active %> selected<% end %>><%= option.label %></option>
-      <% end %>
-    </select>
+  <%= form_with url: rfcs_path, method: :get, class: "sort-menu" do %>
+    <%= hidden_field_tag :status, @filter, id: nil %>
+    <%= label_tag :sort, "Sort", for: "rfc-sort", class: "muted" %>
+    <%= select_tag :sort, options_for_select(@sorts.map { |o| [o.label, o.key, { data: { href: o.href }, title: o.title }] }, @sort), id: "rfc-sort", class: "ctl", data: { sort_menu: true } %>
     <noscript><button type="submit" class="ctl">Sort</button></noscript>
-  </form>
+  <% end %>
 </div>
 
 <div class="box rfc-list">

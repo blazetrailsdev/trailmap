@@ -94,6 +94,13 @@ export class RfcPagesController extends ApplicationController {
    * other.
    */
   async index(): Promise<void> {
+    // The default sort stays off the URL, as rfc-sort.js keeps it off with
+    // JavaScript: a no-JS submit of the sort menu lands on the bare address.
+    if (this.params.get("sort") === "priority") {
+      const status = this.params.get("status");
+      this.redirectTo(this.rfcsPath(status ? { status: String(status) } : {}));
+      return;
+    }
     // Two columns, not the records: every figure on this page is a count of
     // statuses, and building 11,000 `Story` objects to read one field from
     // each was the whole second this page took.

@@ -16,6 +16,7 @@
     "smoke": "bash scripts/smoke-boot.sh",
     "trails:track": "scripts/track-trails.sh",
     "gate:pages": "tsx scripts/page-equivalence.ts",
+    "ringo:stub": "tsx scripts/ringo-stub.ts",
     "gate:lists": "tsx scripts/gate-ringo-lists.ts",
     "gate:parity": "tsx scripts/gate-ringo-parity.ts",
     "parity:sync": "tsx scripts/parity-sync.ts",

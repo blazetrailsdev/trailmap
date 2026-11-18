@@ -56,3 +56,8 @@ for (const button of relayButtons) {
     for (const b of relayButtons) b.disabled = false;
   });
 }
+
+// The priority select submits on change, as ringo's does; <noscript> keeps a Set button.
+for (const select of document.querySelectorAll("select[data-autosubmit]")) {
+  select.addEventListener("change", () => select.form?.requestSubmit());
+}

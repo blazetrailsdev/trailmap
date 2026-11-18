@@ -1,0 +1,15 @@
+[
+  {
+    "owner": "blazetrailsdev", "repo": "trails", "pr": 9001, "pane": "%42", "branch": "fix-arel-quoting",
+    "cwd": "/w/fix-arel", "opened_at": "2026-10-27T09:00:00Z", "closed_at": "0001-01-01T00:00:00Z",
+    "pane_log": "panes/42.log", "pane_log_bytes": 4404019,
+    "transcripts": [
+      { "session_id": "aaaaaaaa-1111-2222", "path": "t/a.jsonl", "bytes": 2048, "first_at": "2026-10-27T09:00:00Z", "last_at": "2026-10-27T10:00:00Z", "role": "agent", "cwd": "/w/fix-arel", "user_turns": 7, "cost": 1.5 },
+      { "session_id": "bbbbbbbb", "path": "t/a.jsonl", "bytes": 512, "first_at": "2026-10-27T10:00:00Z", "last_at": "2026-10-27T10:05:00Z", "role": "reviewer", "cwd": "/r/pr-9001", "cost": 0.25 }
+    ]
+  },
+  {
+    "owner": "blazetrailsdev", "repo": "trailmap", "pr": 80, "pane": "%7", "opened_at": "2026-10-20T08:00:00-04:00",
+    "closed_at": "2026-10-20T11:05:00-04:00", "reason": "merge"
+  }
+]

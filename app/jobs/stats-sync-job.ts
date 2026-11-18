@@ -99,9 +99,10 @@ export class StatsSyncJob extends ApplicationJob {
 
   static {
     // A sync (~13 min) can outlive its retries' waits; a second one would race the first.
-    // solid_queue v1.1.3 has no `on_conflict: :discard`, so an overlapping run waits
-    // for the lock, which expires after 2 hours if a run dies holding it.
-    this.limitsConcurrency({ key: "stats_sync", duration: Duration.hours(2) });
+    // An hourly run that overlaps a running one is dropped, not queued behind it: the
+    // next hour's run syncs the same data. The lock expires after 2 hours if a run
+    // dies holding it.
+    this.limitsConcurrency({ key: "stats_sync", duration: Duration.hours(2), onConflict: "discard" });
     this.retryOn(RateLimitedSync, { wait: Duration.seconds(120), attempts: RateLimitedSync.attempts });
     this.retryOn(TransientGhSync, { wait: Duration.seconds(300), attempts: TransientGhSync.attempts });
   }

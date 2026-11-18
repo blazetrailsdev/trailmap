@@ -116,13 +116,11 @@
       </div>
       <div class="side-section rfc-priority">
         <div class="side-head">Priority</div>
+        <% const priorities = [1, 2, 3, 4, 5, 6, 7, 8, 9]; if (rfc.priority !== null && !priorities.includes(rfc.priority)) priorities.unshift(rfc.priority); %>
         <%= formWith({ url: rfcPriorityPath(rfc.id), method: "post", class: "rfc-priority-form" }, (f) => { %>
-          <%= f.numberField("priority", { value: rfc.priority ?? "", min: 0, step: 1, class: "ctl num", placeholder: "Unset", "aria-label": "RFC priority (lower = sooner)" }) %>
-          <%= f.submit("Set", { class: "btn btn-sm" }) %>
+          <%= f.select("priority", optionsForSelect([["-", ""], ...priorities.map((n) => [String(n), n])], rfc.priority === null ? "" : String(rfc.priority)), {}, { class: "ctl", "data-autosubmit": "", "aria-label": "RFC priority (lower = sooner)" }) %>
+          <noscript><button type="submit" class="btn btn-sm">Set</button></noscript>
         <% }) %>
-        <% if (rfc.priority !== null) { %>
-          <%= buttonTo("Clear", rfcPriorityPath(rfc.id), { params: { priority: "clear" }, class: "btn btn-sm" }) %>
-        <% } %>
         <div class="field-note">Lower is sooner. Stories without their own priority inherit it.</div>
       </div>
       <div class="side-section">

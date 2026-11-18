@@ -60,10 +60,11 @@ Set both up with:
 dokku postgres:create trailmap-hub-dev                    # once, on the box
 
 # `--dsn` names the service by its DOCKER hostname, which only resolves on the
-# network the service shares with a container — not from a host checkout. Swap
-# in the address the host can reach.
-HUB_DEV_URL="$(dokku postgres:info trailmap-hub-dev --dsn \
-  | sed "s|@dokku-postgres-trailmap-hub-dev:|@$(dokku postgres:info trailmap-hub-dev --internal-ip):|")"
+# network the service shares with a container — not from a host checkout.
+# scripts/dev-hub-url.sh prints the same URL with the container's address,
+# which the host can reach, and `--test` a `trailmap_hub_test` database beside
+# it (created if missing) for the suite.
+HUB_DEV_URL="$(scripts/dev-hub-url.sh)"
 
 HUB_DATABASE_URL="$HUB_DEV_URL" pnpm db:migrate
 HUB_DATABASE_URL="$HUB_DEV_URL" pnpm db:seed
@@ -83,7 +84,15 @@ neither: `pnpm` is not in the runtime image and the hub is migrated by a dokku
 
 **A Postgres database for the hub.** The suite's hub tests skip, loudly, without
 `HUB_TEST_DATABASE_URL`; a booting process refuses to start without
-`HUB_DATABASE_URL`.
+`HUB_DATABASE_URL`. On the box, both come from `scripts/dev-hub-url.sh`:
+
+```sh
+export HUB_TEST_DATABASE_URL="$(scripts/dev-hub-url.sh --test)"
+HUB_DATABASE_URL="$HUB_TEST_DATABASE_URL" NODE_ENV=test pnpm db:migrate
+```
+
+The suite never reads `HUB_DATABASE_URL` or the other serving variables
+below (`test/support/test-env.ts`), so one shell can serve and test.
 
 ## Framework packages are vendored, not installed
 
@@ -151,7 +160,8 @@ written in Ruby's file spelling rather than TypeScript's, and an
 pnpm install
 export TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db
 export TASKS_DIR=~/github/blazetrailsdev/tasks
-export HUB_DATABASE_URL="$(dokku postgres:info trailmap-hub-dev --dsn)"
+export HUB_DATABASE_URL="$(scripts/dev-hub-url.sh)"
+pnpm db:migrate   # the dev hub; nothing else migrates it
 pnpm views
 bin/trails server
 ```
@@ -161,6 +171,22 @@ without it rather than serving pages that 500 on their first row. The view
 build boots the application's initializers too, so `pnpm views` needs them as
 well — which is why it is its own step and not a `prepare` hook on
 `pnpm install`.
+
+### Screenshots without a stats database or a ringo
+
+Two pages draw nothing on a bare box. Give them local data before shooting:
+
+- **`/graphs/parity`**: `pnpm db:seed` in development writes three weeks of
+  `parity_days` rows into an empty table (`rails/bin/rails db:seed` writes the
+  same rows), so the charts, filter and legend draw without `STATS_DB`.
+- **`/sessions`, a PR's timeline, a transcript**: `pnpm ringo:stub` serves
+  `test/fixtures/ringo-archive` as a ringo origin on `127.0.0.1:8399`. Boot
+  either app with `RINGO_BASE=http://127.0.0.1:8399`, then shoot `/sessions`,
+  `/sessions/blazetrailsdev/trails/9001` and
+  `/sessions/transcript?p=t/a.jsonl`.
+
+`pnpm db:seed` currently never exits after it prints; interrupt it once it
+reports the rows.
 
 ## Deployment
 

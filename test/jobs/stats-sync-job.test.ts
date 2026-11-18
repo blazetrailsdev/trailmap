@@ -253,6 +253,11 @@ describe("StatsSyncJob", () => {
     expect(klass.concurrencyDuration.toI()).toBe(2 * 3600);
   });
 
+  it("discards an hourly run that overlaps a running one", () => {
+    const klass = StatsSyncJob as unknown as { concurrencyOnConflict: string };
+    expect(klass.concurrencyOnConflict).toBe("discard");
+  });
+
   it("does not report the gap between two hourly runs", async () => {
     getFs().appendFileSync(log, `=== ${new Date(Date.now() - 3_600_000).toISOString()} ===\n[cron-wrapper] ok\n`);
     await new StatsSyncJob().perform();

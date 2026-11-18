@@ -5,7 +5,7 @@
   </div>
 </div>
 
-<%= render({ partial: "shared/filter-tabs", locals: { tabs: tabs } }) %>
+<%= render({ partial: "shared/underline-nav", locals: { tabs: tabs } }) %>
 
 <%= render({ partial: "shared/pager", locals: { pager: pager } }) %>
 

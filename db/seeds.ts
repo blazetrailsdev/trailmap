@@ -5,6 +5,7 @@ import { RepositoryCollaborator } from "../app/models/repository-collaborator.ts
 import { CONTENT_REPO } from "../app/models/concerns/repo-scope.ts";
 import { env } from "@blazetrails/ruby-compat";
 import { hasHubDatabase } from "../config/database.ts";
+import { ParityDay } from "../app/models/parity-day.ts";
 
 /**
  * The `hub` database's seeds: the owner and the repositories the fleet works
@@ -103,4 +104,28 @@ if (!hasHubDatabase()) {
     `seeded ${owner.login}: ${known.length} repositories, ` +
       `${imported.length} from FLEET_REPO_PATHS`,
   );
+
+  // A few weeks of `parity_days`, in development only and only into an empty
+  // table, so `/graphs/parity` draws its charts on a box with no STATS_DB.
+  // `rails/db/seeds.rb` writes the same rows. Story:
+  // seed-parity-days-so-the-parity-chart-can-be-shot.
+  if ((env.NODE_ENV ?? "development") === "development" && (await ParityDay.count()) === 0) {
+    const packages = ["activerecord", "actionpack", "activesupport"];
+    const rows: Record<string, unknown>[] = [];
+    const now = new Date();
+    for (const [m, metric] of ["api", "test"].entries()) {
+      for (const [p, pkg] of packages.entries()) {
+        for (let d = 0; d < 21; d++) {
+          const day = new Date(now.getTime() - (20 - d) * 86_400_000).toISOString().slice(0, 10);
+          const total = 1000 + 200 * p;
+          const matched = Math.round(total * (0.55 + 0.1 * p + 0.012 * d - 0.05 * m));
+          const gaps = metric === "api" ? { misplaced: 10 + p, missing: total - matched - 10 - p } : null;
+          rows.push({ metric, package: pkg, day, pr_number: 9000 + d, matched, total,
+            percent: Math.round((matched / total) * 10000) / 100, gaps, created_at: now, updated_at: now });
+        }
+      }
+    }
+    await ParityDay.insertAll(rows);
+    console.log(`seeded ${rows.length} parity_days rows`);
+  }
 }

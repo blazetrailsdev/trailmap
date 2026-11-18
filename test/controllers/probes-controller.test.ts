@@ -328,6 +328,12 @@ describe("GET /up/ready", () => {
     expect(status).toBe(503);
     expect(body.failing).toEqual(["checkout"]);
     expect(body.checks.checkout.error).toMatch(/^left .*\.up-ready-\w+ behind: EBUSY/);
+
+    // The leftover is real; remove it, or a later case's listing finds it.
+    vi.restoreAllMocks();
+    for (const name of getFs().readdirSync(tasksDir)) {
+      if (name.startsWith(".up-ready-")) getFs().rmdirSync(`${tasksDir}/${name}`);
+    }
   });
 
   it("names the check that raised rather than answering a bare 500", async () => {

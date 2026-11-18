@@ -1,0 +1,3 @@
+fleet pane %42
+$ pnpm vitest run packages/arel
+ Tests  1410 passed

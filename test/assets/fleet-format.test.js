@@ -1276,6 +1276,19 @@ describe("the usage helpers", () => {
     // A scraper with nothing yet sends no percents: zero, not "NaN%".
     expect(claudeUsage({}, noon)).not.toMatch(/NaN|undefined/);
   });
+
+  it("reads a week whose reset has passed as stale, not 100% elapsed", () => {
+    const passed = noon - 2 * HOUR;
+    for (const html of [
+      claudeUsage({ weeklyPercent: 70, weeklyResetsAt: passed }, noon),
+      codexUsage({ sessionPercent: -1, weeklyPercent: 40, weeklyResetsAt: passed }, noon),
+    ]) {
+      expect(html).toContain("reset passed; waiting for a new reading");
+      expect(html).not.toContain("of week elapsed");
+      expect(html).not.toContain("now-mark");
+      expect(html).not.toContain("day-tick");
+    }
+  });
 });
 
 describe("the usage-scraper pill", () => {

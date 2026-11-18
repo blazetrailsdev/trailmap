@@ -428,12 +428,9 @@ async function trailmapPages<R extends Row>(
     painted.set(tab, {
       rows: [body, ...later].flatMap((html) => extract(html)).slice(dropOne ? 1 : 0),
       // The tab row carries every tab's count on every tab, exactly as ringo's
-      // does — `<a class="tab..." href="...?filter=ready">12 Ready</a>` — or,
-      // on trailmap's /rfcs, an UnderlineNav item whose count is a Counter:
+      // does, as an UnderlineNav item whose count is a Counter:
       // `<a class="underline-nav-item..." href="...status=draft">draft <span class="Counter">24</span></a>`.
       counts: new Map([
-        ...[...body.matchAll(new RegExp(`class="tab[^"]*" href="[^"]*${param}=([a-z-]+)">(\\d+) `, "g"))]
-          .map((m): [string, number] => [m[1]!, Number.parseInt(m[2]!, 10)]),
         ...[...body.matchAll(new RegExp(`class="underline-nav-item[^"]*" href="[^"]*${param}=([a-z-]+)[^"]*"[^>]*>[^<]*<span class="Counter">(\\d+)</span>`, "g"))]
           .map((m): [string, number] => [m[1]!, Number.parseInt(m[2]!, 10)]),
       ]),
