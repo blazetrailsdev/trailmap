@@ -29,6 +29,10 @@ TestCase.fixtures(":all");
 // the worker runs, so the later files still point the configurations at the
 // worker's copy, but skip the truncate: every row a test writes is inside its fixture
 // transaction, so the next file finds the database as the fixtures left it.
+//
+// The latch below is trailmap's, and temporary: Rails runs `parallelize_setup`
+// once per forked worker, and test-help should do the same for every vitest
+// app. Story: test-databases-once-per-vitest-worker, which deletes it.
 const { TestDatabases } = await import("@blazetrails/activerecord/test-databases");
 const worker = Number(env.VITEST_POOL_ID ?? 0);
 const prepared = `TRAILMAP_TEST_DATABASE_${worker}_PREPARED`;

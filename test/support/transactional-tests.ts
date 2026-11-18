@@ -23,7 +23,8 @@ export function withoutTransactionalTests(testCase: object): void {
  * - `controllerTestCase`'s nested case runs INSIDE a test that already holds
  *   the fixtures, and reloading them would wipe the rows that test created.
  *
- * The same cast as above, for the same missing types.
+ * The same cast as above, for the same missing types. Story:
+ * test-help-types-fixture-class-attributes, which deletes both casts.
  */
 export function withoutFixtures(testCase: object): void {
   const fixtured = testCase as { fixtureTableNames: string[]; fixtureSets: Record<string, string> };
