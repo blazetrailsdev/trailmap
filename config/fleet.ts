@@ -48,6 +48,12 @@ export function fleetRepos(): FleetRepo[] {
 }
 
 /**
+ * The repos the spawn dialog offers first, in this order: the ones spawned
+ * into most. Every other repo follows them by name.
+ */
+export const SPAWN_ORDER: readonly string[] = ["blazetrailsdev/trails", "blazetrailsdev/trailmap", "blazetrailsdev/tasks"];
+
+/**
  * ringo's origin does NOT live here. It is `Setting.ringoBase()`
  * (app/models/setting.ts) — a row in the `settings` table, falling back to
  * `RINGO_BASE`, normalised once.
@@ -136,7 +142,6 @@ export function isScreenHash(have: string): boolean {
  * and not before.
  */
 export const FLEET_CONTROLS: readonly string[] = [
-  "spawn",
   "merge-pr",
   "spawnloop/dismiss",
   "spawnloop/dismiss-failed",
@@ -159,6 +164,8 @@ export const FLEET_CONTROLS: readonly string[] = [
   // /rfc/<id>'s dispatches: "Spawn batch", and "Sunset" (rfc-refine, mode sunset).
   "spawnloop/rfc-batch-spawn",
   "spawnloop/rfc-refine",
+  // The dashboard's spawn dialog: the loop's start script, worktree and model.
+  "spawnloop/dashboard-spawn",
   // /story/<id>'s "Spawn worker".
   "spawnloop/story-spawn",
 ];

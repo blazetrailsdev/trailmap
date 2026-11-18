@@ -923,6 +923,23 @@ details.fold > summary::-webkit-details-marker { display: none; }
 .palette-empty { padding: 24px 16px; margin: 0; text-align: center; color: var(--ink-2); }
 .palette-pane { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; }
 .palette-foot { display: flex; flex-wrap: wrap; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-2); background: var(--surface-2); }
+
+/*
+ * The spawn dialog: the palette's shell, with a task box that grows with a
+ * long prompt (up to half the viewport, then it scrolls), the repos as a row
+ * of chips, and the spawn's options under the box.
+ */
+.spawn-dialog { width: min(720px, calc(100vw - 32px)); }
+.spawn-repos { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+.spawn-repos:empty { display: none; }
+.spawn-repo[aria-checked="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); font-weight: 600; }
+.spawn-repo kbd { margin-left: 4px; font-size: 12px; color: var(--ink-3); }
+.spawn-dialog select#repo:not([hidden]) { margin: 8px 16px 0; }
+.spawn-task { display: block; box-sizing: border-box; width: calc(100% - 32px); margin: 12px 16px 0; min-height: 96px; padding: 8px 12px; resize: none; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; line-height: 1.5; }
+.spawn-task:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.spawn-options { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 12px 16px 0; }
+.spawn-options .field { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; font-size: 12px; color: var(--ink-2); }
+.spawn-options input.ctl { width: 32ch; max-width: 100%; }
 kbd {
   display: inline-block; padding: 2px 5px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--ink);
   box-shadow: inset 0 -1px 0 var(--line); font-family: var(--font-mono); font-size: 12px; line-height: 10px; vertical-align: middle;

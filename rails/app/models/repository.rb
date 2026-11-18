@@ -56,11 +56,12 @@ class Repository < Hub
     repos.sort_by(&:name)
   end
 
-  # The rows with a checkout, merged by name over FLEET_REPO_PATHS.
+  # The rows with a checkout, merged by name over FLEET_REPO_PATHS: the
+  # repos in Fleet::SPAWN_ORDER first, in that order, then the rest by name.
   def self.spawn_choices
     by_name = fleet_repos.index_by(&:name)
     checkouts_or_none.each { |r| by_name[r.name] = r }
-    by_name.values.sort_by(&:name)
+    by_name.values.sort_by { |r| [ Fleet::SPAWN_ORDER.index(r.name) || Fleet::SPAWN_ORDER.size, r.name ] }
   end
 
   # The first hub repository by name, as owner/name, when the picker would be

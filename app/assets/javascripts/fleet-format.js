@@ -502,17 +502,22 @@ export function controlRequest(action, data, page = {}) {
     }
     case "clear-failed":
       return { path: "/spawnloop/dismiss-failed", body: null, quiet: true };
-    // The manual spawn card. Its report goes beside the repo picker
-    // (`says`), not on the button, and a spawn that landed empties the task.
+    // The spawn dialog. It posts where ringo's own dashboard does, so a manual
+    // spawn gets the loop's start script, worktree root and model; `model` and
+    // `name` are sent only when the viewer chose one, so an empty one is the
+    // loop's. Its report goes beside the dialog's button (`says`), and a spawn
+    // that landed empties the task.
     case "spawn": {
       const message = String(page.task || "").trim();
       if (!message) return null;
+      const model = String(page.model || "").trim();
+      const name = String(page.name || "").trim();
       return {
-        path: "/spawn",
-        body: { repoDir: page.repoDir || "", message },
+        path: "/spawnloop/dashboard-spawn",
+        body: { repoDir: page.repoDir || "", message, ...(model ? { model } : {}), ...(name ? { name } : {}) },
         says: "spawnStatus",
         saying: "Spawning...",
-        clears: PALETTE_INPUT,
+        clears: SPAWN_TASK,
       };
     }
     default:
@@ -548,7 +553,7 @@ export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  *   away on success, that is a dead button with nothing to say why.
  * - manual spawn comes back at once, and reports beside itself (`say`)
  *   rather than on its button; a spawn that landed clears the task box.
- * - a palette action that landed (spawn, a complete broadcast, a pane
+ * - a palette action that landed (a complete broadcast, a pane
  *   message) closes the palette (`closePalette`); a failure keeps it open
  *   with its error.
  * - the loop's settings never stay disabled: the control is still there after
@@ -571,7 +576,7 @@ export function controlOutcome(request, result, label) {
   }
   if (request.says) {
     if (!succeeded) return { disabled: false, say: "Error: " + (answered ? result.text : result.error) };
-    return { disabled: false, say: "Spawned: " + result.text, clear: request.clears, closePalette: true };
+    return { disabled: false, say: "Spawned: " + result.text, clear: request.clears, closeSpawn: true };
   }
   // A control that stays where it is: it comes back, and says nothing on itself.
   if (request.keep) {
@@ -715,8 +720,11 @@ function broadcastSent(text) {
   };
 }
 
-/** The palette's one input: a search, a broadcast's message, a spawn's task or a pane message. */
+/** The palette's one input: a search, a broadcast's message or a pane message. */
 export const PALETTE_INPUT = "paletteInput";
+
+/** The spawn dialog's task box: a prompt is often long, so it is not the palette's one line. */
+export const SPAWN_TASK = "spawnTask";
 
 /** The broadcast box's buttons, every one of which a send holds. */
 export const BROADCAST_BUTTONS = ["bcastAll", "bcastCIRed"];

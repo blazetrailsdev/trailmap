@@ -18,13 +18,17 @@ module Fleet
     "broadcast-targets" => "broadcast/targets"
   }.freeze
 
+  # The repos the spawn dialog offers first, in this order: the ones spawned
+  # into most. Every other repo follows them by name.
+  SPAWN_ORDER = %w[blazetrailsdev/trails blazetrailsdev/trailmap blazetrailsdev/tasks].freeze
+
   # ringo's controls the page may reach. An allowlist: this route forwards
   # to a process that can merge pull requests.
   CONTROLS = %w[
-    spawn merge-pr spawnloop/dismiss spawnloop/dismiss-failed spawnloop/config spawnloop/skip
+    merge-pr spawnloop/dismiss spawnloop/dismiss-failed spawnloop/config spawnloop/skip
     spawnloop/spawn-now ci-fixer/spawn reviewer/assign worker/spawn broadcast drain drain-one
     poke-stalled cancel-cleanup ask/answer reviewer/drain-codex reviewer/drain-claude pause refresh-usage
-    spawnloop/rfc-batch-spawn spawnloop/rfc-refine spawnloop/story-spawn
+    spawnloop/rfc-batch-spawn spawnloop/rfc-refine spawnloop/story-spawn spawnloop/dashboard-spawn
   ].freeze
 
   SCREEN_HASH_MAX = 128
