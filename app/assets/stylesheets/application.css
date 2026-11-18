@@ -258,11 +258,12 @@ code { font-family: var(--font-mono); font-size: 12px; }
   .nav-links a {
     padding: 10px 0;
     border-bottom: 1px solid var(--border);
-    border-left: 2px solid transparent;
   }
   .nav-links a:last-child { border-bottom: none; }
   .nav-links a { border-radius: 0; }
-  .nav-links a.active { border-bottom-color: var(--border); border-left-color: var(--tab); padding-left: 10px; box-shadow: none; }
+  .nav-links a { position: relative; }
+  .nav-links a.active { border-bottom-color: var(--border); background: var(--surface-2); padding-left: 10px; box-shadow: none; }
+  .nav-links a.active::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 4px; border-radius: 6px; background: var(--accent); }
 }
 
 .wrap { max-width: 1012px; margin: 0 auto; padding: 0 24px; }
@@ -698,9 +699,8 @@ details.card.fold > :not(summary) { margin-inline: 16px; margin-bottom: 12px; }
 .bar-fill.yellow { background: var(--yellow); }
 .bar-fill.red { background: var(--red); }
 
-/* The notice above the header (no ringo origin): GitHub's flash, danger when it blocks. */
+/* A page's notice (no ringo origin, a truncated capture): GitHub's attention flash. */
 .ci-fixer { background: var(--yellow-bg); border-color: color-mix(in srgb, var(--yellow) 40%, transparent); }
-.ci-fixer.paused { background: var(--red-bg); border-color: color-mix(in srgb, var(--red) 40%, transparent); }
 .fixer-checks { color: var(--red); }
 .fixer-phase { display: inline-block; padding: 1px 8px; border-radius: 2em; font-size: 12px; font-weight: 500; }
 .fixer-phase.red, .fixer-phase.paused { background: var(--red-bg); color: var(--red); }

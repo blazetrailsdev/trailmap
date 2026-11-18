@@ -87,8 +87,11 @@ like one.
   by 16px.
 - **Height**: a control is 32px, a small one 28px.
 - No tinted rows, no coloured row edges, no dashed lines, no gradients, no blur.
-  A notice is a flash (a tinted, bordered box: `.note`, `.ci-fixer`), never a
-  coloured left edge. `test/views/style-guide.test.ts` holds this.
+  A notice is an attention flash (a tinted, bordered box: `.note`,
+  `.ci-fixer`), never a coloured left edge. The one coloured bar is a selected
+  item in a vertical list, GitHub's ActionList: the palette's selection and the
+  phone nav's current page, a 4px `--accent` bar on `--surface-2`.
+  `test/views/style-guide.test.ts` holds this.
 
 ## Icons
 

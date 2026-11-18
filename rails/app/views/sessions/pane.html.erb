@@ -7,7 +7,7 @@
 </div>
 
 <% if @total > @max_bytes %>
-  <div class="card ci-fixer paused">Capture is <%= human_bytes(@total) %> — showing the last <%= human_bytes(@max_bytes) %>. The download link above has the whole thing.</div>
+  <div class="card ci-fixer">Capture is <%= human_bytes(@total) %> — showing the last <%= human_bytes(@max_bytes) %>. The download link above has the whole thing.</div>
 <% end %>
 
 <pre class="terminal"><%= @html.html_safe %></pre>
