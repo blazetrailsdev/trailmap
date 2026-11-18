@@ -31,6 +31,13 @@ class PagesTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "the story page links its repo#N PR, in the byline and the sidebar" do
+    get "/story/a-two"
+    assert_response :ok
+    link = '<a target="_blank" rel="noopener" href="https://github.com/blazetrailsdev/trails/pull/5">trails#5</a>'
+    assert_equal 2, response.body.scan(link).length
+  end
+
   test "the repository pages render" do
     require_hub!
     hub_repo!("trails")

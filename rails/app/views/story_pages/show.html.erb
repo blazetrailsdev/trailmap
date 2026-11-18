@@ -9,7 +9,7 @@
       <span class="id"><%= @story.id %></span>
       <%= render "shared/status_state", status: @shown_status, label: @held_label %>
       <span class="muted">
-        in <a href="<%= rfc_path(@story.rfc_id) %>"><%= rfc_label %></a><% unless @story.pr.nil? %>, PR <%= @story.pr %><% end %>
+        in <a href="<%= rfc_path(@story.rfc_id) %>"><%= rfc_label %></a><% unless @story.pr.nil? %>, PR <%= pr_link(@story.pr) %><% end %>
       </span>
     </div>
   </div>
@@ -146,7 +146,7 @@
       <% unless @story.pr.nil? %>
         <div class="side-section">
           <div class="side-head">PR</div>
-          <div class="side-value"><%= @story.pr %></div>
+          <div class="side-value"><%= pr_link(@story.pr) %></div>
         </div>
       <% end %>
     </div>
