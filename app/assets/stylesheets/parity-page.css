@@ -1,0 +1,22 @@
+/* The parity page, laid out to docs/style-guide.md.
+
+   parity.css is GENERATED from ringo and styles a whole page of its own: its
+   own tokens, body, h1, nav, buttons and cards, at sizes and radii the guide
+   does not list. It is imported into a cascade layer, so every rule the
+   shared application.css writes (all unlayered) wins over it whatever the
+   load order, and the app's tokens, light and dark, re-theme its charts.
+   What is left below is the chart chrome application.css has no rule for,
+   put on the guide's sizes and radii. */
+@import url("parity.css") layer(ringo);
+
+.seg { border-radius: 6px; }
+.seg button { font-size: 12px; font-weight: 500; }
+.seg button.on { color: var(--ink); background: var(--accent-bg); box-shadow: none; }
+.card-title { font-size: 14px; }
+.empty { font-size: 14px; }
+.err { font-size: 14px; }
+.plot table, .tablewrap table { font-size: 14px; }
+.tick, .endlab { font-size: 12px; }
+.tip { border-radius: 12px; box-shadow: 0 8px 24px rgba(31, 35, 40, 0.12); }
+.tip .tip-when { font-size: 12px; }
+.legend .key.wash { border-radius: 0; }
