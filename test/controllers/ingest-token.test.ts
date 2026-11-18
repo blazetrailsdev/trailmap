@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { env } from "@blazetrails/ruby-compat";
 import { include } from "@blazetrails/activesupport";
 import { ApiController } from "../../app/controllers/api-controller.ts";
-import { IngestToken, secureCompare } from "../../app/controllers/concerns/ingest-token.ts";
+import { IngestToken, isIngestTokenValid, secureCompare } from "../../app/controllers/concerns/ingest-token.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
 class IngestProbeController extends ApiController {
@@ -27,6 +27,22 @@ describe("secureCompare", () => {
     expect(secureCompare("abc", "abd")).toBe(false);
     expect(secureCompare("abc", "ab")).toBe(false);
     expect(secureCompare("abc", "abcd")).toBe(false);
+  });
+});
+
+describe("isIngestTokenValid", () => {
+  const request = (headers: Record<string, string>) => ({ getHeader: (key: string) => headers[key] });
+
+  it("accepts only a Bearer header carrying the expected token", () => {
+    expect(isIngestTokenValid(request({ HTTP_AUTHORIZATION: "Bearer t0k" }), "t0k")).toBe(true);
+    expect(isIngestTokenValid(request({ HTTP_AUTHORIZATION: "Bearer nope" }), "t0k")).toBe(false);
+    expect(isIngestTokenValid(request({ HTTP_AUTHORIZATION: "Basic t0k" }), "t0k")).toBe(false);
+    expect(isIngestTokenValid(request({}), "t0k")).toBe(false);
+  });
+
+  it("fails closed when no token is configured", () => {
+    expect(isIngestTokenValid(request({ HTTP_AUTHORIZATION: "Bearer " }), undefined)).toBe(false);
+    expect(isIngestTokenValid(request({ HTTP_AUTHORIZATION: "Bearer x" }), "")).toBe(false);
   });
 });
 
