@@ -116,12 +116,13 @@ if (!hasHubDatabase()) {
     for (const [m, metric] of ["api", "test"].entries()) {
       for (const [p, pkg] of packages.entries()) {
         for (let d = 0; d < 21; d++) {
+          // UTC calendar days, as the Rails seed counts them.
           const day = new Date(now.getTime() - (20 - d) * 86_400_000).toISOString().slice(0, 10);
           const total = 1000 + 200 * p;
           const matched = Math.round(total * (0.55 + 0.1 * p + 0.012 * d - 0.05 * m));
           const gaps = metric === "api" ? { misplaced: 10 + p, missing: total - matched - 10 - p } : null;
           rows.push({ metric, package: pkg, day, pr_number: 9000 + d, matched, total,
-            percent: Math.round((matched / total) * 10000) / 100, gaps, created_at: now, updated_at: now });
+            percent: Math.round((matched * 10000) / total) / 100, gaps, created_at: now, updated_at: now });
         }
       }
     }

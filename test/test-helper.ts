@@ -47,9 +47,14 @@ try {
 }
 setEnv(prepared, "1");
 
-// `Hub` connected at boot to the URL the configuration names, which is the
-// SHARED hub test database; the rows a worker writes and reads belong in its
-// own copy, the one `createAndLoadSchema` just rebuilt.
+// TEMPORARY, agreed in trailmap#171's review. Rails' `create_and_load_schema`
+// renames every configuration's database to `<db>-<n>` and reconnects, so a
+// `connects_to` class lands on its worker copy with no app code. Here `Hub`
+// does not go through the configurations: app/models/hub.ts establishes it by
+// hand from `HUB_DATABASE_URL`, so the rename never reaches it and it would
+// stay on the SHARED database. This points it at the copy
+// `createAndLoadSchema` just rebuilt, and goes when `Hub` uses `connectsTo`.
+// Story: hub-and-stats-connect-through-connects-to.
 const { hubTestUrl } = await import("./support/hub-schema.ts");
 const hubUrl = hubTestUrl();
 if (hubUrl !== null) {

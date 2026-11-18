@@ -43,7 +43,7 @@ if Rails.env.development? && ParityDay.none?
         total = 1000 + 200 * p
         matched = (total * (0.55 + 0.1 * p + 0.012 * d - 0.05 * m)).round
         gaps = metric == "api" ? { misplaced: 10 + p, missing: total - matched - 10 - p } : nil
-        { metric: metric, package: pkg, day: (now - (20 - d).days).to_date, pr_number: 9000 + d, matched: matched,
+        { metric: metric, package: pkg, day: now.utc.to_date - (20 - d), pr_number: 9000 + d, matched: matched,
           total: total, percent: (matched * 10000.0 / total).round / 100.0, gaps: gaps, created_at: now, updated_at: now }
       end
     end

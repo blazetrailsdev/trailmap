@@ -48,6 +48,10 @@ export function hubTestUrl(): string | null {
  * configured database. Reading the shared one instead let a file that never
  * takes the lock below (the dashboard reads `Repository`) see another
  * worker's rows mid-turn.
+ *
+ * The naming rule is TestDatabases' (`${database}-${i}`), re-spelled here only
+ * because `Hub` is not a `connectsTo` class yet; it goes with the workaround in
+ * test/test-helper.ts. Story: hub-and-stats-connect-through-connects-to.
  */
 export function workerDatabaseUrl(url: string, worker: number): string {
   const parsed = new URL(url);

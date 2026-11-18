@@ -254,8 +254,22 @@ describe("StatsSyncJob", () => {
   });
 
   it("discards an hourly run that overlaps a running one", () => {
-    const klass = StatsSyncJob as unknown as { concurrencyOnConflict: string };
-    expect(klass.concurrencyOnConflict).toBe("discard");
+    expect(StatsSyncJob.concurrencyOnConflict).toBe("discard");
+  });
+
+  it("drops the overlapping run rather than blocking it behind the running one", async () => {
+    // solid_queue's own conflict handler, on a job row of this class: `discard`
+    // destroys the row, `block` would park it as a blocked execution.
+    const { Job } = await import("@blazetrails/solid-queue");
+    const job = Object.create(Job.prototype) as InstanceType<typeof Job>;
+    vi.spyOn(job, "jobClass").mockReturnValue(StatsSyncJob);
+    const destroy = vi.spyOn(job, "destroy").mockResolvedValue(job);
+    const block = vi.spyOn(job as unknown as { block(): Promise<unknown> }, "block").mockResolvedValue(true);
+
+    await job.handleConcurrencyConflict();
+
+    expect(destroy).toHaveBeenCalledOnce();
+    expect(block).not.toHaveBeenCalled();
   });
 
   it("does not report the gap between two hourly runs", async () => {

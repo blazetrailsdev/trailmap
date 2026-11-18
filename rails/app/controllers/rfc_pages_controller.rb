@@ -15,7 +15,7 @@ class RfcPagesController < ApplicationController
   def index
     # The default sort stays off the URL, as rfc-sort.js keeps it off with
     # JavaScript: a no-JS submit of the sort menu lands on the bare address.
-    return redirect_to rfcs_path(status: params[:status].presence) if params[:sort] == "priority"
+    return redirect_to rfcs_path(status: (params[:status] if params[:status].is_a?(String)).presence) if params[:sort] == "priority"
 
     rfcs = Rfc.all.to_a
     by_rfc = Hash.new { |h, k| h[k] = [] }
