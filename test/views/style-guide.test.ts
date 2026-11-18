@@ -6,12 +6,18 @@ import { getFs } from "@blazetrails/ruby-compat";
  * listed radii, no uppercase, borders rather than coloured edges or dashes,
  * no weight past 600, and `.ctl` as the one form control. Rendered
  * markdown (`.markdown`) keeps its document headings and is left out.
+ * parity-page.css is the parity page's own sheet over ringo's generated
+ * parity.css, which it imports into a layer that application.css outranks.
  */
-const STYLESHEET = "app/assets/stylesheets/application.css";
+const STYLESHEETS = ["app/assets/stylesheets/application.css", "app/assets/stylesheets/parity-page.css"];
 
 async function rules(): Promise<string[]> {
-  const css = (await getFs().readFile(STYLESHEET, "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
-  return css.split("}").filter((rule) => !rule.includes(".markdown"));
+  const out: string[] = [];
+  for (const path of STYLESHEETS) {
+    const css = (await getFs().readFile(path, "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    out.push(...css.split("}").filter((rule) => !rule.includes(".markdown")));
+  }
+  return out;
 }
 
 async function viewSources(dir: string): Promise<string[]> {
