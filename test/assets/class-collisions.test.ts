@@ -54,6 +54,13 @@ describe("the CSS class space", () => {
     expect(collisionsInList("a b", rules)).toEqual(["a b"]);
   });
 
+  it("does not count a generated box as its element's box", () => {
+    const rules = boxRules(".a { padding: 0 } a.b::before { position: absolute } .c::after { display: block }");
+
+    expect([...rules.box]).toEqual(["a"]);
+    expect(collisionsInList("a b c", rules)).toEqual([]);
+  });
+
   it("counts a compound box against a box class outside it", () => {
     const rules = boxRules(".a.b { display: grid } .c { padding: 0 } .a.b.c { display: block }");
 

@@ -258,11 +258,12 @@ code { font-family: var(--font-mono); font-size: 12px; }
   .nav-links a {
     padding: 10px 0;
     border-bottom: 1px solid var(--border);
-    border-left: 2px solid transparent;
   }
   .nav-links a:last-child { border-bottom: none; }
   .nav-links a { border-radius: 0; }
-  .nav-links a.active { border-bottom-color: var(--border); border-left-color: var(--tab); padding-left: 10px; box-shadow: none; }
+  .nav-links a { position: relative; }
+  .nav-links a.active { border-bottom-color: var(--border); background: var(--surface-2); padding-left: 10px; box-shadow: none; }
+  .nav-links a.active::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 4px; border-radius: 6px; background: var(--accent); }
 }
 
 .wrap { max-width: 1012px; margin: 0 auto; padding: 0 24px; }
@@ -504,11 +505,10 @@ ul { margin: 0 0 10px 20px; }
 .section-title { font-size: 16px; font-weight: 600; margin: 24px 0 8px; }
 
 .note {
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--yellow);
+  border: 1px solid color-mix(in srgb, var(--yellow) 40%, transparent);
   border-radius: 6px;
-  background: var(--surface);
-  padding: 8px 12px;
+  background: var(--yellow-bg);
+  padding: 8px 16px;
   margin-bottom: 12px;
 }
 .empty { padding: 32px 16px; text-align: center; color: var(--muted); }
@@ -699,9 +699,8 @@ details.card.fold > :not(summary) { margin-inline: 16px; margin-bottom: 12px; }
 .bar-fill.yellow { background: var(--yellow); }
 .bar-fill.red { background: var(--red); }
 
-/* The notice above the header (no ringo origin): a warning edge, red when it blocks. */
-.ci-fixer { border-left: 3px solid var(--yellow); }
-.ci-fixer.paused { border-left-color: var(--red); }
+/* A page's notice (no ringo origin, a truncated capture): GitHub's attention flash. */
+.ci-fixer { background: var(--yellow-bg); border-color: color-mix(in srgb, var(--yellow) 40%, transparent); }
 .fixer-checks { color: var(--red); }
 .fixer-phase { display: inline-block; padding: 1px 8px; border-radius: 2em; font-size: 12px; font-weight: 500; }
 .fixer-phase.red, .fixer-phase.paused { background: var(--red-bg); color: var(--red); }
@@ -830,7 +829,7 @@ textarea.ctl { height: auto; }
 .ask-free { display: flex; gap: 6px; flex: 0 1 320px; min-width: 0; }
 .ask-free input { flex: 1; min-width: 0; }
 .evidence { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; flex: 1 1 260px; font-size: 14px; color: var(--ink-2); }
-.met::before { content: "✓ "; color: var(--st-ready); font-weight: 700; }
+.met::before { content: "✓ "; color: var(--st-ready); font-weight: 600; }
 
 /* The Merged line closing a repo's list. */
 .merged-line {
@@ -1120,8 +1119,8 @@ kbd {
 .tx-bar.slow { background: var(--yellow); }
 .tx-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 52ch; }
 .tx-turn { margin: 0 0 30px; }
-.tx-prompt { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; background: var(--surface); padding: 12px 14px; }
-.tx-who { font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 6px; }
+.tx-prompt { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); padding: 12px 16px; }
+.tx-who { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
 .tx-body { white-space: pre-wrap; word-break: break-word; font-size: 14px; line-height: 1.55; }
 .tx-prompt .tx-body { max-height: 20em; overflow-y: auto; }
 .tx-steps { margin: 0 0 0 18px; padding: 4px 0 0 20px; border-left: 1px solid var(--border); }
@@ -1132,17 +1131,17 @@ kbd {
 .tx-step.say::before { background: var(--green); }
 .tx-tool { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .tx-tool-head { display: flex; align-items: baseline; gap: 8px; padding: 7px 11px; background: var(--surface); border-bottom: 1px solid var(--border); }
-.tx-tool-name { font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); color: var(--accent); white-space: nowrap; }
+.tx-tool-name { font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); color: var(--accent); white-space: nowrap; }
 .tx-tool-sum { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .tx-tool-meta { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tx-slow { color: var(--yellow-ink); font-weight: 600; }
 .tx-io { margin: 0; padding: 9px 11px; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-.tx-io.out { color: var(--muted); border-top: 1px dashed var(--border); }
+.tx-io.out { color: var(--muted); border-top: 1px solid var(--border); }
 .tx-io.out.err { color: var(--red); }
 .tx-io.tx-none { font-style: italic; }
 .tx-fold > summary, .tx-think > summary { cursor: pointer; padding: 6px 11px; font-size: 12px; color: var(--muted); }
-.tx-fold > summary { border-top: 1px dashed var(--border); }
-.tx-think { border: 1px dashed var(--border); border-radius: 6px; }
+.tx-fold > summary { border-top: 1px solid var(--border); }
+.tx-think { border: 1px solid var(--border); border-radius: 6px; }
 .tx-think .tx-body { padding: 0 11px 10px; font-size: 12px; color: var(--muted); }
 
 /*
@@ -1201,7 +1200,7 @@ kbd {
 .tl-wait { position: relative; margin: 0 0 14px; padding: 2px 0; }
 .tl-wait::before { content: ""; position: absolute; left: -26px; top: 50%;
   width: 10px; height: 2px; background: var(--bg);
-  border-top: 2px dashed var(--yellow); }
+  border-top: 2px solid var(--yellow); }
 .tl-wait .w { font-size: 12px; color: var(--yellow-ink); font-variant-numeric: tabular-nums; }
 
 .tl-body { margin: 7px 0 0; border: 1px solid var(--border); border-radius: 6px;

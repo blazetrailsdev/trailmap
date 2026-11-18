@@ -9,7 +9,7 @@
   <div class="field-note">mode: <strong><%= status.mode %></strong> — <%= status.note %></div>
 <% } %>
 <% if (problem !== null) { %>
-  <div class="card ci-fixer paused">
+  <div class="card ci-fixer">
     <div class="card-head"><span class="card-title">No session data</span></div>
     <div class="field-note"><%= problem %></div>
   </div>

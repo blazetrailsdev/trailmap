@@ -86,7 +86,12 @@ like one.
 - **Spacing** on a 4px grid: 4, 8, 12, 16, 24. A box pads 16px; a row 10-12px
   by 16px.
 - **Height**: a control is 32px, a small one 28px.
-- No tinted rows, no coloured row edges, no gradients, no blur.
+- No tinted rows, no coloured row edges, no dashed lines, no gradients, no blur.
+  A notice is an attention flash (a tinted, bordered box: `.note`,
+  `.ci-fixer`), never a coloured left edge. The one coloured bar is a selected
+  item in a vertical list, GitHub's ActionList: the palette's selection and the
+  phone nav's current page, a 4px `--accent` bar on `--surface-2`.
+  `test/views/style-guide.test.ts` holds this.
 
 ## Icons
 

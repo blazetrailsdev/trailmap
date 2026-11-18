@@ -3,7 +3,8 @@ import { getFs } from "@blazetrails/ruby-compat";
 
 /**
  * docs/style-guide.md, the parts a machine can hold: three type sizes, the
- * listed radii, no uppercase, and `.ctl` as the one form control. Rendered
+ * listed radii, no uppercase, borders rather than coloured edges or dashes,
+ * no weight past 600, and `.ctl` as the one form control. Rendered
  * markdown (`.markdown`) keeps its document headings and is left out.
  */
 const STYLESHEET = "app/assets/stylesheets/application.css";
@@ -39,6 +40,33 @@ describe("the style guide", () => {
   it("writes no uppercase and no letter-spacing", async () => {
     const css = (await rules()).join("}");
     expect(css).not.toMatch(/text-transform:\s*uppercase|letter-spacing:/);
+  });
+
+  it("draws no coloured row edge, dashed line or bold weight", async () => {
+    const edge = /border-(?:left|inline-start)(?:-color)?:\s*([^;}\n]+)/g;
+    const plainEdge = /^(?:none|0|transparent|(?:\d+px\s+solid\s+)?var\(--(?:border|line)\))$/;
+    const offenders = (await rules()).flatMap((rule) => {
+      const selector = rule.trim().split("{")[0].trim();
+      const edges = [...rule.matchAll(edge)].map((m) => m[1].trim()).filter((v) => !plainEdge.test(v));
+      const dashes = /:[^;{}]*\bdashed\b/.test(rule);
+      const bold = /font-weight:\s*(?:[7-9]00|bold(?:er)?)\b/.test(rule);
+      return edges.length > 0 || dashes || bold ? [selector] : [];
+    });
+    expect(offenders).toEqual([]);
+  });
+
+  it("draws a coloured bar only for an ActionList selection", async () => {
+    const allowed = [".palette-item.on::before", ".nav-links a.active::before"];
+    const bars = (await rules()).filter(
+      (rule) =>
+        /::(?:before|after)/.test(rule) &&
+        /position:\s*absolute/.test(rule) &&
+        /\bwidth:\s*[1-4]px/.test(rule) &&
+        /background:\s*var\(--(?!border|line|bg|surface)[a-z0-9-]+\)/.test(rule),
+    );
+    const selectors = bars.map((rule) => rule.split("{")[0].trim().split("\n").pop()!.trim());
+    expect(selectors.filter((selector) => !allowed.includes(selector))).toEqual([]);
+    expect(selectors.sort()).toEqual([...allowed].sort());
   });
 
   it("has no view that uses class=\"input\"", async () => {
