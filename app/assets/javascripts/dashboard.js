@@ -725,7 +725,8 @@ document.addEventListener("click", async (event) => {
     byId("spawnName").value = "";
     byId("paletteDone").textContent = outcome.say ?? "";
     closeSpawn();
-    growTask();
+    // Closed, the box has no layout to measure; openSpawn grows it again.
+    spawnTask.style.height = "";
     syncName();
   }
   if (outcome.clearMessage) byId(PALETTE_INPUT).value = "";
