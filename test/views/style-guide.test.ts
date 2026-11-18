@@ -55,6 +55,20 @@ describe("the style guide", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("draws a coloured bar only for an ActionList selection", async () => {
+    const allowed = [".palette-item.on::before", ".nav-links a.active::before"];
+    const bars = (await rules()).filter(
+      (rule) =>
+        /::(?:before|after)/.test(rule) &&
+        /position:\s*absolute/.test(rule) &&
+        /\bwidth:\s*[1-4]px/.test(rule) &&
+        /background:\s*var\(--(?!border|line|bg|surface)[a-z0-9-]+\)/.test(rule),
+    );
+    const selectors = bars.map((rule) => rule.split("{")[0].trim().split("\n").pop()!.trim());
+    expect(selectors.filter((selector) => !allowed.includes(selector))).toEqual([]);
+    expect(selectors.sort()).toEqual([...allowed].sort());
+  });
+
   it("has no view that uses class=\"input\"", async () => {
     const fs = getFs();
     const offenders: string[] = [];
