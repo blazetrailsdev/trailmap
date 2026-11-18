@@ -663,8 +663,8 @@ describe("controlRequest", () => {
     expect(controlRequest("spawn", {}, { task: "t", repoDir: "/w", model: "", name: "  " }).body).toEqual({ repoDir: "/w", message: "t" });
   });
 
-  it("sends no spawn with no task", () => {
-    expect(controlRequest("spawn", {}, { task: "   ", repoDir: "/w/trails" })).toBeNull();
+  it("sends no spawn with no task, and asks for one beside the button", () => {
+    expect(controlRequest("spawn", {}, { task: "   ", repoDir: "/w/trails" })).toEqual({ focus: "spawnTask", says: "spawnStatus", hint: "Describe the task first." });
   });
 
   it("is null for a button that is not a control", () => {

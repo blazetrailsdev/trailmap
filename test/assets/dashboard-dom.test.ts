@@ -155,6 +155,15 @@ describe("the spawn dialog", () => {
     expect((byId("spawnName") as HTMLInputElement).placeholder).toBe("fix-the-build");
   });
 
+  it("asks for a task on ⌘↵ with an empty box, and posts nothing", () => {
+    const before = posts.length;
+    task().value = "  ";
+    key({ key: "Enter", metaKey: true });
+    expect(posts.length).toBe(before);
+    expect(byId("spawnStatus").textContent).toBe("Describe the task first.");
+    expect(document.activeElement).toBe(task());
+  });
+
   it("spawns on ⌘↵ the way the loop does, closes, and writes its report beside the page's search", async () => {
     task().value = " fix the build ";
     key({ key: "Enter", metaKey: true });
@@ -163,6 +172,7 @@ describe("the spawn dialog", () => {
     expect(posts.at(-1)).toEqual({ url: "/fleet/control/spawnloop/dashboard-spawn", body: { repoDir: "/srv/trails", message: "fix the build" } });
     expect(dialog().open).toBe(false);
     expect(task().value).toBe("");
+    expect((byId("spawnName") as HTMLInputElement).placeholder).toBe("task");
     expect(byId("paletteDone").textContent).toContain("spawned in %5");
   });
 

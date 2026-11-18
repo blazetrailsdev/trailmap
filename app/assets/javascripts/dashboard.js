@@ -536,10 +536,8 @@ function poll(name, everyMs, onAnswer, onFailure = () => {}) {
 polls.reviewers = pollReviewers;
 poll("reviewer-config", REVIEWERS_POLL_MS, (cfg) => {
   nextReviewer = cfg.next_reviewer || nextReviewer;
+  // Drawn into the model picker when the spawn dialog opens.
   spawnConfig = cfg;
-  // A choice being made is the viewer's, not the poll's.
-  const model = byId("spawnModel");
-  if (document.activeElement !== model) model.innerHTML = modelOptions(cfg, model.value);
 });
 poll("broadcast-targets", REVIEWERS_POLL_MS, (counts) => {
   audiences = counts;
@@ -678,7 +676,10 @@ document.addEventListener("click", async (event) => {
     name: byId("spawnName").value,
   });
   if (!request) return;
-  if (request.focus) return byId(request.focus).focus();
+  if (request.focus) {
+    if (request.hint) byId(request.says).textContent = request.hint;
+    return byId(request.focus).focus();
+  }
   if (request.note) byId("bcastNote").textContent = request.note;
   if (!request.path) return;
   if (request.confirm && !window.confirm(request.confirm)) {
@@ -724,6 +725,8 @@ document.addEventListener("click", async (event) => {
     byId("spawnName").value = "";
     byId("paletteDone").textContent = outcome.say ?? "";
     closeSpawn();
+    growTask();
+    syncName();
   }
   if (outcome.clearMessage) byId(PALETTE_INPUT).value = "";
   // The palette is about to go, and its report with it: say it on the page.

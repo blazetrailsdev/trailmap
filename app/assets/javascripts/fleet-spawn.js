@@ -82,8 +82,11 @@ export function modelOptions(config, chosen) {
 }
 
 /**
- * The worktree name ringo derives from the task, before its random suffix:
- * `worktreeSlugN(firstLine, 40)` — letters and digits kept, a space, `-`,
+ * The worktree name ringo derives from the task, before its random suffix.
+ * btwhooks' `HandleDashboardSpawn` (webhook/spawnloop.go:3562 on the spawn-options branch) takes the
+ * first line that is not blank once trimmed and passes it to
+ * `worktreeSlugN(first, 40)` (webhook/spawnloop.go:1816), falling back to
+ * "task": — letters and digits kept, a space, `-`,
  * `_` or `/` a single dash, anything else dropped.
  */
 export function derivedName(task) {

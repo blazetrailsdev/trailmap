@@ -509,7 +509,7 @@ export function controlRequest(action, data, page = {}) {
     // that landed empties the task.
     case "spawn": {
       const message = String(page.task || "").trim();
-      if (!message) return null;
+      if (!message) return { focus: SPAWN_TASK, says: "spawnStatus", hint: "Describe the task first." };
       const model = String(page.model || "").trim();
       const name = String(page.name || "").trim();
       return {
