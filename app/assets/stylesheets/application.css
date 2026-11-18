@@ -927,7 +927,8 @@ details.fold > summary::-webkit-details-marker { display: none; }
 /*
  * The spawn dialog: the palette's shell, with a task box that grows with a
  * long prompt (up to half the viewport, then it scrolls), the repos as a row
- * of chips, and the spawn's options under the box.
+ * of chips, and the spawn's options under the box. The broadcast dialog is
+ * the same shell and box, with its audiences as the buttons.
  */
 .spawn-dialog { width: min(720px, calc(100vw - 32px)); }
 .spawn-repos { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--line); }

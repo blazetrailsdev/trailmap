@@ -13,6 +13,8 @@ import {
   cleanupPending,
   control,
   BROADCAST_BUTTONS,
+  BROADCAST_MESSAGE,
+  broadcastKey,
   broadcastButtons,
   usageScraperPill,
   controlOutcome,
@@ -395,7 +397,7 @@ describe("the broadcast box", () => {
   });
 
   it("sends nothing without a message, and says so for an audience of nobody", () => {
-    expect(controlRequest("broadcast", { target: "all" }, { ...page, message: " " })).toEqual({ focus: "paletteInput" });
+    expect(controlRequest("broadcast", { target: "all" }, { ...page, message: " " })).toEqual({ focus: "broadcastMessage" });
     expect(controlRequest("broadcast", { target: "ci-red" }, { ...page, audiences: { all: 3 } })).toEqual({
       note: "no agents in that group",
     });
@@ -406,7 +408,7 @@ describe("the broadcast box", () => {
     const sent = (out) => controlOutcome(request, { ok: true, text: JSON.stringify(out) }, "all (3)");
 
     const kept = { disabled: false, refresh: "broadcast-targets" };
-    expect(sent({ pane_count: 3, sent: [{}, {}, {}] })).toEqual({ ...kept, note: "sent to 3 panes", clearMessage: true, closePalette: true });
+    expect(sent({ pane_count: 3, sent: [{}, {}, {}] })).toEqual({ ...kept, note: "sent to 3 panes", clearMessage: true, closeBroadcast: true });
     expect(sent({ pane_count: 1, skipped: 2, sent: [{ error: "gone" }] })).toEqual({
       ...kept,
       note: "sent to 1 pane (2 pane gone) — 1 failed",
@@ -892,8 +894,18 @@ describe("a pane message", () => {
     expect(controlOutcome(request, { error: "offline" }, "Send")).toEqual({ disabled: false, say: "offline" });
   });
 
-  it("names the palette's one input as where an empty broadcast puts the cursor", () => {
+  it("names the broadcast dialog's box as where an empty broadcast puts the cursor", () => {
     expect(PALETTE_INPUT).toBe("paletteInput");
+    expect(BROADCAST_MESSAGE).toBe("broadcastMessage");
+  });
+
+  it("sends a broadcast on ⌘↵ to all, on ⌘⇧↵ to CI red, and leaves a bare Enter as a newline", () => {
+    expect(broadcastKey({ key: "Enter", metaKey: true })).toBe("all");
+    expect(broadcastKey({ key: "Enter", ctrlKey: true })).toBe("all");
+    expect(broadcastKey({ key: "Enter", metaKey: true, shiftKey: true })).toBe("ci-red");
+    expect(broadcastKey({ key: "Enter" })).toBeNull();
+    expect(broadcastKey({ key: "Enter", metaKey: true, isComposing: true })).toBeNull();
+    expect(broadcastKey({ key: "a", metaKey: true })).toBeNull();
   });
 });
 

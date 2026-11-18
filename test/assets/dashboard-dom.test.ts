@@ -188,3 +188,38 @@ describe("the spawn dialog", () => {
     dialog().close();
   });
 });
+
+describe("the broadcast dialog", () => {
+  const dialog = (): HTMLDialogElement => byId("broadcastDialog") as HTMLDialogElement;
+  const box = (): HTMLTextAreaElement => byId("broadcastMessage") as HTMLTextAreaElement;
+
+  it("opens from the toolbar on its own message box, not the palette", () => {
+    byId("broadcastBtn").click();
+    expect(dialog().open).toBe(true);
+    expect(palette().open).toBe(false);
+    expect(document.activeElement).toBe(box());
+  });
+
+  it("leaves a bare Enter to the message box", () => {
+    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    box().dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(false);
+  });
+
+  it("closes on Cancel", () => {
+    (dialog().querySelector(".palette-cancel") as HTMLElement).click();
+    expect(dialog().open).toBe(false);
+  });
+
+  it("carries the palette's text into the dialog from its broadcast action", () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }));
+    input().value = "please rebase";
+    input().dispatchEvent(new Event("input"));
+    const action = [...palette().querySelectorAll('[data-ui="palette-pick"]')].find((el) => el.textContent?.includes("Broadcast")) as HTMLElement;
+    action.click();
+    expect(palette().open).toBe(false);
+    expect(dialog().open).toBe(true);
+    expect(box().value).toBe("please rebase");
+    dialog().close();
+  });
+});
