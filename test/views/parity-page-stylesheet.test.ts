@@ -53,9 +53,15 @@ describe("the parity page stylesheet", () => {
       (token) => !appAll.has(token) && !pageLight.has(token),
     );
     expect(missing).toEqual([]);
-    const lightOnly = [...pageLight].filter(
-      (token) => !pageDark.has(token) && !appDark.has(token) && !/^var\(/.test(token),
-    );
-    expect(lightOnly.filter((t) => t !== "--axis")).toEqual([]);
+    const unthemed = [...pageLight].filter((token) => !pageDark.has(token) && !appDark.has(token));
+    expect(unthemed).toEqual(["--axis"]);
+    const axis = block(page, ":root {").match(/--axis:\s*var\((--[a-z0-9-]+)\)/);
+    expect(axis && appDark.has(axis[1])).toBe(true);
+  });
+
+  it("gives a dark OS the same values as data-theme=\"dark\"", async () => {
+    const page = strip(await getFs().readFile(PAGE, "utf8"));
+    const decls = (css: string) => [...css.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map((m) => `${m[1]}:${m[2].trim()}`).sort();
+    expect(decls(block(page, ':root:not([data-theme="light"])'))).toEqual(decls(block(page, ':root[data-theme="dark"]')));
   });
 });
