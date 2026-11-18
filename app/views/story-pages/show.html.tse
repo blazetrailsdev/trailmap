@@ -8,7 +8,7 @@
       <span class="id"><%= story.id %></span>
       <%= render({ partial: "shared/status-state", locals: { status: shownStatus, label: heldLabel } }) %>
       <span class="muted">
-        in <a href="<%= rfcPath(story.rfc_id) %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a><% if (story.pr !== null) { %>, PR <%= story.pr %><% } %>
+        in <a href="<%= rfcPath(story.rfc_id) %>"><%= rfc === null ? story.rfc_id : (rfc.title ?? story.rfc_id) %></a><% if (story.pr !== null) { %>, PR <% const prM = /^([\w.-]+)#(\d+)$/.exec(story.pr); if (prM) { %><a href="https://github.com/blazetrailsdev/<%= prM[1] %>/pull/<%= prM[2] %>" target="_blank" rel="noopener"><%= story.pr %></a><% } else { %><%= story.pr %><% } %><% } %>
       </span>
     </div>
   </div>
@@ -147,7 +147,7 @@
       <% if (story.pr !== null) { %>
         <div class="side-section">
           <div class="side-head">PR</div>
-          <div class="side-value"><%= story.pr %></div>
+          <div class="side-value"><% const prRef = /^([\w.-]+)#(\d+)$/.exec(story.pr); if (prRef) { %><a href="https://github.com/blazetrailsdev/<%= prRef[1] %>/pull/<%= prRef[2] %>" target="_blank" rel="noopener"><%= story.pr %></a><% } else { %><%= story.pr %><% } %></div>
         </div>
       <% } %>
     </div>

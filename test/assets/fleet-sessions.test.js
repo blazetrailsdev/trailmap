@@ -505,14 +505,15 @@ describe("sessionCard", () => {
     expect(canAskReady({ ...waiting, reviewCycles: 0 }, null)).toBe(false);
     expect(canAskReady({ ...waiting, ciStatus: "pending" }, null)).toBe(false);
     expect(canAskReady({ ...waiting, pane: "" }, null)).toBe(false);
+    expect(canAskReady({ ...waiting, draft: false }, null)).toBe(false);
     expect(canAskReady({ ...waiting, merged: true }, null)).toBe(false);
   });
 
-  it("puts the question before Merge when a row offers both", () => {
+  it("offers Merge but not the question once the PR is out of draft", () => {
     const html = sessionCard({ ...PR, ciStatus: "success", reviewCycles: 1, paneStatus: "idle" }, context());
 
-    expect(html.indexOf(READY_ASK + "</button>")).toBeLessThan(html.indexOf('data-action="merge"'));
-    expect(html.indexOf(READY_ASK + "</button>")).toBeGreaterThan(-1);
+    expect(html).toContain('data-action="merge"');
+    expect(html).not.toContain(READY_ASK + "</button>");
   });
 
   it("says a spawn has no PR yet, links its story, and offers dismiss once it has failed", () => {
