@@ -59,6 +59,9 @@ snapshot() {
   sqlite3 -readonly "$from" ".backup '$to'"
 }
 
+# Empty the clone's `settings`, the table that points trailmap outside itself.
+scrubSettings() { echo "DELETE FROM settings;" | dokku postgres:connect "$hub"; }
+
 up() {
   local sha="${1:-}"
   [ -n "$sha" ] || usage
@@ -80,12 +83,15 @@ up() {
   # import into a database that already holds the tables fails on them.
   echo "==> cloning $PROD_HUB into $hub"
   if dokku postgres:exists "$hub" 2>/dev/null; then
+    # Stopped first, so the old container does not serve errors against a
+    # database that is gone until the push replaces it.
+    dokku ps:stop "$app" 2>/dev/null || true
     dokku postgres:unlink "$hub" "$app" 2>/dev/null || true
     dokku postgres:destroy "$hub" --force
   fi
   dokku postgres:create "$hub"
   dokku postgres:export "$PROD_HUB" | dokku postgres:import "$hub"
-  echo "DELETE FROM settings;" | dokku postgres:connect "$hub"
+  scrubSettings
 
   if ! dokku apps:exists "$app" 2>/dev/null; then
     echo "==> creating $app"
@@ -138,6 +144,20 @@ up() {
   # uptime-monitor plugin fails last). The probe below is.
   git push --force "$DOKKU_HOST:$app" "$sha:refs/heads/trunk" || true
   dokku ps:scale "$app" web=1 worker=0
+
+  # AGAIN, after the release task: the PR's own migrations ran on the clone in
+  # between, and one that seeds a `settings` row (ringo_base, say) would re-arm
+  # it. Setting caches a row for 10 s, so a freshly booted preview stops seeing
+  # it within that. Then asserted, because a preview that still points outside
+  # itself is stopped rather than left serving. (The preview is not on the
+  # `fleet` network either, so `btwhooks.web` does not resolve from it.)
+  scrubSettings
+  local left
+  left="$(echo "SELECT count(*) FROM settings;" | dokku postgres:connect "$hub" | awk '/^ *[0-9]+ *$/ {print $1; exit}')"
+  if [ "$left" != "0" ]; then
+    dokku ps:stop "$app" || true
+    die "$hub still holds $left settings row(s) after the scrub; $app stopped"
+  fi
 
   if ! dokku letsencrypt:active "$app" >/dev/null 2>&1; then
     dokku letsencrypt:enable "$app" || echo "==> WARNING: no TLS certificate for $app; is pr-$pr.$DOMAIN_SUFFIX in DNS?"

@@ -772,7 +772,7 @@ the thing under review:
 | Hub (Postgres) | `trailmap-pr-<N>-hub`, a dokku postgres service re-cloned from `trailmap-hub` (`postgres:export \| postgres:import`) on **every** deploy and linked as `HUB_DATABASE` |
 | `tasks.db`, `stats.db`, `stats-sync.db` | `sqlite3 .backup` copies taken at each deploy into `~/.trailmap-previews/pr-<N>/` |
 | Tasks checkout, audits | the production paths, mounted `:ro` |
-| `settings` | emptied in the clone after import. It is where an operator points trailmap at something outside itself (today `ringo_base`, production's fleet), and every outbound call the application makes resolves through it. With no row and no `RINGO_BASE`, the fleet relay, deploys and sessions pages have nothing to call |
+| `settings` | emptied in the clone after import. It is where an operator points trailmap at something outside itself (today `ringo_base`, production's fleet), and every outbound call the application makes resolves through it. It is emptied again after the release task, because a PR's migration may seed a row, and then checked; a preview still holding one is stopped. With no row and no `RINGO_BASE`, the fleet relay, deploys and sessions pages have nothing to call |
 | Mail, `GH_TOKEN` | not configured |
 
 **Migrations are tested.** The `release` task runs in a preview as it does in
