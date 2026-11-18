@@ -36,7 +36,9 @@ import { Setting } from "../../app/models/setting.ts";
  */
 export function hubTestUrl(): string | null {
   const url = env.HUB_TEST_DATABASE_URL?.trim();
-  return url ? workerDatabaseUrl(url, Number(env.VITEST_POOL_ID ?? 0)) : null;
+  if (!url) return null;
+  // Outside a vitest worker (the gate scripts) there is no per-worker copy.
+  return env.VITEST_POOL_ID == null ? url : workerDatabaseUrl(url, Number(env.VITEST_POOL_ID));
 }
 
 /**
