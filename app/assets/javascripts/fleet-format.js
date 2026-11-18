@@ -731,11 +731,12 @@ export const BROADCAST_MESSAGE = "broadcastMessage";
 
 /**
  * Which audience a key in the broadcast dialog sends to, or null: ⌘/Ctrl+Enter
- * is everyone, with Shift the CI-red ones. A bare Enter is a newline.
+ * is the audience the dialog was opened for (everyone, unless the palette's
+ * CI-red action opened it), with Shift the CI-red ones. A bare Enter is a newline.
  */
-export function broadcastKey(event) {
+export function broadcastKey(event, audience = "all") {
   if (event.isComposing || event.key !== "Enter" || !(event.metaKey || event.ctrlKey) || event.altKey) return null;
-  return event.shiftKey ? "ci-red" : "all";
+  return event.shiftKey ? "ci-red" : audience;
 }
 
 /** The broadcast dialog's buttons, every one of which a send holds. */

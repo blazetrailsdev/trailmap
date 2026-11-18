@@ -906,6 +906,9 @@ describe("a pane message", () => {
     expect(broadcastKey({ key: "Enter" })).toBeNull();
     expect(broadcastKey({ key: "Enter", metaKey: true, isComposing: true })).toBeNull();
     expect(broadcastKey({ key: "a", metaKey: true })).toBeNull();
+    // Opened for CI red, a bare ⌘↵ keeps that audience.
+    expect(broadcastKey({ key: "Enter", metaKey: true }, "ci-red")).toBe("ci-red");
+    expect(broadcastKey({ key: "Enter", metaKey: true, shiftKey: true }, "all")).toBe("ci-red");
   });
 });
 

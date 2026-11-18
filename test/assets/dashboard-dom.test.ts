@@ -22,6 +22,9 @@ function answer(url: string, init?: RequestInit): Response {
     posts.push({ url, body: init.body ? JSON.parse(String(init.body)) : null });
     return new Response("spawned in %5", { status: 200 });
   }
+  if (url.endsWith("/broadcast-targets")) {
+    return new Response(JSON.stringify({ all: 3, "ci-red": 1 }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
   if (url.startsWith("/fleet/stories")) {
     searches.push(new URL(url, "http://test").searchParams.get("q") ?? "");
     return new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } });
@@ -220,6 +223,27 @@ describe("the broadcast dialog", () => {
     expect(palette().open).toBe(false);
     expect(dialog().open).toBe(true);
     expect(box().value).toBe("please rebase");
+    dialog().close();
+  });
+
+  it("sends the palette's CI-red action to the CI-red agents on ⌘↵, as its footer says", async () => {
+    vi.stubGlobal("confirm", () => true);
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }));
+    input().value = "fix CI";
+    input().dispatchEvent(new Event("input"));
+    const action = [...palette().querySelectorAll('[data-ui="palette-pick"]')].find((el) => el.textContent?.includes("CI-red agents")) as HTMLElement;
+    action.click();
+    expect(dialog().open).toBe(true);
+    expect(byId("bcastKeyHint").textContent).toBe("send to CI red");
+    box().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true, cancelable: true }));
+    await settle(50);
+    expect(posts.at(-1)).toEqual({ url: "/fleet/control/broadcast", body: { message: "fix CI", target: "ci-red" } });
+    dialog().close();
+  });
+
+  it("aims ⌘↵ back at everyone when opened from the toolbar", () => {
+    byId("broadcastBtn").click();
+    expect(byId("bcastKeyHint").textContent).toBe("send to all");
     dialog().close();
   });
 });

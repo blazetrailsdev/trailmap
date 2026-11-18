@@ -918,7 +918,7 @@ function pick(result, withMeta) {
     if (result.action === "broadcast") {
       const message = paletteInput.value.trim();
       closePalette();
-      return openBroadcast(message);
+      return openBroadcast(message, result.target);
     }
   } else if (result.href) {
     closePalette();
@@ -1250,9 +1250,17 @@ function growMessage() {
   broadcastMessage.style.height = taskHeight(broadcastMessage.scrollHeight + 2, window.innerHeight) + "px";
 }
 
-/** Open the dialog with `message` carried in. */
-function openBroadcast(message = "") {
+/** Who a bare ⌘↵ sends to: everyone, unless the palette's CI-red action opened the dialog. */
+let broadcastAudience = "all";
+
+/**
+ * Open the dialog with `message` carried in, ⌘↵ aimed at `target`. An empty
+ * `message` keeps a cancelled draft, as the spawn dialog keeps its task.
+ */
+function openBroadcast(message = "", target = "all") {
   if (message) broadcastMessage.value = message;
+  broadcastAudience = target === "ci-red" ? "ci-red" : "all";
+  byId("bcastKeyHint").textContent = broadcastAudience === "ci-red" ? "send to CI red" : "send to all";
   byId("bcastNote").textContent = "";
   byId("paletteDone").textContent = "";
   if (!broadcastDialog.open) broadcastDialog.showModal();
@@ -1267,7 +1275,7 @@ function closeBroadcast() {
 broadcastMessage.addEventListener("input", growMessage);
 
 broadcastDialog.addEventListener("keydown", (event) => {
-  const target = broadcastKey(event);
+  const target = broadcastKey(event, broadcastAudience);
   if (!target) return;
   event.preventDefault();
   byId(target === "ci-red" ? "bcastCIRed" : "bcastAll").click();
