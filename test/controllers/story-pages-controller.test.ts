@@ -69,6 +69,15 @@ beforeEach(async () => {
 });
 
 describe("StoryPagesController", () => {
+  it("links a repo#N PR to GitHub, in the byline and the sidebar", async () => {
+    await Story.create({ id: "with-pr", rfc_id: "0136-trailmap", status: "in-progress", pr: "trails#7651" });
+    const { status, body } = await show("with-pr");
+
+    expect(status).toBe(200);
+    const link = '<a href="https://github.com/blazetrailsdev/trails/pull/7651" target="_blank" rel="noopener">trails#7651</a>';
+    expect(body.split(link).length - 1).toBe(2);
+  });
+
   /**
    * The rowid order the three join tables are read in, pinned.
    *
