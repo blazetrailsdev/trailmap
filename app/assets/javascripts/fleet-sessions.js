@@ -22,6 +22,7 @@
  *   since      when the page started recording, for "since <time>"
  */
 import {
+  isGrooming,
   CI_TITLES,
   STAGES,
   activeFixers,
@@ -82,7 +83,7 @@ const paneStatusOf = (s) => (isPR(s) ? s.paneStatus : s.pane_status) || "";
  */
 export function storiesQuery(prs, spawns) {
   const refs = [...new Set((prs || []).map(prRef))].map((ref) => "pr[]=" + encodeURIComponent(ref));
-  const ids = [...new Set((spawns || []).filter((s) => !s.kind && s.story_id).map((s) => s.story_id))].map(
+  const ids = [...new Set((spawns || []).filter((s) => !isGrooming(s) && s.story_id).map((s) => s.story_id))].map(
     (id) => "story[]=" + encodeURIComponent(id),
   );
   return [...refs, ...ids].slice(0, STORIES_MAX_REFS).join("&");
@@ -292,6 +293,18 @@ export function reviewNote(s, entry) {
   );
 }
 
+/**
+ * Before review, the agent's side alone: working while its pane is busy,
+ * idle otherwise, as the review note says it at Reviewer convergence. A row
+ * with no pane says nothing.
+ */
+export function agentNote(s) {
+  if (!paneOf(s)) return "";
+  const status = paneStatusOf(s);
+  const doing = BUSY.has(status) ? status : "idle";
+  return '<span class="review-note"><span class="review-side' + (doing === "idle" ? "" : " turn") + '">Agent ' + esc(doing) + "</span></span>";
+}
+
 // ---------------------------------------------------------------------------
 // The CI fixer
 // ---------------------------------------------------------------------------
@@ -307,7 +320,7 @@ export function joinFixers(fixers, prs, spawns) {
   for (const f of activeFixers(fixers)) {
     const row =
       (prs || []).find((pr) => isFixerPR([f], pr)) ||
-      (spawns || []).find((s) => !s.kind && isFixerStory([f], s.story_id));
+      (spawns || []).find((s) => !isGrooming(s) && isFixerStory([f], s.story_id));
     if (row) byKey.set(sessionKey(row), f);
     else {
       const orphan = { owner: f.owner, repo: f.owner + "/" + f.repo, story_id: f.story_id, fixerOnly: true, title: "main is red" };
@@ -576,7 +589,7 @@ function rowActions(s, entry, key) {
  * the bundle's other stories under the note, and its details below.
  */
 export function sessionCard(s, ctx, fixer = null) {
-  if (s.kind) return '<article class="session session-drafting grooming">' + rfcSpawnRow(s, ctx.now) + "</article>";
+  if (isGrooming(s)) return '<article class="session session-drafting grooming">' + rfcSpawnRow(s, ctx.now) + "</article>";
   const key = sessionKey(s);
   const stage = stageOf(s, ctx);
   const failed = !isPR(s) && s.status === "failed";
@@ -613,7 +626,7 @@ export function sessionCard(s, ctx, fixer = null) {
   if (rest.length && !open) note.push(rest.length + 1 + " stories");
 
   const entry = isPR(s) && ctx.reviewers ? ctx.reviewers[reviewerKey(s.owner, s.repo, s.pr)] : null;
-  const review = stage === "ringo" ? reviewNote(s, entry) : "";
+  const review = stage === "ringo" ? reviewNote(s, entry) : stage === "drafting" || stage === "self" ? agentNote(s) : "";
   const figure = stageFigure(s, stage);
   const when = isPR(s) ? s.lastTime : s.at;
   const meta =
@@ -657,7 +670,7 @@ const STAGE_ORDER = Object.fromEntries(STAGES.map(([id], i) => [id, i]));
  * stage, Drafting first, ties kept in ringo's order; grooming agents last.
  */
 export function orderSessions(rows, ctx, fixerByKey = new Map()) {
-  const rank = (s) => (s.kind ? STAGES.length + 1 : fixerByKey.has(sessionKey(s)) ? -1 : STAGE_ORDER[stageOf(s, ctx)]);
+  const rank = (s) => (isGrooming(s) ? STAGES.length + 1 : fixerByKey.has(sessionKey(s)) ? -1 : STAGE_ORDER[stageOf(s, ctx)]);
   return rows
     .map((s, at) => ({ s, at, rank: rank(s) }))
     .sort((a, b) => a.rank - b.rank || a.at - b.at)
@@ -712,7 +725,7 @@ export function sessionList(sections, ctx, extras = {}) {
       .map((g) => {
         const ordered = orderSessions(g.rows, ctx, byKey);
         const cards = ordered.map((s) => sessionCard(s, ctx, byKey.get(sessionKey(s)) || null));
-        const live = ordered.filter((s) => !s.kind).length;
+        const live = ordered.filter((s) => !isGrooming(s)).length;
         return (
           '<section class="repo" aria-label="' + esc(g.name) + '">' +
           '<div class="sessions">' +

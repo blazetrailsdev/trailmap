@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { esc, ICONS, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
+import { esc, ICONS, isGrooming, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
 import {
   canAskReady,
   canMerge,
@@ -20,6 +20,7 @@ import {
   logHtml,
   mergedLine,
   orderSessions,
+  agentNote,
   prRef,
   reportedStage,
   reviewLines,
@@ -618,6 +619,33 @@ describe("the list", () => {
     expect(orderSessions([groom, ready, ci, SPAWN, ci2], ctx).map((s) => s.pr ?? s.story_id)).toEqual([
       "move-tracker-state", 1, 3, 2, "r",
     ]);
+  });
+
+  it("counts only RFC refine and sunset spawns as grooming", () => {
+    expect([{ kind: "rfc-refine" }, { kind: "rfc-sunset" }, { kind: "manual" }, {}].map(isGrooming)).toEqual([true, true, false, false]);
+  });
+
+  it("names the agent's side from its pane status, and nothing without a pane", () => {
+    expect(agentNote(SPAWN)).toBe('<span class="review-note"><span class="review-side turn">Agent working</span></span>');
+    expect(agentNote({ ...SPAWN, pane_status: "limit" })).toContain("Agent limit");
+    expect(agentNote({ ...PR, paneStatus: "" })).toContain('<span class="review-side">Agent idle</span>');
+    expect(agentNote({ ...SPAWN, pane: "" })).toBe("");
+  });
+
+  it("ranks a /prompt-agent spawn with the loop's, above the PRs, and draws it as a worker", () => {
+    const manual = { kind: "manual", title: "Fix the flaky test", branch: "fix-flaky-test-9b2d", at: minutesAgo(2), source: "prompt-agent", pane: "%300", pane_status: "idle" };
+    const ci = { ...PR, pr: 1 };
+
+    expect(orderSessions([ci, manual], ctx)).toEqual([manual, ci]);
+    expect(sessionCard(manual, ctx)).not.toContain("grooming");
+    expect(sessionCard(manual, ctx)).toContain("Fix the flaky test");
+  });
+
+  it("says whether the agent is working or idle while drafting and in self review", () => {
+    expect(sessionCard(SPAWN, ctx)).toContain('<span class="review-side turn">Agent working</span>');
+    expect(sessionCard({ ...SPAWN, pane_status: "idle" }, ctx)).toContain('<span class="review-side">Agent idle</span>');
+    expect(sessionCard({ ...PR, draft: true, paneStatus: "" }, ctx)).toContain("Agent idle");
+    expect(sessionCard({ ...SPAWN, pane: "" }, ctx)).not.toContain("review-side");
   });
 
   it("folds merged sessions into one Merged line at the end of their repo, and drops it when there are none", () => {
