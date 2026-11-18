@@ -20,6 +20,8 @@ import {
   logHtml,
   mergedLine,
   orderSessions,
+  agentNote,
+  isGrooming,
   prRef,
   reportedStage,
   reviewLines,
@@ -618,6 +620,17 @@ describe("the list", () => {
     expect(orderSessions([groom, ready, ci, SPAWN, ci2], ctx).map((s) => s.pr ?? s.story_id)).toEqual([
       "move-tracker-state", 1, 3, 2, "r",
     ]);
+  });
+
+  it("counts only RFC refine and sunset spawns as grooming", () => {
+    expect([{ kind: "rfc-refine" }, { kind: "rfc-sunset" }, { kind: "manual" }, {}].map(isGrooming)).toEqual([true, true, false, false]);
+  });
+
+  it("names the agent's side from its pane status, and nothing without a pane", () => {
+    expect(agentNote(SPAWN)).toBe('<span class="review-note"><span class="review-side turn">Agent working</span></span>');
+    expect(agentNote({ ...SPAWN, pane_status: "limit" })).toContain("Agent limit");
+    expect(agentNote({ ...PR, paneStatus: "" })).toContain('<span class="review-side">Agent idle</span>');
+    expect(agentNote({ ...SPAWN, pane: "" })).toBe("");
   });
 
   it("ranks a /prompt-agent spawn with the loop's, above the PRs, and draws it as a worker", () => {
