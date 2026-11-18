@@ -67,6 +67,12 @@ scrubSettings() { echo "DELETE FROM settings;" | dokku postgres:connect "$hub"; 
 # keeps its data (and whatever a reviewer did to it); changed, it starts again
 # from production's, so the PR's migrations run on real data and never on
 # the half-migrated result of an earlier push.
+#
+# These are the directories the release task (`db:prepare`) migrates INTO A
+# COPY. `db/migrate` is not one of them: the task domain's `primary` is
+# `databaseTasks: false` (config/database.ts, Rails' `database_tasks: false`),
+# so `db:prepare` never touches tasks.db; that history belongs to the tasks
+# CLI. The queue database is container-local, so each container builds its own.
 migrationsKey() {
   local sha="$1" dir out=""
   for dir in db/hub-migrate db/stats-sync-migrate; do
@@ -104,8 +110,15 @@ assertNginx() {
     [ -z "$l" ] && continue
     case "${l##*:}" in 80|443) ;; *) bad+="listens on $l; " ;; esac
   done <<<"$listens"
-  emerg="$(awk -v since="$since" '($1 " " $2) >= since && /\[emerg\]/' /var/log/nginx/error.log 2>/dev/null || true)"
-  [ -z "$emerg" ] || bad+="nginx logged: $(echo "$emerg" | tail -1); "
+  # Fails CLOSED: a log this user cannot read is a failed check, not a pass.
+  # The previous file is read too, in case the log rotated during the run.
+  local log="/var/log/nginx/error.log"
+  if [ ! -r "$log" ]; then
+    bad+="cannot read $log (the deploying user must be in group adm); "
+  else
+    emerg="$(cat "$log.1" "$log" 2>/dev/null | awk -v since="$since" '($1 " " $2) >= since && /\[emerg\]/')"
+    [ -z "$emerg" ] || bad+="nginx logged: $(echo "$emerg" | tail -1); "
+  fi
   ss -ltn | awk '{print $4}' | grep -qx '127.0.0.1:8080' || bad+="production's 127.0.0.1:8080 listener is gone; "
   if [ -n "$bad" ]; then
     echo "==> NGINX CHECK FAILED: $bad" >&2
@@ -229,6 +242,9 @@ up() {
   if ! dokku letsencrypt:active "$app" >/dev/null 2>&1; then
     dokku letsencrypt:enable "$app" || echo "==> WARNING: no TLS certificate for $app; is pr-$pr.$DOMAIN_SUFFIX in DNS?"
   fi
+  # Re-pinned: a certificate adds https:443, and nothing the plugin does may
+  # leave any other mapping behind.
+  pinPorts
   assertNginx "$since"
 
   local running

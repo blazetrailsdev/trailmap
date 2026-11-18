@@ -782,7 +782,9 @@ keeps its databases, and whatever a reviewer did in them, and the release
 task has nothing to run. When they change, or on the first `up`, every copy
 is taken from production again: the SQLite `.backup`s, and the hub re-cloned
 into a fresh service. The release task then runs the PR's migrations on real
-data, never on the half-migrated result of an earlier push. A PR whose hub
+data, never on the half-migrated result of an earlier push. `db/migrate` is deliberately not part of the key: the task domain's `primary` is
+`databaseTasks: false`, so the release task never touches `tasks.db`, whose
+history belongs to the tasks CLI. A PR whose hub
 migration fails also fails its preview deploy, and the deploy log says why.
 
 Production's hub is only ever read, by `pg_dump`, which takes a consistent
@@ -815,7 +817,7 @@ Four things now stop that, each on its own:
    script is fixed to that name for the same reason.
 4. **After every deploy, `preview.sh` checks nginx itself.** The preview's
    rendered config must listen on 80 and 443 only, `/var/log/nginx/error.log`
-   must hold no `[emerg]` since the run started, and production's
+   (and `error.log.1`, in case it rotated) must be readable and hold no `[emerg]` since the run started, and production's
    `127.0.0.1:8080` listener must still be bound. On any miss it runs `down`,
    which removes the preview's config, and fails, naming the smoke check to
    run against production.
