@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionController } from "@blazetrails/actionpack";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
@@ -23,12 +23,8 @@ function listed(body: string): string[] {
   return [...body.matchAll(/class="row-title" href="\/story\/([^"]+)"/g)].map((m) => m[1]!);
 }
 
-beforeAll(async () => {
-
-  await Rfc.create({
-    id: "0136-trailmap",
-    status: "active",
-    title: "trailmap",
+beforeEach(async () => {
+  await (await Rfc.find("0136-trailmap")).update({
     priority: 4,
     packages: ["activerecord"],
   });

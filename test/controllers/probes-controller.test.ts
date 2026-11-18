@@ -1,5 +1,5 @@
 import { constantize } from "@blazetrails/activesupport";
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { env, getChildProcess, getFs, setEnv, type FsAdapter } from "@blazetrails/ruby-compat";
 import { MigrationContext } from "@blazetrails/activerecord";
@@ -67,7 +67,10 @@ beforeAll(async () => {
   setEnv("GIT_CONFIG_NOSYSTEM", "1");
   tasksDir = checkout();
   dirs.push(tasksDir);
+});
 
+// The rows, inside each test's fixture transaction.
+beforeEach(async () => {
   await Rfc.create({ id: "0143-production-smoke", status: "active", title: "smoke" });
   await Story.create({ id: "claimable", rfc_id: "0143-production-smoke", status: "ready" });
   await Story.create({ id: "finished", rfc_id: "0143-production-smoke", status: "done" });

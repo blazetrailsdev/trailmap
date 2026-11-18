@@ -13,7 +13,6 @@ describe("timestamp touch", () => {
     // `updated_on` is markdown's date-only `updated:` field. A full instant
     // written there makes the read-model build an Invalid Date, which takes
     // every verb down for everyone on the host.
-    await Rfc.create({ id: "0136-trailmap", status: "active" });
     await Story.create({
       id: "s",
       rfc_id: "0136-trailmap",

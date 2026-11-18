@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
 import {
   connectHubTestDatabase,
@@ -30,11 +30,12 @@ import { Story } from "../../app/models/story.ts";
 describe.skipIf(!hasHubTestDatabase())("two adapters in one process", () => {
   beforeAll(async () => {
     await connectHubTestDatabase();
-    await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
-    await Story.create({ id: "a-story", rfc_id: "0136-trailmap", status: "ready" });
     const owner = await Owner.create({ login: "blazetrailsdev", kind: "organization" });
     await Repository.create({ owner_id: owner.id, name: "trails" });
   }, HUB_SETUP_TIMEOUT);
+  beforeEach(async () => {
+    await Story.create({ id: "a-story", rfc_id: "0136-trailmap", status: "ready" });
+  });
   // Hands the hub to the next test file; see `releaseHubTestDatabase`.
   afterAll(releaseHubTestDatabase);
 

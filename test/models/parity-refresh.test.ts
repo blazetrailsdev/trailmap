@@ -30,11 +30,12 @@ import { projectionIsStale, refreshProjectionIfStale } from "../../app/models/pa
 import { createScratchStatsDatabase, seedApiCompare } from "./stats-schema.ts";
 import { Stats } from "../../app/models/stats.ts";
 import { TestCase } from "@blazetrails/activesupport/test-case";
-import { withoutTransactionalTests } from "../support/transactional-tests.ts";
+import { withoutFixtures, withoutTransactionalTests } from "../support/transactional-tests.ts";
 
 // Rails' `self.use_transactional_tests = false`: this file holds the projection's lock from a second connection and asserts that a
 // refresh sees it, which a test's fixture transaction would change. vitest isolates each file, so this reaches no other.
 withoutTransactionalTests(TestCase);
+withoutFixtures(TestCase);
 
 /** The lock `parity-refresh.ts` uses; taken here to drive the "locked" path. */
 const REFRESH_LOCK = 0x7a11_0001;

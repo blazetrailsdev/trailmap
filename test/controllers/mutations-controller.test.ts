@@ -40,7 +40,6 @@ async function post(
 const find = async (id: string): Promise<Story> => (await Story.findBy({ id }))!;
 
 beforeEach(async () => {
-  await Rfc.create({ id: "0136-trailmap", status: "active", title: "Trailmap" });
   await Story.create({ id: "s1", rfc_id: "0136-trailmap", status: "ready", est_loc: 10 });
   await Story.create({ id: "s2", rfc_id: "0136-trailmap", status: "ready", est_loc: 20 });
 });

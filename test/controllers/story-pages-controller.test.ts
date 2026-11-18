@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { ActionController } from "@blazetrails/actionpack";
 import { Dir, setEnv } from "@blazetrails/ruby-compat";
@@ -16,16 +16,10 @@ async function show(id: string): Promise<{ status: number; body: string }> {
   return { status: tc.response.status, body: tc.response.body };
 }
 
-beforeAll(async () => {
+beforeEach(async () => {
   setX("tasks", "dir", Dir.pwd());
 
-
-  await Rfc.create({
-    id: "0136-trailmap",
-    status: "active",
-    title: "trailmap",
-    packages: ["trailties"],
-  });
+  await (await Rfc.find("0136-trailmap")).update({ packages: ["trailties"] });
   await Rfc.create({ id: "0061-ci", status: "closed", title: "CI failures" });
 
   await Story.create({

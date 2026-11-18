@@ -4,7 +4,7 @@
  * ORDER match what `index.json` and `events.json` carried, because the Go
  * structs that parsed those files are reused verbatim against these responses.
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
@@ -20,12 +20,8 @@ async function get(
   return { status: tc.response.status, body: JSON.parse(tc.response.body) };
 }
 
-beforeAll(async () => {
-
-  await Rfc.create({
-    id: "0136-trailmap",
-    status: "active",
-    title: "trailmap",
+beforeEach(async () => {
+  await (await Rfc.find("0136-trailmap")).update({
     priority: 1,
     created_on: "2026-08-25",
     updated_on: "2026-09-05",
@@ -34,7 +30,6 @@ beforeAll(async () => {
     related_rfcs: ["0061-ci-failures"],
     file_path: "rfcs/0136-trailmap/README.md",
   });
-  await Rfc.create({ id: "0002-draft", status: "draft", title: "Draft" });
 
   await Story.create({ id: "later", rfc_id: "0136-trailmap", status: "ready", priority: 9 });
   await Story.create({ id: "sooner", rfc_id: "0136-trailmap", status: "ready", priority: 2 });

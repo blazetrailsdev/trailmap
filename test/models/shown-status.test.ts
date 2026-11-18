@@ -1,5 +1,5 @@
 /** The display rule beside `effectiveStoryStatus`, in each of its three forms. */
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { StoryDep } from "../../app/models/story-dep.ts";
@@ -47,7 +47,7 @@ describe("depHeldIn", () => {
 });
 
 describe("Story.depHeldIds", () => {
-  beforeAll(async () => {
+  beforeEach(async () => {
     await Rfc.create({ id: "0001-open", status: "active" });
     await Rfc.create({ id: "0002-shut", status: "closed" });
     await Story.create({ id: "dep-open", rfc_id: "0001-open", status: "ready" });

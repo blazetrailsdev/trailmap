@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { StoryPagesController } from "../../app/controllers/story-pages-controller.ts";
@@ -21,8 +21,7 @@ async function metaOf(id: string): Promise<string> {
   return meta[1]!;
 }
 
-beforeAll(async () => {
-
+beforeEach(async () => {
   await Rfc.create({ id: "0188-idea", status: "draft", title: "An idea" });
   await Story.create({ id: "zero", rfc_id: "0188-idea", status: "draft", est_loc: 0 });
   await Story.create({ id: "unsized", rfc_id: "0188-idea", status: "draft" });

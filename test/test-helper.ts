@@ -13,8 +13,7 @@ await import("../config/environment.ts");
 await import("@blazetrails/trailties/test-help");
 
 // Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical
-// order: the generated helper's `fixtures :all`. The shared seed rows move
-// there in `seed-trailmap-tests-from-fixtures`.
+// order: the generated helper's `fixtures :all`.
 const { TestCase } = await import("@blazetrails/activesupport/test-case");
 TestCase.fixtures(":all");
 
@@ -26,12 +25,21 @@ TestCase.fixtures(":all");
 // VITEST_POOL_ID is the worker number Rails' `parallelize` would hand
 // `parallelize_setup`.
 //
-// It runs per FILE rather than once per worker because the files still seed
-// rows in `beforeAll` outside any transaction, so each must start from an
-// empty database. `seed-trailmap-tests-from-fixtures` moves those rows into
-// test/fixtures and this back to once per worker.
+// It runs ONCE per worker. vitest re-evaluates this helper for every file
+// the worker runs, so the later files still point the configurations at the
+// worker's copy, but skip the truncate: every row a test writes is inside its fixture
+// transaction, so the next file finds the database as the fixtures left it.
 const { TestDatabases } = await import("@blazetrails/activerecord/test-databases");
-await TestDatabases.createAndLoadSchema(Number(env.VITEST_POOL_ID ?? 0), { envName: "test" });
+const worker = Number(env.VITEST_POOL_ID ?? 0);
+const prepared = `TRAILMAP_TEST_DATABASE_${worker}_PREPARED`;
+const truncate = env.SKIP_TEST_DATABASE_TRUNCATE;
+if (env[prepared] != null) setEnv("SKIP_TEST_DATABASE_TRUNCATE", "1");
+try {
+  await TestDatabases.createAndLoadSchema(worker, { envName: "test" });
+} finally {
+  setEnv("SKIP_TEST_DATABASE_TRUNCATE", truncate);
+}
+setEnv(prepared, "1");
 
 // The columns, warmed as config/environment.ts warms them for a served
 // process, which it skips here because `test` has no TASKS_DATABASE. After
@@ -39,10 +47,9 @@ await TestDatabases.createAndLoadSchema(Number(env.VITEST_POOL_ID ?? 0), { envNa
 const { loadModelSchemas } = await import("../lib/model-schemas.ts");
 await loadModelSchemas();
 
-// Close this file's connections when it finishes. vitest runs the next file in
-// the same worker, and that file rebuilds `storage/test.sqlite3-<n>` above:
-// a connection left open here would hold it and fail the rebuild on
-// "database is locked". `test/global-setup.ts`'s teardown, per file.
+// Close this file's connections when it finishes: vitest runs the next file in
+// the same worker, and a connection left open here would hold
+// `storage/test.sqlite3-<n>` locked. `test/global-setup.ts`'s teardown, per file.
 afterAll(async () => {
   const { Base } = await import("@blazetrails/activerecord");
   await Base.connectionHandler.clearAllConnectionsBang("all");

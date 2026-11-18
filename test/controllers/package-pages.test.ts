@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { setEnv } from "@blazetrails/ruby-compat";
 import { createScratchStatsDatabase } from "../models/stats-schema.ts";
 import { Stats } from "../../app/models/stats.ts";
@@ -22,7 +22,7 @@ async function page(action: string, params: Record<string, string>): Promise<str
   return String(tc.response.body);
 }
 
-beforeAll(async () => {
+beforeEach(async () => {
   await createScratchStatsDatabase();
   setEnv("STATS_DB", ":memory:");
   await stats(`INSERT INTO package_meta (merge_commit_sha, pr_number, package) VALUES ('sha1', 1, 'arel'), ('sha2', 2, 'arel')`);

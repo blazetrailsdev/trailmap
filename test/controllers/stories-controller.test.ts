@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TestCase } from "@blazetrails/actionpack/testing";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
@@ -23,11 +23,7 @@ async function getJson(
   return { status: tc.response.status, body: JSON.parse(tc.response.body) };
 }
 
-beforeAll(async () => {
-
-  await Rfc.create({ id: "0136-trailmap", status: "active", title: "trailmap" });
-  await Rfc.create({ id: "0002-draft", status: "draft", title: "Draft" });
-
+beforeEach(async () => {
   await Story.create({
     id: "dependent",
     rfc_id: "0136-trailmap",
