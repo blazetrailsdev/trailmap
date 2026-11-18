@@ -234,6 +234,7 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     }
   });
 
+<<<<<<< HEAD
   it("says the spawn picker is empty because no repository has a checkout path", async () => {
     const paths = new Map((await Repository.all().toArray()).map((repo) => [repo.id, repo.checkout_path]));
     await Repository.where({}).updateAll({ checkout_path: null });
@@ -248,6 +249,29 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     }
   });
 
+||||||| parent of ae087e8 (feat(preview): PR preview apps on dokku, read-only against production data)
+=======
+  it("in a PR preview, ignores the hub's ringo row and says which PR it is", async () => {
+    // A preview reads production's hub, whose row names production's ringo;
+    // relaying to it would let a preview drive the real fleet. config/preview.ts.
+    setEnv("RINGO_BASE", "");
+    await Setting.write("ringo_base", "http://btwhooks.web:8080");
+    setX("preview", "pr", "160");
+    try {
+      const page = await get(DashboardController, "index", {});
+      expect(page.body).toContain("No fleet data");
+      expect(page.body).toContain('class="preview-banner"');
+      expect(page.body).toContain("trailmap#160");
+    } finally {
+      setX("preview", "pr", undefined);
+      await Setting.write("ringo_base", null);
+    }
+
+    const production = await get(DashboardController, "index", {});
+    expect(production.body).not.toContain("preview-banner");
+  });
+
+>>>>>>> ae087e8 (feat(preview): PR preview apps on dokku, read-only against production data)
   it("serves one issue, and 404s a story that is not there", async () => {
     const found = await get(RepoIssuesController, "show", { ...TRAILS, id: "open-in-trails" });
     expect(found.status).toBe(200);

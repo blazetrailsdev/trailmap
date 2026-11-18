@@ -16,6 +16,9 @@
 <body>
   <% const navItems = [["RFCs", rfcsPath()], ["Backlog", backlogPath()], ["Dashboard", dashboardPath()], ["Parity", parityGraphPath()], ["Packages", packagesPath()], ["Audits", auditsPath()], ["Deploys", deploysPath()], ["Sessions", sessionsPath()], ["Search", searchPath()]].map(([label, path]) => [label, path, navMark(path)] as const); %>
   <% const navCurrent = navItems.find(([, , mark]) => mark)?.[0] ?? ""; %>
+  <% const pr = previewPr(); if (pr !== null) { %>
+    <div class="preview-banner" role="status">Preview of <a href="https://github.com/blazetrailsdev/trailmap/pull/<%= pr %>">trailmap#<%= pr %></a>, built from its head. The data is a copy of production; changes made here are not kept.</div>
+  <% } %>
   <nav class="nav">
     <a class="nav-brand" href="<%= rootPath() %>"><%= imageTag("/mark.svg", { size: 24, alt: "" }) %>trailmap</a>
     <span class="nav-current" aria-hidden="true"><%= navCurrent %></span>

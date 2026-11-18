@@ -744,3 +744,79 @@ the "trails tracking is failing" issue in blazetrailsdev/tasks. After every run 
 writes `pnpm trails:status` to `trails-status.txt` beside `tasks.db`
 (`<tasks checkout>/.git/`, blazetrailsdev/tasks#328). trailmap does not read
 it.
+
+## Preview apps
+
+A PR labelled `preview` gets its own dokku app, `trailmap-pr-<N>`, at
+`https://pr-<N>.trailmap.deanoftech.com`, built from the PR's head and
+serving **copies of production's data**. It exists so a reviewer can use the
+pages a PR changes without running it, and so a PR's screenshots can be shot
+against it.
+
+btwhooks drives it from GitHub's `pull_request` events: the label going on
+runs `scripts/preview.sh up <N> <sha>`, a push to a labelled PR runs it again
+with the new head, and the label coming off or the PR closing runs
+`scripts/preview.sh down <N>`. The script is the whole recipe. btwhooks only
+decides when to run it, so a PR that changes how trailmap deploys changes its
+preview in the same diff.
+
+### What a preview may touch
+
+Nothing in production, and the database layer enforces that. The PR's code
+is never trusted to behave, since the PR's code is the thing under review:
+
+| Data | In a preview |
+| --- | --- |
+| Hub (Postgres) | production's, through `trailmap_preview`, a role that can only `SELECT` and whose transactions default to read-only |
+| `tasks.db`, `stats.db`, `stats-job.db` | `sqlite3 .backup` copies taken at each deploy into `~/.trailmap-previews/pr-<N>/`, deleted by `down` |
+| Tasks checkout, audits | the production paths, mounted `:ro` |
+| ringo | none: `Setting.ringoBase()` answers null under `TRAILMAP_PREVIEW`, because the hub's `ringo_base` row names production's ringo |
+| Mail, `GH_TOKEN` | not configured |
+
+`TRAILMAP_PREVIEW=<N>` also:
+
+- skips the `release` task (`Procfile`), because a PR's migration must never
+  reach production's hub;
+- leaves `worker` at 0;
+- puts a banner over every page naming the PR.
+
+`nginx.conf.sigil` emits the loopback API block for the `trailmap` app only.
+A preview that emitted a second `listen 127.0.0.1:8080` would break nginx's
+reload or take the CLI's and ringo's API traffic.
+
+**A PR that adds a migration previews against production's schema**, without
+it, so a page reading the new column 500s. The script warns about this in its
+output. A migration preview would need a disposable clone of the hub, and
+none exists yet.
+
+### One-time setup
+
+```sh
+# DNS: a wildcard record, *.trailmap.deanoftech.com -> the box. Each preview
+# gets its own Let's Encrypt certificate (HTTP-01) once the name resolves.
+
+# The network a preview reaches the hub on. Production uses `postgres:link`,
+# which would hand a preview the owner's credentials. On a non-bridge network
+# the service answers to `dokku-postgres-trailmap-hub`.
+docker network create trailmap-previews   # or: dokku network:create trailmap-previews
+dokku postgres:set trailmap-hub post-start-network trailmap-previews
+dokku postgres:restart trailmap-hub       # once, when a blip is acceptable
+
+# The read-only role. `ALTER DEFAULT PRIVILEGES` covers tables a later hub
+# migration creates; it must be run as the role that runs those migrations.
+dokku postgres:connect trailmap-hub <<'SQL'
+CREATE ROLE trailmap_preview LOGIN PASSWORD '<generate one>';
+GRANT CONNECT ON DATABASE trailmap_hub TO trailmap_preview;
+GRANT USAGE ON SCHEMA public TO trailmap_preview;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO trailmap_preview;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO trailmap_preview;
+ALTER ROLE trailmap_preview SET default_transaction_read_only = on;
+SQL
+
+# btwhooks passes this to the script; it lives in btwhooks' config, never here.
+#   PREVIEW_HUB_DATABASE_URL=postgres://trailmap_preview:<pw>@dokku-postgres-trailmap-hub:5432/trailmap_hub
+```
+
+Check the database name with `dokku postgres:info trailmap-hub --dsn`. To
+prove the role cannot write, `INSERT INTO settings ...` as `trailmap_preview`
+must fail with `cannot execute INSERT in a read-only transaction`.

@@ -193,7 +193,12 @@ upstream {{ $.APP }}-{{ $upstream_port }} {
 #
 # 127.0.0.1 only. This block has no authentication of any kind, so its
 # unreachability from off-box is the whole of its security.
-{{ if $.DOKKU_APP_WEB_LISTENERS }}
+#
+# PRODUCTION'S APP ONLY. A PR preview app (`trailmap-pr-N`) is built from this
+# same file, and a second `listen 127.0.0.1:8080` would either fail nginx's
+# reload or hand the CLI's and ringo's API calls to a preview. A preview has no
+# loopback API; it is a page to look at.
+{{ if and $.DOKKU_APP_WEB_LISTENERS (eq $.APP "trailmap") }}
 server {
   listen      127.0.0.1:8080;
   server_name _;

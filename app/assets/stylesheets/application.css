@@ -1301,3 +1301,8 @@ kbd {
 .rfc-priority-form { display: inline-flex; gap: 6px; align-items: center; margin-right: 6px; }
 .rfc-priority select.ctl { width: 72px; }
 .rfc-priority .field-note { margin-top: 6px; }
+
+/* A PR preview app's banner (config/preview.ts). Above the sticky nav, so a
+   screenshot of a preview can never be mistaken for production. */
+.preview-banner { padding: 8px 16px; background: var(--st-self); color: var(--on-action); font-weight: 600; font-size: 14px; text-align: center; }
+.preview-banner a { color: inherit; text-decoration: underline; }

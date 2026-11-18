@@ -1,3 +1,4 @@
+import { previewPr } from "../../config/preview.ts";
 import { getFs } from "@blazetrails/ruby-compat";
 import { Trails } from "@blazetrails/trailties";
 
@@ -18,6 +19,11 @@ const unescape = (value: string): string => {
 type NavRequest = { path: string; method: string };
 
 export const ApplicationHelper = {
+  /** The PR a preview app serves, for the layout's banner; null in production. */
+  previewPr(): number | null {
+    return previewPr();
+  },
+
   /**
    * How a header link is marked: `page` on an exact match, `section` on a page
    * inside the link's section (paths under its own, and those
