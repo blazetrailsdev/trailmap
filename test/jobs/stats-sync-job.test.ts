@@ -261,10 +261,17 @@ describe("StatsSyncJob", () => {
     // solid_queue's own conflict handler, on a job row of this class: `discard`
     // destroys the row, `block` would park it as a blocked execution.
     const { Job } = await import("@blazetrails/solid-queue");
-    const job = Object.create(Job.prototype) as InstanceType<typeof Job>;
+    // `handleConcurrencyConflict` and `block` are the ConcurrencyControls
+    // mixin's (@internal), which the `Job` type does not carry.
+    const job = Object.create(Job.prototype) as {
+      jobClass(): unknown;
+      destroy(): Promise<unknown>;
+      block(): Promise<unknown>;
+      handleConcurrencyConflict(): Promise<unknown>;
+    };
     vi.spyOn(job, "jobClass").mockReturnValue(StatsSyncJob);
     const destroy = vi.spyOn(job, "destroy").mockResolvedValue(job);
-    const block = vi.spyOn(job as unknown as { block(): Promise<unknown> }, "block").mockResolvedValue(true);
+    const block = vi.spyOn(job, "block").mockResolvedValue(true);
 
     await job.handleConcurrencyConflict();
 
