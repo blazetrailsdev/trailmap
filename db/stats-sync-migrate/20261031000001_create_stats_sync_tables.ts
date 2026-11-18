@@ -1,4 +1,4 @@
-import { Migration } from "@blazetrails/activerecord";
+import { IrreversibleMigration, Migration } from "@blazetrails/activerecord";
 import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapters/sqlite3-adapter.js";
 
 /**
@@ -281,7 +281,6 @@ export class CreateStatsSyncTables extends Migration.get(8) {
 
   /** Dropping these would destroy a stats.db this migration merely adopted. */
   async down(): Promise<void> {
-    // Until irreversible-migration-exported-from-activerecord.
-    throw new Error("CreateStatsSyncTables is irreversible");
+    throw new IrreversibleMigration();
   }
 }
