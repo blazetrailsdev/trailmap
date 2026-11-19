@@ -12,6 +12,7 @@
  */
 import {
   isGrooming,
+  claudeHasExited,
   CLEAR_FAILED_ID,
   DEFAULT_REPO,
   PALETTE_INPUT,
@@ -642,6 +643,26 @@ async function followDrain(request, result) {
 // be bound to a node that is gone a second later.
 // ---------------------------------------------------------------------------
 
+/** Poll a pane's screen until it shows Claude gone; false once `timeoutMs` passes. */
+async function waitForShell({ screen, everyMs, timeoutMs }) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, everyMs));
+    try {
+      const response = await fetch(screen, { headers: { Accept: "application/json" }, cache: "no-store" });
+      if (response.ok && claudeHasExited(await response.json(), screenText)) return true;
+    } catch {
+      // A missed poll is retried until the deadline.
+    }
+  }
+  return false;
+}
+
+/** A screen's HTML as the text it shows, `&nbsp;` and every other entity decoded. */
+function screenText(html) {
+  return new DOMParser().parseFromString(html, "text/html").body.textContent || "";
+}
+
 /** POST one control to ringo: `{ ok, text }`, or `{ error }` if nothing answered. */
 async function send(request) {
   try {
@@ -697,10 +718,15 @@ document.addEventListener("click", async (event) => {
   for (const other of held) other.disabled = true;
 
   let result = await send(request);
-  // A follow-up line, once the first has landed: End pane's shell `exit`.
+  // A follow-up line, once the first has landed and the screen says Claude
+  // has gone: End pane's shell `exit`. Never on a timeout, where it would be
+  // typed into Claude.
   if (request.then && result.ok) {
-    await new Promise((resolve) => setTimeout(resolve, request.then.afterMs));
-    result = await send({ ...request, body: { text: request.then.text } });
+    if (await waitForShell(request.then)) {
+      result = await send({ ...request, body: { text: request.then.text } });
+    } else {
+      result = { ok: false, text: "Claude has not exited after " + request.then.timeoutMs / 1000 + "s; not sending exit" };
+    }
   }
   for (const other of held) other.disabled = false;
 

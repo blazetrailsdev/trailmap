@@ -17,7 +17,14 @@ const palette = (): HTMLDialogElement => byId("palette") as HTMLDialogElement;
 const input = (): HTMLInputElement => byId("paletteInput") as HTMLInputElement;
 const settle = (ms = 0): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+// What the next screen polls answer, oldest first; the last one repeats.
+const screens: unknown[] = [];
+
 function answer(url: string, init?: RequestInit): Response {
+  if (url.endsWith("/screen")) {
+    const body = screens.length > 1 ? screens.shift() : screens[0];
+    return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
   if (init?.method === "POST") {
     posts.push({ url, body: init.body ? JSON.parse(String(init.body)) : null });
     return new Response("spawned in %5", { status: 200 });
@@ -99,8 +106,7 @@ describe("the dashboard palette", () => {
 
     expect(palette().open).toBe(true);
     expect(input().value).toBe("abc");
-    await settle(250);
-    expect(searches.at(-1)).toBe("abc");
+    await vi.waitFor(() => expect(searches.at(-1)).toBe("abc"), { timeout: 5000 });
     palette().close();
   });
 
@@ -112,8 +118,7 @@ describe("the dashboard palette", () => {
 
     expect(palette().open).toBe(true);
     expect(input().value).toBe("pasted query");
-    await settle(250);
-    expect(searches.at(-1)).toBe("pasted query");
+    await vi.waitFor(() => expect(searches.at(-1)).toBe("pasted query"), { timeout: 5000 });
     palette().close();
   });
 
@@ -237,8 +242,7 @@ describe("the broadcast dialog", () => {
     expect(dialog().open).toBe(true);
     expect(byId("bcastKeyHint").textContent).toBe("send to CI red");
     box().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true, cancelable: true }));
-    await settle(50);
-    expect(posts.at(-1)).toEqual({ url: "/fleet/control/broadcast", body: { message: "fix CI", target: "ci-red" } });
+    await vi.waitFor(() => expect(posts.at(-1)).toEqual({ url: "/fleet/control/broadcast", body: { message: "fix CI", target: "ci-red" } }), { timeout: 5000 });
     dialog().close();
   });
 
@@ -246,5 +250,38 @@ describe("the broadcast dialog", () => {
     byId("broadcastBtn").click();
     expect(byId("bcastKeyHint").textContent).toBe("send to all");
     dialog().close();
+  });
+});
+
+describe("End pane", () => {
+  const endButton = (): HTMLButtonElement => {
+    const button = document.createElement("button");
+    Object.assign(button.dataset, { action: "pane-end", pane: "%42", key: "k", says: "messageNote" });
+    document.body.append(button);
+    return button;
+  };
+
+  it("types exit only once the screen shows the shell, decoding its entities", async () => {
+    vi.stubGlobal("confirm", () => true);
+    const before = posts.length;
+    screens.splice(0, screens.length, { exists: true, html: "<span>? for shortcuts</span>" }, { exists: true, html: "bye\n<b>box&nbsp;~&gt;</b>&nbsp;" });
+    endButton().click();
+    await vi.waitFor(() => expect(posts.slice(before).map((p) => p.body)).toEqual([{ text: "/exit" }, { text: "exit" }]), { timeout: 5000 });
+    expect(posts.at(-1)?.url).toBe("/fleet/pane/42/send");
+  });
+
+  it("sends no exit, and says so beside the box, when Claude never leaves", async () => {
+    vi.stubGlobal("confirm", () => true);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const before = posts.length;
+      screens.splice(0, screens.length, { exists: true, html: "esc to interrupt\n>" });
+      endButton().click();
+      await vi.advanceTimersByTimeAsync(21000);
+      await vi.waitFor(() => expect(byId("messageNote").textContent).toBe("Claude has not exited after 20s; not sending exit"));
+      expect(posts.slice(before).map((p) => p.body)).toEqual([{ text: "/exit" }]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

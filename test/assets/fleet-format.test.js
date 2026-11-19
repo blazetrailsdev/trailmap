@@ -3,6 +3,7 @@ import { getFs } from "@blazetrails/ruby-compat";
 import { STYLESHEET } from "../../scripts/class-collisions.ts";
 import {
   CI_TITLES,
+  claudeHasExited,
   paneOverridePill,
   plural,
   CLEAR_FAILED_ID,
@@ -888,9 +889,22 @@ describe("a pane message", () => {
     const request = controlRequest("pane-end", { pane: "%42", key: "k", says: "note" });
     expect(request.url).toBe("/fleet/pane/42/send");
     expect(request.body).toEqual({ text: "/exit" });
-    expect(request.then).toEqual({ text: "exit", afterMs: 3000 });
+    expect(request.then).toEqual({ text: "exit", screen: "/fleet/pane/42/screen", everyMs: 500, timeoutMs: 20000 });
     expect(request.confirm).toContain("%42");
     expect(controlRequest("pane-end", { pane: "42" })).toBeNull();
+  });
+
+  it("pane-end waits for a shell prompt, not Claude's UI, before typing exit", () => {
+    const text = (html) => html.replace(/<[^>]*>/g, "");
+    expect(claudeHasExited({ html: "<span>╭───╮</span>\n│ > /exit\n  ? for shortcuts" }, text)).toBe(false);
+    expect(claudeHasExited({ html: "auto mode on\n>" }, text)).toBe(false);
+    expect(claudeHasExited({ html: "bye\n<b>dean@box ~/w></b> \n\n" }, text)).toBe(true);
+    expect(claudeHasExited({ html: "Goodbye!\n$\u00a0" }, text)).toBe(true);
+    expect(claudeHasExited({ html: "Goodbye!\nbox% " }, text)).toBe(true);
+    expect(claudeHasExited({ html: "? for shortcuts · auto mode on\nold output\nmore\nstill more\nGoodbye!\n$ " }, text)).toBe(true);
+    expect(claudeHasExited({ exists: false }, text)).toBe(true);
+    expect(claudeHasExited({ unchanged: true }, text)).toBe(false);
+    expect(claudeHasExited(null, text)).toBe(false);
   });
 
   it("logs a sent line and clears its box; shows ringo's refusal beside it", () => {

@@ -1,0 +1,20 @@
+{
+  "events": {
+    "prs": [
+      { "owner": "blazetrailsdev", "repo": "trails", "pr": 9001, "title": "fix: a red build", "branch": "red-build", "ciStatus": "failure", "pane": "%11", "reviewCycles": 1 },
+      { "owner": "blazetrailsdev", "repo": "trails", "pr": 9002, "title": "feat: findings open", "branch": "findings-open", "ciStatus": "success", "openFindings": 2, "pane": "%12" },
+      { "owner": "blazetrailsdev", "repo": "trailmap", "pr": 9003, "title": "feat: reviewer assigned, red", "branch": "reviewer-red", "ciStatus": "pending", "pane": "%13" },
+      { "owner": "blazetrailsdev", "repo": "trailmap", "pr": 9004, "title": "fix: green with a reviewer", "branch": "green-reviewed", "ciStatus": "success", "pane": "%14" }
+    ],
+    "spawns": [],
+    "fixers": []
+  },
+  "/reviewer/list": [
+    { "owner": "blazetrailsdev", "repo": "trailmap", "pr": 9003, "agent": "codex", "pane_id": "%23" },
+    { "owner": "blazetrailsdev", "repo": "trailmap", "pr": 9004, "agent": "copilot", "pane_id": "%24" }
+  ],
+  "/reviewer/config": { "next_reviewer": "codex" },
+  "/broadcast/targets": { "all": 4, "ci-red": 1 },
+  "/usage-status": { "manualPause": false, "watchConnected": false, "lastCheckTime": "" },
+  "/ask/list": { "pending": [] }
+}

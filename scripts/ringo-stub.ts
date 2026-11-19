@@ -3,7 +3,9 @@ import { env, getFs, getHttpAsync } from "@blazetrails/ruby-compat";
 /**
  * A stand-in ringo origin for screenshots: it answers the session archive's
  * endpoints from test/fixtures/ringo-archive, so `/sessions`, a PR's timeline
- * and a transcript render on a box with no ringo. Both apps read it:
+ * and a transcript render on a box with no ringo, and the fleet stream and
+ * reads from its dashboard.json, so `/dashboard` draws a row in each of
+ * Getting CI green, Reviewer convergence and Ready to merge. Both apps read it:
  *
  *   pnpm ringo:stub                       # listens on 127.0.0.1:8399
  *   RINGO_BASE=http://127.0.0.1:8399 bin/trails server
@@ -15,7 +17,12 @@ import { env, getFs, getHttpAsync } from "@blazetrails/ruby-compat";
 const ROOT = "test/fixtures/ringo-archive";
 const PORT = Number(env.RINGO_STUB_PORT ?? 8399);
 
+const DASHBOARD = JSON.parse(await getFs().readFile(`${ROOT}/dashboard.json`, "utf-8")) as Record<string, unknown>;
+
 async function answer(url: URL): Promise<{ status: number; type: string; body: string }> {
+  if (url.pathname !== "/events" && url.pathname in DASHBOARD) {
+    return { status: 200, type: "application/json", body: JSON.stringify(DASHBOARD[url.pathname]) };
+  }
   const json = (name: string) => getFs().readFile(`${ROOT}/${name}`, "utf-8").then((body) => ({ status: 200, type: "application/json", body }));
   if (url.pathname === "/api/sessions") return json("sessions.json");
   if (url.pathname === "/api/sessions/status") return json("status.json");
@@ -35,7 +42,14 @@ async function answer(url: URL): Promise<{ status: number; type: string; body: s
 const http = await getHttpAsync();
 http
   .createServer(async (req, res) => {
-    const { status, type, body } = await answer(new URL(req.url ?? "/", "http://stub"));
+    const url = new URL(req.url ?? "/", "http://stub");
+    if (url.pathname === "/events") {
+      // One frame, then held open as ringo holds it.
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      res.write(`data: ${JSON.stringify(DASHBOARD.events)}\n\n`);
+      return;
+    }
+    const { status, type, body } = await answer(url);
     res.writeHead(status, { "content-type": type });
     res.end(body);
   })

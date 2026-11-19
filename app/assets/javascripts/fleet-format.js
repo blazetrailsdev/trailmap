@@ -492,7 +492,7 @@ export function controlRequest(action, data, page = {}) {
         path: "/pane/" + id[1] + "/send",
         url: "/fleet/pane/" + id[1] + "/send",
         body: { text: "/exit" },
-        then: { text: "exit", afterMs: 3000 },
+        then: { text: "exit", screen: "/fleet/pane/" + id[1] + "/screen", everyMs: 500, timeoutMs: 20000 },
         confirm: "End pane " + data.pane + "? This exits Claude and closes its shell.",
         pane: true,
         key: data.key || "",
@@ -531,6 +531,32 @@ function parsed(text) {
 }
 
 export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
+
+/**
+ * Whether a pane's screen (the `/fleet/pane/:id/screen` body) shows Claude
+ * gone: the pane itself gone, or no Claude UI left and a shell prompt on the
+ * last line. End pane types the shell's `exit` only once this holds, so it is
+ * never typed into Claude as a prompt.
+ *
+ * `toText` turns the screen's HTML into its text; the page passes the
+ * browser's own parser. ringo reports no pane command, so this reads the
+ * screen: a prompt is a last line ending in `>`, `$`, `#`, `%` (zsh) or `❯`,
+ * and any of Claude Code's own UI strings in the last four non-blank lines
+ * means not yet.
+ */
+export function claudeHasExited(body, toText) {
+  if (!body || typeof body !== "object") return false;
+  if (body.exists === false) return true;
+  if (typeof body.html !== "string") return false;
+  // Only the bottom of the screen: Claude's UI sits there while it runs, and
+  // scrollback above a shell prompt may quote the same strings.
+  const tail = toText(body.html).split("\n").map((line) => line.trimEnd()).filter(Boolean).slice(-SCREEN_TAIL);
+  if (tail.some((line) => CLAUDE_UI.test(line))) return false;
+  return /[>$#%❯]$/.test(tail.at(-1) || "");
+}
+
+const CLAUDE_UI = /for shortcuts|esc to interrupt|auto mode|accept edits|bypass permissions|╭─|^\s*│ >/;
+const SCREEN_TAIL = 4;
 
 /**
  * What the button shows once its request has settled. `result` is

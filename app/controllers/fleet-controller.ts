@@ -169,7 +169,7 @@ export class FleetController extends ApplicationController {
       });
       const answer = await response.text();
       if (response.status === 204) {
-        this.head(204);
+        await this.head(204);
       } else {
         await this.render({ plain: answer, status: response.status });
       }
