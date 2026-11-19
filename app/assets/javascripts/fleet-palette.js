@@ -1,8 +1,8 @@
 /*
  * The ⌘K palette (RFC 0232 "Search"): sessions and PRs matched in the browser
  * from the current frame, stories from `fleet/stories?q=`, grouped by kind
- * with scope chips, and the actions that replaced the broadcast and spawn
- * forms. Pure: `dashboard.js` opens the dialog and assigns what this returns.
+ * with scope chips, and the actions that open the message, spawn and
+ * broadcast boxes. Pure: `dashboard.js` opens the dialog and assigns what this returns.
  */
 import { esc, isGrooming, OCTICON, STAGE_ICONS, stageName } from "./fleet-format.js";
 import { sessionKey, sessionStories, stageOf } from "./fleet-sessions.js";

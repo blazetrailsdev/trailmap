@@ -15,6 +15,8 @@ import {
   CLEAR_FAILED_ID,
   DEFAULT_REPO,
   PALETTE_INPUT,
+  BROADCAST_MESSAGE,
+  broadcastKey,
   SPAWN_TASK,
   anyFailedSpawn,
   broadcastButtons,
@@ -669,7 +671,7 @@ document.addEventListener("click", async (event) => {
   const request = controlRequest(button.dataset.action, data, {
     nextReviewer,
     audiences,
-    message: byId(PALETTE_INPUT).value,
+    message: byId(BROADCAST_MESSAGE).value,
     task: byId(SPAWN_TASK).value,
     repoDir: byId("repo").value,
     model: byId("spawnModel").value,
@@ -729,7 +731,13 @@ document.addEventListener("click", async (event) => {
     spawnTask.style.height = "";
     syncName();
   }
-  if (outcome.clearMessage) byId(PALETTE_INPUT).value = "";
+  if (outcome.clearMessage) byId(BROADCAST_MESSAGE).value = "";
+  // The dialog is about to go, and its report with it: say it on the page.
+  if (outcome.closeBroadcast) {
+    byId("paletteDone").textContent = outcome.note ?? "";
+    closeBroadcast();
+    broadcastMessage.style.height = "";
+  }
   // The palette is about to go, and its report with it: say it on the page.
   if (outcome.closePalette) {
     byId("paletteDone").textContent = outcome.say ?? outcome.note ?? "";
@@ -829,7 +837,6 @@ const palette = byId("palette");
 const paletteInput = byId(PALETTE_INPUT);
 const PALETTE_LABELS = {
   search: "Search sessions, stories and PRs",
-  broadcast: "Message to broadcast to the agents",
   message: "Message to type into the session's pane",
 };
 let paletteMode = "search";
@@ -875,8 +882,6 @@ function openPalette(mode, extra = {}) {
     byId("messageSend").dataset.key = extra.key;
     byId("paletteModeLabel").textContent = "Message " + extra.title;
     byId("messageNote").textContent = "";
-  } else if (mode === "broadcast") {
-    byId("paletteModeLabel").textContent = "Broadcast";
   }
   byId("paletteDone").textContent = "";
   if (!palette.open) palette.showModal();
@@ -911,8 +916,9 @@ function pick(result, withMeta) {
       return openSpawn(task);
     }
     if (result.action === "broadcast") {
-      openPalette("broadcast");
-      if (result.target === "ci-red") byId("bcastCIRed").focus();
+      const message = paletteInput.value.trim();
+      closePalette();
+      return openBroadcast(message, result.target);
     }
   } else if (result.href) {
     closePalette();
@@ -955,8 +961,6 @@ paletteInput.addEventListener("keydown", (event) => {
   } else if (event.key === "Enter") {
     event.preventDefault();
     if (paletteMode === "search") pick(paletteShown[paletteSelected], event.metaKey || event.ctrlKey);
-    // Enter sends to everyone; with Ctrl or Cmd, to the CI-red audience.
-    else if (paletteMode === "broadcast") byId(event.metaKey || event.ctrlKey ? "bcastCIRed" : "bcastAll").click();
     else if (paletteMode === "message") byId("messageSend").click();
   }
 });
@@ -1231,4 +1235,63 @@ document.addEventListener("click", (event) => {
   if (!opener) return;
   event.preventDefault();
   openSpawn();
+});
+
+// ---------------------------------------------------------------------------
+// The broadcast dialog: a growing message box, as the spawn dialog's task is,
+// and a button per audience carrying its size.
+// ---------------------------------------------------------------------------
+
+const broadcastDialog = byId("broadcastDialog");
+const broadcastMessage = byId(BROADCAST_MESSAGE);
+
+function growMessage() {
+  broadcastMessage.style.height = "auto";
+  broadcastMessage.style.height = taskHeight(broadcastMessage.scrollHeight + 2, window.innerHeight) + "px";
+}
+
+/** Who a bare ⌘↵ sends to: everyone, unless the palette's CI-red action opened the dialog. */
+let broadcastAudience = "all";
+
+/**
+ * Open the dialog with `message` carried in, ⌘↵ aimed at `target`. An empty
+ * `message` keeps a cancelled draft, as the spawn dialog keeps its task.
+ */
+function openBroadcast(message = "", target = "all") {
+  if (message) broadcastMessage.value = message;
+  broadcastAudience = target === "ci-red" ? "ci-red" : "all";
+  byId("bcastKeyHint").textContent = broadcastAudience === "ci-red" ? "send to CI red" : "send to all";
+  byId("bcastNote").textContent = "";
+  byId("paletteDone").textContent = "";
+  if (!broadcastDialog.open) broadcastDialog.showModal();
+  growMessage();
+  broadcastMessage.focus();
+}
+
+function closeBroadcast() {
+  if (broadcastDialog.open) broadcastDialog.close();
+}
+
+broadcastMessage.addEventListener("input", growMessage);
+
+broadcastDialog.addEventListener("keydown", (event) => {
+  const target = broadcastKey(event, broadcastAudience);
+  if (!target) return;
+  event.preventDefault();
+  byId(target === "ci-red" ? "bcastCIRed" : "bcastAll").click();
+});
+
+broadcastDialog.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  // A click on the backdrop is a click on the dialog itself.
+  if (target === broadcastDialog) return closeBroadcast();
+  const ui = target && target.closest('[data-ui="broadcast-close"]');
+  if (ui) closeBroadcast();
+});
+
+document.addEventListener("click", (event) => {
+  const opener = event.target instanceof Element ? event.target.closest('[data-ui="broadcast-open"]') : null;
+  if (!opener) return;
+  event.preventDefault();
+  openBroadcast();
 });

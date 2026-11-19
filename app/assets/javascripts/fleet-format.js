@@ -347,7 +347,7 @@ export function controlRequest(action, data, page = {}) {
     case "broadcast": {
       const message = (page.message || "").trim();
       // ringo puts the cursor in the box: that is what says why nothing went.
-      if (!message) return { focus: PALETTE_INPUT };
+      if (!message) return { focus: BROADCAST_MESSAGE };
       const count = (page.audiences || {})[data.target] || 0;
       // `note` is where a broadcast reports: on the box, not on its button.
       if (!count) return { note: "no agents in that group" };
@@ -553,9 +553,9 @@ export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  *   away on success, that is a dead button with nothing to say why.
  * - manual spawn comes back at once, and reports beside itself (`say`)
  *   rather than on its button; a spawn that landed clears the task box.
- * - a palette action that landed (a complete broadcast, a pane
- *   message) closes the palette (`closePalette`); a failure keeps it open
- *   with its error.
+ * - a pane message that landed closes the palette (`closePalette`), and a
+ *   complete broadcast its dialog (`closeBroadcast`); a failure keeps either
+ *   open with its error.
  * - the loop's settings never stay disabled: the control is still there after
  *   the click, and a success carries the loop's new `state` for the page to
  *   draw. A refusal or a failed fetch alerts, where ringo says nothing.
@@ -596,7 +596,7 @@ export function controlOutcome(request, result, label) {
       ...outcome,
       disabled: false,
       note: sent ? sent.note : "failed: " + said,
-      ...(sent && sent.complete ? { clearMessage: true, closePalette: true } : {}),
+      ...(sent && sent.complete ? { clearMessage: true, closeBroadcast: true } : {}),
     };
   }
   if (succeeded) outcome.text = request.report ? request.report(result.text) : request.done;
@@ -720,13 +720,26 @@ function broadcastSent(text) {
   };
 }
 
-/** The palette's one input: a search, a broadcast's message or a pane message. */
+/** The palette's one input: a search or a pane message. */
 export const PALETTE_INPUT = "paletteInput";
 
 /** The spawn dialog's task box: a prompt is often long, so it is not the palette's one line. */
 export const SPAWN_TASK = "spawnTask";
 
-/** The broadcast box's buttons, every one of which a send holds. */
+/** The broadcast dialog's message box: like a spawn's task, often more than a line. */
+export const BROADCAST_MESSAGE = "broadcastMessage";
+
+/**
+ * Which audience a key in the broadcast dialog sends to, or null: ⌘/Ctrl+Enter
+ * is the audience the dialog was opened for (everyone, unless the palette's
+ * CI-red action opened it), with Shift the CI-red ones. A bare Enter is a newline.
+ */
+export function broadcastKey(event, audience = "all") {
+  if (event.isComposing || event.key !== "Enter" || !(event.metaKey || event.ctrlKey) || event.altKey) return null;
+  return event.shiftKey ? "ci-red" : audience;
+}
+
+/** The broadcast dialog's buttons, every one of which a send holds. */
 export const BROADCAST_BUTTONS = ["bcastAll", "bcastCIRed"];
 
 /**

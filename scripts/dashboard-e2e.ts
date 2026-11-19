@@ -174,11 +174,11 @@ const pressEscape = async (): Promise<void> => {
 const button = (action: string, pr = ""): string =>
   `document.querySelector('button[data-action="${action}"]${pr && `[data-pr="${pr}"]`}')`;
 const byId = (id: string): string => `document.getElementById("${id}")`;
-/** Open the palette on Broadcast, type a message and press Enter, as the palette's key handler takes it. */
-const enter = (ctrlKey: boolean): string =>
-  `${byId("broadcastBtn")}.click(); ${byId("paletteInput")}.value = " rebase "; ` +
-  `${byId("paletteInput")}.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", ctrlKey: ${ctrlKey}, bubbles: true }))`;
-const sentNote = `${byId("bcastNote")}.textContent === "sent to 3 panes" && ${byId("paletteInput")}.value === ""`;
+/** Open the broadcast dialog, type a message and press ⌘↵ (with Shift, CI red), as its key handler takes it. */
+const enter = (shiftKey: boolean): string =>
+  `${byId("broadcastBtn")}.click(); ${byId("broadcastMessage")}.value = " rebase "; ` +
+  `${byId("broadcastMessage")}.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", metaKey: true, shiftKey: ${shiftKey}, bubbles: true }))`;
+const sentNote = `${byId("paletteDone")}.textContent === "sent to 3 panes" && ${byId("broadcastMessage")}.value === "" && !${byId("broadcastDialog")}.open`;
 /** A session's expand button, by key. */
 const expand = (key: string): string => `document.querySelector('button[data-ui="expand"][data-key="${key}"]')`;
 
@@ -198,11 +198,11 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
   { name: "clear failed", on: button("clear-failed"), post: ["/spawnloop/dismiss-failed", null], after: "b.disabled" },
   { name: "respawn fixer", on: button("respawn-fixer"), post: ["/ci-fixer/spawn", { owner: "o", repo: "r" }],
     after: `b.textContent === "spawned" && b.disabled` },
-  { name: "broadcast to all, by Enter", on: byId("bcastAll"), act: enter(false),
+  { name: "broadcast to all, by ⌘↵", on: byId("bcastAll"), act: enter(false),
     post: ["/broadcast", { message: "rebase", target: "all" }], during: bothHeld,
     after: `!b.disabled && !${byId("bcastCIRed")}.disabled && b.textContent === "all (3)" && ${sentNote}` },
   // ringo then reports nobody failing CI, and the audience's button goes.
-  { name: "broadcast to CI red, by Ctrl+Enter", on: byId("bcastCIRed"), act: enter(true),
+  { name: "broadcast to CI red, by ⌘⇧↵", on: byId("bcastCIRed"), act: enter(true),
     post: ["/broadcast", { message: "rebase", target: "ci-red" }], during: bothHeld,
     after: `b.style.display === "none" && !${byId("bcastAll")}.disabled && ${sentNote}` },
   // ringo answers with what it spawned; the report goes beside the button,
@@ -270,12 +270,12 @@ await until("the loop's toggle once ringo answered", () =>
 console.log("ok  spawn loop, the toggle waits for ringo's first answer");
 
 // An empty message sends nothing and puts the cursor in the box.
-await evaluate(`${byId("broadcastBtn")}.click(); ${byId("paletteInput")}.value = "  "; ${byId("paletteInput")}.blur(); ${byId("bcastAll")}.click(); true`);
+await evaluate(`${byId("broadcastBtn")}.click(); ${byId("broadcastMessage")}.value = "  "; ${byId("broadcastMessage")}.blur(); ${byId("bcastAll")}.click(); true`);
 await new Promise((resolve) => setTimeout(resolve, 300));
-if (posts.length > 0 || !(await evaluate(`document.activeElement === ${byId("paletteInput")}`))) {
+if (posts.length > 0 || !(await evaluate(`document.activeElement === ${byId("broadcastMessage")}`))) {
   throw new Error("dashboard-e2e: an empty broadcast did not focus the message box");
 }
-await evaluate(`${byId("palette")}.close(); true`);
+await evaluate(`${byId("broadcastDialog")}.close(); true`);
 console.log("ok  broadcast, empty message focuses the box");
 
 // ⌘K opens search, the top result is selected, ↓ moves, Esc closes.
@@ -291,11 +291,11 @@ await pressEscape();
 await until("Esc to close the palette", () => evaluate(`!${byId("palette")}.open`));
 console.log("ok  palette, ⌘K opens it, ↓ moves, Esc closes");
 
-// The footer's key hints follow the mode: Enter opens in search, sends to
-// all in broadcast. Spawn is its own dialog, where ⌘↵ spawns and ↵ is a newline.
+// The footer's key hints follow the mode: Enter opens in search. Spawn and
+// broadcast are their own dialogs, where ⌘↵ sends and ↵ is a newline.
 const shownFoot = `[...document.querySelectorAll("#palette .palette-foot")].filter((f) => !f.hidden).map((f) => f.textContent).join("|")`;
 const openSearch = `document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }))`;
-for (const [opener, hint] of [[openSearch, "↵ open"], [`${byId("broadcastBtn")}.click()`, "↵ send to all"]] as const) {
+for (const [opener, hint] of [[openSearch, "↵ open"]] as const) {
   await evaluate(`${opener}; true`);
   await until(`the footer to say "${hint}"`, () => evaluate(`${shownFoot}.includes(${JSON.stringify(hint)}) && !${shownFoot}.includes("|")`));
   await evaluate(`${byId("palette")}.close(); true`);
@@ -307,6 +307,13 @@ await until("the spawn dialog to open on the task box, trails first, ⌘↵ in i
 );
 await evaluate(`${byId("spawnDialog")}.close(); true`);
 console.log("ok  spawn dialog opens on its task box");
+await evaluate(`${byId("broadcastBtn")}.click(); true`);
+await until("the broadcast dialog to open on its message box, ⌘↵ in its footer", () =>
+  evaluate(`${byId("broadcastDialog")}.open && document.activeElement === ${byId("broadcastMessage")} && ` +
+    `document.querySelector("#broadcastDialog .palette-foot").textContent.includes("⌘ ↵ send to all")`),
+);
+await evaluate(`${byId("broadcastDialog")}.close(); true`);
+console.log("ok  broadcast dialog opens on its message box");
 // Message mode, for #8's session, whose card is expanded above and whose
 // worker has a pane: the palette's "Message …" action for it.
 await until("#8's card to be expanded", () => evaluate(`!!document.querySelector('#s-pr-o-r-8 .composer')`));
