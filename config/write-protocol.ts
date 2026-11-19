@@ -40,6 +40,9 @@ export const ringoBusyTimeoutPragma = `_pragma=busy_timeout(${writeProtocol.busy
  * is its history, and `db/hub_schema.ts` its schema.
  */
 export const tableOwners: Record<string, Owner> = {
+  active_storage_attachments: "trailmap",
+  active_storage_blobs: "trailmap",
+  active_storage_variant_records: "trailmap",
   events: "trailmap",
   meta: "trailmap",
   // ringo's PR tracker, in place of tracker-state.json. trailmap reads it.

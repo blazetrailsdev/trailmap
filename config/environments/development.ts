@@ -18,6 +18,9 @@ Trails.application!.configure(function () {
   // Change to :null_store to avoid any caching.
   this.config.cacheStore = ":memory_store";
 
+  // Store uploaded files on the local file system (see config/storage.ts for options).
+  this.config.activeStorage.service = "local";
+
   // NOT adopted from `trails new`: the `tmp/caching-dev.txt` toggle. It reads
   // the file with `node:fs`'s synchronous `existsSync`, which this repo forbids;
   // nothing here does fragment caching for it to switch on.

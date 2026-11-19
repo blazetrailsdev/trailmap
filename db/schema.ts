@@ -13,7 +13,35 @@
 import { Schema } from "@blazetrails/activerecord";
 import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapters/sqlite3-adapter.js";
 
-await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_14_000010 }, async (ctx) => {
+await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_18_000011 }, async (ctx) => {
+  await ctx.createTable("active_storage_attachments", { force: "cascade" }, (t) => {
+    t.string("name", { null: false });
+    t.string("record_type", { null: false });
+    t.bigint("record_id", { null: false });
+    t.bigint("blob_id", { null: false });
+    t.datetime("created_at", { null: false });
+    t.index(["blob_id"], { name: "index_active_storage_attachments_on_blob_id" });
+    t.index(["record_type", "record_id", "name", "blob_id"], { name: "index_active_storage_attachments_uniqueness", unique: true });
+  });
+
+  await ctx.createTable("active_storage_blobs", { force: "cascade" }, (t) => {
+    t.string("key", { null: false });
+    t.string("filename", { null: false });
+    t.string("content_type");
+    t.text("metadata");
+    t.string("service_name", { null: false });
+    t.bigint("byte_size", { null: false });
+    t.string("checksum");
+    t.datetime("created_at", { null: false });
+    t.index(["key"], { name: "index_active_storage_blobs_on_key", unique: true });
+  });
+
+  await ctx.createTable("active_storage_variant_records", { force: "cascade" }, (t) => {
+    t.bigint("blob_id", { null: false });
+    t.string("variation_digest", { null: false });
+    t.index(["blob_id", "variation_digest"], { name: "index_active_storage_variant_records_uniqueness", unique: true });
+  });
+
   await ctx.createTable("events", { force: "cascade" }, (t) => {
     t.string("at", { null: false });
     t.string("verb", { null: false });
@@ -136,4 +164,7 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_14_000010 }, async
     t.index(["story_id", "rfc_id"], { name: "index_story_rfc_deps_on_story_id_and_rfc_id", unique: true });
     t.index(["story_id"], { name: "index_story_rfc_deps_on_story_id" });
   });
+
+  await ctx.addForeignKey("active_storage_attachments", "active_storage_blobs", { column: "blob_id" });
+  await ctx.addForeignKey("active_storage_variant_records", "active_storage_blobs", { column: "blob_id" });
 });
