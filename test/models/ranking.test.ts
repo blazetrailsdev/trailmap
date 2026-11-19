@@ -25,9 +25,6 @@ async function seed(id: string, rfcId: string, status: string, attrs: object = {
   await Story.where({ id }).updateAll({ status });
 }
 
-beforeEach(async () => {
-});
-
 describe("Story.claimable", () => {
   it("returns ready stories under an active RFC", async () => {
     await seed("a", "0136-trailmap", "ready");
@@ -248,7 +245,7 @@ describe("Story.touching", () => {
   });
 
   it("skips terminal stories unless asked for all", async () => {
-    await seed("shipped", "0136-trailmap", "done");
+    // `shipped` is the done fixture.
     await StoryPath.create({ story_id: "shipped", path: "app/models/story.ts" });
     expect(await Story.touching("app/models/story.ts")).toEqual([]);
     expect((await Story.touching("app/models/story.ts", { all: true })).map((s) => s.id)).toEqual([
@@ -346,7 +343,7 @@ describe("Story.rankingIndex", () => {
     expect(index.rfcStatus.get("0002-draft")).toBe("draft");
     // (priority, id), matching the order the CLI's index.json is sorted into —
     // not insertion order.
-    expect(index.stories.map((s) => s.id)).toEqual(["base", "dependent"]);
+    expect(index.stories.map((s) => s.id)).toEqual(["base", "dependent", "shipped", "stuck", "working"]);
   });
 
   it("sorts stories by priority then id, the way the CLI's index is sorted", async () => {
@@ -354,7 +351,7 @@ describe("Story.rankingIndex", () => {
     await seed("alpha", "0136-trailmap", "ready");
     await seed("urgent", "0136-trailmap", "ready", { priority: 1 });
     const index = await Story.rankingIndex();
-    expect(index.stories.map((s) => s.id)).toEqual(["urgent", "alpha", "zebra"]);
+    expect(index.stories.map((s) => s.id)).toEqual(["urgent", "alpha", "shipped", "stuck", "working", "zebra"]);
   });
 });
 
@@ -383,7 +380,7 @@ describe("the ranking functions, over one index", () => {
   it("storiesTouchingIn matches exact, then directory, and skips terminal stories unless asked", async () => {
     await seed("exact", "0136-trailmap", "ready");
     await seed("under", "0136-trailmap", "ready");
-    await seed("shipped", "0136-trailmap", "done");
+    // `shipped` is the done fixture.
     await StoryPath.create({ story_id: "exact", path: "app/models/story.ts" });
     await StoryPath.create({ story_id: "under", path: "app/models/rfc.ts" });
     await StoryPath.create({ story_id: "shipped", path: "app/models/story.ts" });

@@ -51,7 +51,7 @@ describe("ReadModelsController", () => {
 
     expect(status).toBe(200);
     expect(body.rfcs.map((r: any) => r.id)).toEqual(["0002-draft", "0136-trailmap"]);
-    expect(body.stories.map((s: any) => s.id)).toEqual(["sooner", "later", "shadowed"]);
+    expect(body.stories.map((s: any) => s.id)).toEqual(["sooner", "later", "shadowed", "shipped", "stuck", "working"]);
   });
 
   it("carries the RFC fields index.json carried, with its JSON columns parsed", async () => {

@@ -50,13 +50,10 @@ beforeEach(async () => {
   });
 
   await Story.create({ id: "queued", rfc_id: "0136-trailmap", status: "ready" });
-  await Story.create({ id: "working", rfc_id: "0136-trailmap", status: "in-progress" });
-  await Story.create({ id: "stuck", rfc_id: "0136-trailmap", status: "blocked" });
   await Story.create({ id: "abandoned", rfc_id: "0136-trailmap", status: "closed" });
   await Story.create({ id: "alpha-one", rfc_id: "0100-alpha", status: "ready" });
   // Created last: an RFC auto-closes the moment every story it has is done
   // (rfc-close.ts), so a `done` story must never be the only one on it.
-  await Story.create({ id: "shipped", rfc_id: "0136-trailmap", status: "done" });
 });
 
 describe("RfcPagesController#index", () => {
