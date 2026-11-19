@@ -69,10 +69,15 @@ import {
 import { primaryDatabaseConfig } from "../config/database.ts";
 import { loadModelSchemas } from "../lib/model-schemas.ts";
 import { ApplicationController } from "../app/controllers/application-controller.ts";
-import { RfcPagesController } from "../app/controllers/rfc-pages-controller.ts";
 import { connectHubTestDatabase } from "../test/support/hub-schema.ts";
 import { StoryPagesController } from "../app/controllers/story-pages-controller.ts";
 import { controllerTestCase } from "../test/support/controller-test-case.ts";
+
+// After the boot, not a static import: the page loads Refinement, an attached
+// model, which needs the initializers to have run. Story
+// blob-import-before-attached-model-initializer.
+await import("../config/environment.ts");
+const { RfcPagesController } = await import("../app/controllers/rfc-pages-controller.ts");
 
 /** The RFC list's tabs are RFC statuses; ringo names its counters `cnt-<status>`. */
 const RFC_TABS = ["active", "draft", "postponed", "closed", "superseded"] as const;
