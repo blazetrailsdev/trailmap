@@ -51,6 +51,7 @@ import {
   sessionKey,
   sessionList,
   storiesQuery,
+  suggestHtml,
   terminalPanes,
   trackPanes,
 } from "./fleet-sessions.js";
@@ -213,6 +214,13 @@ function paintTerminal(pane, loop, html) {
   ctx.screens.set(pane, screen);
   const pre = document.querySelector('[data-terminal="' + CSS.escape(pane) + '"]');
   if (pre && html !== null) paintScreen(pre, html, atBottom);
+  const slot = document.querySelector('[data-suggest="' + CSS.escape(pane) + '"]');
+  // Only when the suggestion changes, so a focused button keeps its focus.
+  if (slot && html !== null) {
+    const key = slot.closest(".detail").id.replace(/-detail$/, "");
+    const next = suggestHtml(pane, key, screen);
+    if (slot.innerHTML !== next && !slot.querySelector("button:disabled")) slot.innerHTML = next;
+  }
   const note = document.querySelector('[data-terminal-notice="' + CSS.escape(pane) + '"]');
   if (note) {
     note.textContent = notice;
@@ -713,7 +721,12 @@ document.addEventListener("click", async (event) => {
   const label = button.textContent;
   button.disabled = true;
   if (request.busy) button.textContent = request.busy;
-  if (request.saying) byId(request.says).textContent = request.saying;
+  // A button that says it is busy has said it to the eye; the status beside
+  // it says it to a screen reader only.
+  if (request.saying) {
+    byId(request.says).textContent = request.saying;
+    byId(request.says).classList.toggle("sr-only", !!request.busy);
+  }
   const held = (request.holds || []).map(byId).filter((other) => other !== button);
   for (const other of held) other.disabled = true;
 
@@ -747,7 +760,10 @@ document.addEventListener("click", async (event) => {
   if (outcome.state) loopWritten(outcome.state);
   if (outcome.alert) window.alert(outcome.alert);
   if (outcome.note !== undefined) byId("bcastNote").textContent = outcome.note;
-  if (outcome.say !== undefined) byId(request.says).textContent = outcome.say;
+  if (outcome.say !== undefined) {
+    byId(request.says).textContent = outcome.say;
+    byId(request.says).classList.remove("sr-only");
+  }
   if (outcome.clear) byId(outcome.clear).value = "";
   if (outcome.closeSpawn) {
     byId("spawnName").value = "";

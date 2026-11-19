@@ -74,11 +74,15 @@ sendForm.addEventListener("submit", async (event) => {
   const text = sendInput.value;
   if (text === "" || sending) return;
   sending = true;
-  sendResult.className = "muted";
-  sendResult.textContent = "sending…";
+  // The button says so; the status region repeats it for a screen reader only.
+  sendResult.className = "sr-only";
+  sendResult.textContent = "Sending message";
+  sendButton.textContent = "Sending…";
   paintHeader();
   const outcome = await postToPane(sendPath, { text });
   sending = false;
+  sendButton.textContent = "Send";
+  sendResult.className = "muted";
   if (outcome.ok) {
     sendInput.value = "";
     sendResult.textContent = "sent";

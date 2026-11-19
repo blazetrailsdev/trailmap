@@ -16,5 +16,6 @@
   "/reviewer/config": { "next_reviewer": "codex" },
   "/broadcast/targets": { "all": 4, "ci-red": 1 },
   "/usage-status": { "manualPause": false, "watchConnected": false, "lastCheckTime": "" },
-  "/ask/list": { "pending": [] }
+  "/ask/list": { "pending": [] },
+  "/pane/11/screen": {"exists": true, "html": "● Pushed red-build; CI is running.\n\n<span style=\"color:#5c6370;\">────────────────────────────────────────────────────────────</span>\n&gt;&nbsp;<span style=\"opacity:.65;\">check the CI run and fix what failed</span>\n<span style=\"color:#5c6370;\">────────────────────────────────────────────────────────────</span>\n<span style=\"opacity:.65;\">  ? for shortcuts</span>", "hash": "stub-11", "lines": 6, "cwd": "/w/red-build"}
 }

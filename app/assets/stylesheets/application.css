@@ -849,10 +849,20 @@ textarea.ctl { height: auto; }
 .mono { font-family: var(--font-mono); }
 
 /* An expanded session: its log and message box, and the controls beside them. */
+/* It continues its row rather than starting a new one: no full-width rule
+   between them, only a short dashed one inset to the content, and an accent
+   rail down the left edge of row and detail alike says they are one thing. */
 .detail {
+  position: relative;
   display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 20px; padding: 16px 16px 16px 44px;
-  border-top: 1px solid var(--line); background: var(--surface-2); cursor: auto;
+  background: var(--surface-2); cursor: auto;
 }
+.detail::before {
+  content: ""; position: absolute; top: 0; left: 44px; right: 16px;
+  border-top: 1px dashed var(--line);
+}
+.session.open > * { box-shadow: inset 3px 0 0 var(--accent); }
+.pane-suggest-text { display: inline-block; vertical-align: bottom; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; color: var(--ink-2); }
 .detail h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .log-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; margin-bottom: 6px; }
 /* An expanded live session's terminal: its worker pane, as /panes/:id draws it, shorter. */
@@ -974,6 +984,7 @@ kbd {
   .strip { padding: 12px 16px; }
   .ask-text, .evidence, .ask-free { flex-basis: 100%; }
   .detail { grid-template-columns: minmax(0, 1fr); padding: 12px 16px; }
+  .detail::before { left: 16px; }
   .log-row { grid-template-columns: 40px 48px minmax(0, 1fr); padding-inline: 8px; }
   .palette { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
   .palette-input kbd, .palette-foot { display: none; }

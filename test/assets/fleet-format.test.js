@@ -4,6 +4,7 @@ import { STYLESHEET } from "../../scripts/class-collisions.ts";
 import {
   CI_TITLES,
   claudeHasExited,
+  suggestedMessage,
   paneOverridePill,
   plural,
   CLEAR_FAILED_ID,
@@ -910,9 +911,26 @@ describe("a pane message", () => {
   it("logs a sent line and clears its box; shows ringo's refusal beside it", () => {
     const request = controlRequest("pane-send", { pane: "%42", text: "go", key: "k", says: "note", clears: "box" });
 
-    expect(controlOutcome(request, { ok: true, text: "" }, "Send")).toEqual({ disabled: false, say: "sent", clear: "box", sent: { key: "k", text: "go" }, closePalette: true });
-    expect(controlOutcome(request, { ok: false, text: "pane %42 has exited" }, "Send")).toEqual({ disabled: false, say: "pane %42 has exited" });
-    expect(controlOutcome(request, { error: "offline" }, "Send")).toEqual({ disabled: false, say: "offline" });
+    expect(controlOutcome(request, { ok: true, text: "" }, "Send")).toEqual({ disabled: false, text: "Send", say: "sent", clear: "box", sent: { key: "k", text: "go" }, closePalette: true });
+    expect(controlOutcome(request, { ok: false, text: "pane %42 has exited" }, "Send")).toEqual({ disabled: false, text: "Send", say: "pane %42 has exited" });
+    expect(controlOutcome(request, { error: "offline" }, "Send")).toEqual({ disabled: false, text: "Send", say: "offline" });
+  });
+
+  it("says Sending… on the button itself, and to a screen reader in the status", () => {
+    const request = controlRequest("pane-send", { pane: "%42", text: "go", says: "note" });
+    expect(request.busy).toBe("Sending…");
+    expect(request.saying).toBe("Sending message");
+  });
+
+  it("reads the suggestion Claude Code dims in its input box", () => {
+    const dim = (t) => '<span style="opacity:.65;">' + t + "</span>";
+    expect(suggestedMessage("out\n<span style=\"color:#5c6370;\">────</span>\n&gt;&nbsp;" + dim("run the tests") + "\n  ? for shortcuts")).toBe("run the tests");
+    expect(suggestedMessage("│ ❯ " + dim("commit &amp; push") + "   │")).toBe("commit & push");
+    expect(suggestedMessage("&gt; " + dim('Try "how does x work?"'))).toBeNull();
+    expect(suggestedMessage("&gt; typed by me")).toBeNull();
+    expect(suggestedMessage("&gt; " + dim("half") + " typed")).toBeNull();
+    expect(suggestedMessage("&gt; ")).toBeNull();
+    expect(suggestedMessage(null)).toBeNull();
   });
 
   it("names the broadcast dialog's box as where an empty broadcast puts the cursor", () => {
