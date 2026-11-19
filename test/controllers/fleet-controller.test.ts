@@ -101,6 +101,11 @@ beforeAll(async () => {
         res.end();
         return;
       }
+      if (url.pathname === "/pane/42/keys") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
       if (url.pathname === "/pane/7/send") {
         res.writeHead(410);
         res.end("pane %7 has exited; nothing was sent");
@@ -275,6 +280,40 @@ describe("FleetController#message", () => {
     // A person is waiting at the box; the answer comes inside ten seconds.
     expect(MESSAGE_TIMEOUT_MS).toBeLessThanOrEqual(10_000);
   }, 15_000);
+});
+
+async function keys(id: string, body: unknown) {
+  const tc = await controllerTestCase(FleetController);
+  await tc.post("keys", { params: { id }, body: JSON.stringify(body), as: "json" });
+  return { status: tc.response.status, body: tc.response.body };
+}
+
+describe("FleetController#keys", () => {
+  it("forwards allowlisted keys to ringo's keys endpoint and answers 204", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await keys("42", { keys: ["Down", "Enter"] });
+
+    expect(response.status).toBe(204);
+    expect(received.map((r) => [r.url, JSON.parse(r.body)])).toEqual([["/pane/42/keys", { keys: ["Down", "Enter"] }]]);
+  });
+
+  it("refuses a key outside the allowlist, or a bad pane id, without calling ringo", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    expect(await keys("42", { keys: ["C-c"] })).toEqual({
+      status: 400,
+      body: "key C-c is not one of Enter, Up, Down, Left, Right, Escape, Tab",
+    });
+    expect((await keys("42", { keys: [] })).status).toBe(400);
+    expect((await keys("42", {})).status).toBe(400);
+    expect((await keys("42/../send", { keys: ["Enter"] })).status).toBe(400);
+    expect(received).toEqual([]);
+  });
+
+  it("says ringo is not configured rather than guessing where it is", async () => {
+    expect((await keys("42", { keys: ["Enter"] })).status).toBe(503);
+  });
 });
 
 async function screen(id: string, have?: string) {

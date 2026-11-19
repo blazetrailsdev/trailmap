@@ -22,6 +22,7 @@ export class PanesController extends ApplicationController {
         pane: `%${id}`,
         screenPath: `${FLEET_PANE_PATH}/${id}/screen`,
         sendPath: `${FLEET_PANE_PATH}/${id}/send`,
+        keysPath: `${FLEET_PANE_PATH}/${id}/keys`,
         relayConfigured: (await Setting.ringoBase()) !== null,
       },
     });

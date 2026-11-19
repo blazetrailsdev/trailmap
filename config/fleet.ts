@@ -123,6 +123,27 @@ export function paneMessageProblem(text: string): string | null {
   return null;
 }
 
+/**
+ * The keys the pane page may press, by tmux name: ringo's own allowlist
+ * (`paneKeyNames`, webhook/panekeys.go), so trailmap refuses what ringo would.
+ */
+export const PANE_KEYS: readonly string[] = ["Enter", "Up", "Down", "Left", "Right", "Escape", "Tab"];
+
+/** ringo's cap on keys in one request (`paneKeysMax`). */
+export const PANE_KEYS_MAX = 16;
+
+/** Why `keys` cannot be pressed in a pane, or null when they can. */
+export function paneKeysProblem(keys: unknown): string | null {
+  if (!Array.isArray(keys) || keys.length === 0) return "no keys given";
+  if (keys.length > PANE_KEYS_MAX) return `at most ${PANE_KEYS_MAX} keys at a time`;
+  for (const key of keys) {
+    if (typeof key !== "string" || !PANE_KEYS.includes(key)) {
+      return `key ${String(key)} is not one of ${PANE_KEYS.join(", ")}`;
+    }
+  }
+  return null;
+}
+
 /** The longest `have` the screen relay passes on. ringo's hashes are far shorter. */
 export const SCREEN_HASH_MAX = 128;
 

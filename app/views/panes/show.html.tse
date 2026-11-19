@@ -1,6 +1,6 @@
 <!-- Where the page polls for the screen: trailmap's relay, never ringo. On an
      element rather than in an inline <script>, as on the fleet page. -->
-<div id="paneConfig" hidden data-screen-path="<%= screenPath %>" data-send-path="<%= sendPath %>"></div>
+<div id="paneConfig" hidden data-screen-path="<%= screenPath %>" data-send-path="<%= sendPath %>" data-keys-path="<%= keysPath %>"></div>
 
 <div class="page-header">
   <h1 class="page-title">Pane <code class="pane-id"><%= pane %></code></h1>
@@ -28,6 +28,15 @@
   <button id="paneSendButton" class="btn btn-sm" type="submit">Send</button>
   <span id="paneSendResult" class="muted" role="status"></span>
 </form>
-<div class="field-note">One line of text, then Enter, typed into the pane. Only the pane's last ~2000 rows are shown<span id="paneLines"></span>.</div>
+<div id="paneKeys" class="pane-keys" role="group" aria-label="Keys to press in pane <%= pane %>">
+  <button class="btn btn-sm" type="button" data-key="Enter">Enter</button>
+  <button class="btn btn-sm" type="button" data-key="Up" aria-label="Up">&uarr;</button>
+  <button class="btn btn-sm" type="button" data-key="Down" aria-label="Down">&darr;</button>
+  <button class="btn btn-sm" type="button" data-key="Left" aria-label="Left">&larr;</button>
+  <button class="btn btn-sm" type="button" data-key="Right" aria-label="Right">&rarr;</button>
+  <button class="btn btn-sm" type="button" data-key="Escape">Esc</button>
+  <button class="btn btn-sm" type="button" data-key="Tab">Tab</button>
+</div>
+<div class="field-note">One line of text, then Enter, typed into the pane; or one key pressed, for a menu or a y/n prompt. With the screen focused, the arrow keys, Enter and Esc go to the pane too. Only the pane's last ~2000 rows are shown<span id="paneLines"></span>.</div>
 
 <script src="<%= await viteAssetPath("pane.js") %>" type="module"></script>

@@ -6,6 +6,7 @@ class PanesController < ApplicationController
     @pane = "%#{id}"
     @screen_path = "#{Fleet::PANE_PATH}/#{id}/screen"
     @send_path = "#{Fleet::PANE_PATH}/#{id}/send"
+    @keys_path = "#{Fleet::PANE_PATH}/#{id}/keys"
     @relay_configured = !Setting.ringo_base.nil?
   end
 end

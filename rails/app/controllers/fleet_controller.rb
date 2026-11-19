@@ -46,13 +46,17 @@ class FleetController < ApplicationController
     text = params[:text]
     problem = Fleet.pane_message_problem(text.is_a?(String) ? text : "")
     return render plain: problem, status: :bad_request if problem
-    return unless require_ringo
-    response = Fleet::Relay.post("#{@base}/pane/#{id}/send", body: { text: text }.to_json,
-                                 content_type: "application/json", timeout: MESSAGE_TIMEOUT)
-    return head :no_content if response.code == "204"
-    render plain: response.body, status: response.code.to_i
-  rescue Fleet::Relay::Failure => e
-    render plain: e.plain, status: e.status
+    relay_to_pane(id, "send", { text: text })
+  end
+
+  # `POST /fleet/pane/<n>/keys` with `{ "keys": [...] }`: named keys pressed in a pane.
+  def keys
+    id = params[:id].to_s
+    return render plain: "Not a pane id", status: :bad_request unless Fleet.pane_id?(id)
+    keys = params[:keys]
+    problem = Fleet.pane_keys_problem(keys)
+    return render plain: problem, status: :bad_request if problem
+    relay_to_pane(id, "keys", { keys: keys })
   end
 
   # `GET /fleet/reviewers`: ringo's `/reviewer/list`, unchanged.
@@ -109,6 +113,17 @@ class FleetController < ApplicationController
   end
 
   private
+
+  # POST `body` to ringo's `/pane/<id>/<action>`; 204 stays 204, the rest is ringo's text.
+  def relay_to_pane(id, action, body)
+    return unless require_ringo
+    response = Fleet::Relay.post("#{@base}/pane/#{id}/#{action}", body: body.to_json,
+                                 content_type: "application/json", timeout: MESSAGE_TIMEOUT)
+    return head :no_content if response.code == "204"
+    render plain: response.body, status: response.code.to_i
+  rescue Fleet::Relay::Failure => e
+    render plain: e.plain, status: e.status
+  end
 
   def require_ringo
     @base = Setting.ringo_base

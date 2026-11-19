@@ -1073,6 +1073,7 @@ kbd {
 .pane-send { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
 .pane-send input { flex: 1 1 240px; min-width: 0; font: inherit; padding: 4px 8px; }
 .pane-send .bad { color: var(--red); }
+.pane-keys { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; }
 #panePause { margin-left: auto; }
 .terminal {
   background: #0d1117; color: #c9d1d9; color-scheme: dark;

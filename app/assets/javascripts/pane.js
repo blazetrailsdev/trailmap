@@ -26,6 +26,8 @@ const sendForm = byId("paneSend");
 const sendInput = byId("paneMessage");
 const sendButton = byId("paneSendButton");
 const sendResult = byId("paneSendResult");
+const keysPath = byId("paneConfig").dataset.keysPath;
+const keyButtons = [...byId("paneKeys").querySelectorAll("button[data-key]")];
 let sending = false;
 
 /** The header. Every value but the status dot goes in as text. */
@@ -45,19 +47,20 @@ function paintHeader() {
   // An exited pane has nobody to read the line; ringo would refuse it with 410.
   sendInput.disabled = state.exited;
   sendButton.disabled = state.exited || sending;
+  for (const button of keyButtons) button.disabled = state.exited;
 }
 
 /**
  * POST the line through trailmap's relay with the page's CSRF token. A 204 is
  * "typed"; anything else shows ringo's (or the relay's) own text.
  */
-async function sendMessage(text) {
+async function postToPane(path, body) {
   const meta = document.querySelector('meta[name="csrf-token"]');
   try {
-    const response = await fetch(sendPath, {
+    const response = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(meta ? { "X-CSRF-Token": meta.content } : {}) },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(body),
     });
     if (response.ok) return { ok: true };
     return { ok: false, error: (await response.text()).slice(0, 300) || "HTTP " + response.status };
@@ -74,7 +77,7 @@ sendForm.addEventListener("submit", async (event) => {
   sendResult.className = "muted";
   sendResult.textContent = "sending…";
   paintHeader();
-  const outcome = await sendMessage(text);
+  const outcome = await postToPane(sendPath, { text });
   sending = false;
   if (outcome.ok) {
     sendInput.value = "";
@@ -85,6 +88,29 @@ sendForm.addEventListener("submit", async (event) => {
   }
   paintHeader();
   loop.pollNow();
+});
+
+/** Press one key in the pane; the result line says what happened. */
+async function pressKey(key) {
+  if (loop.state.exited) return;
+  const outcome = await postToPane(keysPath, { keys: [key] });
+  sendResult.className = outcome.ok ? "muted" : "bad";
+  sendResult.textContent = outcome.ok ? key + " pressed" : outcome.error;
+  loop.pollNow();
+}
+
+for (const button of keyButtons) {
+  button.addEventListener("click", () => pressKey(button.dataset.key));
+}
+
+// With the screen focused, the keys a TUI prompt wants go to the pane. Tab is
+// left to move focus; its button presses it.
+const SCREEN_KEYS = { ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Enter: "Enter", Escape: "Escape" };
+screen.addEventListener("keydown", (event) => {
+  const key = SCREEN_KEYS[event.key];
+  if (key === undefined || event.altKey || event.ctrlKey || event.metaKey) return;
+  event.preventDefault();
+  pressKey(key);
 });
 
 async function fetchScreen(hash) {

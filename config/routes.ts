@@ -78,6 +78,8 @@ Trails.application!.routes().draw(function () {
   this.get("fleet/pane/:id/screen", { to: "fleet#screen", as: "fleet_pane_screen" });
   // A line of text typed into that pane, then Enter: ringo's `/pane/<n>/send`.
   this.post("fleet/pane/:id/send", { to: "fleet#message", as: "fleet_pane_send" });
+  // Named keys pressed in that pane (Enter, arrows, Esc): ringo's `/pane/<n>/keys`.
+  this.post("fleet/pane/:id/keys", { to: "fleet#keys", as: "fleet_pane_keys" });
 
   // The deploy history and one run's log, relayed read-only from ringo, which
   // keeps both on its own disk (DeploysController). ringo's spelling of the

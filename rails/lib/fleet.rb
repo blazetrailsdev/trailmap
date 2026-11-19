@@ -43,6 +43,19 @@ module Fleet
     nil
   end
 
+  # ringo's allowlist of tmux key names (`paneKeyNames`) and its cap (`paneKeysMax`).
+  PANE_KEYS = %w[Enter Up Down Left Right Escape Tab].freeze
+  PANE_KEYS_MAX = 16
+
+  # Why `keys` cannot be pressed in a pane, or nil when they can.
+  def self.pane_keys_problem(keys)
+    return "no keys given" unless keys.is_a?(Array) && keys.any?
+    return "at most #{PANE_KEYS_MAX} keys at a time" if keys.size > PANE_KEYS_MAX
+    bad = keys.find { |key| !PANE_KEYS.include?(key) }
+    return "key #{bad} is not one of #{PANE_KEYS.join(", ")}" unless bad.nil?
+    nil
+  end
+
   def self.pane_id?(id)
     id.match?(/\A[0-9]{1,10}\z/)
   end
