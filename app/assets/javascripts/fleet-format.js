@@ -912,13 +912,17 @@ export function stageLabel(stage) {
   return '<span class="Label stage st-' + stage + '">' + STAGE_ICONS[stage] + stageName(stage) + "</span>";
 }
 
-/** A PR's CI rollup as GitHub draws it beside a title: a green check, a red x, or a yellow dot. */
-export function ciMark(status) {
+/**
+ * A PR's CI rollup as GitHub draws it beside a title: a green check, a red x,
+ * or a yellow dot. A failure says how many checks failed when ringo counted them.
+ */
+export function ciMark(status, failed = 0) {
   const icon = { success: "check", failure: "x", pending: "dot" }[status];
   if (!icon) return "";
+  const failure = failed > 0 ? plural(failed, "check") + " failed" : "check failed";
   return (
-    '<span class="ci ci-' + status + '" title="' + CI_TITLES[status] + '">' + ICONS[icon] +
-    '<span class="sr-only">' + (status === "failure" ? "check failed" : CI_TITLES[status]) + "</span></span>"
+    '<span class="ci ci-' + status + '" title="' + (status === "failure" ? failure : CI_TITLES[status]) + '">' + ICONS[icon] +
+    '<span class="sr-only">' + (status === "failure" ? failure : CI_TITLES[status]) + "</span></span>"
   );
 }
 
@@ -926,16 +930,28 @@ export function ciMark(status) {
 export const stageName = (stage) => (STAGES.find(([id]) => id === stage) || ["", ""])[1];
 
 /**
- * The one progress figure for the current stage, or ''. The envelope carries
- * no LOC, findings total or check counts yet, so the figure says what it does
- * carry: open findings and review cycles in review, the CI rollup in CI.
+ * The one progress figure for the current stage, or '' (RFC 0232, "The session
+ * list"): LOC against the ceiling while drafting and in self review, findings
+ * converged against the review's total in review, checks passed while getting
+ * CI green. A ringo that predates those counts leaves the older figures.
  */
 export function stageFigure(row, stage) {
+  if (stage === "drafting" || stage === "self") {
+    if (!row.locCeiling) return "";
+    return (row.additions || 0) + (row.deletions || 0) + "/" + row.locCeiling + " LOC";
+  }
   if (stage === "ringo") {
+    if (row.findingsTotal > 0) {
+      const open = Math.min(row.openFindings || 0, row.findingsTotal);
+      return row.findingsTotal - open + "/" + row.findingsTotal + " findings converged";
+    }
     if ((row.openFindings || 0) > 0) return plural(row.openFindings, "open finding");
     return row.reviewCycles ? plural(row.reviewCycles, "review cycle") : "";
   }
-  if (stage === "ci") return CI_TITLES[row.ciStatus] || "";
+  if (stage === "ci") {
+    if (row.checksTotal > 0) return (row.checksPassed || 0) + "/" + row.checksTotal + " checks passed";
+    return CI_TITLES[row.ciStatus] || "";
+  }
   return "";
 }
 

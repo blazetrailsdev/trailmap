@@ -607,7 +607,7 @@ export function sessionCard(s, ctx, fixer = null) {
   const stall = ask ? null : sessionStall(s, ctx);
 
   const tags =
-    (isPR(s) ? ciMark(s.ciStatus) : "") +
+    (isPR(s) ? ciMark(s.ciStatus, s.checksFailed) : "") +
     (fixer ? '<span class="flag kind">CI fixer</span><span class="flag bad">main is red</span>' : "") +
     (s.mergeConflict ? '<span class="flag bad">conflict</span>' : "") +
     (s.labels || []).map((l) => '<span class="Label">' + esc(l) + "</span>").join("") +
