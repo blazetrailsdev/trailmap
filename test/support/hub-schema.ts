@@ -75,7 +75,6 @@ const HUB_TABLES = [
   // left behind by another file's refresh would make this file's row counts
   // wrong, and the hub test database is shared.
   "parity_days",
-  "rfc_refines",
 ] as const;
 
 /**

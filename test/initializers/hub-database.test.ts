@@ -128,7 +128,6 @@ describe("connectToHubDatabase", () => {
           "repositories",
           "repository_collaborators",
           "repository_settings",
-          "rfc_refines",
           "settings",
         ]);
 

@@ -1,6 +1,6 @@
 import { htmlSafe } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.ts";
-import { Audit, auditsDir } from "../models/audit.ts";
+import { Audit } from "../models/audit.ts";
 import { renderMarkdown } from "../helpers/markdown-helper.ts";
 import { stripFrontmatter } from "../models/concerns/document.ts";
 
@@ -11,7 +11,7 @@ import { stripFrontmatter } from "../models/concerns/document.ts";
  * `webhook/audits.go`; ringo's `/audits/view/<file>` redirects to `raw`.
  *
  * The filename is checked by the route (config/audit-files.ts), so a bad name
- * never reaches an action, and a well-formed one with no file is
+ * never reaches an action, and a well-formed one naming no audit is
  * `RecordNotFound`, a 404 — ringo answers the first with a 400; Rails does not
  * tell the two apart.
  *
@@ -22,14 +22,14 @@ import { stripFrontmatter } from "../models/concerns/document.ts";
 export class AuditsController extends ApplicationController {
   /** The list, with the newest audit open. */
   async index(): Promise<void> {
-    const audits = await Audit.all();
+    const audits = await Audit.newestFirst().toArray();
     await this._renderPage(audits, audits[0] ?? null);
   }
 
   /** The list, with this audit open. */
   async show(): Promise<void> {
     const audit = await Audit.find(String(this.params.get("id")));
-    await this._renderPage(await Audit.all(), audit, "index");
+    await this._renderPage(await Audit.newestFirst().toArray(), audit, "index");
   }
 
   /**
@@ -70,7 +70,7 @@ export class AuditsController extends ApplicationController {
         : renderMarkdown(stripFrontmatter(await selected.read()));
     await this.render({
       ...(action ? { action } : {}),
-      locals: { audits, selected, body, configured: auditsDir() !== null },
+      locals: { audits, selected, body },
     });
   }
 }

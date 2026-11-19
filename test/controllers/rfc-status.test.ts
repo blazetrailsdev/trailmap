@@ -8,12 +8,6 @@ import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet } from "../../app/models/r
 import { ApplicationController } from "../../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
-import {
-  connectHubTestDatabase,
-  HUB_SETUP_TIMEOUT,
-  hasHubTestDatabase,
-  releaseHubTestDatabase,
-} from "../support/hub-schema.ts";
 
 let checkout = "";
 let origin = "";
@@ -96,13 +90,7 @@ async function expectMoved(id: string, from: string, to: string): Promise<void> 
   expect(await sh(`git -C "$ORIGIN" log -1 --format=%s main`)).toBe(`rfc(${id}): ${from} -> ${to}`);
 }
 
-// The RFC page counts its refine reports, which live in the hub.
-beforeAll(async () => {
-  if (hasHubTestDatabase()) await connectHubTestDatabase();
-}, HUB_SETUP_TIMEOUT);
-afterAll(releaseHubTestDatabase);
-
-describe.skipIf(!hasHubTestDatabase())("RfcPagesController lifecycle", () => {
+describe("RfcPagesController lifecycle", () => {
   it("marks a draft RFC ready", async () => {
     await expectMoved("0001-draft", "draft", "active");
   });

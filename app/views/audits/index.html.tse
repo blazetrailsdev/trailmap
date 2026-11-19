@@ -8,16 +8,16 @@
 <% if (audits.length === 0) { %>
   <div class="card">
     <div class="card-head"><span class="card-title">No audits yet</span></div>
-    <div class="field-note"><% if (configured) { %>Agents write audits (markdown or self-contained HTML) into the audits directory.<% } else { %>This deployment has no <code>AUDITS_DIR</code>, so there is no directory to list.<% } %></div>
+    <div class="field-note">Agents write audits (markdown or self-contained HTML).</div>
   </div>
 <% } else { %>
   <div class="audits-layout">
     <div class="audits-side">
       <div class="audits-group">Audits <span class="muted"><%= audits.length %></span></div>
       <% for (const audit of audits) { %>
-        <a class="audit-item<%= audit.name === selected.name ? " active" : "" %>" href="<%= auditPath(audit) %>">
+        <a class="audit-item<%= audit.id === selected.id ? " active" : "" %>" href="<%= auditPath(audit) %>">
           <span class="audit-title"><%= audit.title %></span>
-          <time class="muted" datetime="<%= audit.when.toISOString() %>"><%= audit.when.toISOString().slice(0, 16).replace("T", " ") %></time>
+          <time class="muted" datetime="<%= audit.when.utc().iso8601(3) %>"><%= audit.when.utc().iso8601().slice(0, 16).replace("T", " ") %></time>
         </a>
       <% } %>
     </div>

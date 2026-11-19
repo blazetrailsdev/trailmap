@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_11_17_000007) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_19_000008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -77,15 +77,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_17_000007) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["repository_id"], name: "index_repository_settings_on_repository_id", unique: true
-  end
-
-  create_table "rfc_refines", force: :cascade do |t|
-    t.string "rfc_id", null: false
-    t.string "outcome", null: false
-    t.text "summary", default: "", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["rfc_id", "created_at"], name: "index_rfc_refines_on_rfc_id_and_created_at"
   end
 
   create_table "settings", primary_key: "key", id: :string, force: :cascade do |t|

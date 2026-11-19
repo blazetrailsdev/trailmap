@@ -13,7 +13,7 @@
 import { Schema } from "@blazetrails/activerecord";
 import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapters/sqlite3-adapter.js";
 
-await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_18_000011 }, async (ctx) => {
+await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_18_000013 }, async (ctx) => {
   await ctx.createTable("active_storage_attachments", { force: "cascade" }, (t) => {
     t.string("name", { null: false });
     t.string("record_type", { null: false });
@@ -40,6 +40,17 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_18_000011 }, async
     t.bigint("blob_id", { null: false });
     t.string("variation_digest", { null: false });
     t.index(["blob_id", "variation_digest"], { name: "index_active_storage_variant_records_uniqueness", unique: true });
+  });
+
+  await ctx.createTable("audits", { force: "cascade" }, (t) => {
+    t.string("slug", { null: false });
+    t.string("title");
+    t.string("format");
+    t.string("repo");
+    t.datetime("written_at", { null: false });
+    t.datetime("created_at", { null: false });
+    t.datetime("updated_at", { null: false });
+    t.index(["repo", "slug", "written_at"], { name: "index_audits_on_repo_and_slug_and_written_at", unique: true });
   });
 
   await ctx.createTable("events", { force: "cascade" }, (t) => {
@@ -92,6 +103,15 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_18_000011 }, async
     t.string("teardown_at", { default: "", null: false });
     t.boolean("merged_checked", { default: false, null: false });
     t.index(["pane"], { name: "index_pr_states_on_pane" });
+  });
+
+  await ctx.createTable("refinements", { force: "cascade" }, (t) => {
+    t.string("rfc_id", { null: false });
+    t.string("outcome", { null: false });
+    t.integer("stories");
+    t.datetime("created_at", { null: false });
+    t.datetime("updated_at", { null: false });
+    t.index(["rfc_id", "created_at"], { name: "index_refinements_on_rfc_id_and_created_at" });
   });
 
   await ctx.createTable("rfcs", { id: "string", force: "cascade" }, (t) => {

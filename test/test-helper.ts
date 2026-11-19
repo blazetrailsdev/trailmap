@@ -68,6 +68,8 @@ if (hubUrl !== null) {
 // test-help, because that is what loads the schema into this file's database.
 const { loadModelSchemas } = await import("../lib/model-schemas.ts");
 await loadModelSchemas();
+const { loadAttachedModelSchemas } = await import("../lib/attached-model-schemas.ts");
+await loadAttachedModelSchemas();
 
 // Close this file's connections when it finishes: vitest runs the next file in
 // the same worker, and a connection left open here would hold

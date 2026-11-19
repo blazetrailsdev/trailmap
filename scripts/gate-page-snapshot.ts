@@ -46,7 +46,6 @@ import { Base, MigrationContext } from "@blazetrails/activerecord";
 import { argv, Dir, exit, getFs, getPath } from "@blazetrails/ruby-compat";
 import { loadModelSchemas } from "../lib/model-schemas.ts";
 import { ApplicationController } from "../app/controllers/application-controller.ts";
-import { RfcPagesController } from "../app/controllers/rfc-pages-controller.ts";
 import { StoryPagesController } from "../app/controllers/story-pages-controller.ts";
 import {
   diffFacts,
@@ -69,6 +68,12 @@ import {
 } from "./page-snapshot.ts";
 import { controllerTestCase } from "../test/support/controller-test-case.ts";
 import { connectHubTestDatabase, releaseHubTestDatabase } from "../test/support/hub-schema.ts";
+
+// After the boot, not a static import: the page loads Refinement, an attached
+// model, which needs the initializers to have run. Story
+// blob-import-before-attached-model-initializer.
+await import("../config/environment.ts");
+const { RfcPagesController } = await import("../app/controllers/rfc-pages-controller.ts");
 
 /** How many mismatching ids to print before saying how many more there are. */
 const REPORTED = 20;

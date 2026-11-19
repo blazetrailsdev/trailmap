@@ -12,7 +12,6 @@ import { RepositorySetting } from "../app/models/repository-setting.ts";
 import { RepositoryCollaborator } from "../app/models/repository-collaborator.ts";
 import { Setting } from "../app/models/setting.ts";
 import { ParityDay } from "../app/models/parity-day.ts";
-import { RfcRefine } from "../app/models/rfc-refine.ts";
 import { Hub } from "../app/models/hub.ts";
 import { PullRequest } from "../app/models/pull-request.ts";
 import { ApiCompareStat } from "../app/models/api-compare-stat.ts";
@@ -58,7 +57,6 @@ const HUB_MODELS = [
   // though it is DERIVED from the stats database on a third connection —
   // see app/models/parity-day.ts.
   ParityDay,
-  RfcRefine,
 ];
 
 /**

@@ -3,7 +3,7 @@ import { ApplicationController } from "./application-controller.ts";
 import { Event } from "../models/event.ts";
 import { Rfc } from "../models/rfc.ts";
 import { Story } from "../models/story.ts";
-import { RfcRefine } from "../models/rfc-refine.ts";
+import { Refinement } from "../models/refinement.ts";
 import { collectRfcMarks, type MarkEvent, type RefineReport } from "../models/concerns/rfc-marks.ts";
 import { readDocument } from "../models/concerns/document.ts";
 import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet, type RfcStatusMove } from "../models/rfc-status.ts";
@@ -41,7 +41,8 @@ const RFC_STATUS_TABS: readonly string[] = ["active", "draft", "postponed", "clo
  * them through the `fleet/control` relay to ringo
  * (`app/assets/javascripts/rfc-actions.js`). The Refinements tab
  * (`/rfc/<id>/refinements`) reads the refine reports trailmap stores in the
- * hub (`RfcRefine`); ringo kept only the newest, in a local file. What is
+ * task database (`Refinement`, the summary in Active Storage); ringo kept only
+ * the newest, in a local file. What is
  * still missing: the charts tab.
  *
  * A missing RFC renders the page with a 404 rather than an error page — same
@@ -112,7 +113,7 @@ export class RfcPagesController extends ApplicationController {
         .order({ at: "asc", id: "asc" })
         .pluck("at", "verb", "story_id", "rfc_id", "detail"),
       // Records, not `pluck`: a record's `created_at` is typed as a time.
-      RfcRefine.select("rfc_id", "created_at").toArray(),
+      Refinement.select("rfc_id", "created_at", "stories").toArray(),
     ]);
 
     const byRfc = new Map<string, (string | null)[]>();
@@ -151,7 +152,7 @@ export class RfcPagesController extends ApplicationController {
       }),
     );
     const reports = refineRows.map(
-      (row): RefineReport => ({ rfcId: row.rfc_id, at: row.created_at.utc().iso8601() }),
+      (row): RefineReport => ({ rfcId: row.rfc_id, at: row.created_at.utc().iso8601(), stories: row.stories }),
     );
     const marks = collectRfcMarks(new Set(rfcs.map((rfc) => rfc.id)), storyRfc, events, reports);
 
@@ -204,12 +205,19 @@ export class RfcPagesController extends ApplicationController {
       await this.render({ action: "show", status: 404 });
       return;
     }
-    const rows = await RfcRefine.forRfc(this.rfc.id).toArray();
-    this.refines = rows.map((row) => ({
-      at: row.created_at.utc().iso8601(3),
-      outcome: row.outcome,
-      html: row.summary === "" ? null : renderMarkdown(row.summary),
-    }));
+    // `merge`, not `forRfc(id).withAttachedSummary()`: a generated scope is not
+    // on `Relation`'s type. The preload is read by `row.summary.attachment`.
+    const rows = await Refinement.withAttachedSummary().merge(Refinement.forRfc(this.rfc.id)).toArray();
+    this.refines = [];
+    for (const row of rows) {
+      const blob = await (await row.summary.attachment)?.blob;
+      const summary = blob == null ? "" : new TextDecoder().decode(await blob.download());
+      this.refines.push({
+        at: row.created_at.utc().iso8601(3),
+        outcome: row.outcome,
+        html: summary === "" ? null : renderMarkdown(summary),
+      });
+    }
     this.refineCount = rows.length;
     await this.render({ action: "show" });
   }
@@ -300,6 +308,6 @@ export class RfcPagesController extends ApplicationController {
     this.canSunset = rfc.status === "active";
     // The tab bar counts the reports on both tabs, as ringo's does; the
     // Refinements tab sets it from the rows it loads.
-    if (this.tab === "stories") this.refineCount = await RfcRefine.where({ rfc_id: id }).count();
+    if (this.tab === "stories") this.refineCount = await Refinement.where({ rfc_id: id }).count();
   }
 }

@@ -3,14 +3,7 @@ import { ActionController } from "@blazetrails/actionpack";
 import { Event } from "../../app/models/event.ts";
 import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
-import { RfcRefine } from "../../app/models/rfc-refine.ts";
-import {
-  connectHubTestDatabase,
-  HUB_SETUP_TIMEOUT,
-  hasHubTestDatabase,
-  releaseHubTestDatabase,
-  truncateHub,
-} from "../support/hub-schema.ts";
+import { Refinement } from "../../app/models/refinement.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
 
@@ -64,15 +57,7 @@ beforeEach(async () => {
   // (rfc-close.ts), so a `done` story must never be the only one on it.
 });
 
-// The ticks fold in the refine reports, which live in the hub.
-beforeAll(async () => {
-  if (hasHubTestDatabase()) await connectHubTestDatabase();
-}, HUB_SETUP_TIMEOUT);
-afterAll(releaseHubTestDatabase);
-
-describe.skipIf(!hasHubTestDatabase())("RfcPagesController#index", () => {
-  beforeEach(truncateHub);
-
+describe("RfcPagesController#index", () => {
   it("renders the list server-side, with no fetch for the initial view", async () => {
     const { status, body } = await index();
 
@@ -233,12 +218,7 @@ describe.skipIf(!hasHubTestDatabase())("RfcPagesController#index", () => {
 
   it("ticks the bar at a stored refine report", async () => {
     await Story.create({ id: "zeta-draft", rfc_id: "0200-zeta", status: "draft" });
-    await RfcRefine.create({
-      rfc_id: "0200-zeta",
-      outcome: "changed",
-      summary: "",
-      created_at: new Date("2026-09-05T10:00:00Z"),
-    });
+    await Refinement.create({ rfc_id: "0200-zeta", outcome: "changed", created_at: new Date("2026-09-05T10:00:00Z") });
     await Story.create({ id: "zeta-later", rfc_id: "0200-zeta", status: "draft" });
     await Event.create({ at: "2026-09-06T10:00:00Z", verb: "new", story_id: "zeta-later" });
     const { body } = await index();
@@ -246,6 +226,22 @@ describe.skipIf(!hasHubTestDatabase())("RfcPagesController#index", () => {
 
     expect(row("0200-zeta")).toMatch(
       /class="tick refine" style="left:[\d.]+%" title="1 story at refinement on 2026-09-05"/,
+    );
+  });
+
+  it("ticks a stored refine report at the story count it measured", async () => {
+    await Story.create({ id: "zeta-draft", rfc_id: "0200-zeta", status: "draft" });
+    await Refinement.create({
+      rfc_id: "0200-zeta",
+      outcome: "changed",
+      stories: 4,
+      created_at: new Date("2026-09-05T10:00:00Z"),
+    });
+    const { body } = await index();
+    const row = (id: string) => body.split('<div class="item-row">').find((r) => r.includes(`/rfc/${id}"`))!;
+
+    expect(row("0200-zeta")).toMatch(
+      /class="tick refine" style="left:[\d.]+%" title="4 stories at refinement on 2026-09-05"/,
     );
   });
 });

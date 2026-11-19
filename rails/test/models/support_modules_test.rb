@@ -3,21 +3,6 @@ require "test_helper"
 # Direct tests for the small modules and readers the page tests reach only
 # through a caller.
 class SupportModulesTest < ActiveSupport::TestCase
-  def with_audits(files)
-    Dir.mktmpdir do |dir|
-      files.each_with_index do |(name, body), i|
-        path = File.join(dir, name)
-        name.end_with?("/") ? Dir.mkdir(path) : File.write(path, body)
-        File.utime(Time.at(1_000_000 + i), Time.at(1_000_000 + i), path)
-      end
-      previous = Rails.configuration.x.audits.dir
-      Rails.configuration.x.audits.dir = "#{dir}/"
-      yield dir
-    ensure
-      Rails.configuration.x.audits.dir = previous
-    end
-  end
-
   test "Fleet::Sse.data splits complete events and keeps the rest, including half a CRLF" do
     assert_equal [ [ "one", "two\nlines" ], "data: thr" ], Fleet::Sse.data("data: one\n\nevent: x\ndata: two\ndata:lines\n\ndata: thr")
     assert_equal [ [ "a" ], "\r" ], Fleet::Sse.data("data: a\r\n\r\n\r")
@@ -83,28 +68,26 @@ class SupportModulesTest < ActiveSupport::TestCase
     assert api.available?
   end
 
-  test "Audit.all is newest first, skipping directories and other names; first, find_by and find" do
-    with_audits("old.md" => "# Old", "new.html" => "<p>n</p>", "notes.txt" => "x", "dir.md/" => nil) do |dir|
-      assert_equal dir, Audit.dir
-      assert_equal %w[new.html old.md], Audit.all.map(&:name)
-      assert_equal "new.html", Audit.first.name
-      assert_equal "old.md", Audit.find_by(name: "old.md").name
-      assert_nil Audit.find_by(name: "../etc/passwd")
-      assert_raises(ActiveRecord::RecordNotFound) { Audit.find("gone.md") }
-      audit = Audit.find("old.md")
-      assert_equal [ "old.md", "old", false, "# Old" ], [ audit.id, audit.title, audit.html?, audit.read ]
-      assert Audit.find("new.html").html?
-      File.delete(File.join(dir, "old.md"))
-      assert_raises(ActiveRecord::RecordNotFound) { audit.read }
-    end
+  test "Audit.newest_first, find by the legacy filename, and read" do
+    old = audit!("old", "md", "# Old", Time.utc(2026, 10, 1))
+    audit!("new", "html", "<p>n</p>", Time.utc(2026, 10, 2))
+    assert_equal %w[new-20261002T000000Z.html old-20261001T000000Z.md], Audit.newest_first.map(&:to_param)
+    assert_equal old, Audit.find("old-20261001T000000Z.md")
+    assert_raises(ActiveRecord::RecordNotFound) { Audit.find("gone-20261001T000000Z.md") }
+    assert_raises(ActiveRecord::RecordNotFound) { Audit.find("../etc/passwd") }
+    assert_raises(ActiveRecord::RecordNotFound) { Audit.find("old-20261332T000000Z.md") }
+    assert_equal [ false, "# Old", 5 ], [ old.html?, old.read, old.size ]
+    assert Audit.find("new-20261002T000000Z.html").html?
   end
 
-  test "Audit.all is empty with no directory configured" do
-    previous = Rails.configuration.x.audits.dir
-    Rails.configuration.x.audits.dir = nil
-    assert_equal [], Audit.all
-    assert_raises(ActiveRecord::RecordNotFound) { Audit.new(name: "x.md").read }
-  ensure
-    Rails.configuration.x.audits.dir = previous
+  test "Audit#title falls back to the slug; find matches the stamped second" do
+    Audit.create!(slug: "parity-sweep", format: "md", written_at: Time.utc(2026, 10, 27, 10, 15, Rational(3, 4)))
+    assert_equal "parity sweep", Audit.find("parity-sweep-20261027T101500Z.md").title
+  end
+
+  def audit!(slug, format, body, written_at)
+    Audit.create!(slug: slug, title: slug, format: format, written_at: written_at).tap do |audit|
+      audit.body.attach(io: StringIO.new(body), filename: "#{slug}.#{format}")
+    end
   end
 end
