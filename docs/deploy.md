@@ -775,21 +775,49 @@ the thing under review:
 | `settings` | emptied in the clone after import. It is where an operator points trailmap at something outside itself (today `ringo_base`, production's fleet), and every outbound call the application makes resolves through it. It is emptied again after the release task, because a PR's migration may seed a row, and then checked; a preview still holding one is stopped. With no row and no `RINGO_BASE`, the fleet relay, deploys and sessions pages have nothing to call |
 | Mail, `GH_TOKEN` | not configured |
 
-**Migrations are tested, and data is kept otherwise.** Each `up` keys the
-preview's data on the git tree ids of `db/hub-migrate` and
-`db/stats-sync-migrate` at the PR's head. When they are unchanged, the preview
-keeps its databases, and whatever a reviewer did in them, and the release
-task has nothing to run. When they change, or on the first `up`, every copy
-is taken from production again: the SQLite `.backup`s, and the hub re-cloned
-into a fresh service. The release task then runs the PR's migrations on real
-data, never on the half-migrated result of an earlier push. `db/migrate` is deliberately not part of the key: the task domain's `primary` is
-`databaseTasks: false`, so the release task never touches `tasks.db`, whose
-history belongs to the tasks CLI. A PR whose hub
-migration fails also fails its preview deploy, and the deploy log says why.
+**Migrations are tested, and data is kept otherwise.** Each copy is keyed on
+one migration directory's git tree id at the PR's head: the hub, with
+`tasks.db` beside it, on `db/hub-migrate`; the stats database on
+`db/stats-sync-migrate`. A copy whose key is unchanged is kept, with whatever
+a reviewer did in it, and the release task has nothing to run there. A copy
+whose key changed, or that does not exist, or whose last run did not finish
+(the keys are removed before every push and written back only after a
+verified deploy), is taken from production again, so the PR's migrations run
+on real data and never on the half-migrated result of an earlier push.
+`db/migrate` is deliberately not part of any key: the task domain's `primary`
+is `databaseTasks: false`, so the release task never touches `tasks.db`,
+whose history belongs to the tasks CLI. A PR whose migration fails also fails
+its preview deploy, and the deploy log says why.
+
+**Copies are copy-on-write clones.** `/home` is btrfs, and a SQLite copy is
+`cp --reflink` of the database and its `-wal`, taken while holding
+production's write lock (`BEGIN IMMEDIATE`, then `ROLLBACK`: no write
+reaches production). The 8.9 GB stats database clones in under a second and
+shares all but a few MB of its extents with production's. Production points
+`STATS_DB` and `STATS_SYNC_DB` at one file, and a preview gets one copy for
+both. Off a reflink filesystem the script falls back to `sqlite3 .backup`.
 
 Production's hub is only ever read, by `pg_dump`, which takes a consistent
-snapshot without blocking writers. `down` destroys the app, its hub service
-and its SQLite copies.
+snapshot without blocking writers. `down` destroys the app, its hub service,
+its SQLite copies and its DNS record.
+
+**Cancelling.** Killing a `git push` does not stop the deploy: dokku's build
+keeps running on the server, holding the app's lock, and goes on to release.
+Each `up` and `down` therefore starts with `dokku builds:cancel`, so a
+superseded run's build dies before the next one pushes. The old container
+serves until the new one replaces it.
+
+### Driven by btwhooks
+
+btwhooks (`webhook/previews.go`) runs the script for the repos in its
+`PREVIEW_REPOS`. Adding the `preview` label deploys the PR's head; a push to
+a labelled PR redeploys; removing the label or closing the PR runs `down`.
+The script is always read from `origin/main`, never from the PR, because it
+runs on the host with dokku access. Each PR has one slot, and the newest
+request wins: a request that arrives while one is running replaces any
+waiting one, and kills the running one if its log has not reached
+`-----> Releasing`. At most two preview builds run at once; teardowns are
+not counted. Runs appear on the btwhooks Deploys page.
 
 `worker` is scaled to 0. It is the only process that runs jobs (the web
 process enqueues into its own container-local queue), so no job, and so no

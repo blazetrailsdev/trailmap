@@ -178,13 +178,17 @@ up() {
   statsKey="$(migrationsKey db/stats-sync-migrate "$sha")"
   if ! dokku postgres:exists "$hub" 2>/dev/null || [ ! -f "$data/tasks.db" ]; then
     hubRefresh="no copy yet"
-  elif [ "$(cat "$data/hub.key" 2>/dev/null)" != "$hubKey" ]; then
+  elif [ ! -f "$data/hub.key" ]; then
+    hubRefresh="the last run did not finish"
+  elif [ "$(cat "$data/hub.key")" != "$hubKey" ]; then
     hubRefresh="hub migrations changed"
   fi
   if [ -n "$statsDb$statsSyncDb" ]; then
     if [ ! -f "$data/stats.db" ]; then
       statsRefresh="no copy yet"
-    elif [ "$(cat "$data/stats.key" 2>/dev/null)" != "$statsKey" ]; then
+    elif [ ! -f "$data/stats.key" ]; then
+      statsRefresh="the last run did not finish"
+    elif [ "$(cat "$data/stats.key")" != "$statsKey" ]; then
       statsRefresh="stats migrations changed"
     fi
   fi
@@ -282,8 +286,8 @@ up() {
 
   # The keys go BEFORE the push and come back only after a verified deploy,
   # so a run that dies or is cancelled from here on (see cancelStale) leaves
-  # the next run to re-copy, never to reuse a
-  # copy a half-run release task may have migrated part-way.
+  # the next run to re-copy, never to reuse a copy that a half-run release
+  # task may have migrated part-way.
   rm -f "$data/hub.key" "$data/stats.key"
   echo "==> deploying $sha to $app"
   # Exit status is not the verdict, for the reason scripts/deploy.sh gives (the
