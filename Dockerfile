@@ -20,7 +20,7 @@ RUN apt-get update -qq && apt-get install --no-install-recommends -y build-essen
 # The @blazetrails/* packages are vendored tarballs, not registry packages, so
 # vendor/ and the workspace overrides that point at it have to be present
 # before install.
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .pnpmfile.cjs ./
 COPY vendor/ ./vendor/
 RUN npm install -g corepack && corepack enable pnpm && pnpm install --frozen-lockfile
 
