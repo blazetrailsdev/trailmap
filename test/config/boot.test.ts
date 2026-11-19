@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Base } from "@blazetrails/activerecord";
+import { zone, type TimeZone } from "@blazetrails/activesupport";
 import { getFs } from "@blazetrails/ruby-compat";
 import { ALL_MODELS } from "../../lib/model-schemas.ts";
 import { ATTACHED_MODELS } from "../../lib/attached-model-schemas.ts";
@@ -32,6 +33,11 @@ describe("the schema warm-up lists", () => {
 });
 
 describe("the suite boots the application", () => {
+  it("sets Time.zone to UTC, config.time_zone's default", () => {
+    // rfc-refines-controller.ts reads `zone() as TimeZone`.
+    expect((zone() as TimeZone).name).toBe("UTC");
+  });
+
   it("requires belongs_to by default", async () => {
     const story = new Story({ id: "orphan", rfc_id: "0000-none", status: "draft" });
     expect(await story.save()).toBe(false);
