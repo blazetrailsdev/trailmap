@@ -2,6 +2,7 @@ import { constantize } from "@blazetrails/activesupport";
 import { Trails } from "@blazetrails/trailties";
 import { statsSyncDatabaseConfig } from "../database.ts";
 import type { StatsSyncRecord } from "../../app/models/stats-sync/stats-sync-record.ts";
+import { rethrow } from "../../lib/rethrow.ts";
 
 /**
  * Connect the stats sync's writers to STATS_SYNC_DB, as Rails' abstract class
@@ -25,9 +26,3 @@ Trails.application.config.toPrepare(() => {
   // Unawaitable here, so a failure is rethrown where it would have surfaced unhandled.
   record.establishConnection(statsSyncDatabaseConfig()).catch(rethrow);
 });
-
-function rethrow(error: unknown): void {
-  queueMicrotask(() => {
-    throw error;
-  });
-}

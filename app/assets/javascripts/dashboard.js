@@ -643,14 +643,14 @@ async function followDrain(request, result) {
 // be bound to a node that is gone a second later.
 // ---------------------------------------------------------------------------
 
-/** POST one control to ringo: `{ ok, text }`, or `{ error }` if nothing answered. */
+/** Poll a pane's screen until it shows Claude gone; false once `timeoutMs` passes. */
 async function waitForShell({ screen, everyMs, timeoutMs }) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, everyMs));
     try {
       const response = await fetch(screen, { headers: { Accept: "application/json" }, cache: "no-store" });
-      if (response.ok && claudeHasExited(await response.json())) return true;
+      if (response.ok && claudeHasExited(await response.json(), screenText)) return true;
     } catch {
       // A missed poll is retried until the deadline.
     }
@@ -658,6 +658,12 @@ async function waitForShell({ screen, everyMs, timeoutMs }) {
   return false;
 }
 
+/** A screen's HTML as the text it shows, `&nbsp;` and every other entity decoded. */
+function screenText(html) {
+  return new DOMParser().parseFromString(html, "text/html").body.textContent || "";
+}
+
+/** POST one control to ringo: `{ ok, text }`, or `{ error }` if nothing answered. */
 async function send(request) {
   try {
     const response = await fetch(request.url || ringoUrl(request.path), {

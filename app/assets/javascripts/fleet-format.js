@@ -533,6 +533,29 @@ function parsed(text) {
 export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
 
 /**
+ * Whether a pane's screen (the `/fleet/pane/:id/screen` body) shows Claude
+ * gone: the pane itself gone, or no Claude UI left and a shell prompt on the
+ * last line. End pane types the shell's `exit` only once this holds, so it is
+ * never typed into Claude as a prompt.
+ *
+ * `toText` turns the screen's HTML into its text; the page passes the
+ * browser's own parser. ringo reports no pane command, so this reads the
+ * screen: a prompt is a last line ending in `>`, `$`, `#`, `%` (zsh) or `❯`,
+ * and any of Claude Code's own UI strings still on screen means not yet.
+ */
+export function claudeHasExited(body, toText) {
+  if (!body || typeof body !== "object") return false;
+  if (body.exists === false) return true;
+  if (typeof body.html !== "string") return false;
+  const text = toText(body.html);
+  if (CLAUDE_UI.test(text)) return false;
+  const last = text.split("\n").map((line) => line.trimEnd()).filter(Boolean).at(-1) || "";
+  return /[>$#%❯]$/.test(last);
+}
+
+const CLAUDE_UI = /for shortcuts|esc to interrupt|auto mode|accept edits|bypass permissions|╭─|^\s*│ >/m;
+
+/**
  * What the button shows once its request has settled. `result` is
  * `{ ok, text }` for an answered request and `{ error }` for one that never
  * got an answer; `label` is what the button said before the click.
@@ -562,26 +585,6 @@ export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  *   "Spawn now" is the exception, held like merge and then re-read
  *   (`refresh`), because ringo answers before the tick has registered.
  */
-/**
- * Whether a pane's screen (the `/fleet/pane/:id/screen` body) shows Claude
- * gone: the pane itself gone, or no Claude UI left and a shell prompt on the
- * last line. End pane types the shell's `exit` only once this holds, so it is
- * never typed into Claude as a prompt.
- */
-export function claudeHasExited(body) {
-  if (!body || typeof body !== "object") return false;
-  if (body.exists === false) return true;
-  if (typeof body.html !== "string") return false;
-  const text = body.html
-    .replace(/<[^>]*>/g, "")
-    .replace(/&gt;/g, ">")
-    .replace(/&lt;/g, "<")
-    .replace(/&amp;/g, "&");
-  if (/for shortcuts|esc to interrupt|╭─|^\s*│ >/m.test(text)) return false;
-  const last = text.split("\n").map((line) => line.trimEnd()).filter(Boolean).at(-1) || "";
-  return /[>$#❯]$/.test(last);
-}
-
 export function controlOutcome(request, result, label) {
   const answered = !("error" in result);
   // A 200 is not always a yes: `accepted` reads the body of one that says no.

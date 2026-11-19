@@ -895,12 +895,15 @@ describe("a pane message", () => {
   });
 
   it("pane-end waits for a shell prompt, not Claude's UI, before typing exit", () => {
-    expect(claudeHasExited({ html: "<span>╭───╮</span>\n│ &gt; /exit\n  ? for shortcuts" })).toBe(false);
-    expect(claudeHasExited({ html: "bye\n<b>dean@box ~/w&gt;</b> \n\n" })).toBe(true);
-    expect(claudeHasExited({ html: "Goodbye!\n$" })).toBe(true);
-    expect(claudeHasExited({ exists: false })).toBe(true);
-    expect(claudeHasExited({ unchanged: true })).toBe(false);
-    expect(claudeHasExited(null)).toBe(false);
+    const text = (html) => html.replace(/<[^>]*>/g, "");
+    expect(claudeHasExited({ html: "<span>╭───╮</span>\n│ > /exit\n  ? for shortcuts" }, text)).toBe(false);
+    expect(claudeHasExited({ html: "auto mode on\n>" }, text)).toBe(false);
+    expect(claudeHasExited({ html: "bye\n<b>dean@box ~/w></b> \n\n" }, text)).toBe(true);
+    expect(claudeHasExited({ html: "Goodbye!\n$\u00a0" }, text)).toBe(true);
+    expect(claudeHasExited({ html: "Goodbye!\nbox% " }, text)).toBe(true);
+    expect(claudeHasExited({ exists: false }, text)).toBe(true);
+    expect(claudeHasExited({ unchanged: true }, text)).toBe(false);
+    expect(claudeHasExited(null, text)).toBe(false);
   });
 
   it("logs a sent line and clears its box; shows ringo's refusal beside it", () => {

@@ -42,13 +42,14 @@ async function answer(url: URL): Promise<{ status: number; type: string; body: s
 const http = await getHttpAsync();
 http
   .createServer(async (req, res) => {
-    if (req.url === "/events") {
+    const url = new URL(req.url ?? "/", "http://stub");
+    if (url.pathname === "/events") {
       // One frame, then held open as ringo holds it.
       res.writeHead(200, { "content-type": "text/event-stream" });
       res.write(`data: ${JSON.stringify(DASHBOARD.events)}\n\n`);
       return;
     }
-    const { status, type, body } = await answer(new URL(req.url ?? "/", "http://stub"));
+    const { status, type, body } = await answer(url);
     res.writeHead(status, { "content-type": type });
     res.end(body);
   })

@@ -1,5 +1,6 @@
 import websocket, { type DriverRequest } from "websocket-driver";
 import { sseData } from "./sse.ts";
+import { rethrow } from "./rethrow.ts";
 
 /**
  * The hijacked connection, as the framework's handler hands it over: a
@@ -252,11 +253,4 @@ async function pump(
   } finally {
     clearTimeout(connecting);
   }
-}
-
-/** A rejection nothing can await: rethrown, as `void` would have left it unhandled. */
-function rethrow(error: unknown): void {
-  queueMicrotask(() => {
-    throw error;
-  });
 }
