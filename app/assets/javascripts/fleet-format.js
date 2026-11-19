@@ -920,9 +920,10 @@ export function ciMark(status, failed = 0) {
   const icon = { success: "check", failure: "x", pending: "dot" }[status];
   if (!icon) return "";
   const failure = failed > 0 ? plural(failed, "check") + " failed" : "check failed";
+  const label = status === "failure" ? failure : CI_TITLES[status];
   return (
-    '<span class="ci ci-' + status + '" title="' + (status === "failure" ? failure : CI_TITLES[status]) + '">' + ICONS[icon] +
-    '<span class="sr-only">' + (status === "failure" ? failure : CI_TITLES[status]) + "</span></span>"
+    '<span class="ci ci-' + status + '" title="' + label + '">' + ICONS[icon] +
+    '<span class="sr-only">' + label + "</span></span>"
   );
 }
 

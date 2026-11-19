@@ -867,6 +867,7 @@ describe("ciMark", () => {
   it("counts the failed checks when ringo carries them", () => {
     expect(ciMark("failure", 1)).toContain('<span class="sr-only">1 check failed</span>');
     expect(ciMark("failure", 3)).toContain('title="3 checks failed"');
+    expect(ciMark("failure")).toContain('title="check failed"');
   });
 });
 
@@ -949,6 +950,7 @@ describe("stageFigure", () => {
   it("gives findings converged against the review's total", () => {
     expect(stageFigure({ findingsTotal: 5, openFindings: 2, reviewCycles: 2 }, "ringo")).toBe("3/5 findings converged");
     expect(stageFigure({ findingsTotal: 4, reviewCycles: 3 }, "ringo")).toBe("4/4 findings converged");
+    expect(stageFigure({ findingsTotal: 0, openFindings: 2 }, "ringo")).toBe("2 open findings");
   });
 
   it("gives checks passed against the total while getting CI green", () => {
