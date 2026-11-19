@@ -901,6 +901,7 @@ describe("a pane message", () => {
     expect(claudeHasExited({ html: "bye\n<b>dean@box ~/w></b> \n\n" }, text)).toBe(true);
     expect(claudeHasExited({ html: "Goodbye!\n$\u00a0" }, text)).toBe(true);
     expect(claudeHasExited({ html: "Goodbye!\nbox% " }, text)).toBe(true);
+    expect(claudeHasExited({ html: "? for shortcuts · auto mode on\nold output\nmore\nstill more\nGoodbye!\n$ " }, text)).toBe(true);
     expect(claudeHasExited({ exists: false }, text)).toBe(true);
     expect(claudeHasExited({ unchanged: true }, text)).toBe(false);
     expect(claudeHasExited(null, text)).toBe(false);

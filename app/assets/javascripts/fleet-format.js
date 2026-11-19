@@ -547,13 +547,15 @@ export function claudeHasExited(body, toText) {
   if (!body || typeof body !== "object") return false;
   if (body.exists === false) return true;
   if (typeof body.html !== "string") return false;
-  const text = toText(body.html);
-  if (CLAUDE_UI.test(text)) return false;
-  const last = text.split("\n").map((line) => line.trimEnd()).filter(Boolean).at(-1) || "";
-  return /[>$#%❯]$/.test(last);
+  // Only the bottom of the screen: Claude's UI sits there while it runs, and
+  // scrollback above a shell prompt may quote the same strings.
+  const tail = toText(body.html).split("\n").map((line) => line.trimEnd()).filter(Boolean).slice(-SCREEN_TAIL);
+  if (tail.some((line) => CLAUDE_UI.test(line))) return false;
+  return /[>$#%❯]$/.test(tail.at(-1) || "");
 }
 
-const CLAUDE_UI = /for shortcuts|esc to interrupt|auto mode|accept edits|bypass permissions|╭─|^\s*│ >/m;
+const CLAUDE_UI = /for shortcuts|esc to interrupt|auto mode|accept edits|bypass permissions|╭─|^\s*│ >/;
+const SCREEN_TAIL = 4;
 
 /**
  * What the button shows once its request has settled. `result` is
