@@ -4,7 +4,6 @@ import { Rfc } from "../../app/models/rfc.ts";
 import { Story } from "../../app/models/story.ts";
 import { closeRfcIfComplete } from "../../app/models/rfc-close.ts";
 
-
 /**
  * Build the fixture WITHOUT arming the rule under test.
  *
