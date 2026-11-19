@@ -98,7 +98,7 @@ export class RfcPagesController extends ApplicationController {
     // JavaScript: a no-JS submit of the sort menu lands on the bare address.
     if (this.params.get("sort") === "priority") {
       const status = this.params.get("status");
-      this.redirectTo(this.rfcsPath(typeof status === "string" && status ? { status } : {}));
+      await this.redirectTo(this.rfcsPath(typeof status === "string" && status ? { status } : {}));
       return;
     }
     // Two columns, not the records: every figure on this page is a count of
