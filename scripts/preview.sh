@@ -148,16 +148,20 @@ assertNginx() {
   fi
 }
 
-# A push killed mid-build (btwhooks cancels a superseded one) can leave dokku's
-# deploy lock behind, and every later push would wait on it. Nothing else
-# deploys a preview, and btwhooks runs one at a time per PR, so a lock found
-# here is a dead run's.
-unlockStale() {
-  if dokku apps:exists "$app" 2>/dev/null; then dokku apps:unlock "$app" >/dev/null 2>&1 || true; fi
+# A deploy whose client went away is NOT over: killing `git push` (btwhooks
+# kills a run that a newer push supersedes) leaves dokku's build running on
+# the server, holding the app's lock, and it would go on to release. Tested:
+# the build kept going until `builds:cancel` killed it, and the old container
+# served throughout. Nothing else deploys a preview, and btwhooks runs one at a
+# time per PR, so a build still running here is a superseded one. Cancelling
+# it even mid-release is safe: the data keys are gone (see the push below), so
+# this run re-copies whatever it touched. A no-op when nothing is running.
+cancelStale() {
+  if dokku apps:exists "$app" 2>/dev/null; then dokku builds:cancel "$app"; fi
 }
 
 up() {
-  unlockStale
+  cancelStale
   local sha="${1:-}"
   [ -n "$sha" ] || usage
   local since
@@ -277,8 +281,8 @@ up() {
   fi
 
   # The keys go BEFORE the push and come back only after a verified deploy,
-  # so a run that dies or is cancelled from here on (btwhooks kills a run that
-  # a newer push supersedes) leaves the next run to re-copy, never to reuse a
+  # so a run that dies or is cancelled from here on (see cancelStale) leaves
+  # the next run to re-copy, never to reuse a
   # copy a half-run release task may have migrated part-way.
   rm -f "$data/hub.key" "$data/stats.key"
   echo "==> deploying $sha to $app"
@@ -322,7 +326,7 @@ up() {
 }
 
 down() {
-  unlockStale
+  cancelStale
   if dokku apps:exists "$app" 2>/dev/null; then
     dokku apps:destroy "$app" --force
   fi
