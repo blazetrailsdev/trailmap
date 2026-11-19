@@ -52,21 +52,44 @@ domain="$app.deanoftech.com"
 
 prodConfig() { dokku config:get "$PROD_APP" "$1"; }
 
-# `.backup` rather than `cp`: production's databases are live WAL files, and
-# a copy of the main file alone can miss committed pages still in the WAL.
+# A copy-on-write clone (`cp --reflink`) taken while holding production's
+# write lock: milliseconds and almost no disk for an 8.9 GB file, where
+# `.backup` read every page. The lock is what makes it consistent: in WAL mode
+# commits append to the -wal and checkpoints are run by committing writers, so
+# with the write lock held neither file moves while both are cloned.
+# BEGIN IMMEDIATE only takes the lock and ROLLBACK releases it; nothing is
+# written to production, and its writers wait (busy_timeout) for the moment
+# the clone takes. The clone's WAL is then checkpointed INTO THE CLONE. Off a
+# reflink filesystem it falls back to `.backup`.
 snapshot() {
   local from="$1" to="$2"
   [ -f "$from" ] || die "$from does not exist"
   mkdir -p "$(dirname "$to")"
-  rm -f "$to" "$to-wal" "$to-shm"
-  sqlite3 -readonly "$from" ".backup '$to'"
+  rm -f "$to" "$to-wal" "$to-shm" "$to.cloned"
+  sqlite3 "$from" <<SQL >/dev/null
+.timeout 15000
+BEGIN IMMEDIATE;
+.shell cp --reflink=always '$from' '$to' && { [ ! -f '$from-wal' ] || cp --reflink=always '$from-wal' '$to-wal'; } && touch '$to.cloned'
+ROLLBACK;
+SQL
+  if [ -f "$to.cloned" ]; then
+    rm -f "$to.cloned"
+    sqlite3 "$to" "PRAGMA wal_checkpoint(TRUNCATE);" >/dev/null || die "the clone of $from will not open"
+  else
+    echo "==> no reflink clone of $from; copying it with .backup"
+    rm -f "$to" "$to-wal" "$to-shm"
+    sqlite3 -readonly "$from" ".backup '$to'"
+  fi
 }
 
 # Empty the clone's `settings`, the table that points trailmap outside itself.
 scrubSettings() { echo "DELETE FROM settings;" | dokku postgres:connect "$hub"; }
 
-# What decides whether a preview's data is re-copied from production: the
-# migration directories at this sha, by git tree id. Unchanged, the preview
+# What decides whether a preview's data is re-copied from production: a
+# migration directory at this sha, by git tree id, one key per copy. The hub
+# (with tasks.db, copied with it so the two stay from one moment) is keyed on
+# db/hub-migrate; the stats database on db/stats-sync-migrate, so a PR that
+# changes one never re-copies the other. Unchanged, the preview
 # keeps its data (and whatever a reviewer did to it); changed, it starts again
 # from production's, so the PR's migrations run on real data and never on
 # the half-migrated result of an earlier push.
@@ -76,13 +99,7 @@ scrubSettings() { echo "DELETE FROM settings;" | dokku postgres:connect "$hub"; 
 # `databaseTasks: false` (config/database.ts, Rails' `database_tasks: false`),
 # so `db:prepare` never touches tasks.db; that history belongs to the tasks
 # CLI. The queue database is container-local, so each container builds its own.
-migrationsKey() {
-  local sha="$1" dir out=""
-  for dir in db/hub-migrate db/stats-sync-migrate; do
-    out+="$dir=$(git rev-parse --verify --quiet "$sha:$dir" || echo none) "
-  done
-  echo "$out"
-}
+migrationsKey() { echo "$1=$(git rev-parse --verify --quiet "$2:$1" || echo none)"; }
 
 # THE PORT MAP, pinned on every up. A new app built from a Dockerfile that
 # EXPOSEs 8080 gets dokku's default `http:8080:8080`, which renders
@@ -143,23 +160,44 @@ up() {
   statsSyncDb="$(prodConfig STATS_SYNC_DB || true)"
   auditsDir="$(prodConfig AUDITS_DIR || true)"
 
-  local key refresh=""
-  key="$(migrationsKey "$sha")"
+  local hubKey statsKey hubRefresh="" statsRefresh=""
+  hubKey="$(migrationsKey db/hub-migrate "$sha")"
+  statsKey="$(migrationsKey db/stats-sync-migrate "$sha")"
   if ! dokku postgres:exists "$hub" 2>/dev/null || [ ! -f "$data/tasks.db" ]; then
-    refresh="no copy yet"
-  elif [ "$(cat "$data/migrations.key" 2>/dev/null)" != "$key" ]; then
-    refresh="migrations changed"
+    hubRefresh="no copy yet"
+  elif [ "$(cat "$data/hub.key" 2>/dev/null)" != "$hubKey" ]; then
+    hubRefresh="hub migrations changed"
+  fi
+  if [ -n "$statsDb$statsSyncDb" ]; then
+    if [ ! -f "$data/stats.db" ]; then
+      statsRefresh="no copy yet"
+    elif [ "$(cat "$data/stats.key" 2>/dev/null)" != "$statsKey" ]; then
+      statsRefresh="stats migrations changed"
+    fi
   fi
 
-  if [ -n "$refresh" ]; then
-    echo "==> copying production's data ($refresh)"
+  if [ -n "$hubRefresh$statsRefresh" ] && dokku apps:exists "$app" 2>/dev/null; then
     # Stopped first, so the old container does not serve errors against
     # databases that are being replaced until the push replaces it.
-    if dokku apps:exists "$app" 2>/dev/null; then dokku ps:stop "$app" || true; fi
-    rm -f "$data/migrations.key"
+    dokku ps:stop "$app" || true
+  fi
+  if [ -n "$statsRefresh" ]; then
+    echo "==> copying production's stats ($statsRefresh)"
+    rm -f "$data/stats.key" "$data/migrations.key" "$data/stats-sync.db" "$data/stats-sync.db-wal" "$data/stats-sync.db-shm"
+    # Production points STATS_DB and STATS_SYNC_DB at ONE file, and the
+    # preview gets one copy for both, as production has. Two copies doubled
+    # the copy and let the two settings drift apart, which production cannot.
+    snapshot "${statsDb:-$statsSyncDb}" "$data/stats.db"
+    if [ -n "$statsDb" ] && [ -n "$statsSyncDb" ] && [ "$statsDb" != "$statsSyncDb" ]; then
+      snapshot "$statsSyncDb" "$data/stats-sync.db"
+    fi
+  elif [ -n "$statsDb$statsSyncDb" ]; then
+    echo "==> keeping $app's stats: their migrations are unchanged"
+  fi
+  if [ -n "$hubRefresh" ]; then
+    echo "==> copying production's hub and tasks ($hubRefresh)"
+    rm -f "$data/hub.key" "$data/migrations.key"
     snapshot "$tasksDb" "$data/tasks.db"
-    [ -z "$statsDb" ] || snapshot "$statsDb" "$data/stats.db"
-    [ -z "$statsSyncDb" ] || snapshot "$statsSyncDb" "$data/stats-sync.db"
     # Destroyed and re-created rather than imported over: an import into a
     # database that already holds the tables fails on them.
     if dokku postgres:exists "$hub" 2>/dev/null; then
@@ -170,7 +208,7 @@ up() {
     dokku postgres:export "$PROD_HUB" | dokku postgres:import "$hub"
     scrubSettings
   else
-    echo "==> keeping $app's data: its migrations are unchanged"
+    echo "==> keeping $app's hub and tasks: their migrations are unchanged"
   fi
 
   if ! dokku apps:exists "$app" 2>/dev/null; then
@@ -215,7 +253,11 @@ up() {
     AUTHELIA_DOMAIN="$(prodConfig AUTHELIA_DOMAIN || true)"
   )
   [ -z "$statsDb" ] || env+=(STATS_DB="$data/stats.db")
-  [ -z "$statsSyncDb" ] || env+=(STATS_SYNC_DB="$data/stats-sync.db")
+  if [ -f "$data/stats-sync.db" ]; then
+    env+=(STATS_SYNC_DB="$data/stats-sync.db")
+  elif [ -n "$statsSyncDb" ]; then
+    env+=(STATS_SYNC_DB="$data/stats.db")
+  fi
   [ -z "$auditsDir" ] || env+=(AUDITS_DIR="$auditsDir")
   dokku config:set --no-restart "$app" "${env[@]}"
 
@@ -260,7 +302,8 @@ up() {
   rev="$(dokku config:get "$app" GIT_REV || true)"
   [ "$rev" = "$sha" ] || die "$app reports GIT_REV $rev, not $sha"
 
-  echo "$key" >"$data/migrations.key"
+  echo "$hubKey" >"$data/hub.key"
+  [ -z "$statsDb$statsSyncDb" ] || echo "$statsKey" >"$data/stats.key"
   echo "==> preview: https://$domain ($app at $sha)"
 }
 
