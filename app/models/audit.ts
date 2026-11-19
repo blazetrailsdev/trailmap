@@ -8,6 +8,9 @@ import { ApplicationRecord } from "./application-record.ts";
 
 export { AUDIT_FILE_RE };
 
+/** A report's format, and the content type its body is attached as. */
+export const CONTENT_TYPES: Record<string, string> = { md: "text/markdown", html: "text/html" };
+
 /** The legacy filename, `<slug>-<YYYYMMDDTHHMMSSZ>.<format>`, split in three. */
 const PARAM_RE = /^(.+)-(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)Z\.(md|html)$/;
 
@@ -24,9 +27,14 @@ function notFound(name: string): RecordNotFound {
  */
 export class Audit extends ApplicationRecord {
   declare body: One;
+  // `has_one_attached`'s generated `body=`, defined at run time.
+  declare setBody: (attachable: unknown) => Promise<void>;
 
   static {
     (this as unknown as Extended<typeof ClassMethods>).hasOneAttached("body");
+    // The slug `audit-report/run.sh` accepts.
+    this.validates("slug", { format: { with: /^[a-z0-9][a-z0-9-]*$/, message: "must be kebab-case" } });
+    this.validates("format", { inclusion: { in: Object.keys(CONTENT_TYPES) } });
   }
 
   /** Every audit, newest first. */

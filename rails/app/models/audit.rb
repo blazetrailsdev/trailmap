@@ -9,7 +9,14 @@ class Audit < ApplicationRecord
   SEGMENT = /[a-zA-Z0-9][a-zA-Z0-9._-]*\.(md|html)/
   PARAM_RE = /\A(.+)-(\d{8}T\d{6}Z)\.(md|html)\z/
 
+  # A report's format, and the content type its body is attached as.
+  CONTENT_TYPES = { "md" => "text/markdown", "html" => "text/html" }.freeze
+
   has_one_attached :body
+
+  # The slug `audit-report/run.sh` accepts.
+  validates :slug, format: { with: /\A[a-z0-9][a-z0-9-]*\z/, message: "must be kebab-case" }
+  validates :format, inclusion: { in: CONTENT_TYPES.keys }
 
   scope :newest_first, -> { order(written_at: :desc, id: :desc) }
 
