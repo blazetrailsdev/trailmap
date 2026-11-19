@@ -479,7 +479,10 @@ export function controlRequest(action, data, page = {}) {
         pane: true,
         key: data.key || "",
         says: data.says,
-        saying: "sending…",
+        // The button itself says it is sending; the status region beside it
+        // carries the same words for a screen reader, visually hidden.
+        busy: "Sending…",
+        saying: "Sending message",
         clears: data.clears || "",
       };
     }
@@ -555,6 +558,51 @@ export function claudeHasExited(body, toText) {
   return /[>$#%❯]$/.test(tail.at(-1) || "");
 }
 
+const SUGGEST_TAIL = 8;
+const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", "#34": '"', nbsp: "\u00a0" };
+const decodeEntities = (text) => text.replace(/&(amp|lt|gt|quot|nbsp|#39|#34);/g, (_, name) => ENTITIES[name]);
+// ringo's whole markup for a cell run (`paneterm.go` html/css): one flat span
+// with a style attribute, or bare escaped text. Dim is exactly `opacity:.65;`.
+const SCREEN_RUN = /<span style="([^"<>]*)">([^<]*)<\/span>|([^<]+)/g;
+const DIM = /(?:^|;)opacity:\.65;/;
+
+/**
+ * The message Claude Code suggests in its input box: dim text straight after
+ * the `>` (or `❯`) of the prompt line near the bottom of the screen, as ringo
+ * renders it. An empty box's own placeholder, `Try "…"`, is not a suggestion.
+ * Null when there is none, when anything the operator typed (undimmed) sits in
+ * the box, or when the line holds markup ringo does not write: it fails closed.
+ */
+export function suggestedMessage(html) {
+  if (typeof html !== "string" || !html) return null;
+  const lines = html.split("\n").filter((line) => line.replace(/<[^>]*>/g, "").trim()).slice(-SUGGEST_TAIL);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const parts = [];
+    let covered = 0;
+    for (const m of lines[i].matchAll(SCREEN_RUN)) {
+      covered += m[0].length;
+      parts.push({ dim: m[1] !== undefined && DIM.test(m[1]), text: decodeEntities(m[2] ?? m[3]) });
+    }
+    if (covered !== lines[i].length) return null;
+    const plain = parts.map((p) => p.text).join("");
+    const prompt = /^[\s│]*[>❯][\s\u00a0]/.exec(plain);
+    if (!prompt) continue;
+    let at = 0;
+    let dim = "";
+    for (const part of parts) {
+      const start = Math.max(prompt[0].length - at, 0);
+      const rest = part.text.slice(start).replace(/[\s\u00a0]*│[\s\u00a0]*$/, "");
+      at += part.text.length;
+      if (!rest.trim()) continue;
+      if (!part.dim) return null;
+      dim += rest;
+    }
+    const text = dim.replace(/\u00a0/g, " ").trim();
+    return text && !/^Try "/.test(text) ? text : null;
+  }
+  return null;
+}
+
 const CLAUDE_UI = /for shortcuts|esc to interrupt|auto mode|accept edits|bypass permissions|╭─|^\s*│ >/;
 const SCREEN_TAIL = 4;
 
@@ -597,8 +645,9 @@ export function controlOutcome(request, result, label) {
   if (request.quiet) return outcome;
   // A pane message reports beside its box, and a sent one goes in the log.
   if (request.pane) {
-    if (!succeeded) return { disabled: false, say: answered ? result.text : result.error };
-    return { disabled: false, say: "sent", clear: request.clears || undefined, sent: { key: request.key, text: request.body.text }, closePalette: true };
+    const text = request.busy ? label : undefined;
+    if (!succeeded) return { disabled: false, text, say: answered ? result.text : result.error };
+    return { disabled: false, text, say: "sent", clear: request.clears || undefined, sent: { key: request.key, text: request.body.text }, closePalette: true };
   }
   if (request.says) {
     if (!succeeded) return { disabled: false, say: "Error: " + (answered ? result.text : result.error) };

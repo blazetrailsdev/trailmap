@@ -50,6 +50,7 @@ import {
   timeAgo,
   workerLine,
   WORK_EMOJI,
+  suggestedMessage,
 } from "./fleet-format.js";
 
 /** How long a worker pane sits idle, short of its next stage, before its row says it has stalled (RFC 0232 open question 6). */
@@ -484,6 +485,23 @@ export function terminalHtml(pane, screen) {
   );
 }
 
+/**
+ * A button that sends the message Claude Code suggests in the pane's input
+ * box, when it suggests one; nothing otherwise. `dashboard.js` repaints it
+ * with each screen, so it follows the suggestion as it changes.
+ */
+export function suggestHtml(pane, key, screen) {
+  const text = suggestedMessage(screen && screen.html);
+  if (!text) return "";
+  // The label is plain text, so the button's busy label restores exactly; the
+  // suggestion itself sits beside it, and names it for a screen reader.
+  return (
+    '<button class="btn btn-sm" data-action="pane-send" data-pane="' + esc(pane) + '" data-key="' + key +
+    '" data-text="' + esc(text) + '" data-says="compose-note-' + key + '" aria-describedby="suggest-' + key + '" title="' + esc(text) +
+    '">Send suggestion</button> <span class="pane-suggest-text" id="suggest-' + key + '">' + esc(text) + "</span>"
+  );
+}
+
 // ---------------------------------------------------------------------------
 // One session
 // ---------------------------------------------------------------------------
@@ -510,7 +528,8 @@ export function sessionDetail(s, ctx, lead) {
       '" aria-label="Message the agent" placeholder="Message the agent… (⌘↵ sends)"></textarea>' +
       '<button class="btn btn-sm" data-action="pane-send" data-pane="' + esc(paneOf(s)) + '" data-key="' + key +
       '" data-source="compose-' + key + '" data-clears="compose-' + key + '" data-says="compose-note-' + key + '">Send</button>' +
-      '<span class="field-status" id="compose-note-' + key + '"></span></div>'
+      '<span data-suggest="' + esc(paneOf(s)) + '" data-key="' + key + '">' + suggestHtml(paneOf(s), key, ctx.screens && ctx.screens.get(paneOf(s))) + "</span>" +
+      '<span class="field-status" id="compose-note-' + key + '" role="status"></span></div>'
     : "";
   const facts = [];
   if (lead && lead.rfc) facts.push(["RFC", '<a href="/rfc/' + encodeURIComponent(lead.rfc) + '">' + esc(lead.rfc) + "</a>"]);
