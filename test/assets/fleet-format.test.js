@@ -863,6 +863,12 @@ describe("ciMark", () => {
     expect(ciMark("pending")).toContain('class="ci ci-pending" title="CI running"');
     expect(ciMark(undefined)).toBe("");
   });
+
+  it("counts the failed checks when ringo carries them", () => {
+    expect(ciMark("failure", 1)).toContain('<span class="sr-only">1 check failed</span>');
+    expect(ciMark("failure", 3)).toContain('title="3 checks failed"');
+    expect(ciMark("failure")).toContain('title="check failed"');
+  });
 });
 
 describe("a pane message", () => {
@@ -934,6 +940,21 @@ describe("stageFigure", () => {
     expect(stageFigure({ ciStatus: "pending" }, "ci")).toBe("CI running");
     expect(stageFigure({}, "ci")).toBe("");
     expect(stageFigure({}, "drafting")).toBe("");
+  });
+
+  it("gives LOC against the ceiling while drafting and in self review", () => {
+    expect(stageFigure({ additions: 300, deletions: 40, locCeiling: 1000 }, "drafting")).toBe("340/1000 LOC");
+    expect(stageFigure({ additions: 12, locCeiling: 1000 }, "self")).toBe("12/1000 LOC");
+  });
+
+  it("gives findings converged against the review's total", () => {
+    expect(stageFigure({ findingsTotal: 5, openFindings: 2, reviewCycles: 2 }, "ringo")).toBe("3/5 findings converged");
+    expect(stageFigure({ findingsTotal: 4, reviewCycles: 3 }, "ringo")).toBe("4/4 findings converged");
+    expect(stageFigure({ findingsTotal: 0, openFindings: 2 }, "ringo")).toBe("2 open findings");
+  });
+
+  it("gives checks passed against the total while getting CI green", () => {
+    expect(stageFigure({ ciStatus: "pending", checksPassed: 38, checksTotal: 50 }, "ci")).toBe("38/50 checks passed");
   });
 });
 
