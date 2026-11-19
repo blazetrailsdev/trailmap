@@ -110,6 +110,8 @@ class RfcRefinementsTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     report(kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", when: "soon")
     assert_response :unprocessable_entity
+    report(kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", when: "2026-10-01")
+    assert_response :unprocessable_entity
     assert_equal 0, RfcRefinement.count
   end
 end

@@ -145,6 +145,7 @@ describe("RfcRefinements", () => {
     expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", summary: ["a"] })).status).toBe(422);
     expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", summary: false })).status).toBe(422);
     expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", when: "soon" })).status).toBe(422);
+    expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", when: "2026-10-01" })).status).toBe(422);
     expect(await Refinement.count()).toBe(0);
   });
 });
