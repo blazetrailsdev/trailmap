@@ -12,7 +12,6 @@ import { RepositorySetting } from "../app/models/repository-setting.ts";
 import { RepositoryCollaborator } from "../app/models/repository-collaborator.ts";
 import { Setting } from "../app/models/setting.ts";
 import { ParityDay } from "../app/models/parity-day.ts";
-
 import { Hub } from "../app/models/hub.ts";
 import { PullRequest } from "../app/models/pull-request.ts";
 import { ApiCompareStat } from "../app/models/api-compare-stat.ts";

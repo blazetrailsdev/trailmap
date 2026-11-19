@@ -1,6 +1,37 @@
-import { Migration } from "@blazetrails/activerecord";
+import { Base, Migration } from "@blazetrails/activerecord";
+import { type Extended } from "@blazetrails/activesupport";
+import type { ClassMethods } from "@blazetrails/activestorage/attached/model";
+import type { One } from "@blazetrails/activestorage/attached/one";
 import { StringIO } from "@blazetrails/ruby-compat";
-import { Refinement } from "../../app/models/refinement.ts";
+
+/**
+ * The migration's own model, as the Rails guides advise, so a later change to
+ * app/models/refinement.ts cannot break it. Named `Refinement` so the
+ * attachments' `record_type` is the app model's.
+ */
+class Refinement extends Base {
+  declare summary: One;
+  declare rfc_id: string;
+  declare outcome: string;
+  declare created_at: Date;
+  declare updated_at: Date;
+
+  static {
+    this.tableName = "refinements";
+    (this as unknown as Extended<typeof ClassMethods>).hasOneAttached("summary");
+  }
+}
+
+/**
+ * `refinements` is on the tasks database, which the tasks CLI migrates and
+ * trailmap never does (config/database.ts). Its migration is the CLI's
+ * 20261118000013, so it must have run before this one moves a row there.
+ */
+async function requireRefinements(): Promise<void> {
+  if (!(await Refinement.tableExists())) {
+    throw new Error("the tasks database has no refinements table: run the tasks CLI's migrations first");
+  }
+}
 
 /**
  * RFC 0243, Decision 1: the refine reports move off the hub. Every
@@ -11,6 +42,7 @@ import { Refinement } from "../../app/models/refinement.ts";
  */
 export class MoveRfcRefinesToRefinements extends Migration.get(8) {
   async up() {
+    await requireRefinements();
     const connection = await this.connection;
     const rows = await connection.selectAll(
       "SELECT rfc_id, outcome, summary, created_at, updated_at FROM rfc_refines ORDER BY id",
@@ -34,6 +66,7 @@ export class MoveRfcRefinesToRefinements extends Migration.get(8) {
   }
 
   async down() {
+    await requireRefinements();
     await this.createTable("rfc_refines", (t) => {
       t.string("rfc_id", { null: false });
       t.string("outcome", { null: false });

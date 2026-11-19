@@ -205,7 +205,7 @@ export class RfcPagesController extends ApplicationController {
       await this.render({ action: "show", status: 404 });
       return;
     }
-    const rows = await Refinement.forRfc(this.rfc.id).toArray();
+    const rows = await Refinement.withAttachedSummary().merge(Refinement.forRfc(this.rfc.id)).toArray();
     this.refines = [];
     for (const row of rows) {
       const blob = await (await row.summary.attachment)?.blob;

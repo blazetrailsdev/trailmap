@@ -1,4 +1,4 @@
-import { include } from "@blazetrails/activesupport";
+import { ArgumentError, include, zone, type TimeZone } from "@blazetrails/activesupport";
 import { StringIO } from "@blazetrails/ruby-compat";
 import { ApiController } from "./api-controller.ts";
 import { IngestToken } from "./concerns/ingest-token.ts";
@@ -20,9 +20,6 @@ import { Story } from "../models/story.ts";
  * other than `rfc-refine` a 400, and an outcome outside the three, a summary
  * that is not a string, or a `when` that is not a time, a 422.
  */
-/** What the Rails twin's `Time.iso8601` accepts: a date, a time and a zone. */
-const ISO8601 = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(Z|[+-]\d\d:\d\d)$/;
-
 export class RfcRefinesController extends ApiController {
   static {
     include(this, IngestToken);
@@ -45,7 +42,11 @@ export class RfcRefinesController extends ApiController {
       return;
     }
     const when = presentParam(this.params, "when");
-    if (when !== undefined && (!ISO8601.test(when) || Number.isNaN(Date.parse(when)))) {
+    let createdAt = null;
+    try {
+      if (when !== undefined) createdAt = (zone() as TimeZone).iso8601(when);
+    } catch (e) {
+      if (!(e instanceof ArgumentError)) throw e;
       await this.render({ json: { error: "when must be a time" }, status: 422 });
       return;
     }
@@ -53,13 +54,13 @@ export class RfcRefinesController extends ApiController {
       rfc_id: rfcId,
       outcome: presentParam(this.params, "outcome") ?? "",
       stories: await Story.where({ rfc_id: rfcId }).count(),
-      ...(when === undefined ? {} : { created_at: new Date(when) }),
+      created_at: createdAt,
     });
+    await refine.setSummary({ io: new StringIO(summary), filename: "summary.md", contentType: "text/markdown" });
     if (!(await refine.save())) {
       await this.render({ json: { error: refine.errors.fullMessages.join(", ") }, status: 422 });
       return;
     }
-    await refine.summary.attach({ io: new StringIO(summary), filename: "summary.md", contentType: "text/markdown" });
     await this.render({ json: { id: refine.id, rfc: rfcId, outcome: refine.outcome }, status: 201 });
   }
 }

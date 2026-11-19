@@ -155,6 +155,16 @@ describe("Audit", () => {
     expect((await Audit.find("older-audit-20260801T000000Z.md")).isHtml()).toBe(false);
   });
 
+  it("titles an audit with no title from its slug", async () => {
+    const audit = await Audit.create({ slug: "parity-sweep", format: "md", written_at: "2026-10-27T10:15:00Z" });
+    expect(audit.title).toBe("parity sweep");
+  });
+
+  it("finds an audit written at a fraction of a second by the second its name stamps", async () => {
+    await Audit.create({ slug: "precise", title: "p", format: "md", written_at: "2026-10-27T10:15:00.750Z" });
+    expect((await Audit.find("precise-20261027T101500Z.md")).slug).toBe("precise");
+  });
+
   it("reads its body", async () => {
     expect(await (await Audit.find("a-tie-20260815T000000Z.md")).read()).toBe("# tie");
   });

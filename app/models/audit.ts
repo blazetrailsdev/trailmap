@@ -1,4 +1,5 @@
 import { RecordNotFound } from "@blazetrails/activerecord";
+import { Range } from "@blazetrails/ruby-compat";
 import { type Extended } from "@blazetrails/activesupport";
 import type { ClassMethods } from "@blazetrails/activestorage/attached/model";
 import type { One } from "@blazetrails/activestorage/attached/one";
@@ -35,18 +36,28 @@ export class Audit extends ApplicationRecord {
 
   /**
    * The audit `toParam` names, raising `RecordNotFound` (a 404) for a name
-   * that does not parse or names no audit.
+   * that does not parse or names no audit. The stamp is whole seconds, so it
+   * matches the second it names, whatever precision `written_at` was stored at.
    */
   static override find = async function (this: typeof Audit, name: unknown) {
     const parts = PARAM_RE.exec(String(name));
     const [, slug, y, mo, d, h, mi, s, format] = parts ?? [];
+    const second = Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s));
     const audit =
-      parts === null ? null : await this.findBy({ slug, format, written_at: `${y}-${mo}-${d}T${h}:${mi}:${s}Z` });
+      parts === null
+        ? null
+        : await this.findBy({ slug, format, written_at: new Range(new Date(second), new Date(second + 1000), true) });
     if (audit === null) throw notFound(String(name));
     return audit;
   } as typeof ApplicationRecord.find;
 
   override toParam = (): string => `${this.slug}-${this.written_at.utc().strftime("%Y%m%dT%H%M%SZ")}.${this.format}`;
+
+  /** The title the report gave, else its slug de-kebabbed, as ringo's `auditTitle`. */
+  get title(): string {
+    const title = this.readAttribute("title") as string | null;
+    return title != null && title.trim() !== "" ? title : this.slug.replace(/[-_]/g, " ");
+  }
 
   get when() {
     return this.written_at;

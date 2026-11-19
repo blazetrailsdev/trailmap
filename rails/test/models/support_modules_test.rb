@@ -79,6 +79,11 @@ class SupportModulesTest < ActiveSupport::TestCase
     assert Audit.find("new-20261002T000000Z.html").html?
   end
 
+  test "Audit#title falls back to the slug; find matches the stamped second" do
+    Audit.create!(slug: "parity-sweep", format: "md", written_at: Time.utc(2026, 10, 27, 10, 15, Rational(3, 4)))
+    assert_equal "parity sweep", Audit.find("parity-sweep-20261027T101500Z.md").title
+  end
+
   def audit!(slug, format, body, written_at)
     Audit.create!(slug: slug, title: slug, format: format, written_at: written_at).tap do |audit|
       audit.body.attach(io: StringIO.new(body), filename: "#{slug}.#{format}")

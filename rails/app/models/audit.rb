@@ -15,11 +15,14 @@ class Audit < ApplicationRecord
 
   def self.find(name)
     slug, stamp, format = PARAM_RE.match(name.to_s)&.captures
-    audit = find_by(slug: slug, format: format, written_at: Time.strptime(stamp, "%Y%m%dT%H%M%S%Z")) if slug
+    second = Time.strptime(stamp, "%Y%m%dT%H%M%S%Z") if slug
+    audit = find_by(slug: slug, format: format, written_at: second...(second + 1)) if slug
     audit or raise ActiveRecord::RecordNotFound.new("Couldn't find Audit with 'name'=#{name}", name, "name", name)
   end
 
   def to_param = "#{slug}-#{written_at.utc.strftime("%Y%m%dT%H%M%SZ")}.#{format}"
+  # The title the report gave, else its slug de-kebabbed, as ringo's `auditTitle`.
+  def title = super.presence || slug.tr("-_", "  ")
   def when = written_at
   def html? = format == "html"
   def size = body.blob.byte_size

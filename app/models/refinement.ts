@@ -1,6 +1,7 @@
 import { type Extended } from "@blazetrails/activesupport";
 import type { ClassMethods } from "@blazetrails/activestorage/attached/model";
 import type { One } from "@blazetrails/activestorage/attached/one";
+import type { Relation } from "@blazetrails/activerecord";
 import { ApplicationRecord } from "./application-record.ts";
 
 /** What a refine pass can report, as `rfc-refine-done.sh` sends it. */
@@ -17,6 +18,10 @@ export const RFC_REFINE_OUTCOMES = ["changed", "no-change", "aborted"] as const;
  */
 export class Refinement extends ApplicationRecord {
   declare summary: One;
+  // `has_one_attached`'s generated `summary=` and `with_attached_summary`,
+  // defined at run time.
+  declare setSummary: (attachable: unknown) => Promise<void>;
+  declare static withAttachedSummary: () => Relation<Refinement>;
 
   static {
     (this as unknown as Extended<typeof ClassMethods>).hasOneAttached("summary");

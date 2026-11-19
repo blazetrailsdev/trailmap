@@ -19,14 +19,17 @@ class RfcRefinesController < ApiController
     return render json: { error: "summary must be a string" }, status: :unprocessable_entity unless summary.is_a?(String)
 
     when_ = param(:when)
-    created_at = Time.iso8601(when_) rescue nil if when_
-    return render json: { error: "when must be a time" }, status: :unprocessable_entity if when_ && created_at.nil?
+    begin
+      created_at = Time.zone.iso8601(when_) if when_
+    rescue ArgumentError
+      return render json: { error: "when must be a time" }, status: :unprocessable_entity
+    end
 
     refine = RfcRefinement.new(rfc_id: rfc_id, outcome: param(:outcome).to_s,
-                            stories: Story.where(rfc_id: rfc_id).count, created_at: created_at)
+                            stories: Story.where(rfc_id: rfc_id).count, created_at: created_at,
+                               summary: { io: StringIO.new(summary), filename: "summary.md", content_type: "text/markdown" })
     return render json: { error: refine.errors.full_messages.join(", ") }, status: :unprocessable_entity unless refine.save
 
-    refine.summary.attach(io: StringIO.new(summary), filename: "summary.md", content_type: "text/markdown")
     render json: { id: refine.id, rfc: rfc_id, outcome: refine.outcome }, status: :created
   end
 end
