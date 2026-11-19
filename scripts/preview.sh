@@ -66,7 +66,12 @@ snapshot() {
   [ -f "$from" ] || die "$from does not exist"
   mkdir -p "$(dirname "$to")"
   rm -f "$to" "$to-wal" "$to-shm" "$to.cloned"
-  sqlite3 "$from" <<SQL >/dev/null
+  # .bail on FIRST: without it a BEGIN that fails (busy past the timeout) is
+  # reported and the shell reads on, cloning WITHOUT the lock and touching the
+  # marker that says the clone is consistent. A failure here is not fatal:
+  # no marker means the .backup fallback below.
+  sqlite3 "$from" <<SQL >/dev/null || true
+.bail on
 .timeout 15000
 BEGIN IMMEDIATE;
 .shell cp --reflink=always '$from' '$to' && { [ ! -f '$from-wal' ] || cp --reflink=always '$from-wal' '$to-wal'; } && touch '$to.cloned'
@@ -155,15 +160,18 @@ assertNginx() {
 # served throughout. Nothing else deploys a preview, and btwhooks runs one at a
 # time per PR, so a build still running here is a superseded one. Cancelling
 # it even mid-release is safe: the data keys are gone (see the push below), so
-# this run re-copies whatever it touched. A no-op when nothing is running.
+# this run re-copies whatever it touched. With nothing running it prints
+# "App not currently deploying" and exits 0 (dokku 0.38.34, checked). Left
+# fatal otherwise: a cancel that failed means a build may still be live, and
+# pushing beside it is the race this exists to prevent.
 cancelStale() {
   if dokku apps:exists "$app" 2>/dev/null; then dokku builds:cancel "$app"; fi
 }
 
 up() {
-  cancelStale
   local sha="${1:-}"
   [ -n "$sha" ] || usage
+  cancelStale
   local since
   since="$(date '+%Y/%m/%d %H:%M:%S')"
   local tasksDb tasksDir statsDb statsSyncDb auditsDir
