@@ -1,6 +1,6 @@
 import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { ApplicationController } from "./application-controller.ts";
-import { FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash, paneMessageProblem } from "../../config/fleet.ts";
+import { FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash, paneKeysProblem, paneMessageProblem } from "../../config/fleet.ts";
 import { Setting } from "../models/setting.ts";
 import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.ts";
 import {
@@ -154,18 +154,43 @@ export class FleetController extends ApplicationController {
       await this.render({ plain: problem, status: 400 });
       return;
     }
+    await this._relayToPane(id, "send", { text });
+  }
+
+  /**
+   * `POST /fleet/pane/<n>/keys` with `{ "keys": ["Down", "Enter"] }`: press
+   * keys in a live pane through ringo's `POST /pane/<n>/keys`, for a TUI
+   * prompt a line of text cannot answer. The same terms as `message`; the
+   * keys are checked here against ringo's own allowlist.
+   */
+  async keys(): Promise<void> {
+    const id = String(this.params.get("id") ?? "");
+    if (!isPaneId(id)) {
+      await this.render({ plain: "Not a pane id", status: 400 });
+      return;
+    }
+    const keys = this.params.get("keys");
+    const problem = paneKeysProblem(keys);
+    if (problem !== null) {
+      await this.render({ plain: problem, status: 400 });
+      return;
+    }
+    await this._relayToPane(id, "keys", { keys });
+  }
+
+  /** POST `body` to ringo's `/pane/<id>/<action>`; 204 stays 204, the rest is ringo's text. */
+  private async _relayToPane(id: string, action: string, body: unknown): Promise<void> {
     const base = await Setting.ringoBase();
     if (base === null) {
       await this.render({ plain: "no ringo origin is configured", status: 503 });
       return;
     }
-
     try {
-      const response = await fetch(`${base}/pane/${id}/send`, {
+      const response = await fetch(`${base}/pane/${id}/${action}`, {
         method: "POST",
         signal: AbortSignal.timeout(MESSAGE_TIMEOUT_MS),
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify(body),
       });
       const answer = await response.text();
       if (response.status === 204) {

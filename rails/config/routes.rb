@@ -32,6 +32,7 @@ Rails.application.routes.draw do
   get "panes/:id", to: "panes#show", as: :pane
   get "fleet/pane/:id/screen", to: "fleet#screen", as: :fleet_pane_screen
   post "fleet/pane/:id/send", to: "fleet#message", as: :fleet_pane_send
+  post "fleet/pane/:id/keys", to: "fleet#keys", as: :fleet_pane_keys
 
   get "deploys", to: "deploys#index", as: :deploys
   get "deploys/log", to: "deploys#log", as: :deploys_log

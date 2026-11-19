@@ -122,4 +122,45 @@ class FleetControllerTest < ActionDispatch::IntegrationTest
     without_ringo { post "/fleet/pane/42/send", params: { text: "hi" }, as: :json }
     assert_response :service_unavailable
   end
+
+  test "keys forwards allowlisted keys to ringo's keys endpoint and refuses any other" do
+    posted = []
+    relay = lambda do |url, body:, content_type:, timeout:|
+      posted << [ url.delete_prefix(StandInRingo::BASE), body ]
+      ringo_response(204, "")
+    end
+    with_ringo({}) do
+      Fleet::Relay.stub(:post, relay) do
+        post "/fleet/pane/42/keys", params: { keys: [ "Down", "Enter" ] }, as: :json
+        assert_response :no_content
+        post "/fleet/pane/42/keys", params: { keys: [ "C-c" ] }, as: :json
+        assert_response :bad_request
+        assert_equal "key C-c is not one of Enter, Up, Down, Left, Right, Escape, Tab", response.body
+        post "/fleet/pane/42/keys", params: { keys: [] }, as: :json
+        assert_response :bad_request
+        post "/fleet/pane/x1/keys", params: { keys: [ "Enter" ] }, as: :json
+        assert_response :bad_request
+      end
+    end
+    assert_equal [ [ "/pane/42/keys", '{"keys":["Down","Enter"]}' ] ], posted
+  end
+
+  test "keys drops a null key as deep_munge does, and presses the rest" do
+    posted = []
+    relay = lambda do |url, body:, content_type:, timeout:|
+      posted << body
+      ringo_response(204, "")
+    end
+    with_ringo({}) do
+      Fleet::Relay.stub(:post, relay) do
+        post "/fleet/pane/42/keys", params: { keys: [ "Enter", nil ] }, as: :json
+        assert_response :no_content
+      end
+    end
+    assert_equal [ '{"keys":["Enter"]}' ], posted
+  end
+
+  test "pane_keys_problem refuses a nil key rather than passing it" do
+    assert_equal "key  is not one of Enter, Up, Down, Left, Right, Escape, Tab", Fleet.pane_keys_problem([ "Enter", nil ])
+  end
 end

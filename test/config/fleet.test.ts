@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setX } from "../support/config-x.ts";
 import { setEnv } from "@blazetrails/ruby-compat";
-import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash, PANE_MESSAGE_MAX_BYTES, paneMessageProblem } from "../../config/fleet.ts";
+import { FLEET_CONTROLS, FLEET_PANE_PATH, FLEET_REVIEWERS_PATH, SCREEN_HASH_MAX, fleetRepos, isPaneId, isScreenHash, PANE_KEYS_MAX, PANE_MESSAGE_MAX_BYTES, paneKeysProblem, paneMessageProblem } from "../../config/fleet.ts";
 
 /**
  * The dashboard's two configured pieces, unit-tested rather than only through
@@ -136,5 +136,18 @@ describe("paneMessageProblem", () => {
   it("refuses an empty message and one over the cap", () => {
     expect(paneMessageProblem("")).toBe("message is empty");
     expect(paneMessageProblem("é".repeat(PANE_MESSAGE_MAX_BYTES / 2 + 1))).toBe("message is longer than 4096 bytes");
+  });
+});
+
+describe("paneKeysProblem", () => {
+  it("passes ringo's allowlisted key names", () => {
+    expect(paneKeysProblem(["Enter", "Up", "Down", "Left", "Right", "Escape", "Tab"])).toBeNull();
+  });
+
+  it("refuses no keys, too many, and any other name", () => {
+    expect(paneKeysProblem([])).toBe("no keys given");
+    expect(paneKeysProblem("Enter")).toBe("no keys given");
+    expect(paneKeysProblem(Array(PANE_KEYS_MAX + 1).fill("Up"))).toBe("at most 16 keys at a time");
+    expect(paneKeysProblem(["Up", "C-c"])).toBe("key C-c is not one of Enter, Up, Down, Left, Right, Escape, Tab");
   });
 });
