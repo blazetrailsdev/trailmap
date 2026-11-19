@@ -288,6 +288,24 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # POSTGRES for `/rfcs`, whose history ticks read the refine reports in the
+    # hub. The list gate renders it, so it needs a throwaway hub like
+    # parity-gate's.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trailmap_hub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      HUB_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -367,6 +385,12 @@ jobs:
       # application executes.
       - name: vendor/ringo/core.wasm is what vendor/ringo/go builds to
         run: ./scripts/build-ringo-wasm.sh --check
+      # No `--database hub` — see the note on the test job.
+      - name: Prepare the hub schema
+        env:
+          HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+          NODE_ENV: test
+        run: pnpm db:migrate
       - name: /rfcs and /backlog == ringo's, per tab
         env:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
