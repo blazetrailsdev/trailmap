@@ -4,7 +4,7 @@ import { Event } from "../models/event.ts";
 import { Rfc } from "../models/rfc.ts";
 import { Story } from "../models/story.ts";
 import { RfcRefine } from "../models/rfc-refine.ts";
-import { collectRfcMarks, type MarkEvent } from "../models/concerns/rfc-marks.ts";
+import { collectRfcMarks, type MarkEvent, type RefineReport } from "../models/concerns/rfc-marks.ts";
 import { readDocument } from "../models/concerns/document.ts";
 import { rfcReadyDrafts, rfcStatusMoves, rfcStatusSet, type RfcStatusMove } from "../models/rfc-status.ts";
 import { VerbExit } from "../models/verb-exit.ts";
@@ -104,13 +104,15 @@ export class RfcPagesController extends ApplicationController {
     // Two columns, not the records: every figure on this page is a count of
     // statuses, and building 11,000 `Story` objects to read one field from
     // each was the whole second this page took.
-    const [rfcs, statuses, history] = await Promise.all([
+    const [rfcs, statuses, history, refineRows] = await Promise.all([
       Rfc.all().toArray(),
       Story.pluck("rfc_id", "status", "id"),
       // The two verbs the ticks are reconstructed from, oldest first.
       Event.where({ verb: ["new", "spawn"] })
         .order({ at: "asc", id: "asc" })
         .pluck("at", "verb", "story_id", "rfc_id", "detail"),
+      // Records, not `pluck`: a record's `created_at` is typed as a time.
+      RfcRefine.select("rfc_id", "created_at").toArray(),
     ]);
 
     const byRfc = new Map<string, (string | null)[]>();
@@ -148,7 +150,10 @@ export class RfcPagesController extends ApplicationController {
         detail: detail == null ? null : String(detail),
       }),
     );
-    const marks = collectRfcMarks(new Set(rfcs.map((rfc) => rfc.id)), storyRfc, events);
+    const reports = refineRows.map(
+      (row): RefineReport => ({ rfcId: row.rfc_id, at: row.created_at.utc().iso8601() }),
+    );
+    const marks = collectRfcMarks(new Set(rfcs.map((rfc) => rfc.id)), storyRfc, events, reports);
 
     const requested = String(this.params.get("status") ?? "");
     const filter = RFC_STATUS_TABS.includes(requested) ? requested : "active";

@@ -136,6 +136,65 @@ class ModelMethodsTest < ActiveSupport::TestCase
 
   # ── RfcMarks ──
 
+  test "RfcMarks.collect folds a stored refine report into the refinement it lines up with, else ticks it" do
+    ev = ->(at, verb, story_id) { RfcMarks::MarkEvent.new(at: at, verb: verb, story_id: story_id, rfc_id: "r1", detail: { source: "rfc-refine" }.to_json) }
+    marks = RfcMarks.collect(
+      Set["r1"], { "old" => "r1", "a" => "r1", "b" => "r1" },
+      [ ev.("2026-09-02T10:00:00Z", "spawn", nil), ev.("2026-09-03T10:00:00Z", "new", "a") ],
+      [ RfcMarks::RefineReport.new(rfc_id: "r1", at: "2026-09-02T12:00:00Z"),
+        RfcMarks::RefineReport.new(rfc_id: "r1", at: "2026-09-04T10:00:00Z") ],
+    )
+
+    assert_equal [ [ nil, 2, "origin", 1 ], [ "2026-09-02T10:00:00Z", 2, "refine", 1 ], [ "2026-09-04T10:00:00Z", 3, "refine", 1 ] ],
+                 marks["r1"].map { |m| [ m.at, m.count, m.kind, m.reps ] }
+  end
+
+  test "RfcMarks.collect drains no report at an event whose time cannot be read" do
+    ev = ->(at, story_id) { RfcMarks::MarkEvent.new(at: at, verb: "new", story_id: story_id, rfc_id: "r1", detail: nil) }
+    marks = RfcMarks.collect(
+      Set["r1"], { "old" => "r1", "a" => "r1", "b" => "r1" },
+      [ ev.("not a time", "a"), ev.("2026-09-03T10:00:00Z", "b") ],
+      [ RfcMarks::RefineReport.new(rfc_id: "r1", at: "2026-09-02T10:00:00Z") ],
+    )
+
+    assert_equal [ "2026-09-02T10:00:00Z", 2 ], [ marks["r1"].last.at, marks["r1"].last.count ]
+  end
+
+  test "RfcMarks.collect writes a standalone tick at second precision" do
+    marks = RfcMarks.collect(Set["r1"], { "old" => "r1" }, [], [ RfcMarks::RefineReport.new(rfc_id: "r1", at: "2026-09-02T10:00:00.250Z") ])
+
+    assert_equal "2026-09-02T10:00:00Z", marks["r1"].last.at
+  end
+
+  test "RfcMarks.collect orders ticks on the at string, as ringo does" do
+    marks = RfcMarks.collect(
+      Set["r1"], { "old" => "r1", "a" => "r1", "b" => "r1" },
+      [ RfcMarks::MarkEvent.new(at: "2026-09-01T10:00:00Z", verb: "new", story_id: "a", rfc_id: "r1", detail: nil) ],
+      [ RfcMarks::RefineReport.new(rfc_id: "r1", at: "2026-09-03T10:00:00Z"),
+        RfcMarks::RefineReport.new(rfc_id: "r1", at: "2026-09-01T09:00:00Z") ],
+    )
+
+    assert_equal [ nil, "2026-09-01T09:00:00Z", "2026-09-03T10:00:00Z" ], marks["r1"].map(&:at)
+  end
+
+  test "RfcMarks.parse_time reads RFC 3339 and answers nil otherwise" do
+    assert_equal Time.utc(2026, 9, 2, 10), RfcMarks.parse_time("2026-09-02T10:00:00Z")
+    assert_nil RfcMarks.parse_time("not a time")
+  end
+
+  test "RfcMarks.collapse leads with the origin and folds refinements at one count" do
+    m = ->(at, count, kind) { RfcMarks::Mark.new(at: at, count: count, kind: kind, reps: 1) }
+    out = RfcMarks.collapse([ m.("2026-09-03T00:00:00Z", 2, "refine"), m.(nil, 1, "origin"), m.("2026-09-02T00:00:00Z", 2, "refine") ])
+
+    assert_equal [ [ nil, 1 ], [ "2026-09-02T00:00:00Z", 2 ] ], out.map { |x| [ x.at, x.reps ] }
+  end
+
+  test "RfcMarks.merge_refine_history skips a report with no count" do
+    marks = [ RfcMarks::Mark.new(at: nil, count: 1, kind: "origin", reps: 1) ]
+
+    assert_equal 1, RfcMarks.merge_refine_history(marks, [ { at: "2026-09-02T10:00:00Z", count: 0 } ]).size
+  end
+
   test "RfcMarks.spawn_source reads source, then arg" do
     assert_equal "rfc-refine", RfcMarks.spawn_source({ source: "rfc-refine", arg: "x" }.to_json)
     assert_equal "x", RfcMarks.spawn_source({ arg: "x" }.to_json)
