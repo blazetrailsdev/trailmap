@@ -31,27 +31,32 @@ describe("sessionStage", () => {
     expect(sessionStage(spawn(), none, "merged")).toBe("drafting");
   });
 
-  it("row 3: a PR with a reviewer assigned is Reviewer convergence", () => {
+  it("row 4: a PR with a reviewer assigned is Reviewer convergence", () => {
     expect(sessionStage(pr({ draft: true }), assigned)).toBe("ringo");
   });
 
-  it("row 3: a non-draft PR with a reviewer assigned", () => {
-    expect(sessionStage(pr({ ciStatus: "success" }), assigned)).toBe("ringo");
+  it("row 3: a non-draft PR with green CI and no open findings is ready, reviewer or not", () => {
+    expect(sessionStage(pr({ ciStatus: "success" }), assigned)).toBe("ready");
   });
 
-  it("row 3: open findings with passing CI", () => {
+  it("row 4: a non-draft PR with a reviewer assigned and CI not green", () => {
+    expect(sessionStage(pr({ ciStatus: "pending" }), assigned)).toBe("ringo");
+    expect(sessionStage(pr({ ciStatus: "failure" }), assigned)).toBe("ringo");
+  });
+
+  it("row 4: open findings with passing CI", () => {
     expect(sessionStage(pr({ ciStatus: "success", openFindings: 2 }), none)).toBe("ringo");
   });
 
-  it("row 4: a draft PR before review is Self review", () => {
+  it("row 5: a draft PR before review is Self review", () => {
     expect(sessionStage(pr({ draft: true }), none)).toBe("self");
   });
 
-  it("row 4: red CI before review is still Self review", () => {
+  it("row 5: red CI before review is still Self review", () => {
     expect(sessionStage(pr({ draft: true, ciStatus: "failure" }), none)).toBe("self");
   });
 
-  it("row 5: a non-draft PR with passing CI is Ready to merge", () => {
+  it("row 3: a non-draft PR with passing CI is Ready to merge", () => {
     expect(sessionStage(pr({ ciStatus: "success", reviewCycles: 2 }), none)).toBe("ready");
   });
 
