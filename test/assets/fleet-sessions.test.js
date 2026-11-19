@@ -475,12 +475,12 @@ describe("sessionCard", () => {
   it("offers Merge on any open, non-draft pull request with CI green, whatever its stage", () => {
     const reviewers = reviewersByKey([{ owner: PR.owner, repo: PR.repo, pr: PR.pr, agent: "codex" }]);
     const ready = sessionCard({ ...PR, ciStatus: "success" }, context());
-    const inReview = sessionCard({ ...PR, ciStatus: "success", reviewCycles: 2 }, context({ reviewers }));
+    const inReview = sessionCard({ ...PR, ciStatus: "success", openFindings: 1 }, context({ reviewers }));
 
     expect(ready).toContain('class="btn btn-sm btn-primary" data-action="merge" data-owner="blazetrailsdev" data-repo="trails" data-pr="9958"');
     expect(inReview).toContain('class="session session-ringo"');
     expect(inReview).toContain('data-action="merge"');
-    expect(inReview).toContain('<span class="figure">2 review cycles</span>');
+    expect(inReview).toContain('<span class="figure">1 open finding</span>');
     expect(sessionCard({ ...PR, ciStatus: "failure" }, context())).not.toContain('data-action="merge"');
     expect(sessionCard({ ...PR, ciStatus: "pending" }, context())).not.toContain('data-action="merge"');
     expect(sessionCard({ ...PR, ciStatus: "success", draft: true }, context())).not.toContain('data-action="merge"');

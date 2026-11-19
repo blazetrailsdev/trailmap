@@ -888,10 +888,11 @@ export const STAGES = [
 export function sessionStage(row, reviewers = null, reported = null) {
   if (row.merged) return "merged";
   if (row.pr == null) return reported === "self" ? "self" : "drafting";
+  const findings = (row.openFindings || 0) > 0;
+  if (!row.draft && row.ciStatus === "success" && !findings) return "ready";
   const assigned = !!(reviewers && reviewers[reviewerKey(row.owner, row.repo, row.pr)]);
-  if (assigned || (row.openFindings || 0) > 0) return "ringo";
+  if (assigned || findings) return "ringo";
   if (row.draft && !(row.reviewCycles > 0)) return "self";
-  if (!row.draft && row.ciStatus === "success") return "ready";
   return "ci";
 }
 
