@@ -41,6 +41,7 @@ describe("sessionStage", () => {
 
   it("row 3: a non-draft PR with a reviewer assigned and CI not green", () => {
     expect(sessionStage(pr({ ciStatus: "pending" }), assigned)).toBe("ringo");
+    expect(sessionStage(pr({ ciStatus: "failure" }), assigned)).toBe("ringo");
   });
 
   it("row 3: open findings with passing CI", () => {
