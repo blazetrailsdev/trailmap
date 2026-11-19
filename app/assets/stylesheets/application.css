@@ -865,7 +865,7 @@ textarea.ctl { height: auto; }
   content: ""; position: absolute; top: 0; bottom: 16px; left: 23px;
   border-left: 1px solid var(--line);
 }
-.pane-suggest-text { display: inline-block; vertical-align: bottom; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; color: var(--ink-2); }
+.pane-suggest-text { display: inline-block; vertical-align: middle; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40ch; color: var(--ink-2); }
 .detail h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .log-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; margin-bottom: 6px; }
 /* An expanded live session's terminal: its worker pane, as /panes/:id draws it, shorter. */

@@ -493,10 +493,12 @@ export function terminalHtml(pane, screen) {
 export function suggestHtml(pane, key, screen) {
   const text = suggestedMessage(screen && screen.html);
   if (!text) return "";
+  // The label is plain text, so the button's busy label restores exactly; the
+  // suggestion itself sits beside it, and names it for a screen reader.
   return (
     '<button class="btn btn-sm" data-action="pane-send" data-pane="' + esc(pane) + '" data-key="' + key +
-    '" data-text="' + esc(text) + '" data-says="compose-note-' + key + '" title="' + esc(text) + '">Send suggestion: <span class="pane-suggest-text">' +
-    esc(text) + "</span></button>"
+    '" data-text="' + esc(text) + '" data-says="compose-note-' + key + '" aria-describedby="suggest-' + key + '" title="' + esc(text) +
+    '">Send suggestion</button> <span class="pane-suggest-text" id="suggest-' + key + '">' + esc(text) + "</span>"
   );
 }
 
@@ -526,7 +528,7 @@ export function sessionDetail(s, ctx, lead) {
       '" aria-label="Message the agent" placeholder="Message the agent… (⌘↵ sends)"></textarea>' +
       '<button class="btn btn-sm" data-action="pane-send" data-pane="' + esc(paneOf(s)) + '" data-key="' + key +
       '" data-source="compose-' + key + '" data-clears="compose-' + key + '" data-says="compose-note-' + key + '">Send</button>' +
-      '<span data-suggest="' + esc(paneOf(s)) + '">' + suggestHtml(paneOf(s), key, ctx.screens && ctx.screens.get(paneOf(s))) + "</span>" +
+      '<span data-suggest="' + esc(paneOf(s)) + '" data-key="' + key + '">' + suggestHtml(paneOf(s), key, ctx.screens && ctx.screens.get(paneOf(s))) + "</span>" +
       '<span class="field-status" id="compose-note-' + key + '" role="status"></span></div>'
     : "";
   const facts = [];

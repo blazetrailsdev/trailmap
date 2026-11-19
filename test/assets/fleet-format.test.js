@@ -933,6 +933,13 @@ describe("a pane message", () => {
     expect(suggestedMessage(null)).toBeNull();
   });
 
+  it("counts only ringo's own dim, and fails closed on markup ringo does not write", () => {
+    expect(suggestedMessage('&gt; <span style="opacity:1;">typed</span>')).toBeNull();
+    expect(suggestedMessage('&gt; <span style="color:#79c0ff;opacity:.65;">blue dim</span>')).toBe("blue dim");
+    expect(suggestedMessage('&gt; <span style="opacity:.65;"><b>nested</b></span>')).toBeNull();
+    expect(suggestedMessage('&gt; <span class="x" style="opacity:.65;">two attrs</span>')).toBeNull();
+  });
+
   it("names the broadcast dialog's box as where an empty broadcast puts the cursor", () => {
     expect(PALETTE_INPUT).toBe("paletteInput");
     expect(BROADCAST_MESSAGE).toBe("broadcastMessage");

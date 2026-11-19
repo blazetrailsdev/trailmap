@@ -558,21 +558,32 @@ export function claudeHasExited(body, toText) {
   return /[>$#%❯]$/.test(tail.at(-1) || "");
 }
 
+const SUGGEST_TAIL = 8;
+const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", "#34": '"', nbsp: "\u00a0" };
+const decodeEntities = (text) => text.replace(/&(amp|lt|gt|quot|nbsp|#39|#34);/g, (_, name) => ENTITIES[name]);
+// ringo's whole markup for a cell run (`paneterm.go` html/css): one flat span
+// with a style attribute, or bare escaped text. Dim is exactly `opacity:.65;`.
+const SCREEN_RUN = /<span style="([^"<>]*)">([^<]*)<\/span>|([^<]+)/g;
+const DIM = /(?:^|;)opacity:\.65;/;
+
 /**
  * The message Claude Code suggests in its input box: dim text straight after
  * the `>` (or `❯`) of the prompt line near the bottom of the screen, as ringo
- * renders it (`opacity:.65` on a span, `paneterm.go`). An empty box's own
- * placeholder, `Try "…"`, is not a suggestion. Null when there is none, or
- * when anything the operator typed (undimmed) sits in the box.
+ * renders it. An empty box's own placeholder, `Try "…"`, is not a suggestion.
+ * Null when there is none, when anything the operator typed (undimmed) sits in
+ * the box, or when the line holds markup ringo does not write: it fails closed.
  */
 export function suggestedMessage(html) {
   if (typeof html !== "string" || !html) return null;
   const lines = html.split("\n").filter((line) => line.replace(/<[^>]*>/g, "").trim()).slice(-SUGGEST_TAIL);
   for (let i = lines.length - 1; i >= 0; i--) {
     const parts = [];
-    for (const m of lines[i].matchAll(/<span style="([^"]*)">([^<]*)<\/span>|([^<]+)/g)) {
-      parts.push({ dim: m[1] !== undefined && /opacity/.test(m[1]), text: decodeEntities(m[2] ?? m[3]) });
+    let covered = 0;
+    for (const m of lines[i].matchAll(SCREEN_RUN)) {
+      covered += m[0].length;
+      parts.push({ dim: m[1] !== undefined && DIM.test(m[1]), text: decodeEntities(m[2] ?? m[3]) });
     }
+    if (covered !== lines[i].length) return null;
     const plain = parts.map((p) => p.text).join("");
     const prompt = /^[\s│]*[>❯][\s\u00a0]/.exec(plain);
     if (!prompt) continue;
@@ -591,10 +602,6 @@ export function suggestedMessage(html) {
   }
   return null;
 }
-
-const SUGGEST_TAIL = 8;
-const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", "#34": '"', nbsp: "\u00a0" };
-const decodeEntities = (text) => text.replace(/&(amp|lt|gt|quot|nbsp|#39|#34);/g, (_, name) => ENTITIES[name]);
 
 const CLAUDE_UI = /for shortcuts|esc to interrupt|auto mode|accept edits|bypass permissions|╭─|^\s*│ >/;
 const SCREEN_TAIL = 4;

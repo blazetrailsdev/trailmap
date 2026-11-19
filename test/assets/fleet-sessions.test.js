@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { esc, ICONS, isGrooming, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
+import { controlOutcome, controlRequest, esc, ICONS, isGrooming, repoSections, reviewersByKey } from "../../app/assets/javascripts/fleet-format.js";
 import {
   canAskReady,
   canMerge,
@@ -779,7 +779,17 @@ describe("suggestHtml", () => {
     expect(html).toContain('data-pane="%11"');
     expect(html).toContain('data-says="compose-note-k"');
     expect(html).toContain('data-text="run &quot;the&quot; tests"');
-    expect(html).toContain("Send suggestion:");
+    expect(html).toContain('aria-describedby="suggest-k"');
+    expect(html).toContain('id="suggest-k">run &quot;the&quot; tests</span>');
+  });
+
+  it("labels its button in plain text, so the busy label restores to exactly that", () => {
+    const html = suggestHtml("%11", "k", screen);
+    const label = /<button[^>]*>([^<]*)<\/button>/.exec(html)[1];
+    expect(label).toBe("Send suggestion");
+    const request = controlRequest("pane-send", { pane: "%11", text: "run tests", key: "k", says: "compose-note-k" });
+    expect(controlOutcome(request, { ok: true, text: "" }, label).text).toBe("Send suggestion");
+    expect(controlOutcome(request, { error: "offline" }, label).text).toBe("Send suggestion");
   });
 
   it("draws nothing without a suggestion or a screen", () => {

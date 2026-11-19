@@ -217,8 +217,7 @@ function paintTerminal(pane, loop, html) {
   const slot = document.querySelector('[data-suggest="' + CSS.escape(pane) + '"]');
   // Only when the suggestion changes, so a focused button keeps its focus.
   if (slot && html !== null) {
-    const key = slot.closest(".detail").id.replace(/-detail$/, "");
-    const next = suggestHtml(pane, key, screen);
+    const next = suggestHtml(pane, slot.dataset.key, screen);
     if (slot.innerHTML !== next && !slot.querySelector("button:disabled")) slot.innerHTML = next;
   }
   const note = document.querySelector('[data-terminal-notice="' + CSS.escape(pane) + '"]');
