@@ -47,7 +47,7 @@ describe("Story.touchingPackage", () => {
   });
 
   it("lists the stories no rule attributes", async () => {
-    expect(ids(await Story.unattributed())).toEqual(["bare-dir", "orphan", "scripts-only"]);
+    expect(ids(await Story.unattributed())).toEqual(["bare-dir", "orphan", "scripts-only", "shipped", "stuck", "working"]);
   });
 });
 
@@ -58,7 +58,8 @@ describe("Story.openCountsByPackage", () => {
     expect(byPackage.get("actionpack")).toBe(1);
     expect(byPackage.get("activerecord")).toBe(2);
     expect(byPackage.get("railties")).toBe(1);
-    expect(unattributed).toBe(3);
+    // Three here and the open `working` and `stuck` fixtures, which touch no paths.
+    expect(unattributed).toBe(5);
   });
 
   it("agrees with the open subset of touchingPackage and unattributed", async () => {

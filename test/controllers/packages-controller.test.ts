@@ -157,6 +157,6 @@ describe("PackagesController", () => {
   });
 
   it("shows the open unattributed story count", async () => {
-    expect(await index()).toContain("1 open story attributed to no package");
+    expect(await index()).toContain("3 open stories attributed to no package");
   });
 });

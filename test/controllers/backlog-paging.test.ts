@@ -27,10 +27,10 @@ function rowIds(body: string): string[] {
 }
 
 beforeEach(async () => {
-  for (let n = 0; n < READY; n++) {
-    await Story.create({ id: `story-${String(n).padStart(3, "0")}`, rfc_id: "0136-trailmap" });
-  }
-  await Story.where({ rfc_id: "0136-trailmap" }).updateAll({ status: "ready" });
+  const ids = Array.from({ length: READY }, (_, n) => `story-${String(n).padStart(3, "0")}`);
+  for (const id of ids) await Story.create({ id, rfc_id: "0136-trailmap" });
+  // These ids only: the RFC also holds the in-progress, blocked and done fixtures.
+  await Story.where({ id: ids }).updateAll({ status: "ready" });
   await Story.create({ id: "the-one-draft", rfc_id: "0136-trailmap" });
 });
 

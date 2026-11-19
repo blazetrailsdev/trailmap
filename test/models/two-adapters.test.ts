@@ -57,7 +57,8 @@ describe.skipIf(!hasHubTestDatabase())("two adapters in one process", () => {
     // tables — "no such table: owners", or a Postgres error about `stories`.
     expect((await Story.findBy({ id: "a-story" }))?.rfc_id).toBe("0136-trailmap");
     expect((await Owner.findByLogin("blazetrailsdev"))?.kind).toBe("organization");
-    expect(await Story.count()).toBe(1);
+    // `a-story` and the three fixtures.
+    expect(await Story.count()).toBe(4);
     expect(await Repository.count()).toBe(1);
     expect((await Rfc.findBy({ id: "0136-trailmap" }))?.status).toBe("active");
     expect((await Repository.findByNwo("blazetrailsdev", "trails"))?.name).toBe("trails");

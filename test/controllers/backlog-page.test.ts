@@ -43,15 +43,12 @@ beforeEach(async () => {
   });
   await StoryPackage.create({ story_id: "ready-one", package: "actionview" });
   await Story.create({ id: "ready-two", rfc_id: "0136-trailmap", status: "ready" });
-  await Story.create({ id: "working", rfc_id: "0136-trailmap", status: "in-progress", pr: "trails#42" });
-  await Story.create({ id: "stuck", rfc_id: "0136-trailmap", status: "blocked" });
   await Story.create({ id: "drafted", rfc_id: "0136-trailmap", status: "draft" });
   await Story.create({ id: "iced", rfc_id: "0900-idea", status: "ready" });
   await Story.create({ id: "iced-draft", rfc_id: "0900-idea", status: "draft" });
   // Finished, under a draft RFC: the row must not wear the icebox tag and the
   // tab must not list it — a done story does not become an idea again.
   await Story.create({ id: "iced-done", rfc_id: "0900-idea", status: "done" });
-  await Story.create({ id: "shipped", rfc_id: "0136-trailmap", status: "done" });
   // Under a closed RFC: on no tab at all, not even Closed.
   await Rfc.create({ id: "0800-abandoned", status: "closed", title: "Abandoned" });
   await Story.create({ id: "shelved", rfc_id: "0800-abandoned", status: "done" });

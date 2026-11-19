@@ -47,11 +47,10 @@ beforeEach(async () => {
     cluster: "pages",
   });
   await Story.create({ id: "abandoned", rfc_id: "0136-trailmap", status: "closed" });
-  // An estimate of 0 is "no estimate", as ringo and `/backlog` read it.
-  await Story.create({ id: "working", rfc_id: "0136-trailmap", status: "in-progress", est_loc: 0 });
-  // Created LAST: the RFC auto-closes the moment every story it has is done,
-  // so a `done` story must never be the only one on it (rfc-close.ts).
-  await Story.create({ id: "shipped", rfc_id: "0136-trailmap", status: "done", est_loc: 40 });
+  // `working`, `stuck` and `shipped` are fixtures. An estimate of 0 is "no
+  // estimate", as ringo and `/backlog` read it.
+  await Story.where({ id: "working" }).updateAll({ est_loc: 0 });
+  await Story.where({ id: "shipped" }).updateAll({ est_loc: 40 });
 
   // One status group, three priorities, created in an order none of the three
   // sorts would leave alone.
@@ -89,7 +88,7 @@ describe.skipIf(!hasHubTestDatabase())("RfcPagesController", () => {
     const { body } = await show("0136-trailmap");
 
     const order = [...body.matchAll(/href="\/story\/([^"]+)"/g)].map((m) => m[1]);
-    expect(order).toEqual(["working", "queued", "abandoned", "shipped"]);
+    expect(order).toEqual(["working", "queued", "stuck", "abandoned", "shipped"]);
   });
 
   it("breaks a status tie on priority, unset last, as ringo's index does", async () => {
@@ -123,9 +122,9 @@ describe.skipIf(!hasHubTestDatabase())("RfcPagesController", () => {
   it("counts done against the total, leaving closed stories out", async () => {
     const { body } = await show("0136-trailmap");
 
-    expect(body).toContain("1/3 done");
-    expect(body).toContain("33% complete");
-    expect(body).toContain('style="width:33%"');
+    expect(body).toContain("1/4 done");
+    expect(body).toContain("25% complete");
+    expect(body).toContain('style="width:25%"');
   });
 
   it("renders the RFC's markdown from the checkout", async () => {
