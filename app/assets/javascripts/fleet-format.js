@@ -541,7 +541,8 @@ export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  * `toText` turns the screen's HTML into its text; the page passes the
  * browser's own parser. ringo reports no pane command, so this reads the
  * screen: a prompt is a last line ending in `>`, `$`, `#`, `%` (zsh) or `❯`,
- * and any of Claude Code's own UI strings still on screen means not yet.
+ * and any of Claude Code's own UI strings in the last four non-blank lines
+ * means not yet.
  */
 export function claudeHasExited(body, toText) {
   if (!body || typeof body !== "object") return false;
