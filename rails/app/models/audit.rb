@@ -11,6 +11,10 @@ class Audit < ApplicationRecord
 
   has_one_attached :body
 
+  # The slug `audit-report/run.sh` accepts.
+  validates :slug, format: { with: /\A[a-z0-9][a-z0-9-]*\z/, message: "must be kebab-case" }
+  validates :format, inclusion: { in: %w[md html] }
+
   scope :newest_first, -> { order(written_at: :desc, id: :desc) }
 
   def self.find(name)

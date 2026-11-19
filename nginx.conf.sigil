@@ -202,7 +202,8 @@ server {
   error_log   {{ $.NGINX_ERROR_LOG_PATH }};
   underscores_in_headers {{ $.NGINX_UNDERSCORE_IN_HEADERS }};
 
-  client_max_body_size {{ $.CLIENT_MAX_BODY_SIZE }};
+  # POST /audits carries the whole report; the largest so far is 285 KB.
+  client_max_body_size 1m;
 
   # `^~` is not decoration, and this comment does not spell the pattern it is
   # about, for the reason given above. The plugin's injector finds root-prefix

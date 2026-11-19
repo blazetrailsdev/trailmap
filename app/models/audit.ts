@@ -24,9 +24,14 @@ function notFound(name: string): RecordNotFound {
  */
 export class Audit extends ApplicationRecord {
   declare body: One;
+  // `has_one_attached`'s generated `body=`, defined at run time.
+  declare setBody: (attachable: unknown) => Promise<void>;
 
   static {
     (this as unknown as Extended<typeof ClassMethods>).hasOneAttached("body");
+    // The slug `audit-report/run.sh` accepts.
+    this.validates("slug", { format: { with: /^[a-z0-9][a-z0-9-]*$/, message: "must be kebab-case" } });
+    this.validates("format", { inclusion: { in: ["md", "html"] } });
   }
 
   /** Every audit, newest first. */
