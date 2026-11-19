@@ -11,6 +11,11 @@ import { Application } from "@blazetrails/trailties";
 // is on disk and in `config.helpersPaths` and reaches no view.
 import "@blazetrails/trailties/all";
 
+// Active Storage's engine, as rails/config/application.rb requires
+// "active_storage/engine". `trailties/all` loads it too; this import is what
+// brings its `config.activeStorage` into the type of `Configuration`.
+import "@blazetrails/activestorage/engine";
+
 // Solid Queue's engine: Rails loads it through `Bundler.require`, and its
 // initializers are what point `SolidQueue::Record` at the `queue` database
 // (config/environments/production.ts, config/database.ts).

@@ -35,6 +35,9 @@ Trails.application!.configure(function () {
   // rendered, not static, and every asset they link is hashed by `vite build`.
   this.config.publicFileServer.headers = { "cache-control": "public, max-age=31556952" };
 
+  // Store uploaded files on the local file system (see config/storage.ts for options).
+  this.config.activeStorage.service = "local";
+
   // Change to "debug" to log everything (including potentially personally-identifiable information!)
   this.config.logLevel = env.RAILS_LOG_LEVEL ?? "info";
 

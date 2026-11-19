@@ -13,6 +13,9 @@ Trails.application!.configure(function () {
   this.config.considerAllRequestsLocal = true;
   this.config.cacheStore = ":null_store";
 
+  // Store uploaded files on the local file system in a temporary directory.
+  this.config.activeStorage.service = "test";
+
   // Render exception templates for rescuable exceptions and raise for other exceptions.
   this.config.actionDispatch.showExceptions = "rescuable";
 
