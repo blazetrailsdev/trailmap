@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_11_18_000011) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_18_000013) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -37,6 +37,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_18_000011) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "audits", force: :cascade do |t|
+    t.string "slug", null: false
+    t.string "title"
+    t.string "format"
+    t.string "repo"
+    t.datetime "written_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["repo", "slug", "written_at"], name: "index_audits_on_repo_and_slug_and_written_at", unique: true
   end
 
   create_table "events", force: :cascade do |t|
@@ -89,6 +100,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_18_000011) do
     t.string "teardown_at", default: "", null: false
     t.boolean "merged_checked", default: false, null: false
     t.index ["pane"], name: "index_pr_states_on_pane"
+  end
+
+  create_table "refinements", force: :cascade do |t|
+    t.string "rfc_id", null: false
+    t.string "outcome", null: false
+    t.integer "stories"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["rfc_id", "created_at"], name: "index_refinements_on_rfc_id_and_created_at"
   end
 
   create_table "rfcs", id: :string, force: :cascade do |t|

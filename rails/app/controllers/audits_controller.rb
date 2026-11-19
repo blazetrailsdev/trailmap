@@ -1,15 +1,15 @@
 # `/audits`, `/audits/<file>` and `/audits/<file>/raw` — the agent-written
 # progress reports, ported from ringo's webhook/audits.go. The route checks
-# the filename; a well-formed one with no file is RecordNotFound, a 404.
+# the filename; a well-formed one with no audit is RecordNotFound, a 404.
 class AuditsController < ApplicationController
   def index
-    @audits = Audit.all
+    @audits = Audit.newest_first.to_a
     load_selected(@audits.first)
   end
 
   def show
     selected = Audit.find(params[:id])
-    @audits = Audit.all
+    @audits = Audit.newest_first.to_a
     load_selected(selected)
     render :index
   end
@@ -33,6 +33,5 @@ class AuditsController < ApplicationController
   def load_selected(selected)
     @selected = selected
     @body = selected.nil? || selected.html? ? nil : helpers.render_markdown(Document.strip_frontmatter(selected.read))
-    @configured = !Audit.dir.nil?
   end
 end

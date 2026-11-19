@@ -19,26 +19,29 @@ class EndpointsTest < ActionDispatch::IntegrationTest
   # ── audits ──
 
   test "audits show renders one audit inline; raw serves it sandboxed" do
-    Dir.mktmpdir do |dir|
-      File.write(File.join(dir, "sweep-20261027T101500Z.md"), "---\na: b\n---\n# Sweep\n\nfound *it*")
-      File.write(File.join(dir, "page.html"), "<p>hi</p>")
-      with_config(:audits, :dir, dir) do
-        get "/audits/sweep-20261027T101500Z.md"
-        assert_response :success
-        assert_includes response.body, "<em>it</em>"
+    audit!("sweep", "md", "---\na: b\n---\n# Sweep\n\nfound *it*", Time.utc(2026, 10, 27, 10, 15))
+    audit!("page", "html", "<p>hi</p>", Time.utc(2026, 10, 27, 10, 16))
 
-        get "/audits/sweep-20261027T101500Z.md/raw"
-        assert_response :success
-        assert_equal "sandbox", response.headers["Content-Security-Policy"]
-        assert_includes response.body, "<em>it</em>"
-        assert_not_includes response.body, "a: b"
+    get "/audits/sweep-20261027T101500Z.md"
+    assert_response :success
+    assert_includes response.body, "<em>it</em>"
 
-        get "/audits/page.html/raw"
-        assert_equal "<p>hi</p>", response.body
+    get "/audits/sweep-20261027T101500Z.md/raw"
+    assert_response :success
+    assert_equal "sandbox", response.headers["Content-Security-Policy"]
+    assert_includes response.body, "<em>it</em>"
+    assert_not_includes response.body, "a: b"
 
-        get "/audits/missing.md"
-        assert_response :not_found
-      end
+    get "/audits/page-20261027T101600Z.html/raw"
+    assert_equal "<p>hi</p>", response.body
+
+    get "/audits/missing-20261027T101500Z.md"
+    assert_response :not_found
+  end
+
+  def audit!(slug, format, body, written_at)
+    Audit.create!(slug: slug, title: slug, format: format, written_at: written_at).tap do |audit|
+      audit.body.attach(io: StringIO.new(body), filename: "#{slug}.#{format}")
     end
   end
 

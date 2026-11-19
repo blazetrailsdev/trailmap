@@ -8,7 +8,7 @@
 <% if @audits.empty? %>
   <div class="card">
     <div class="card-head"><span class="card-title">No audits yet</span></div>
-    <div class="field-note"><% if @configured %>Agents write audits (markdown or self-contained HTML) into the audits directory.<% else %>This deployment has no <code>AUDITS_DIR</code>, so there is no directory to list.<% end %></div>
+    <div class="field-note">Agents write audits (markdown or self-contained HTML).</div>
   </div>
 <% else %>
   <div class="audits-layout">
@@ -16,7 +16,7 @@
       <div class="audits-group">Audits <span class="muted"><%= @audits.size %></span></div>
       <% @audits.each do |audit| %>
         <% stamp = audit.when.utc.iso8601(3) %>
-        <a class="audit-item<%= audit.name == @selected.name ? " active" : "" %>" href="<%= audit_path(audit) %>">
+        <a class="audit-item<%= audit.id == @selected.id ? " active" : "" %>" href="<%= audit_path(audit) %>">
           <span class="audit-title"><%= audit.title %></span>
           <time class="muted" datetime="<%= stamp %>"><%= stamp[0, 16].sub("T", " ") %></time>
         </a>

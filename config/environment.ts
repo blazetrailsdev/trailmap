@@ -22,6 +22,8 @@ const tasksDatabase = tasksDatabasePath();
 if (tasksDatabase) {
   const { loadModelSchemas } = await import("../lib/model-schemas.ts");
   await loadModelSchemas();
+  const { loadAttachedModelSchemas } = await import("../lib/attached-model-schemas.ts");
+  await loadAttachedModelSchemas();
   await recordTasksDatabaseIdentity(tasksDatabase);
 }
 

@@ -11,9 +11,9 @@
  * A story with no `new` event predates the log and is the baseline. An RFC
  * with no baseline started at its first day's burst of `new`s.
  *
- * The stored refine reports are folded in as ringo's `mergeRefineHistory`
- * (rfcmarks.go:371) folds its own. A hub report records no story count, so its
- * count is the RFC's running count at the report's time.
+ * The stored refinements are folded in as ringo's `mergeRefineHistory`
+ * (rfcmarks.go:371) folds its own: a refinement's measured `stories` is its
+ * count, and one that recorded none takes the RFC's running count at its time.
  */
 export interface RfcMark {
   /** Null for the origin mark. */
@@ -32,10 +32,12 @@ export interface MarkEvent {
   detail: string | null;
 }
 
-/** One stored refine report, as `rfc_refines` holds it. */
+/** One stored refine report, as `refinements` holds it. */
 export interface RefineReport {
   at: string;
   rfcId: string;
+  /** The RFC's story count when the report landed; null when it was not measured. */
+  stories: number | null;
 }
 
 /** A report within this of a reconstructed refinement is that refinement (rfcmarks.go:47). */
@@ -131,7 +133,8 @@ export function collectRfcMarks(
   const recordUntil = (at: number) => {
     while (pending.length > 0 && pending[0]!.ms < at) {
       const r = pending.shift()!;
-      history.set(r.rfcId, [...(history.get(r.rfcId) ?? []), { at: r.at, count: running.get(r.rfcId) ?? 0 }]);
+      const count = r.stories ?? running.get(r.rfcId) ?? 0;
+      history.set(r.rfcId, [...(history.get(r.rfcId) ?? []), { at: r.at, count }]);
     }
   };
   for (const e of events) {

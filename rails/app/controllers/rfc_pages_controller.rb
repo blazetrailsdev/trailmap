@@ -35,8 +35,8 @@ class RfcPagesController < ApplicationController
     story_counts = rfcs.to_h { |r| [ r.id, RfcProgress.story_counts(by_rfc.fetch(r.id, [])) ] }
     # Over every RFC, not the tab's: the scale must not move with the tab.
     bar_scale = RfcProgress.bar_scale(rfcs.map { |r| by_rfc.fetch(r.id, []).size })
-    reports = RfcRefine.pluck(:rfc_id, :created_at).map do |rfc_id, at|
-      RfcMarks::RefineReport.new(rfc_id: rfc_id, at: at.utc.iso8601)
+    reports = RfcRefinement.pluck(:rfc_id, :created_at, :stories).map do |rfc_id, at, stories|
+      RfcMarks::RefineReport.new(rfc_id: rfc_id, at: at.utc.iso8601, stories: stories)
     end
     marks = RfcMarks.collect(rfcs.to_set(&:id), story_rfc, events, reports)
 
@@ -160,13 +160,14 @@ class RfcPagesController < ApplicationController
     # A sunset winds down an active RFC; the others are iceboxed or ended.
     @can_sunset = @rfc.status == "active"
     if @tab == "refinements"
-      @refines = RfcRefine.for_rfc(@id).map do |r|
+      @refines = RfcRefinement.for_rfc(@id).with_attached_summary.map do |r|
+        summary = r.summary.attached? ? r.summary.download.force_encoding(Encoding::UTF_8) : ""
         RefineRow.new(at: r.created_at, outcome: r.outcome,
-                      html: r.summary.empty? ? nil : helpers.render_markdown(r.summary))
+                      html: summary.empty? ? nil : helpers.render_markdown(summary))
       end
       @refine_count = @refines.size
     else
-      @refine_count = RfcRefine.where(rfc_id: @id).count
+      @refine_count = RfcRefinement.where(rfc_id: @id).count
     end
     render :show, status: status
   end

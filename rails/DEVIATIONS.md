@@ -137,6 +137,15 @@ non-action helper (trails#9833). `before_action :require_loopback` is
   such file or directory, open '…'`). `Document.node_style_message` spells
   Ruby's `Errno::ENOENT` the same way.
 
+### language: Ruby's core `Refinement` holds the model's name
+
+Ruby 3.1 defines `::Refinement` (the class of a `refine` block), so the Rails
+app cannot define the trails app's `Refinement` model at the top level. It is
+`RfcRefinement`, on the same `refinements` table, and answers
+`polymorphic_name` as `"Refinement"` so `active_storage_attachments.record_type`
+is the same from both apps; `config/initializers/refinement_record_type.rb`
+resolves that name back to `RfcRefinement` for Active Storage's records.
+
 ## Environment
 
 - **Gem versions** match what trails vendors (`trails/vendor/<gem>/v*`): rails

@@ -19,16 +19,9 @@ class ModelMethodsTest < ActiveSupport::TestCase
 
   # ── Audit ──
 
-  test "Audit.title_for drops the extension and timestamp and de-kebabs" do
-    assert_equal "parity sweep", Audit.title_for("parity-sweep-20261027T101500Z.md")
-    assert_equal "a b", Audit.title_for("a_b.html")
-    assert_equal "-20261027T101500Z.md", Audit.title_for("-20261027T101500Z.md")
-  end
-
-  test "Audit#to_param and #persisted?" do
-    audit = Audit.new(name: "x.md")
-    assert_equal "x.md", audit.to_param
-    assert audit.persisted?
+  test "Audit#to_param is the legacy filename" do
+    audit = Audit.new(slug: "parity-sweep", format: "md", written_at: Time.utc(2026, 10, 27, 10, 15))
+    assert_equal "parity-sweep-20261027T101500Z.md", audit.to_param
   end
 
   # ── CompareRun ──

@@ -43,10 +43,12 @@ export const tableOwners: Record<string, Owner> = {
   active_storage_attachments: "trailmap",
   active_storage_blobs: "trailmap",
   active_storage_variant_records: "trailmap",
+  audits: "trailmap",
   events: "trailmap",
   meta: "trailmap",
   // ringo's PR tracker, in place of tracker-state.json. trailmap reads it.
   pr_states: "ringo",
+  refinements: "trailmap",
   rfcs: "trailmap",
   stories: "trailmap",
   story_deps: "trailmap",

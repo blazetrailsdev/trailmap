@@ -70,12 +70,21 @@ class RfcListPageTest < ActionDispatch::IntegrationTest
 
   test "ticks the bar at a stored refine report" do
     story!("zeta-draft", rfc_id: "0200-zeta", status: "draft")
-    RfcRefine.create!(rfc_id: "0200-zeta", outcome: "changed", summary: "", created_at: Time.utc(2026, 9, 5, 10))
+    RfcRefinement.create!(rfc_id: "0200-zeta", outcome: "changed", created_at: Time.utc(2026, 9, 5, 10))
     story!("zeta-later", rfc_id: "0200-zeta", status: "draft")
     Event.create!(at: "2026-09-06T10:00:00Z", verb: "new", story_id: "zeta-later")
     get "/rfcs"
     row = response.body.split('<div class="item-row">').find { |r| r.include?('/rfc/0200-zeta"') }
 
     assert_match(/class="tick refine" style="left:[\d.]+%" title="1 story at refinement on 2026-09-05"/, row)
+  end
+
+  test "ticks a stored refine report at the story count it measured" do
+    story!("zeta-draft", rfc_id: "0200-zeta", status: "draft")
+    RfcRefinement.create!(rfc_id: "0200-zeta", outcome: "changed", stories: 4, created_at: Time.utc(2026, 9, 5, 10))
+    get "/rfcs"
+    row = response.body.split('<div class="item-row">').find { |r| r.include?('/rfc/0200-zeta"') }
+
+    assert_match(/class="tick refine" style="left:[\d.]+%" title="4 stories at refinement on 2026-09-05"/, row)
   end
 end

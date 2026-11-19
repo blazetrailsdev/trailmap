@@ -1,13 +1,13 @@
 # The history ticks on an RFC's story bar — ringo's `collectRFCMarks`
 # (webhook/rfcmarks.go), reconstructed from the event stream, with the stored
-# refine reports folded in as ringo's `mergeRefineHistory` folds its own. A hub
-# report records no story count, so its count is the RFC's running count at
-# the report's time.
+# refinements folded in as ringo's `mergeRefineHistory` folds its own: a
+# measured `stories` is the count, and a refinement that recorded none takes
+# the RFC's running count at its time.
 module RfcMarks
   Mark = Struct.new(:at, :count, :kind, :reps, keyword_init: true)
   MarkEvent = Struct.new(:at, :verb, :story_id, :rfc_id, :detail, keyword_init: true)
 
-  RefineReport = Struct.new(:at, :rfc_id, keyword_init: true)
+  RefineReport = Struct.new(:at, :rfc_id, :stories, keyword_init: true)
 
   REFINE_SOURCES = %w[rfc-refine rfc-refine-auto].freeze
   # A report within this of a reconstructed refinement is that refinement (rfcmarks.go:47).
@@ -89,7 +89,7 @@ module RfcMarks
     record_until = lambda do |at|
       while pending.any? && (at.nil? || parse_time(pending.first.at) < at)
         r = pending.shift
-        history[r.rfc_id] << { at: r.at, count: running[r.rfc_id] }
+        history[r.rfc_id] << { at: r.at, count: r.stories || running[r.rfc_id] }
       end
     end
     events.each do |e|
