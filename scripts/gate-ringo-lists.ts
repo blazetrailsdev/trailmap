@@ -70,6 +70,7 @@ import { primaryDatabaseConfig } from "../config/database.ts";
 import { loadModelSchemas } from "../lib/model-schemas.ts";
 import { ApplicationController } from "../app/controllers/application-controller.ts";
 import { RfcPagesController } from "../app/controllers/rfc-pages-controller.ts";
+import { connectHubTestDatabase } from "../test/support/hub-schema.ts";
 import { StoryPagesController } from "../app/controllers/story-pages-controller.ts";
 import { controllerTestCase } from "../test/support/controller-test-case.ts";
 
@@ -124,6 +125,9 @@ async function main(): Promise<number> {
   (await Base.leaseConnection()).disconnectBang();
   await Base.establishConnection({ adapter: "sqlite3", database: snapshot, pool: 1 });
   await loadModelSchemas();
+  // `/rfcs` folds the hub's refine reports into its ticks. The fixture hub is
+  // empty, which is what ringo's side sees too: it is given no refine history.
+  await connectHubTestDatabase();
   ApplicationController.prependViewPath("app/views");
 
   const captured = path.join(Dir.pwd(), "tmp", "ringo-lists-cli.json");

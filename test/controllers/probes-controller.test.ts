@@ -110,7 +110,7 @@ describe("GET /up/ready", () => {
     ]);
     expect(body.checks.hub_migrations).toEqual({ ok: true, skipped: "HUB_DATABASE_URL is not set" });
     expect(body.checks.migrations).toEqual({ ok: true, expected: HEAD, actual: HEAD });
-    expect(body.checks.stories).toEqual({ ok: true, count: 2 });
+    expect(body.checks.stories).toEqual({ ok: true, count: 5 });
     expect(body.checks.checkout).toEqual({ ok: true, dir: tasksDir });
   });
 

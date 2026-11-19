@@ -8,10 +8,10 @@ describe("loadModelSchemas", () => {
 
     // Story has not been queried directly in this worker. Without the warm-up
     // this throws "Undeclared attribute type for enum 'status' in Story".
-    expect(await rfc!.stories.toArray()).toEqual([]);
+    expect((await rfc!.stories.toArray()).map((s) => s.id).sort()).toEqual(["shipped", "stuck", "working"]);
 
     await Story.create({ id: "s", rfc_id: "0136-trailmap", status: "ready" });
     const reloaded = await Rfc.findBy({ id: "0136-trailmap" });
-    expect((await reloaded!.stories.toArray()).map((s) => s.id)).toEqual(["s"]);
+    expect((await reloaded!.stories.toArray()).map((s) => s.id).sort()).toEqual(["s", "shipped", "stuck", "working"]);
   });
 });

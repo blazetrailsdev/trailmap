@@ -95,11 +95,11 @@ describe("StoriesController", () => {
   it("lists every story, in index.json order", async () => {
     const { body } = await getJson("index");
 
-    expect(body.map((s: any) => s.id)).toEqual(["base", "dependent", "shadowed", "unblocked"]);
+    expect(body.map((s: any) => s.id)).toEqual(["base", "dependent", "shadowed", "shipped", "stuck", "unblocked", "working"]);
   });
 
   it("filters the list by status, RFC and cluster", async () => {
-    expect((await getJson("index", { params: { status: "done" } })).body).toHaveLength(1);
+    expect((await getJson("index", { params: { status: "done" } })).body).toHaveLength(2);
     expect((await getJson("index", { params: { rfc: "0002-draft" } })).body).toHaveLength(1);
     expect((await getJson("index", { params: { cluster: "api" } })).body).toHaveLength(3);
   });

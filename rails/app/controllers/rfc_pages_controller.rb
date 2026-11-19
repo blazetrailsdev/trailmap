@@ -35,7 +35,10 @@ class RfcPagesController < ApplicationController
     story_counts = rfcs.to_h { |r| [ r.id, RfcProgress.story_counts(by_rfc.fetch(r.id, [])) ] }
     # Over every RFC, not the tab's: the scale must not move with the tab.
     bar_scale = RfcProgress.bar_scale(rfcs.map { |r| by_rfc.fetch(r.id, []).size })
-    marks = RfcMarks.collect(rfcs.to_set(&:id), story_rfc, events)
+    reports = RfcRefine.pluck(:rfc_id, :created_at).map do |rfc_id, at|
+      RfcMarks::RefineReport.new(rfc_id: rfc_id, at: at.utc.iso8601)
+    end
+    marks = RfcMarks.collect(rfcs.to_set(&:id), story_rfc, events, reports)
 
     @filter = STATUS_TABS.include?(params[:status]) ? params[:status] : "active"
     @sort = RfcProgress::INDEX_SORTS.any? { |o| o.key == params[:sort] } ? params[:sort] : "priority"

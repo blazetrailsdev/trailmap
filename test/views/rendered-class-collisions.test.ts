@@ -46,8 +46,6 @@ beforeEach(async () => {
   await (await Rfc.find("0136-trailmap")).update({ owner: "dean", priority: 2 });
   await Rfc.create({ id: "0002-empty", status: "draft", title: "An idea" });
   await Story.create({ id: "queued", rfc_id: "0136-trailmap", status: "ready", title: "Queued", est_loc: 40 });
-  await Story.create({ id: "working", rfc_id: "0136-trailmap", status: "in-progress" });
-  await Story.create({ id: "stuck", rfc_id: "0136-trailmap", status: "blocked" });
   await Story.create({ id: "finished", rfc_id: "0136-trailmap", status: "done" });
 });
 beforeAll(async () => {

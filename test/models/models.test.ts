@@ -32,7 +32,8 @@ describe("models", () => {
     const s = await Story.findBy({ id: "dependent" });
     expect(s!.isReady()).toBe(true);
     expect(s!.isDone()).toBe(false);
-    expect(await Story.done().count()).toBe(1);
+    // `base`, and the `shipped` fixture.
+    expect(await Story.done().count()).toBe(2);
     expect(await Story.claimed().count()).toBe(0);
     expect(await Rfc.active().count()).toBe(1);
     expect(await Rfc.closed().count()).toBe(0);
@@ -85,7 +86,7 @@ describe("models", () => {
   it("walks an RFC back to its stories", async () => {
     const rfc = await Rfc.findBy({ id: "0136-trailmap" });
     const stories = await rfc!.stories.toArray();
-    expect(stories.map((s) => s.id).sort()).toEqual(["base", "blocked-one", "dependent"]);
+    expect(stories.map((s) => s.id).sort()).toEqual(["base", "blocked-one", "dependent", "shipped", "stuck", "working"]);
   });
 
   it("resolves the atomic claim by affected-row count", async () => {

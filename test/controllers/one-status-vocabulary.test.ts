@@ -135,7 +135,13 @@ describe("one status vocabulary", () => {
     // The control. Without it every assertion above passes for an
     // implementation that simply prints `draft` everywhere.
     const active = await get(RfcPagesController, "index", { status: "active" });
-    expect([...bar(active, "0136-trailmap")]).toEqual([["ready", "100%"]]);
+    // One authored `ready` story beside the three fixtures, each as it was authored.
+    expect([...bar(active, "0136-trailmap")]).toEqual([
+      ["done", "25%"],
+      ["in-progress", "25%"],
+      ["ready", "25%"],
+      ["blocked", "25%"],
+    ]);
 
     const rfc = await get(RfcPagesController, "show", { id: "0136-trailmap" });
     expect(badges(rfc)).toContain("ready");

@@ -1,0 +1,33 @@
+# The stories more than one test file works with, all under the `trailmap`
+# RFC fixture. A file that needs another story creates it inline, and every
+# assertion that counts or lists stories counts these three with it. Each
+# satisfies `Story.semanticErrors`, so a test of a clean backlog stays clean.
+#
+# story_deps, story_paths and events get no fixture file, on purpose: no two
+# files share a row of them, and each row exists to make one test's point (a
+# dep that blocks, a path one lookup matches, an event one verb counts). A
+# suite-wide row would only add a term to those assertions and prove nothing.
+#
+# `s1` and `s2` (the mutation tests' stories) stay inline too. They are
+# `ready`, so as fixtures they would join the ready queue in every file, and
+# claimable, next-bundle and gate tests assert that queue row by row. Each
+# mutation test also rewrites them, which an inline row keeps local.
+
+working:
+  id: working
+  rfc_id: 0136-trailmap
+  status: in-progress
+  pr: "trails#42"
+  assignee: agent
+  claim_at: "2026-01-01T00:00:00.000Z"
+
+stuck:
+  id: stuck
+  rfc_id: 0136-trailmap
+  status: blocked
+  blocked_by: waiting on a framework fix
+
+shipped:
+  id: shipped
+  rfc_id: 0136-trailmap
+  status: done

@@ -108,7 +108,7 @@ describe("the serializer", () => {
 
     // `listFiltered` hands over index.json order — prioritised first — and the
     // serializer preserves it rather than imposing one of its own.
-    expect(rows.map((s) => s.id)).toEqual(["full", "bare"]);
+    expect(rows.map((s) => s.id)).toEqual(["full", "bare", "shipped", "stuck", "working"]);
   });
 });
 

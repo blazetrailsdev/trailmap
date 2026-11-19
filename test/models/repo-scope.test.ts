@@ -105,6 +105,7 @@ describe("storiesForRepo", () => {
       "newer-in-trails",
       "second-on-the-same-pr",
       "shipped-in-trails",
+      "working",
     ]);
   });
 
@@ -192,8 +193,9 @@ describe("openCountsByRepo", () => {
   const REPOS = ["trails", "trailmap", "ringo", "my_repo", "casey", CONTENT_REPO];
 
   it("counts everything that is not done or closed", async () => {
-    // `trails` has one done, one done-on-the-same-PR and one in-progress.
-    expect((await openCountsByRepo(["trails"])).get("trails")).toBe(1);
+    // `trails` has one done, one done-on-the-same-PR and two in-progress:
+    // one here and the `working` fixture.
+    expect((await openCountsByRepo(["trails"])).get("trails")).toBe(2);
   });
 
   it("agrees with filtering each repository's list, unattributed stories included", async () => {
@@ -290,7 +292,7 @@ describe("pathsForStories", () => {
 
 describe("prRefsOf", () => {
   it("is each distinct ref once, highest number first", async () => {
-    expect(prRefsOf(await storiesForRepo("trails"))).toEqual(["trails#8000", "trails#7228"]);
+    expect(prRefsOf(await storiesForRepo("trails"))).toEqual(["trails#8000", "trails#7228", "trails#42"]);
   });
 
   it("ignores a story with no PR", async () => {

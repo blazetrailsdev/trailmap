@@ -29,6 +29,58 @@ describe("collectRfcMarks", () => {
     ]);
   });
 
+  it("folds a stored refine report into the refinement it lines up with, else ticks it", () => {
+    const marks = collectRfcMarks(
+      known,
+      storyRfc,
+      [
+        event("2026-09-02T10:00:00Z", "spawn", null, "r1", "rfc-refine"),
+        event("2026-09-03T10:00:00Z", "new", "a", "r1"),
+      ],
+      [
+        { rfcId: "r1", at: "2026-09-02T12:00:00Z" },
+        { rfcId: "r1", at: "2026-09-04T10:00:00Z" },
+      ],
+    );
+
+    expect(marks.get("r1")).toEqual([
+      { at: null, count: 2, kind: "origin", reps: 1 },
+      { at: "2026-09-02T10:00:00Z", count: 2, kind: "refine", reps: 1 },
+      { at: "2026-09-04T10:00:00Z", count: 3, kind: "refine", reps: 1 },
+    ]);
+  });
+
+  it("drains no report at an event whose time cannot be read", () => {
+    const marks = collectRfcMarks(
+      known,
+      storyRfc,
+      [event("not a time", "new", "a", "r1"), event("2026-09-03T10:00:00Z", "new", "b", "r1")],
+      [{ rfcId: "r1", at: "2026-09-02T10:00:00Z" }],
+    );
+
+    expect(marks.get("r1")!.at(-1)).toMatchObject({ at: "2026-09-02T10:00:00Z", count: 2 });
+  });
+
+  it("writes a standalone tick at second precision", () => {
+    const marks = collectRfcMarks(known, storyRfc, [], [{ rfcId: "r1", at: "2026-09-02T10:00:00.250Z" }]);
+
+    expect(marks.get("r1")!.at(-1)!.at).toBe("2026-09-02T10:00:00Z");
+  });
+
+  it("orders ticks on the at string, as ringo does", () => {
+    const marks = collectRfcMarks(
+      known,
+      storyRfc,
+      [event("2026-09-01T10:00:00Z", "new", "a", "r1")],
+      [
+        { rfcId: "r1", at: "2026-09-03T10:00:00Z" },
+        { rfcId: "r1", at: "2026-09-01T09:00:00Z" },
+      ],
+    );
+
+    expect(marks.get("r1")!.map((m) => m.at)).toEqual([null, "2026-09-01T09:00:00Z", "2026-09-03T10:00:00Z"]);
+  });
+
   it("starts an RFC with no baseline at its first day's burst", () => {
     const marks = collectRfcMarks(known, storyRfc, [
       event("2026-09-01T10:00:00Z", "new", "c", "r2"),
