@@ -15,8 +15,8 @@ class Audit < ApplicationRecord
 
   def self.find(name)
     slug, stamp, format = PARAM_RE.match(name.to_s)&.captures
-    second = Time.strptime(stamp, "%Y%m%dT%H%M%S%Z") if slug
-    audit = find_by(slug: slug, format: format, written_at: second...(second + 1)) if slug
+    second = (Time.strptime(stamp, "%Y%m%dT%H%M%S%Z") rescue nil) if slug
+    audit = find_by(slug: slug, format: format, written_at: second...(second + 1)) if second
     audit or raise ActiveRecord::RecordNotFound.new("Couldn't find Audit with 'name'=#{name}", name, "name", name)
   end
 

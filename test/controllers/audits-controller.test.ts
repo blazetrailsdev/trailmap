@@ -140,7 +140,7 @@ describe("Audit", () => {
 
   it("finds by the legacy filename, raising RecordNotFound", async () => {
     expect((await Audit.find("b-tie-20260815T000000Z.html")).slug).toBe("b-tie");
-    for (const name of ["missing-20260815T000000Z.md", "b-tie-20260815T000000Z.md", "a-tie.md", "../secret.md"]) {
+    for (const name of ["missing-20260815T000000Z.md", "b-tie-20260815T000000Z.md", "a-tie.md", "../secret.md", "a-tie-20261332T000000Z.md"]) {
       const error = await Audit.find(name).catch((e: unknown) => e);
       expect(error, name).toBeInstanceOf(RecordNotFound);
       expect((error as RecordNotFound).message).toBe(`Couldn't find Audit with 'name'=${name}`);

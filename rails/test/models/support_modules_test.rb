@@ -75,6 +75,7 @@ class SupportModulesTest < ActiveSupport::TestCase
     assert_equal old, Audit.find("old-20261001T000000Z.md")
     assert_raises(ActiveRecord::RecordNotFound) { Audit.find("gone-20261001T000000Z.md") }
     assert_raises(ActiveRecord::RecordNotFound) { Audit.find("../etc/passwd") }
+    assert_raises(ActiveRecord::RecordNotFound) { Audit.find("old-20261332T000000Z.md") }
     assert_equal [ false, "# Old", 5 ], [ old.html?, old.read, old.size ]
     assert Audit.find("new-20261002T000000Z.html").html?
   end

@@ -205,6 +205,8 @@ export class RfcPagesController extends ApplicationController {
       await this.render({ action: "show", status: 404 });
       return;
     }
+    // `merge`, not `forRfc(id).withAttachedSummary()`: a generated scope is not
+    // on `Relation`'s type. The preload is read by `row.summary.attachment`.
     const rows = await Refinement.withAttachedSummary().merge(Refinement.forRfc(this.rfc.id)).toArray();
     this.refines = [];
     for (const row of rows) {

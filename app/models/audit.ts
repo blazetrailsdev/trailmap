@@ -43,8 +43,10 @@ export class Audit extends ApplicationRecord {
     const parts = PARAM_RE.exec(String(name));
     const [, slug, y, mo, d, h, mi, s, format] = parts ?? [];
     const second = Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s));
+    // `Date.UTC` rolls month 13 over where the twin's `Time.strptime` refuses it.
+    const real = parts !== null && new Date(second).toISOString().startsWith(`${y}-${mo}-${d}T${h}:${mi}:${s}`);
     const audit =
-      parts === null
+      !real
         ? null
         : await this.findBy({ slug, format, written_at: new Range(new Date(second), new Date(second + 1000), true) });
     if (audit === null) throw notFound(String(name));

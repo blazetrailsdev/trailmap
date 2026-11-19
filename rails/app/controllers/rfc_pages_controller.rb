@@ -160,7 +160,7 @@ class RfcPagesController < ApplicationController
     # A sunset winds down an active RFC; the others are iceboxed or ended.
     @can_sunset = @rfc.status == "active"
     if @tab == "refinements"
-      @refines = RfcRefinement.for_rfc(@id).with_attached_summary.map do |r|
+      @refines = RfcRefinement.with_attached_summary.merge(RfcRefinement.for_rfc(@id)).map do |r|
         summary = r.summary.attached? ? r.summary.download.force_encoding(Encoding::UTF_8) : ""
         RefineRow.new(at: r.created_at, outcome: r.outcome,
                       html: summary.empty? ? nil : helpers.render_markdown(summary))
