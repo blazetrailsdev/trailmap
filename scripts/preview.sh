@@ -34,21 +34,34 @@ PROD_HUB="${TRAILMAP_HUB:-trailmap-hub}"
 
 die() { echo "PREVIEW FAILED: $*" >&2; exit 1; }
 
-usage() { die "usage: $0 up <pr> <sha> | down <pr>"; }
+usage() { die "usage: $0 up <pr> <sha> | down <pr> | sweep"; }
 
-[ $# -ge 2 ] || usage
-cmd="$1" pr="$2"
-[[ "$pr" =~ ^[0-9]+$ ]] || die "PR must be a number, got '$pr'"
-app="$PROD_APP-pr-$pr"
-data="$PREVIEW_ROOT/pr-$pr"
-# The path reaches a sqlite dot-command and dokku's mount syntax, neither of
-# which quotes: refuse what would need quoting rather than escape it.
-[[ "$data" =~ ^[A-Za-z0-9_./-]+$ ]] || die "PREVIEW_ROOT must be a plain path, got '$PREVIEW_ROOT'"
-hub="$app-hub"
-# The box's house pattern, <app>.<global vhost>: the dokku dns plugin creates
-# that Route53 record itself when the app is created, so a preview needs no
-# wildcard record and no DNS call of its own to get one.
-domain="$app.deanoftech.com"
+# The repository whose PRs these are, for `sweep`'s question to GitHub. Fixed
+# for the reason PROD_APP is.
+PREVIEW_REPO=blazetrailsdev/trailmap
+
+# Every name one PR's preview owns, from its number.
+forPr() {
+  pr="$1"
+  [[ "$pr" =~ ^[0-9]+$ ]] || die "PR must be a number, got '$pr'"
+  app="$PROD_APP-pr-$pr"
+  data="$PREVIEW_ROOT/pr-$pr"
+  # The path reaches a sqlite dot-command and dokku's mount syntax, neither of
+  # which quotes: refuse what would need quoting rather than escape it.
+  [[ "$data" =~ ^[A-Za-z0-9_./-]+$ ]] || die "PREVIEW_ROOT must be a plain path, got '$PREVIEW_ROOT'"
+  hub="$app-hub"
+  # The box's house pattern, <app>.<global vhost>: the dokku dns plugin creates
+  # that Route53 record itself when the app is created, so a preview needs no
+  # wildcard record and no DNS call of its own to get one.
+  domain="$app.deanoftech.com"
+}
+
+[ $# -ge 1 ] || usage
+cmd="$1"
+if [ "$cmd" != sweep ]; then
+  [ $# -ge 2 ] || usage
+  forPr "$2"
+fi
 
 prodConfig() { dokku config:get "$PROD_APP" "$1"; }
 
@@ -355,8 +368,54 @@ down() {
   echo "==> $app destroyed"
 }
 
+# Every preview PR number anything on the box still names: an app, a hub
+# service, a data directory or a DNS record. Each is a trace `down` removes,
+# so a preview that half-failed to come up or go away is still found by
+# whichever of them is left.
+previewPrs() {
+  {
+    dokku apps:list 2>/dev/null
+    dokku postgres:list 2>/dev/null
+    dokku dns:zones 2>/dev/null
+    find "$PREVIEW_ROOT" -mindepth 1 -maxdepth 1 -name 'pr-*' -printf "$PROD_APP-%f\n" 2>/dev/null
+  } | grep -oE "(^|[^a-z0-9-])$PROD_APP-pr-[0-9]+([^0-9]|$)" | grep -oE 'pr-[0-9]+' | cut -d- -f2 | sort -un
+}
+
+# The cleanup for a preview that its PR's close or unlabel did not remove (a
+# missed webhook, btwhooks down, a failed `down`). A preview is kept only
+# while its PR is open AND labelled `preview`; anything else is torn down.
+# Fails SAFE: a PR whose state GitHub does not answer for is left alone.
+sweep() {
+  local n state err kept=0 removed=0 unknown=0
+  err="$(mktemp)"
+  for n in $(previewPrs); do
+    if ! state="$(gh pr view "$n" -R "$PREVIEW_REPO" --json state,labels \
+      -q '.state + " " + ([.labels[].name] | map(select(. == "preview")) | length | tostring)' 2>"$err")"; then
+      if grep -q "Could not resolve to a PullRequest" "$err"; then
+        state="NO SUCH PR"
+      else
+        echo "==> #$n: GitHub did not answer ($(head -1 "$err")); leaving its preview alone"
+        unknown=$((unknown + 1))
+        continue
+      fi
+    fi
+    if [ "$state" = "OPEN 1" ]; then
+      echo "==> #$n: open and labelled; keeping"
+      kept=$((kept + 1))
+      continue
+    fi
+    echo "==> #$n: $state; tearing its preview down"
+    ( forPr "$n"; down ) || { echo "==> #$n: down failed"; unknown=$((unknown + 1)); continue; }
+    removed=$((removed + 1))
+  done
+  rm -f "$err"
+  echo "==> sweep: $removed removed, $kept kept, $unknown left for next time"
+  [ "$unknown" -eq 0 ]
+}
+
 case "$cmd" in
   up) up "${3:-}" ;;
   down) down ;;
+  sweep) sweep ;;
   *) usage ;;
 esac
