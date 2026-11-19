@@ -22,5 +22,12 @@ import type { StatsSyncRecord } from "../../app/models/stats-sync/stats-sync-rec
  */
 Trails.application.config.toPrepare(() => {
   const record = constantize("StatsSync::StatsSyncRecord") as typeof StatsSyncRecord;
-  void record.establishConnection(statsSyncDatabaseConfig());
+  // Unawaitable here, so a failure is rethrown where it would have surfaced unhandled.
+  record.establishConnection(statsSyncDatabaseConfig()).catch(rethrow);
 });
+
+function rethrow(error: unknown): void {
+  queueMicrotask(() => {
+    throw error;
+  });
+}

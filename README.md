@@ -161,6 +161,9 @@ pnpm install
 export TASKS_DATABASE=~/github/blazetrailsdev/tasks/.git/tasks.db
 export TASKS_DIR=~/github/blazetrailsdev/tasks
 export HUB_DATABASE_URL="$(scripts/dev-hub-url.sh)"
+# ringo, for the fleet page: production's btwhooks.web:8080, reached from the
+# host at the btwhooks.web.1 container's bridge IP
+export RINGO_BASE="http://$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' btwhooks.web.1):8080"
 pnpm db:migrate   # the dev hub; nothing else migrates it
 pnpm views
 bin/trails server
@@ -171,6 +174,11 @@ without it rather than serving pages that 500 on their first row. The view
 build boots the application's initializers too, so `pnpm views` needs them as
 well — which is why it is its own step and not a `prepare` hook on
 `pnpm install`.
+
+`RINGO_BASE` is optional for booting, but without it every fleet request
+(`/fleet/socket`, `/fleet/reviewers`) answers 503 "no ringo origin is
+configured". The fleet page is `/dashboard`, not `/`. For a dashboard with no
+live ringo, point it at `pnpm ringo:stub` (below).
 
 ### Screenshots without a stats database or a ringo
 

@@ -99,8 +99,7 @@ describe("the dashboard palette", () => {
 
     expect(palette().open).toBe(true);
     expect(input().value).toBe("abc");
-    await settle(250);
-    expect(searches.at(-1)).toBe("abc");
+    await vi.waitFor(() => expect(searches.at(-1)).toBe("abc"), { timeout: 5000 });
     palette().close();
   });
 
@@ -112,8 +111,7 @@ describe("the dashboard palette", () => {
 
     expect(palette().open).toBe(true);
     expect(input().value).toBe("pasted query");
-    await settle(250);
-    expect(searches.at(-1)).toBe("pasted query");
+    await vi.waitFor(() => expect(searches.at(-1)).toBe("pasted query"), { timeout: 5000 });
     palette().close();
   });
 
@@ -237,8 +235,7 @@ describe("the broadcast dialog", () => {
     expect(dialog().open).toBe(true);
     expect(byId("bcastKeyHint").textContent).toBe("send to CI red");
     box().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true, cancelable: true }));
-    await settle(50);
-    expect(posts.at(-1)).toEqual({ url: "/fleet/control/broadcast", body: { message: "fix CI", target: "ci-red" } });
+    await vi.waitFor(() => expect(posts.at(-1)).toEqual({ url: "/fleet/control/broadcast", body: { message: "fix CI", target: "ci-red" } }), { timeout: 5000 });
     dialog().close();
   });
 

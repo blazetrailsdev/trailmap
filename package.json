@@ -10,8 +10,9 @@
     }
   },
   "scripts": {
-    "build": "trails-tsc --schema db/schema.ts --schema db/hub_schema.ts --schema db/statsSync_schema.ts=StatsSyncRecord",
+    "build": "TRAILS_ENV=${TRAILS_ENV:-test} trails-tsc --schema db/schema.ts --schema db/hub_schema.ts --schema db/statsSync_schema.ts=StatsSyncRecord",
     "test": "vitest run",
+    "lint": "eslint",
     "gate": "tsx scripts/equivalence.ts",
     "smoke": "bash scripts/smoke-boot.sh",
     "trails:track": "scripts/track-trails.sh",
@@ -55,10 +56,12 @@
   "devDependencies": {
     "@blazetrails/activerecord-cli": "file:vendor/blazetrails-activerecord-cli-0.1.0.tgz",
     "@blazetrails/trails-tsc": "file:vendor/blazetrails-trails-tsc-0.1.0.tgz",
+    "eslint": "^10.0.3",
     "happy-dom": "20.0.10",
     "tsx": "^4.20.0",
     "typescript": "7.1.0-dev.20260920.1",
     "typescript-5": "npm:typescript@5.9.3",
+    "typescript-eslint": "^8.57.0",
     "vite": "^7.0.0",
     "vite-plugin-ruby": "5.2.6",
     "vitest": "^3.0.0"

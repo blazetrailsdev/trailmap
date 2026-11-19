@@ -329,7 +329,6 @@ interface GhTimelineEvent {
 
 // Shape of the GitHub reactions payload the #2433-removed sync consumed; kept
 // alongside PrReaction so restoring that sync does not have to re-derive it.
-// eslint-disable-next-line unused-imports/no-unused-vars
 interface GhReactionData {
   id: number;
   user: { login: string } | null;

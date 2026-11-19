@@ -492,7 +492,7 @@ export function controlRequest(action, data, page = {}) {
         path: "/pane/" + id[1] + "/send",
         url: "/fleet/pane/" + id[1] + "/send",
         body: { text: "/exit" },
-        then: { text: "exit", afterMs: 3000 },
+        then: { text: "exit", screen: "/fleet/pane/" + id[1] + "/screen", everyMs: 500, timeoutMs: 20000 },
         confirm: "End pane " + data.pane + "? This exits Claude and closes its shell.",
         pane: true,
         key: data.key || "",
@@ -562,6 +562,26 @@ export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
  *   "Spawn now" is the exception, held like merge and then re-read
  *   (`refresh`), because ringo answers before the tick has registered.
  */
+/**
+ * Whether a pane's screen (the `/fleet/pane/:id/screen` body) shows Claude
+ * gone: the pane itself gone, or no Claude UI left and a shell prompt on the
+ * last line. End pane types the shell's `exit` only once this holds, so it is
+ * never typed into Claude as a prompt.
+ */
+export function claudeHasExited(body) {
+  if (!body || typeof body !== "object") return false;
+  if (body.exists === false) return true;
+  if (typeof body.html !== "string") return false;
+  const text = body.html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&");
+  if (/for shortcuts|esc to interrupt|╭─|^\s*│ >/m.test(text)) return false;
+  const last = text.split("\n").map((line) => line.trimEnd()).filter(Boolean).at(-1) || "";
+  return /[>$#❯]$/.test(last);
+}
+
 export function controlOutcome(request, result, label) {
   const answered = !("error" in result);
   // A 200 is not always a yes: `accepted` reads the body of one that says no.

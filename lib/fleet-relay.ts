@@ -150,7 +150,7 @@ export function relayEvents(
   // The request is already parsed, so there is no `connect` to wait for:
   // `start` writes the 101 and emits `open` before it returns.
   driver.start();
-  void read();
+  read().catch(rethrow);
 }
 
 /** One viewer of a shared upstream read. */
@@ -201,13 +201,13 @@ function subscribe(eventsUrl: string, fetchEvents: typeof fetch, viewer: Viewer)
         }
       }
     };
-    void pump(fanOut, eventsUrl, started.upstream, fetchEvents).finally(() => {
+    pump(fanOut, eventsUrl, started.upstream, fetchEvents).finally(() => {
       // Gone before anyone else can join it: the next viewer starts afresh.
       if (byUrl.get(eventsUrl) === started) byUrl.delete(eventsUrl);
       const left = [...started.viewers];
       started.viewers.clear();
       for (const v of left) v.ended();
-    });
+    }).catch(rethrow);
   }
   const joined = stream;
   joined.viewers.add(viewer);
@@ -252,4 +252,11 @@ async function pump(
   } finally {
     clearTimeout(connecting);
   }
+}
+
+/** A rejection nothing can await: rethrown, as `void` would have left it unhandled. */
+function rethrow(error: unknown): void {
+  queueMicrotask(() => {
+    throw error;
+  });
 }
