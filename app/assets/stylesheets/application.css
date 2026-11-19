@@ -1115,6 +1115,8 @@ kbd {
 .deploy-err { color: var(--red); overflow-wrap: anywhere; }
 .badge.s-deploy-running { color: var(--yellow-ink); border-color: color-mix(in srgb, var(--yellow-ink) 45%, transparent); }
 .badge.s-deploy-success { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); }
+.badge.s-deploy-cancelled { color: var(--muted); }
+.badge.deploy-kind { font-weight: 400; }
 .badge.s-deploy-failed, .badge.s-deploy-timeout, .badge.s-deploy-error { color: var(--red); border-color: color-mix(in srgb, var(--red) 45%, transparent); }
 
 /* /sessions -- ringo's archive tables; wide, so they scroll inside the card */

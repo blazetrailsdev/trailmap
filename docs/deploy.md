@@ -817,7 +817,18 @@ runs on the host with dokku access. Each PR has one slot, and the newest
 request wins: a request that arrives while one is running replaces any
 waiting one, and kills the running one if its log has not reached
 `-----> Releasing`. At most two preview builds run at once; teardowns are
-not counted. Runs appear on the btwhooks Deploys page.
+not counted. Runs appear on the btwhooks Deploys page and on trailmap's
+`/deploys` tab, tagged `preview`, `preview teardown` or `preview sweep`, and a
+successful preview links its address.
+
+**Cleaning up.** `scripts/preview.sh sweep` tears down every preview whose PR
+is closed, no longer labelled `preview`, or does not exist. It finds previews
+by every trace `down` removes (the app, the hub service, the data directory,
+the DNS record), so one that half-failed to come up or go away is still found,
+and it leaves alone any PR whose state GitHub did not answer for. btwhooks runs
+it two minutes after it starts, which catches webhooks missed while it was
+down, and every six hours after, skipping a sweep while a preview run is in
+flight. Run it by hand on the box for the same thing at once.
 
 `worker` is scaled to 0. It is the only process that runs jobs (the web
 process enqueues into its own container-local queue), so no job, and so no
