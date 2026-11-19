@@ -21,7 +21,9 @@ import { Migration } from "@blazetrails/activerecord";
 export class MoveRfcRefinesToRefinements extends Migration.get(8) {
   async up() {
     const connection = await this.connection;
-    const [{ count }] = (await connection.selectAll("SELECT COUNT(*) AS count FROM rfc_refines")).toArray();
+    const [{ count }] = (
+      await connection.selectAll("SELECT COUNT(*) AS count FROM rfc_refines")
+    ).toArray();
     if (Number(count) > 0) {
       throw new Error(
         `rfc_refines holds ${count} row(s); this migration drops it and cannot move them to Base ` +
@@ -39,7 +41,9 @@ export class MoveRfcRefinesToRefinements extends Migration.get(8) {
       t.text("summary", { null: false, default: "" });
       t.timestamps();
 
-      t.index(["rfc_id", "created_at"], { name: "index_rfc_refines_on_rfc_id_and_created_at" });
+      t.index(["rfc_id", "created_at"], {
+        name: "index_rfc_refines_on_rfc_id_and_created_at",
+      });
     });
   }
 }

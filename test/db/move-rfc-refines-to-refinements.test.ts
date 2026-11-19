@@ -18,7 +18,12 @@ describe.skipIf(!hasHubTestDatabase())("MoveRfcRefinesToRefinements", () => {
   beforeAll(connectHubTestDatabase, HUB_SETUP_TIMEOUT);
   afterAll(releaseHubTestDatabase);
 
-  async function withMigrations(fn: (c: Awaited<MoveRfcRefinesToRefinements["connection"]>, move: MoveRfcRefinesToRefinements) => Promise<void>) {
+  async function withMigrations(
+    fn: (
+      connection: Awaited<MoveRfcRefinesToRefinements["connection"]>,
+      move: MoveRfcRefinesToRefinements,
+    ) => Promise<void>,
+  ) {
     await Hub.connectionPool().withConnection(async (connection) => {
       const create = new CreateRfcRefines();
       const move = new MoveRfcRefinesToRefinements();
