@@ -58,4 +58,16 @@ describe("the pane page's keys", () => {
 
     expect(posts).toEqual([{ url: "/fleet/pane/42/keys", body: { keys: ["Up"] } }]);
   });
+
+  it("ignores a held key's auto-repeat and a press while one is in flight", async () => {
+    posts.length = 0;
+    const screen = byId("paneScreen");
+    screen.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", repeat: true, bubbles: true, cancelable: true }));
+    screen.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true }));
+    screen.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }));
+    await settle();
+
+    expect(posts).toEqual([{ url: "/fleet/pane/42/keys", body: { keys: ["Left"] } }]);
+    expect(byId("paneSendResult").textContent).toBe("Left pressed");
+  });
 });

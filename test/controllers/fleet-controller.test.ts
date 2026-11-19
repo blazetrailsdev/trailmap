@@ -311,6 +311,15 @@ describe("FleetController#keys", () => {
     expect(received).toEqual([]);
   });
 
+  it("drops a null key as Rails' deep_munge does, and presses the rest", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await keys("42", { keys: ["Enter", null] });
+
+    expect(response.status).toBe(204);
+    expect(received.map((r) => JSON.parse(r.body))).toEqual([{ keys: ["Enter"] }]);
+  });
+
   it("says ringo is not configured rather than guessing where it is", async () => {
     expect((await keys("42", { keys: ["Enter"] })).status).toBe(503);
   });

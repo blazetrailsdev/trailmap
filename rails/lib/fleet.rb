@@ -51,8 +51,8 @@ module Fleet
   def self.pane_keys_problem(keys)
     return "no keys given" unless keys.is_a?(Array) && keys.any?
     return "at most #{PANE_KEYS_MAX} keys at a time" if keys.size > PANE_KEYS_MAX
-    bad = keys.find { |key| !PANE_KEYS.include?(key) }
-    return "key #{bad} is not one of #{PANE_KEYS.join(", ")}" unless bad.nil?
+    bad = keys.find_index { |key| !PANE_KEYS.include?(key) }
+    return "key #{keys[bad]} is not one of #{PANE_KEYS.join(", ")}" unless bad.nil?
     nil
   end
 

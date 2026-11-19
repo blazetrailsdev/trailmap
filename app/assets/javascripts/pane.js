@@ -90,10 +90,19 @@ sendForm.addEventListener("submit", async (event) => {
   loop.pollNow();
 });
 
-/** Press one key in the pane; the result line says what happened. */
+/**
+ * Press one key in the pane; the result line says what happened. One press at
+ * a time: a press while another is in flight is dropped, so the line always
+ * names the key it answers for.
+ */
+let pressing = false;
 async function pressKey(key) {
-  if (loop.state.exited) return;
+  if (loop.state.exited || pressing) return;
+  pressing = true;
+  sendResult.className = "muted";
+  sendResult.textContent = "pressing " + key + "…";
   const outcome = await postToPane(keysPath, { keys: [key] });
+  pressing = false;
   sendResult.className = outcome.ok ? "muted" : "bad";
   sendResult.textContent = outcome.ok ? key + " pressed" : outcome.error;
   loop.pollNow();
@@ -110,6 +119,8 @@ screen.addEventListener("keydown", (event) => {
   const key = SCREEN_KEYS[event.key];
   if (key === undefined || event.altKey || event.ctrlKey || event.metaKey) return;
   event.preventDefault();
+  // Holding a key down is one press, not a burst of send-keys.
+  if (event.repeat) return;
   pressKey(key);
 });
 
