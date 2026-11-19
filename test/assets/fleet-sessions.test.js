@@ -28,6 +28,7 @@ import {
   reviewTurn,
   sessionCard,
   sessionDetail,
+  suggestHtml,
   terminalHtml,
   terminalPanes,
   sessionGroups,
@@ -766,5 +767,23 @@ describe("terminalPanes / terminalHtml", () => {
 
     expect(html).toContain('<span class="pane-notice bad" data-terminal-notice="%214" role="status">ringo is unreachable</span>');
     expect(html).toContain("<b>last</b></pre>");
+  });
+});
+
+describe("suggestHtml", () => {
+  const screen = { html: '&gt;&nbsp;<span style="opacity:.65;">run "the" tests</span>' };
+
+  it("offers a Send suggestion button that types the dimmed suggestion into the pane", () => {
+    const html = suggestHtml("%11", "k", screen);
+    expect(html).toContain('data-action="pane-send"');
+    expect(html).toContain('data-pane="%11"');
+    expect(html).toContain('data-says="compose-note-k"');
+    expect(html).toContain('data-text="run &quot;the&quot; tests"');
+    expect(html).toContain("Send suggestion:");
+  });
+
+  it("draws nothing without a suggestion or a screen", () => {
+    expect(suggestHtml("%11", "k", { html: "&gt; typed" })).toBe("");
+    expect(suggestHtml("%11", "k", undefined)).toBe("");
   });
 });
