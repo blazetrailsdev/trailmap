@@ -24,11 +24,14 @@ async function stored(audit: Audit): Promise<[string, string, string]> {
 const REPORT = { slug: "api-audit", repo: "blazetrailsdev/trails", body: "# Findings", writtenAt: "2026-11-19T10:20:30Z" };
 
 describe("AuditReports", () => {
+  let savedToken: string | undefined;
   beforeAll(() => {
+    savedToken = env.TRAILMAP_INGEST_TOKEN;
     Object.assign(env, { TRAILMAP_INGEST_TOKEN: "audit-test-token" });
   });
   afterAll(() => {
-    Reflect.deleteProperty(env, "TRAILMAP_INGEST_TOKEN");
+    if (savedToken === undefined) Reflect.deleteProperty(env, "TRAILMAP_INGEST_TOKEN");
+    else Object.assign(env, { TRAILMAP_INGEST_TOKEN: savedToken });
   });
 
   it("stores a markdown report and answers its legacy filename", async () => {
@@ -78,6 +81,7 @@ describe("AuditReports", () => {
     expect(await report({ ...REPORT, slug: "Bad Slug" })).toEqual({ status: 422, body: { error: "Slug must be kebab-case" } });
     expect(await report({ ...REPORT, format: "pdf" })).toEqual({ status: 422, body: { error: "Format is not included in the list" } });
     expect(await report({ ...REPORT, body: "" })).toEqual({ status: 422, body: { error: "body must be a non-empty string" } });
+    expect(await report({ ...REPORT, repo: "" })).toEqual({ status: 422, body: { error: "repo must be given" } });
     expect(await report({ ...REPORT, writtenAt: "soon" })).toEqual({ status: 422, body: { error: "writtenAt must be a time" } });
     expect(await Audit.count()).toBe(0);
   });

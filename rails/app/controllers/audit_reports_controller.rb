@@ -4,11 +4,10 @@
 # The body is attached as `<slug>-<stamp>.<format>`; 201 {id, url}, id the
 # filename `to_param` gives. An existing (repo, slug, writtenAt) answers 200
 # with its id, for the import. A bad slug, unknown format, empty body or a
-# writtenAt that is not a time is a 422. Needs the ingest bearer token.
+# writtenAt that is not a time is a 422, as is a missing repo. A concurrent
+# import that loses the race to the unique index answers 200 with the winner's id. Needs the ingest bearer token.
 class AuditReportsController < ApiController
   include IngestToken
-
-  CONTENT_TYPES = { "md" => "text/markdown", "html" => "text/html" }.freeze
 
   def create
     body = params[:body]
@@ -24,6 +23,8 @@ class AuditReportsController < ApiController
 
     slug = param(:slug).to_s
     repo = param(:repo).to_s
+    # Required here, not on the model: audits imported before #179 carry none.
+    return render json: { error: "repo must be given" }, status: :unprocessable_entity if repo == ""
     existing = Audit.find_by(repo: repo, slug: slug, written_at: written_at)
     return render json: { id: existing.to_param, url: "/audits/#{existing.to_param}" }, status: :ok if existing
 
@@ -32,8 +33,13 @@ class AuditReportsController < ApiController
     audit = Audit.new(slug: slug, repo: repo, format: format, title: param(:title), written_at: written_at)
     return render json: { error: audit.errors.full_messages.join(", ") }, status: :unprocessable_entity unless audit.valid?
 
-    audit.body = { io: StringIO.new(body), filename: audit.to_param, content_type: CONTENT_TYPES[format] }
-    audit.save!
+    audit.body = { io: StringIO.new(body), filename: audit.to_param, content_type: Audit::CONTENT_TYPES[format] }
+    begin
+      audit.save!
+    rescue ActiveRecord::RecordNotUnique
+      winner = Audit.find_by(repo: repo, slug: slug, written_at: written_at) or raise
+      return render json: { id: winner.to_param, url: "/audits/#{winner.to_param}" }, status: :ok
+    end
     render json: { id: audit.to_param, url: "/audits/#{audit.to_param}" }, status: :created
   end
 end

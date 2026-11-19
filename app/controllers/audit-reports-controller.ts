@@ -3,9 +3,8 @@ import { StringIO } from "@blazetrails/ruby-compat";
 import { ApiController } from "./api-controller.ts";
 import { IngestToken } from "./concerns/ingest-token.ts";
 import { presentParam } from "./concerns/api-params.ts";
-import { Audit } from "../models/audit.ts";
-
-const CONTENT_TYPES: Record<string, string> = { md: "text/markdown", html: "text/html" };
+import { RecordNotUnique } from "@blazetrails/activerecord";
+import { Audit, CONTENT_TYPES } from "../models/audit.ts";
 
 /**
  * `POST /audits` — an audit agent's report, replacing the file trails'
@@ -17,7 +16,9 @@ const CONTENT_TYPES: Record<string, string> = { md: "text/markdown", html: "text
  *
  * An audit already stored for the same `(repo, slug, writtenAt)` answers 200
  * with its id, so the import can be run again. A bad slug, an unknown format,
- * an empty body or a `writtenAt` that is not a time is a 422. Loopback only,
+ * an empty body or a `writtenAt` that is not a time is a 422, as is a missing
+ * repo. A concurrent import that loses the race to the unique index answers
+ * 200 with the winner's id. Loopback only,
  * and it needs the ingest bearer token (IngestToken).
  */
 export class AuditReportsController extends ApiController {
@@ -43,6 +44,11 @@ export class AuditReportsController extends ApiController {
     }
     const slug = presentParam(this.params, "slug") ?? "";
     const repo = presentParam(this.params, "repo") ?? "";
+    // Required here, not on the model: audits imported before #179 carry none.
+    if (repo === "") {
+      await this.render({ json: { error: "repo must be given" }, status: 422 });
+      return;
+    }
     const existing = await Audit.findBy({ repo, slug, written_at: writtenAt });
     if (existing !== null) {
       await this.render({ json: { id: existing.toParam(), url: `/audits/${existing.toParam()}` }, status: 200 });
@@ -62,7 +68,15 @@ export class AuditReportsController extends ApiController {
       return;
     }
     await audit.setBody({ io: new StringIO(body), filename: audit.toParam(), contentType: CONTENT_TYPES[format] });
-    await audit.save();
+    try {
+      await audit.saveBang();
+    } catch (e) {
+      if (!(e instanceof RecordNotUnique)) throw e;
+      const winner = await Audit.findBy({ repo, slug, written_at: writtenAt });
+      if (winner === null) throw e;
+      await this.render({ json: { id: winner.toParam(), url: `/audits/${winner.toParam()}` }, status: 200 });
+      return;
+    }
     await this.render({ json: { id: audit.toParam(), url: `/audits/${audit.toParam()}` }, status: 201 });
   }
 }

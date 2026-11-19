@@ -69,6 +69,8 @@ class AuditReportsTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_equal({ "error" => "body must be a non-empty string" }, report(REPORT.merge(body: "")))
     assert_response :unprocessable_entity
+    assert_equal({ "error" => "repo must be given" }, report(REPORT.merge(repo: "")))
+    assert_response :unprocessable_entity
     assert_equal({ "error" => "writtenAt must be a time" }, report(REPORT.merge(writtenAt: "soon")))
     assert_response :unprocessable_entity
     assert_equal 0, Audit.count
