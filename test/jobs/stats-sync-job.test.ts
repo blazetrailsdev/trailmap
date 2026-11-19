@@ -253,6 +253,32 @@ describe("StatsSyncJob", () => {
     expect(klass.concurrencyDuration.toI()).toBe(2 * 3600);
   });
 
+  it("discards an hourly run that overlaps a running one", () => {
+    expect(StatsSyncJob.concurrencyOnConflict).toBe("discard");
+  });
+
+  it("drops the overlapping run rather than blocking it behind the running one", async () => {
+    // solid_queue's own conflict handler, on a job row of this class: `discard`
+    // destroys the row, `block` would park it as a blocked execution.
+    const { Job } = await import("@blazetrails/solid-queue");
+    // `handleConcurrencyConflict` and `block` are the ConcurrencyControls
+    // mixin's (@internal), which the `Job` type does not carry.
+    const job = Object.create(Job.prototype) as {
+      jobClass(): unknown;
+      destroy(): Promise<unknown>;
+      block(): Promise<unknown>;
+      handleConcurrencyConflict(): Promise<unknown>;
+    };
+    vi.spyOn(job, "jobClass").mockReturnValue(StatsSyncJob);
+    const destroy = vi.spyOn(job, "destroy").mockResolvedValue(job);
+    const block = vi.spyOn(job, "block").mockResolvedValue(true);
+
+    await job.handleConcurrencyConflict();
+
+    expect(destroy).toHaveBeenCalledOnce();
+    expect(block).not.toHaveBeenCalled();
+  });
+
   it("does not report the gap between two hourly runs", async () => {
     getFs().appendFileSync(log, `=== ${new Date(Date.now() - 3_600_000).toISOString()} ===\n[cron-wrapper] ok\n`);
     await new StatsSyncJob().perform();

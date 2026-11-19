@@ -1177,6 +1177,7 @@ const withPlan = (title, u) => (u.planType ? title + " · " + u.planType + " pla
  * ahead of or under that pace, ahead in yellow.
  */
 function weekRow(agent, u, now) {
+  if (resetPassed(u.weeklyResetsAt, now)) return staleWeekRow(agent, u, now);
   const elapsed = weekElapsedPercent(u.weeklyResets, u.weeklyResetsAt, now);
   const diff = clamp(u.weeklyPercent) - elapsed;
   const title = "resets " + formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now);
@@ -1186,6 +1187,20 @@ function weekRow(agent, u, now) {
       .join("") + '<b class="now-mark" style="left:' + elapsed + '%"></b>';
   const pace = '<span class="usage-pace ' + (diff > 0 ? "ahead" : "under") + '">' + paceText(elapsed, diff) + "</span>";
   return usageRow(agent + " · week", u.weeklyPercent, weeklyPaceColor(diff), withPlan(title, u), marks, pace);
+}
+
+/**
+ * Whether the week's reset is already behind now. Codex publishes limits only
+ * while a session runs, so ringo can hand over a window that has ended; read
+ * as current, it would draw 100% elapsed and a pace that means nothing.
+ */
+export const resetPassed = (at, now = Date.now()) => Boolean(at) && at <= now;
+
+/** A week whose reset has passed: its last reading, and no now marker, ticks or pace. */
+function staleWeekRow(agent, u, now) {
+  const title = "reset " + formatResetLabel(u.weeklyResets, u.weeklyResetsAt, now) + " passed";
+  const below = '<span class="usage-pace stale">reset passed; waiting for a new reading</span>';
+  return usageRow(agent + " · week", u.weeklyPercent, barColor(clamp(u.weeklyPercent)), withPlan(title, u), "", below);
 }
 
 /** Below zero is a plan with no session limit (ringo's `handleUsage`), and none is a scrape without one: either way no row, rather than 0%. */

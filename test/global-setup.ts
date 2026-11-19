@@ -1,5 +1,7 @@
 import { Base } from "@blazetrails/activerecord";
 import { env, setEnv } from "@blazetrails/ruby-compat";
+import { isolateTestEnv } from "./support/test-env.ts";
+import { buildStaleViews } from "./support/build-views.ts";
 
 /**
  * Bring the test databases up to date ONCE per run, before vitest starts its
@@ -12,7 +14,9 @@ import { env, setEnv } from "@blazetrails/ruby-compat";
  */
 export async function setup(): Promise<void> {
   if (env.TRAILS_ENV == null) setEnv("TRAILS_ENV", "test");
+  isolateTestEnv();
   await import("../config/environment.ts");
+  await buildStaleViews();
   await import("@blazetrails/trailties/testing/maintain-test-schema");
 }
 

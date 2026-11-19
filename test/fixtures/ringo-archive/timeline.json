@@ -1,0 +1,5 @@
+{ "events": 2, "gap_floor": "1m", "quiet_floor": "5m", "elapsed": "1h30m", "working": "1h00m", "waiting": "30m", "rows": [
+  { "kind": "session", "when": "Oct 27 09:00", "title": "agent session", "ran": "1h00m", "active": "40m", "meta": ["7 turns · $1.50"] },
+  { "wait": "⋯ waiting 30m — PR sat unreviewed" },
+  { "kind": "review", "when": "Oct 27 10:30", "title": "review 1", "body_html": "<p>looks <strong>good</strong></p>", "open": true }
+] }

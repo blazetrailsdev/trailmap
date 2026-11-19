@@ -5,7 +5,7 @@ class RfcPagesController < ApplicationController
   STATUS_TABS = %w[active draft postponed closed superseded].freeze
 
   Tab = Struct.new(:key, :label, :count, :href, :active, keyword_init: true)
-  SortLink = Struct.new(:key, :label, :title, :href, :active, keyword_init: true)
+  SortOption = Struct.new(:key, :label, :title, :href, :active, keyword_init: true)
   Tick = Struct.new(:kind, :pct, :title, keyword_init: true)
   Row = Struct.new(:id, :title, :owner, :priority, :superseded_by, :clusters, :counts, :bar, :bar_length,
                    :stalled, :ticks, :story_total, :open_days, keyword_init: true)
@@ -13,6 +13,10 @@ class RfcPagesController < ApplicationController
   RefineRow = Struct.new(:at, :outcome, :html, keyword_init: true)
 
   def index
+    # The default sort stays off the URL, as rfc-sort.js keeps it off with
+    # JavaScript: a no-JS submit of the sort menu lands on the bare address.
+    return redirect_to rfcs_path(status: (params[:status] if params[:status].is_a?(String)).presence) if params[:sort] == "priority"
+
     rfcs = Rfc.all.to_a
     by_rfc = Hash.new { |h, k| h[k] = [] }
     held_by_rfc = Hash.new { |h, k| h[k] = [] }
@@ -42,8 +46,8 @@ class RfcPagesController < ApplicationController
       Tab.new(key: s, label: s, count: tab_counts.fetch(s, 0), href: rfcs_path(status: s, **sort_param), active: s == @filter)
     end
     @sorts = RfcProgress::INDEX_SORTS.map do |o|
-      SortLink.new(key: o.key, label: o.label, title: o.title, active: o.key == @sort,
-                   href: rfcs_path(status: @filter, **(o.key == "priority" ? {} : { sort: o.key })))
+      SortOption.new(key: o.key, label: o.label, title: o.title, active: o.key == @sort,
+                     href: rfcs_path(status: @filter, **(o.key == "priority" ? {} : { sort: o.key })))
     end
     shown = RfcProgress.sort_rfcs_for_index(rfcs.select { |r| r.status == @filter }, @sort, story_counts)
     @rows = shown.map do |rfc|

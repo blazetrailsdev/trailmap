@@ -31,3 +31,24 @@ end
 
 imported = Repository.import_fleet_repos
 puts "seeded #{owner.login}: #{known.size} repositories, #{imported.size} from FLEET_REPO_PATHS"
+
+# A few weeks of parity_days, in development only and only into an empty table,
+# so /graphs/parity draws its charts on a box with no STATS_DB. db/seeds.ts
+# writes the same rows.
+if Rails.env.development? && ParityDay.none?
+  now = Time.current
+  rows = %w[api test].each_with_index.flat_map do |metric, m|
+    %w[activerecord actionpack activesupport].each_with_index.flat_map do |pkg, p|
+      (0...21).map do |d|
+        total = 1000 + 200 * p
+        matched = (total * (0.55 + 0.1 * p + 0.012 * d - 0.05 * m)).round
+        gaps = metric == "api" ? { misplaced: 10 + p, missing: total - matched - 10 - p } : nil
+        { metric: metric, package: pkg, day: now.utc.to_date - (20 - d), pr_number: 9000 + d, matched: matched,
+          total: total, percent: (matched * 10000.0 / total).round / 100.0, gaps: gaps, created_at: now, updated_at: now }
+      end
+    end
+  end
+  ParityDay.insert_all(rows)
+  puts "seeded #{rows.size} parity_days rows"
+end
+

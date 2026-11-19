@@ -8,16 +8,12 @@
 
 <div class="list-controls">
   <%= render({ partial: "shared/underline-nav", locals: { tabs: this.tabs } }) %>
-  <form class="sort-menu" method="get" action="<%= rfcsPath() %>">
-    <input type="hidden" name="status" value="<%= this.filter %>">
-    <label for="rfc-sort" class="muted">Sort</label>
-    <select id="rfc-sort" name="sort" class="ctl" data-sort-menu>
-      <% for (const option of this.sorts) { %>
-        <option value="<%= option.key %>" data-href="<%= option.href %>" title="<%= option.title %>"<% if (option.active) { %> selected<% } %>><%= option.label %></option>
-      <% } %>
-    </select>
+  <%= formWith({ url: rfcsPath(), method: "get", class: "sort-menu" }, () => { %>
+    <%= hiddenFieldTag("status", this.filter, { id: null }) %>
+    <%= labelTag("sort", "Sort", { for: "rfc-sort", class: "muted" }) %>
+    <%= selectTag("sort", optionsForSelect(this.sorts.map((option) => [option.label, option.key, { data: { href: option.href }, title: option.title }]), this.sort), { id: "rfc-sort", class: "ctl", data: { "sort-menu": true } }) %>
     <noscript><button type="submit" class="ctl">Sort</button></noscript>
-  </form>
+  <% }) %>
 </div>
 
 <div class="box rfc-list">

@@ -59,6 +59,7 @@ import {
   barColor,
   claudeUsage,
   codexUsage,
+  resetPassed,
   drainStatus,
   formatClockLabel,
   formatResetLabel,
@@ -1290,6 +1291,20 @@ describe("the usage helpers", () => {
     expect(claudeUsage({ weeklyPercent: 5 }, noon)).not.toContain(" plan");
     // A scraper with nothing yet sends no percents: zero, not "NaN%".
     expect(claudeUsage({}, noon)).not.toMatch(/NaN|undefined/);
+  });
+
+  it("reads a week whose reset has passed as stale, not 100% elapsed", () => {
+    expect([noon - 1, noon, noon + 1, 0, null].map((at) => resetPassed(at, noon))).toEqual([true, true, false, false, false]);
+    const passed = noon - 2 * HOUR;
+    for (const html of [
+      claudeUsage({ weeklyPercent: 70, weeklyResetsAt: passed }, noon),
+      codexUsage({ sessionPercent: -1, weeklyPercent: 40, weeklyResetsAt: passed }, noon),
+    ]) {
+      expect(html).toContain("reset passed; waiting for a new reading");
+      expect(html).not.toContain("of week elapsed");
+      expect(html).not.toContain("now-mark");
+      expect(html).not.toContain("day-tick");
+    }
   });
 });
 

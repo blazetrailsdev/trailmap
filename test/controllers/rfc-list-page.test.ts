@@ -149,10 +149,18 @@ describe("RfcPagesController#index", () => {
   it("marks the current sort, and defaults to priority", async () => {
     const { body } = await index();
 
-    expect(body).toMatch(/<select id="rfc-sort" name="sort"/);
-    expect(body).toMatch(/<option value="priority" data-href="\/rfcs\?status=active"[^>]* selected>priority<\/option>/);
+    expect(body).toMatch(/<select name="sort" id="rfc-sort" class="ctl" data-sort-menu="true">/);
+    expect(body).toMatch(/<option data-href="\/rfcs\?status=active"[^>]* selected="selected" value="priority">priority<\/option>/);
     expect(body).toContain('data-href="/rfcs?sort=open&amp;status=active"');
-    expect(body).toContain('<input type="hidden" name="status" value="active">');
+    expect(body).toContain('<input type="hidden" name="status" value="active" autocomplete="off" />');
+  });
+
+  it("sends a no-JS submit of the default sort to the bare URL", async () => {
+    const tc = await controllerTestCase(RfcPagesController);
+    await tc.get("index", { params: { status: "draft", sort: "priority" } });
+
+    expect(tc.response.status).toBe(302);
+    expect(tc.response.location).toBe("http://test.host/rfcs?status=draft");
   });
 
   it("re-sorts by the requested key, falling back to priority order on ties", async () => {
@@ -168,7 +176,7 @@ describe("RfcPagesController#index", () => {
   it("keeps the sort across tabs, and ignores an unknown one", async () => {
     const { body } = await index("draft", "open");
     expect(body).toContain('href="/rfcs?sort=open&amp;status=active"');
-    expect(body).toMatch(/<option value="open"[^>]* selected>most open<\/option>/);
+    expect(body).toMatch(/<option [^>]* selected="selected" value="open">most open<\/option>/);
 
     expect(listed((await index(undefined, "bogus")).body)).toEqual(["0100-alpha", "0136-trailmap", "0200-zeta"]);
   });

@@ -36,7 +36,27 @@ import { Setting } from "../../app/models/setting.ts";
  */
 export function hubTestUrl(): string | null {
   const url = env.HUB_TEST_DATABASE_URL?.trim();
-  return url ? url : null;
+  if (!url) return null;
+  // Outside a vitest worker (the gate scripts) there is no per-worker copy.
+  return env.VITEST_POOL_ID == null ? url : workerDatabaseUrl(url, Number(env.VITEST_POOL_ID));
+}
+
+/**
+ * The worker's own copy of the hub test database, `<name>-<n>`: the database
+ * `TestDatabases.createAndLoadSchema` (test/test-helper.ts) rebuilds for worker
+ * `n` from `db/hub_schema.ts`, as Rails' `parallelize` does for every
+ * configured database. Reading the shared one instead let a file that never
+ * takes the lock below (the dashboard reads `Repository`) see another
+ * worker's rows mid-turn.
+ *
+ * The naming rule is TestDatabases' (`${database}-${i}`), re-spelled here only
+ * because `Hub` is not a `connectsTo` class yet; it goes with the workaround in
+ * test/test-helper.ts. Story: hub-and-stats-connect-through-connects-to.
+ */
+export function workerDatabaseUrl(url: string, worker: number): string {
+  const parsed = new URL(url);
+  parsed.pathname = `${parsed.pathname}-${worker}`;
+  return parsed.toString();
 }
 
 /** Whether the hub tests can run here. They skip, loudly, when they cannot. */
@@ -60,6 +80,10 @@ const HUB_TABLES = [
 
 /**
  * One advisory lock, held for as long as a test FILE is using the hub.
+ *
+ * Each worker now has its own database (`workerDatabaseUrl`), so the lock is
+ * uncontended across workers; it stays as the guard for anything that still
+ * reaches a shared one.
  *
  * vitest runs files in parallel workers, and there is one hub test database:
  * without this, one file's `truncateHub` lands in the middle of another file's

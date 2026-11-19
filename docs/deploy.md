@@ -123,8 +123,18 @@ rows can be re-seeded from `FLEET_REPO_PATHS`
 application settings someone turned off by hand exist only here.
 
 A second service for development is the same two commands with a different
-name (`trailmap-hub-dev`), and `dokku postgres:info <service> --internal-ip`
-is how a process on the box reaches it without exposing a port.
+name (`trailmap-hub-dev`), and `scripts/dev-hub-url.sh` prints a URL a
+process on the box can reach it by without exposing a port.
+
+**Nothing deploys against the dev hub, so nothing migrates it.** After pulling
+a change that adds a `db/hub-migrate` file, and before booting, run:
+
+```sh
+HUB_DATABASE_URL="$(scripts/dev-hub-url.sh)" pnpm db:migrate
+```
+
+A boot against an unmigrated dev hub refuses with "names a database without
+the hub schema (no <table>)", and that command is the fix.
 
 ### Migrating the hub
 

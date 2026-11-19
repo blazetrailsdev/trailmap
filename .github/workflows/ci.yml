@@ -74,8 +74,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: NODE_ENV=test pnpm exec trails-tsc-views build --views app/views
-      - run: NODE_ENV=test pnpm exec trails-tsc-views build --views test/fixtures/views --in-place
+      # No views step: test/global-setup.ts builds them when stale.
       # The hub schema, through the real entry point. `test/support/hub-schema.ts`
       # connects and truncates but does not migrate — see the note there — and
       # fails with this command in its message when the schema is missing.

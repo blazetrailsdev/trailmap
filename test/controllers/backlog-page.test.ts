@@ -85,12 +85,12 @@ describe("StoryPagesController#index", () => {
   it("counts each tab through the same predicate that fills it", async () => {
     const { body } = await index();
 
-    expect(body).toContain(">5 Open</a>");
-    expect(body).toContain(">2 Closed</a>");
-    expect(body).toContain(">2 Ready</a>");
-    expect(body).toContain(">1 Draft</a>");
-    expect(body).toContain(">1 Blocked</a>");
-    expect(body).toContain(">2 Icebox</a>");
+    expect(body).toContain('>Open <span class="Counter">5</span></a>');
+    expect(body).toContain('>Closed <span class="Counter">2</span></a>');
+    expect(body).toContain('>Ready <span class="Counter">2</span></a>');
+    expect(body).toContain('>Draft <span class="Counter">1</span></a>');
+    expect(body).toContain('>Blocked <span class="Counter">1</span></a>');
+    expect(body).toContain('>Icebox <span class="Counter">2</span></a>');
   });
 
   /**
@@ -117,7 +117,7 @@ describe("StoryPagesController#index", () => {
     for (const filter of ["open", "done", "ready", "draft", "blocked", "icebox"]) {
       expect(listed((await index(filter)).body)).not.toContain("shelved");
     }
-    expect((await index("done")).body).toContain(">2 Closed</a>");
+    expect((await index("done")).body).toContain('>Closed <span class="Counter">2</span></a>');
   });
 
   it("partitions the drafts: a draft under a draft RFC is iced, not waiting to be groomed", async () => {

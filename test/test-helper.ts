@@ -1,5 +1,6 @@
 import { afterAll } from "vitest";
 import { env, setEnv } from "@blazetrails/ruby-compat";
+import { isolateTestEnv } from "./support/test-env.ts";
 
 /**
  * Rails' `test/test_helper.rb`, as `trails new` generates it: set the
@@ -9,6 +10,7 @@ import { env, setEnv } from "@blazetrails/ruby-compat";
  * runs against the booted application.
  */
 if (env.TRAILS_ENV == null) setEnv("TRAILS_ENV", "test");
+isolateTestEnv();
 await import("../config/environment.ts");
 await import("@blazetrails/trailties/test-help");
 
@@ -44,6 +46,22 @@ try {
   setEnv("SKIP_TEST_DATABASE_TRUNCATE", truncate);
 }
 setEnv(prepared, "1");
+
+// TEMPORARY, agreed in trailmap#171's review. Rails' `create_and_load_schema`
+// renames every configuration's database to `<db>-<n>` and reconnects, so a
+// `connects_to` class lands on its worker copy with no app code. Here `Hub`
+// does not go through the configurations: app/models/hub.ts establishes it by
+// hand from `HUB_DATABASE_URL`, so the rename never reaches it and it would
+// stay on the SHARED database. This points it at the copy
+// `createAndLoadSchema` just rebuilt, and goes when `Hub` uses `connectsTo`.
+// Story: hub-and-stats-connect-through-connects-to.
+const { hubTestUrl } = await import("./support/hub-schema.ts");
+const hubUrl = hubTestUrl();
+if (hubUrl !== null) {
+  const { Hub } = await import("../app/models/hub.ts");
+  const { hubDatabaseConfig } = await import("../config/database.ts");
+  await Hub.establishConnection({ ...hubDatabaseConfig(), url: hubUrl });
+}
 
 // The columns, warmed as config/environment.ts warms them for a served
 // process, which it skips here because `test` has no TASKS_DATABASE. After

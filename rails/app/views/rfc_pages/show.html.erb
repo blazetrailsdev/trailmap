@@ -115,12 +115,11 @@
       </div>
       <div class="side-section rfc-priority">
         <div class="side-head">Priority</div>
+        <% priorities = (1..9).to_a %>
+        <% priorities.unshift(@rfc.priority) unless @rfc.priority.nil? || priorities.include?(@rfc.priority) %>
         <%= form_with url: rfc_priority_path(@rfc.id), method: :post, class: "rfc-priority-form" do |f| %>
-          <%= f.number_field :priority, value: @rfc.priority, min: 0, step: 1, class: "ctl num", placeholder: "Unset", "aria-label": "RFC priority (lower = sooner)" %>
-          <%= f.submit "Set", class: "btn btn-sm" %>
-        <% end %>
-        <% unless @rfc.priority.nil? %>
-          <%= button_to "Clear", rfc_priority_path(@rfc.id), params: { priority: "clear" }, class: "btn btn-sm" %>
+          <%= f.select :priority, options_for_select([ [ "-", "" ] ] + priorities.map { |n| [ n.to_s, n ] }, @rfc.priority.to_s), {}, class: "ctl", "data-autosubmit": "", "aria-label": "RFC priority (lower = sooner)" %>
+          <noscript><button type="submit" class="btn btn-sm">Set</button></noscript>
         <% end %>
         <div class="field-note">Lower is sooner. Stories without their own priority inherit it.</div>
       </div>
