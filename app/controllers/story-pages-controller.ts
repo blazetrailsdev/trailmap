@@ -16,12 +16,22 @@ import {
   orderBacklog,
   type BacklogFilter,
 } from "../models/concerns/backlog.ts";
-import { storyActions, type StoryActions } from "../models/concerns/story-actions.ts";
+import {
+  storyActions,
+  type StoryActions,
+} from "../models/concerns/story-actions.ts";
 import { VerbExit } from "../models/verb-exit.ts";
 import { ApplicationRecord } from "../models/application-record.ts";
-import { daysSince } from "../models/concerns/elapsed.ts";
-import { pagerFor, requestedPage } from "../models/concerns/pager.ts";
-import { depGraphFor } from "../models/concerns/dep-graph.ts";
+import {
+  pagerFor,
+  requestedPage,
+  type Pager,
+} from "../models/concerns/pager.ts";
+import {
+  depGraphFor,
+  type StoryDepGraph,
+} from "../models/concerns/dep-graph.ts";
+import { backlogRow, type BacklogRow } from "../helpers/story-pages-helper.ts";
 
 /**
  * Rows to a page. A hundred is a screenful of scanning with the page still
@@ -39,41 +49,6 @@ const BACKLOG_TAB_LABELS: Record<BacklogFilter, string> = {
   blocked: "Blocked",
   icebox: "Icebox",
 };
-
-/** One row of the backlog list, assembled in the controller — a `.tse` cannot. */
-export interface BacklogRow {
-  id: string;
-  title: string;
-  status: string;
-  rfcId: string;
-  /**
-   * The row prints it only when it is non-zero: ringo's backlog draws the
-   * estimate under `if (s.est_loc)`, so an authored `est-loc: 0` reads the
-   * same as none.
-   */
-  estLoc: number | null;
-  cluster: string | null;
-  assignee: string | null;
-  /**
-   * The PR number, shown as `#N` linking to the story page rather than out to
-   * GitHub. That is ringo's own link (webhook/backlog.go:292, btwebooks
-   * `7897c57`) and it is deliberate on both sides: the
-   * database stores a bare integer, and nothing in it names the repo — a
-   * story's PR can be against trails, trailmap or tasks, so there is no host
-   * or owner/name to build a GitHub URL from without guessing one. The story
-   * page is the page that does know, and it is one hop from here.
-   */
-  /** `repo#N`, e.g. `trails#7228`. */
-  pr: string | null;
-  /** 0-based place in the ready queue, or null when the queue does not hold it. */
-  queuePos: number | null;
-  priority: number | null;
-  priorityInherited: boolean;
-  packages: string[];
-  packagesInherited: boolean;
-  icebox: boolean;
-  staleDays: number | null;
-}
 
 /** One dependency and the status that decides whether it still gates. */
 export interface DepRow {
@@ -98,6 +73,34 @@ export interface DepRow {
  * empty list here would contradict the queue.
  */
 export class StoryPagesController extends ApplicationController {
+  declare filter: BacklogFilter;
+  declare tabs: {
+    key: BacklogFilter;
+    label: string;
+    count: number;
+    href: string;
+    active: boolean;
+  }[];
+  declare pager: Pager;
+  declare queueSize: number;
+  declare showQueueHelp: boolean;
+  declare rows: BacklogRow[];
+
+  storyId = "";
+  story: Story | null = null;
+  rfc: Rfc | null = null;
+  shownStatus = "";
+  heldLabel: string | null = null;
+  deps: DepRow[] = [];
+  rfcDeps: DepRow[] = [];
+  graph: StoryDepGraph | null = null;
+  packages: string[] = [];
+  inherited = false;
+  // Not `body` or `error`: the first is the response's, here as in Rails.
+  html: SafeBuffer | null = null;
+  documentError = "";
+  actions: StoryActions | null = null;
+  refusal: string | null = null;
   /**
    * `/backlog` — the story list, server-rendered.
    *
@@ -137,7 +140,9 @@ export class StoryPagesController extends ApplicationController {
     const queuePos = new Map(queue.map((story, at) => [story.id, at]));
 
     const requested = String(this.params.get("filter") ?? "");
-    const filter: BacklogFilter = isBacklogFilter(requested) ? requested : "open";
+    const filter: BacklogFilter = isBacklogFilter(requested)
+      ? requested
+      : "open";
 
     // What the list is over, decided once. Two rules ringo applies before its
     // page ever sees a story, and neither of which the row itself carries:
@@ -159,7 +164,13 @@ export class StoryPagesController extends ApplicationController {
       .map((story) => ({
         id: story.id,
         rfc_id: story.rfc_id,
-        status: String(shownStoryStatus(index.rfcStatus.get(story.rfc_id), story.status, held.has(story.id))),
+        status: String(
+          shownStoryStatus(
+            index.rfcStatus.get(story.rfc_id),
+            story.status,
+            held.has(story.id),
+          ),
+        ),
       }));
 
     // Every tab count comes from the SAME predicate that fills its list, so a
@@ -169,7 +180,8 @@ export class StoryPagesController extends ApplicationController {
     const tabs = BACKLOG_FILTERS.map((key) => ({
       key,
       label: BACKLOG_TAB_LABELS[key],
-      count: listed.filter((s) => matchesBacklogFilter(s, key, index.rfcStatus)).length,
+      count: listed.filter((s) => matchesBacklogFilter(s, key, index.rfcStatus))
+        .length,
       href: this.backlogPath({ filter: key }),
       active: key === filter,
     }));
@@ -193,7 +205,9 @@ export class StoryPagesController extends ApplicationController {
     const onPage = shown.slice(pager.from === 0 ? 0 : pager.from - 1, pager.to);
 
     const records = new Map<string, Story>();
-    for (const story of await Story.where({ id: onPage.map((l) => l.id) }).toArray()) {
+    for (const story of await Story.where({
+      id: onPage.map((l) => l.id),
+    }).toArray()) {
       records.set(story.id, story);
     }
     // A story deleted between the outline and this load has no row to draw;
@@ -203,48 +217,15 @@ export class StoryPagesController extends ApplicationController {
       return story === undefined ? [] : [{ listing, story }];
     });
 
-    await this.render({
-      locals: {
-        filter,
-        tabs,
-        pager,
-        queueSize: queue.length,
-        showQueueHelp: filter === "open" || filter === "ready",
-        rows: drawn.map(({ listing, story }): BacklogRow => {
-          const own = index.packages.get(story.id) ?? [];
-          const packagesInherited = own.length === 0;
-          // Effective priority and effective packages, both own-then-parent:
-          // the number the ready queue actually ranks by is
-          // `effectivePriority`, so showing the story's bare `priority` would
-          // contradict the queue this very page is ordered by.
-          const inheritedPriority = index.rfcPriority.get(story.rfc_id);
-          const priorityInherited = story.priority === null && inheritedPriority !== undefined;
-          return {
-            id: story.id,
-            title: story.title ?? story.id,
-            status: listing.status,
-            rfcId: story.rfc_id,
-            estLoc: story.est_loc,
-            cluster: story.cluster,
-            assignee: story.assignee,
-            pr: story.pr,
-            queuePos: queuePos.get(story.id) ?? null,
-            priority: story.priority ?? inheritedPriority ?? null,
-            priorityInherited,
-            packages: packagesInherited ? (rfcPackages.get(story.rfc_id) ?? []) : own,
-            packagesInherited,
-            // The Icebox TAB's own predicate, not a copy of it. Spelling the
-            // rule out here as `iceboxed(...) && status !== "done"` was the
-            // same two clauses in a second place, and the module exists so
-            // this rule has exactly one home — the label a row wears and the
-            // tab that would collect it cannot now disagree about what iced
-            // means.
-            icebox: matchesBacklogFilter(listing, "icebox", index.rfcStatus),
-            staleDays: daysSince(story.updated_on),
-          };
-        }),
-      },
-    });
+    this.filter = filter;
+    this.tabs = tabs;
+    this.pager = pager;
+    this.queueSize = queue.length;
+    this.showQueueHelp = filter === "open" || filter === "ready";
+    this.rows = drawn.map(({ listing, story }) =>
+      backlogRow(story, listing, index, rfcPackages, queuePos),
+    );
+    await this.render();
   }
 
   async show(): Promise<void> {
@@ -253,7 +234,9 @@ export class StoryPagesController extends ApplicationController {
 
   /** `POST /story/<id>/ready` — `status-set <id> ready --from draft`, ringo's `HandleStoryReady`. */
   async markReady(): Promise<void> {
-    await this._act("ready", (story) => Story.statusSetAll([story.id], "ready", { from: "draft" }));
+    await this._act("ready", (story) =>
+      Story.statusSetAll([story.id], "ready", { from: "draft" }),
+    );
   }
 
   /** `POST /story/<id>/top` — `priority <id> 0`, ringo's `HandleStoryTop`. */
@@ -286,12 +269,19 @@ export class StoryPagesController extends ApplicationController {
    * refuses a move it does not list; the rest of the rules are the verb's. A
    * verb that lands redirects (303), and a refusal renders on the page.
    */
-  private async _act(action: keyof StoryActions, verb: (story: Story) => Promise<unknown>): Promise<void> {
+  private async _act(
+    action: keyof StoryActions,
+    verb: (story: Story) => Promise<unknown>,
+  ): Promise<void> {
     const id = String(this.params.get("id") ?? "");
     const story = await Story.findBy({ id });
     if (story === null) return this._renderShow(id, null, 404);
     if (!storyActions(story.status, story.priority)[action]) {
-      return this._renderShow(id, `story ${id} is "${story.status}"; cannot ${action} it`, 409);
+      return this._renderShow(
+        id,
+        `story ${id} is "${story.status}"; cannot ${action} it`,
+        409,
+      );
     }
     try {
       await ApplicationRecord.transaction(() => verb(story));
@@ -302,13 +292,16 @@ export class StoryPagesController extends ApplicationController {
     await this.redirectTo(this.storyPath(id), { status: 303 });
   }
 
-  private async _renderShow(id: string, refusal: string | null, code: number): Promise<void> {
+  private async _renderShow(
+    id: string,
+    refusal: string | null,
+    code: number,
+  ): Promise<void> {
     const story = id === "" ? null : await Story.findBy({ id });
+    this.storyId = id;
+    this.refusal = refusal;
     if (story === null) {
-      await this._renderPage(
-        { id, story: null, rfc: null, deps: [], rfcDeps: [], packages: [], inherited: false, graph: null, refusal },
-        404,
-      );
+      await this.render({ action: "show", status: 404 });
       return;
     }
 
@@ -349,53 +342,29 @@ export class StoryPagesController extends ApplicationController {
       Story.depHeldIds([id]),
     ]);
 
-    await this._renderPage(
-      {
-        id,
-        story,
-        rfc,
-        // The status the page's own header pill shows: the EFFECTIVE one, the
-        // rule written out in `app/views/shared/_status-badge`. The pill was
-        // the last page still showing the authored status, which had a story
-        // read `ready` here and `draft` on its own RFC's page.
-        shownStatus: shownStoryStatus(rfc?.status ?? null, story.status, held.has(id)) ?? "",
-        // ringo's pill names WHY a ready story reads blocked (story.go:213).
-        heldLabel: shownStoryStatus(rfc?.status ?? null, story.status, false) === "ready" && held.has(id)
-          ? "blocked on deps"
-          : null,
-        deps,
-        rfcDeps,
-        graph,
-        packages,
-        inherited,
-        body: doc.markdown === "" ? null : renderMarkdown(doc.markdown),
-        error: doc.error,
-        actions: storyActions(story.status, story.priority),
-        refusal,
-      },
-      code,
-    );
-  }
-
-  /** Named for the same reason as the RFC page's — see `_renderPage` there. */
-  private async _renderPage(locals: Record<string, unknown>, status: number): Promise<void> {
-    // A `string`, not the literal: trails-tsc-views goes strict on every view
-    // once all of the app's `render` sites resolve, and then types a view fed
-    // by instance assigns (audits, repo-*) as `never`. Removed by trails story
-    // `tsc-views-strict-mode-misses-instance-assigns`.
-    const action: string = "show";
-    await this.render({
-      action,
-      locals: {
-        body: null as SafeBuffer | null,
-        error: "",
-        shownStatus: "",
-        heldLabel: null,
-        actions: null as StoryActions | null,
-        ...locals,
-      },
-      status,
-    });
+    this.story = story;
+    this.rfc = rfc;
+    // The status the page's own header pill shows: the EFFECTIVE one, the
+    // rule written out in `app/views/shared/_status-badge`. The pill was
+    // the last page still showing the authored status, which had a story
+    // read `ready` here and `draft` on its own RFC's page.
+    this.shownStatus =
+      shownStoryStatus(rfc?.status ?? null, story.status, held.has(id)) ?? "";
+    // ringo's pill names WHY a ready story reads blocked (story.go:213).
+    this.heldLabel =
+      shownStoryStatus(rfc?.status ?? null, story.status, false) === "ready" &&
+      held.has(id)
+        ? "blocked on deps"
+        : null;
+    this.deps = deps;
+    this.rfcDeps = rfcDeps;
+    this.graph = graph;
+    this.packages = packages;
+    this.inherited = inherited;
+    this.html = doc.markdown === "" ? null : renderMarkdown(doc.markdown);
+    this.documentError = doc.error;
+    this.actions = storyActions(story.status, story.priority);
+    await this.render({ action: "show", status: code });
   }
 }
 
@@ -432,7 +401,10 @@ async function rfcStatusesFor(ids: string[]): Promise<DepRow[]> {
  */
 async function storyStatusesFor(ids: string[]): Promise<DepRow[]> {
   if (ids.length === 0) return [];
-  const [stories, held] = await Promise.all([Story.where({ id: ids }).toArray(), Story.depHeldIds(ids)]);
+  const [stories, held] = await Promise.all([
+    Story.where({ id: ids }).toArray(),
+    Story.depHeldIds(ids),
+  ]);
   const rfcIds = [...new Set(stories.map((story) => story.rfc_id))];
   const rfcStatus = new Map<string, string | null>();
   for (const rfc of await Rfc.where({ id: rfcIds }).toArray()) {
@@ -445,7 +417,13 @@ async function storyStatusesFor(ids: string[]): Promise<DepRow[]> {
     // the ready queue does with an orphan.
     found.set(
       story.id,
-      String(shownStoryStatus(rfcStatus.get(story.rfc_id) ?? null, story.status, held.has(story.id)) ?? ""),
+      String(
+        shownStoryStatus(
+          rfcStatus.get(story.rfc_id) ?? null,
+          story.status,
+          held.has(story.id),
+        ) ?? "",
+      ),
     );
   }
   return ids.map((id) => ({ id, status: found.get(id) ?? "" }));

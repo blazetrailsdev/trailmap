@@ -1,3 +1,4 @@
+<% const { queueSize, tabs, pager, showQueueHelp, rows, filter } = this; %>
 <div class="page-header">
   <h1 class="page-title">Backlog</h1>
   <div class="page-subhead">

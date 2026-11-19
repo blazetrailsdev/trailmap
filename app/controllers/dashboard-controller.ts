@@ -4,6 +4,7 @@ import {
   FLEET_READ_PATH,
   FLEET_REVIEWERS_PATH,
   FLEET_SOCKET_PATH,
+  type FleetRepo,
 } from "../../config/fleet.ts";
 import { Setting } from "../models/setting.ts";
 import { Repository } from "../models/repository.ts";
@@ -22,18 +23,23 @@ import { Repository } from "../models/repository.ts";
  * the HTML; ringo keeps serving the stream.
  */
 export class DashboardController extends ApplicationController {
+  declare repos: FleetRepo[];
+  declare missingCheckout: string | null;
+  declare socketPath: string;
+  declare controlPath: string;
+  declare reviewersPath: string;
+  declare readPath: string;
+  declare relayConfigured: boolean;
+
   async index(): Promise<void> {
-    const repos = await Repository.spawnChoices();
-    await this.render({
-      locals: {
-        repos,
-        missingCheckout: repos.length === 0 ? await Repository.missingCheckout() : null,
-        socketPath: FLEET_SOCKET_PATH,
-        controlPath: FLEET_CONTROL_PATH,
-        reviewersPath: FLEET_REVIEWERS_PATH,
-        readPath: FLEET_READ_PATH,
-        relayConfigured: (await Setting.ringoBase()) !== null,
-      },
-    });
+    this.repos = await Repository.spawnChoices();
+    this.missingCheckout =
+      this.repos.length === 0 ? await Repository.missingCheckout() : null;
+    this.socketPath = FLEET_SOCKET_PATH;
+    this.controlPath = FLEET_CONTROL_PATH;
+    this.reviewersPath = FLEET_REVIEWERS_PATH;
+    this.readPath = FLEET_READ_PATH;
+    this.relayConfigured = (await Setting.ringoBase()) !== null;
+    await this.render();
   }
 }
