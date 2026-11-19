@@ -148,7 +148,16 @@ assertNginx() {
   fi
 }
 
+# A push killed mid-build (btwhooks cancels a superseded one) can leave dokku's
+# deploy lock behind, and every later push would wait on it. Nothing else
+# deploys a preview, and btwhooks runs one at a time per PR, so a lock found
+# here is a dead run's.
+unlockStale() {
+  if dokku apps:exists "$app" 2>/dev/null; then dokku apps:unlock "$app" >/dev/null 2>&1 || true; fi
+}
+
 up() {
+  unlockStale
   local sha="${1:-}"
   [ -n "$sha" ] || usage
   local since
@@ -267,6 +276,11 @@ up() {
     dokku postgres:link "$hub" "$app" --alias HUB_DATABASE --no-restart
   fi
 
+  # The keys go BEFORE the push and come back only after a verified deploy,
+  # so a run that dies or is cancelled from here on (btwhooks kills a run that
+  # a newer push supersedes) leaves the next run to re-copy, never to reuse a
+  # copy a half-run release task may have migrated part-way.
+  rm -f "$data/hub.key" "$data/stats.key"
   echo "==> deploying $sha to $app"
   # Exit status is not the verdict, for the reason scripts/deploy.sh gives (the
   # uptime-monitor plugin fails last). The probe below is.
@@ -308,6 +322,7 @@ up() {
 }
 
 down() {
+  unlockStale
   if dokku apps:exists "$app" 2>/dev/null; then
     dokku apps:destroy "$app" --force
   fi
