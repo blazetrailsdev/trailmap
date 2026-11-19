@@ -617,6 +617,14 @@ describe("the expanded card", () => {
 describe("the list", () => {
   const ctx = context();
 
+  it("sorts the CI fixer above a PR with a higher number", () => {
+    const fixed = { ...PR, pr: 5, ciStatus: "failure" };
+    const newer = { ...PR, pr: 9000 };
+    const byKey = new Map([[sessionKey(fixed), { owner: "blazetrailsdev", repo: "trails" }]]);
+
+    expect(orderSessions([newer, SPAWN, fixed], ctx, byKey)).toEqual([fixed, SPAWN, newer]);
+  });
+
   it("orders a repo's sessions with no PR first, then PRs newest first by number, whatever the stage, grooming last", () => {
     const ci = { ...PR, pr: 1 };
     const ready = { ...PR, pr: 2, ciStatus: "success" };

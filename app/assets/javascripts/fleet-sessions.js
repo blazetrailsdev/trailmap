@@ -677,11 +677,13 @@ export function sessionCard(s, ctx, fixer = null) {
  * pull request yet in ringo's order, then the pull requests newest first by
  * number; grooming agents last. The stage does not order the list.
  */
+const RANK = { fixer: 0, noPR: 1, pr: 2, grooming: 3 };
+
 export function orderSessions(rows, ctx, fixerByKey = new Map()) {
-  const rank = (s) => (isGrooming(s) ? 3 : fixerByKey.has(sessionKey(s)) ? 0 : isPR(s) ? 2 : 1);
+  const rank = (s) => (isGrooming(s) ? RANK.grooming : fixerByKey.has(sessionKey(s)) ? RANK.fixer : isPR(s) ? RANK.pr : RANK.noPR);
   return rows
     .map((s, at) => ({ s, at, rank: rank(s) }))
-    .sort((a, b) => a.rank - b.rank || (a.rank === 2 ? b.s.pr - a.s.pr : 0) || a.at - b.at)
+    .sort((a, b) => a.rank - b.rank || (a.rank === RANK.pr ? b.s.pr - a.s.pr : 0) || a.at - b.at)
     .map(({ s }) => s);
 }
 
