@@ -92,7 +92,7 @@ describe.skipIf(!hasHubTestDatabase())("RfcRefinements", () => {
 
     const { body } = await page("show", "0136-trailmap");
 
-    expect(body).toMatch(/class="tab active" href="\/rfc\/0136-trailmap" aria-current="page">Stories <span class="Counter">0<\/span>/);
+    expect(body).toMatch(/class="tab active" href="\/rfc\/0136-trailmap" aria-current="page">Stories <span class="Counter">3<\/span>/);
     expect(body).toContain('<a class="tab" href="/rfc/0136-trailmap/refinements">Refinements <span class="Counter">1</span></a>');
   });
 

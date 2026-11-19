@@ -170,7 +170,8 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
 
   it("counts open and closed issues as GitHub does, over the whole tab", async () => {
     const open = await get(RepoIssuesController, "index", TRAILS);
-    expect(open.body).toContain('Open <span class="Counter">1</span>');
+    // The story under review, and the `working` fixture on trails#42.
+    expect(open.body).toContain('Open <span class="Counter">2</span>');
     expect(open.body).toContain('Closed <span class="Counter">1</span>');
 
     const closed = await get(RepoIssuesController, "index", { ...TRAILS, state: "closed" });
@@ -193,9 +194,9 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     }
     try {
       const first = await get(RepoIssuesController, "index", TRAILS);
-      // The count is the tab's, not the page's: one pre-existing open story
-      // plus the bulk.
-      expect(first.body).toContain(`Open <span class="Counter">${extra + 1}</span>`);
+      // The count is the tab's, not the page's: two pre-existing open stories
+      // (one the `working` fixture) plus the bulk.
+      expect(first.body).toContain(`Open <span class="Counter">${extra + 2}</span>`);
       expect(first.body).toContain("Bulk story 0");
       expect(first.body).not.toContain("Bulk story 104");
       expect(first.body).toContain("page 1 of 2");
@@ -302,8 +303,9 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
 
     expect(status).toBe(200);
     expect(body).toContain("trailmap");
-    // The RFC's own total is three stories, one done — not the repo's two.
-    expect(body).toContain("1/3 done");
+    // The RFC's own total is six stories, the three fixtures among them, and
+    // two done — not the repo's.
+    expect(body).toContain("2/6 done");
 
     const board = await get(RepoProjectsController, "show", {
       ...TRAILS,
