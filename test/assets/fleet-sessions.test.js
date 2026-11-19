@@ -111,7 +111,13 @@ describe("the lead story", () => {
   it("is nothing until a story is attributed, and the card titles itself with the PR", () => {
     expect(sessionStories(PR, {})).toEqual({ lead: null, rest: [] });
     expect(sessionCard(PR, context())).toContain(">feat: interceptors</a>");
-    expect(sessionCard(PR, context({ stories: STORIES }))).toContain('<a class="story lead" href="/story/preview-interceptors"');
+    expect(sessionCard(SPAWN, context({ stories: { "move-tracker-state": [{ id: "move-tracker-state", title: "Move tracker state" }] } }))).toContain('<a class="story lead" href="/story/move-tracker-state"');
+  });
+
+  it("titles an open PR's row with the PR's own title, and names its lead story in the note", () => {
+    const html = sessionCard(PR, context({ stories: STORIES }));
+    expect(html).toContain('<a class="story lead" href="https://github.com/blazetrailsdev/trails/pull/9958" target="_blank">feat: interceptors</a>');
+    expect(html).toContain('<a class="story" href="/story/preview-interceptors"');
   });
 
   it("counts a bundle's stories on the row, and lists the others as links once it is expanded", () => {
@@ -611,14 +617,22 @@ describe("the expanded card", () => {
 describe("the list", () => {
   const ctx = context();
 
-  it("orders a repo's sessions by stage, Drafting first, ties in ringo's order, grooming last", () => {
+  it("sorts the CI fixer above a PR with a higher number", () => {
+    const fixed = { ...PR, pr: 5, ciStatus: "failure" };
+    const newer = { ...PR, pr: 9000 };
+    const byKey = new Map([[sessionKey(fixed), { owner: "blazetrailsdev", repo: "trails" }]]);
+
+    expect(orderSessions([newer, SPAWN, fixed], ctx, byKey)).toEqual([fixed, SPAWN, newer]);
+  });
+
+  it("orders a repo's sessions with no PR first, then PRs newest first by number, whatever the stage, grooming last", () => {
     const ci = { ...PR, pr: 1 };
     const ready = { ...PR, pr: 2, ciStatus: "success" };
     const ci2 = { ...PR, pr: 3 };
     const groom = { kind: "rfc-refine", story_id: "r" };
 
     expect(orderSessions([groom, ready, ci, SPAWN, ci2], ctx).map((s) => s.pr ?? s.story_id)).toEqual([
-      "move-tracker-state", 1, 3, 2, "r",
+      "move-tracker-state", 3, 2, 1, "r",
     ]);
   });
 

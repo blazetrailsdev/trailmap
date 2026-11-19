@@ -25,7 +25,6 @@ import {
   isGrooming,
   OCTICON,
   CI_TITLES,
-  STAGES,
   activeFixers,
   askAnswer,
   cleanupControl,
@@ -590,8 +589,9 @@ function rowActions(s, entry, key) {
 
 /**
  * One session row, laid out as GitHub lays out a pull request in a list: a
- * state octicon, the lead story as the title with the CI mark and labels
- * beside it, a muted line under it with the PR link, a note and how many
+ * state octicon, the title (the pull request's own once one is open, else the
+ * lead story) with the CI mark and labels beside it, a muted line under it with
+ * the PR link, the lead story once a PR holds the title, a note and how many
  * stories a bundle carries; then the stage as a label, one progress figure,
  * the row's actions (Are we ready?, Merge) and how long ago it changed. Its question or stall strip follows. Expanded, it lists
  * the bundle's other stories under the note, and its details below.
@@ -614,10 +614,10 @@ export function sessionCard(s, ctx, fixer = null) {
     (failed ? '<span class="flag bad">failed</span>' : paneOverridePill(paneStatusOf(s)) || "");
 
   const fallback = s.title || (isPR(s) ? s.owner + "/" + s.repo + "#" + s.pr : s.story_id);
-  const leadHtml = lead
-    ? storyLink(lead, "story lead")
-    : isPR(s)
-      ? '<a class="story lead" href="' + PR_URL(s) + '" target="_blank">' + esc(fallback) + "</a>"
+  const leadHtml = isPR(s)
+    ? '<a class="story lead" href="' + PR_URL(s) + '" target="_blank">' + esc(fallback) + "</a>"
+    : lead
+      ? storyLink(lead, "story lead")
       : s.story_id
         ? '<a class="story lead" href="/story/' + encodeURIComponent(s.story_id) + '">' + esc(fallback) + "</a>"
         : '<span class="story lead">' + esc(fallback) + "</span>";
@@ -627,6 +627,7 @@ export function sessionCard(s, ctx, fixer = null) {
       ? '<a class="pr-link" href="' + PR_URL(s) + '" target="_blank">' + esc(s.repo) + "#" + s.pr + "</a>"
       : '<span class="pr-link none">no PR yet</span>',
   ];
+  if (isPR(s) && lead) note.push(storyLink(lead, "story"));
   if (fixer) note.push(fixerNote(fixer));
   else if (s.lastAction) note.push(esc(s.lastAction));
   if (!isPR(s) && s.source && !fixer) note.push("spawned via " + esc(s.source));
@@ -671,17 +672,18 @@ export function sessionCard(s, ctx, fixer = null) {
 // The list
 // ---------------------------------------------------------------------------
 
-const STAGE_ORDER = Object.fromEntries(STAGES.map(([id], i) => [id, i]));
-
 /**
- * One repo's rows in order: the CI fixer first whatever its stage, then by
- * stage, Drafting first, ties kept in ringo's order; grooming agents last.
+ * One repo's rows in order: the CI fixer first, then every session with no
+ * pull request yet in ringo's order, then the pull requests newest first by
+ * number; grooming agents last. The stage does not order the list.
  */
+const RANK = { fixer: 0, noPR: 1, pr: 2, grooming: 3 };
+
 export function orderSessions(rows, ctx, fixerByKey = new Map()) {
-  const rank = (s) => (isGrooming(s) ? STAGES.length + 1 : fixerByKey.has(sessionKey(s)) ? -1 : STAGE_ORDER[stageOf(s, ctx)]);
+  const rank = (s) => (isGrooming(s) ? RANK.grooming : fixerByKey.has(sessionKey(s)) ? RANK.fixer : isPR(s) ? RANK.pr : RANK.noPR);
   return rows
     .map((s, at) => ({ s, at, rank: rank(s) }))
-    .sort((a, b) => a.rank - b.rank || a.at - b.at)
+    .sort((a, b) => a.rank - b.rank || (a.rank === RANK.pr ? b.s.pr - a.s.pr : 0) || a.at - b.at)
     .map(({ s }) => s);
 }
 
