@@ -149,6 +149,16 @@ class RfcRefinementsTest < ActionDispatch::IntegrationTest
     assert_equal 1, RfcRefinement.count
   end
 
+  test "answers 500 for a report without a when that collides with a stored one" do
+    refinement!("a", rfc_id: "0002-quiet", outcome: "changed", created_at: Time.utc(2026, 8, 1, 10))
+
+    travel_to(Time.utc(2026, 8, 1, 10)) { report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "b") }
+
+    assert_response :internal_server_error
+    assert_equal "internal_server_error", response.parsed_body["error"]
+    assert_equal 1, RfcRefinement.count
+  end
+
   test "keeps an imported stories count, zero included, and refuses one that is not a non-negative integer" do
     report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z", stories: 0)
     assert_response :created
