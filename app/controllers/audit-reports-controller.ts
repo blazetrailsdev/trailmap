@@ -24,6 +24,27 @@ import { Audit, CONTENT_TYPES } from "../models/audit.ts";
 export class AuditReportsController extends ApiController {
   static {
     include(this, IngestToken);
+    this.skipBeforeAction(":_requireIngestToken", { only: ["index"] });
+  }
+
+  /**
+   * `GET /audit-reports` — every audit, newest first, without its body: the
+   * list ringo's Audits page shows beside its report cards. `name` is the
+   * filename `toParam` gives, the id of `/audits/<name>`. A read, so it needs
+   * no ingest token.
+   */
+  async index(): Promise<void> {
+    const audits = await Audit.newestFirst().toArray();
+    await this.render({
+      json: audits.map((a) => ({
+        name: a.toParam(),
+        repo: a.repo,
+        slug: a.slug,
+        title: a.title,
+        format: a.format,
+        when: a.written_at.utc().iso8601(),
+      })),
+    });
   }
 
   async create(): Promise<void> {

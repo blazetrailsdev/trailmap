@@ -112,4 +112,36 @@ class RfcRefinementsTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_equal 0, RfcRefinement.count
   end
+
+  test "lists every report oldest first without its summary, and needs no token" do
+    refinement!("later", rfc_id: "0002-quiet", outcome: "no-change", stories: 3, created_at: Time.utc(2026, 8, 2, 10))
+    refinement!("earlier", rfc_id: "0002-quiet", outcome: "changed", stories: 2, created_at: Time.utc(2026, 8, 1, 10))
+
+    get "/rfc-refines", params: { rfc: "0002-quiet" }, headers: LOOPBACK
+
+    assert_response :ok
+    assert_equal [ [ "0002-quiet", "2026-08-01T10:00:00Z", "changed", 2 ], [ "0002-quiet", "2026-08-02T10:00:00Z", "no-change", 3 ] ],
+                 response.parsed_body.map { |r| r.values_at("rfc", "when", "outcome", "stories") }
+  end
+
+  test "answers the stored report for one it already has at that time" do
+    report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z")
+    first = response.parsed_body["id"]
+    report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z")
+
+    assert_response :ok
+    assert_equal first, response.parsed_body["id"]
+    assert_equal 1, RfcRefinement.count
+  end
+
+  test "keeps an imported stories count, zero included, and refuses one that is not a non-negative integer" do
+    report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z", stories: 0)
+    assert_response :created
+    assert_equal 0, RfcRefinement.last.stories
+
+    [ -1, 1.5, "3" ].each do |bad|
+      report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", stories: bad)
+      assert_response :unprocessable_entity
+    end
+  end
 end

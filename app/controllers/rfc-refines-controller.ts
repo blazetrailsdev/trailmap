@@ -13,7 +13,14 @@ import { Story } from "../models/story.ts";
  * summary}`. `id` is the RFC's. ringo took the same body on `/cleanup-pane`
  * and kept it in `refines.json`; here it is a `Refinement`, its summary
  * attached as `text/markdown` and `stories` the RFC's story count now. An
- * optional `when` becomes `created_at`, for the import of ringo's history.
+ * optional `when` becomes `created_at`, and an optional numeric `stories`
+ * the count, for the import of ringo's history (scripts/import-reports.ts); a
+ * report already stored for the same `(rfc, when)` answers 200 with its id, so
+ * the import can be run again. That is a check, then an insert: the
+ * `(rfc_id, created_at)` index is not unique, so two concurrent posts of one
+ * report can both store it. The import posts one report at a time, and a
+ * refine agent's report carries no `when`, so nothing posts concurrently.
+ * A `stories` that is not a non-negative integer is a 422.
  *
  * Loopback only, like the rest of the API, and it needs the ingest bearer
  * token (IngestToken). An unknown RFC is a 404, a kind
@@ -23,6 +30,27 @@ import { Story } from "../models/story.ts";
 export class RfcRefinesController extends ApiController {
   static {
     include(this, IngestToken);
+    this.skipBeforeAction(":_requireIngestToken", { only: ["index"] });
+  }
+
+  /**
+   * `GET /rfc-refines` — every refine report, oldest first, without its
+   * summary: what ringo's RFC index draws its bar's ticks from (`mergeRefineHistory`).
+   * `?rfc=<id>` narrows it to one RFC. A read, so it needs no ingest token.
+   */
+  async index(): Promise<void> {
+    const rfcId = presentParam(this.params, "rfc");
+    const scope = rfcId === undefined ? Refinement.all() : Refinement.where({ rfc_id: rfcId });
+    const refines = await scope.order({ created_at: "asc", id: "asc" }).toArray();
+    await this.render({
+      json: refines.map((r) => ({
+        id: r.id,
+        rfc: r.rfc_id,
+        when: r.created_at.utc().iso8601(),
+        outcome: r.outcome,
+        stories: r.stories,
+      })),
+    });
   }
 
   async create(): Promise<void> {
@@ -50,10 +78,22 @@ export class RfcRefinesController extends ApiController {
       await this.render({ json: { error: "when must be a time" }, status: 422 });
       return;
     }
+    if (createdAt !== null) {
+      const existing = await Refinement.findBy({ rfc_id: rfcId, created_at: createdAt });
+      if (existing !== null) {
+        await this.render({ json: { id: existing.id, rfc: rfcId, outcome: existing.outcome }, status: 200 });
+        return;
+      }
+    }
+    const stories = this.params.get("stories");
+    if (stories != null && !(Number.isInteger(stories) && (stories as number) >= 0)) {
+      await this.render({ json: { error: "stories must be a non-negative integer" }, status: 422 });
+      return;
+    }
     const refine = new Refinement({
       rfc_id: rfcId,
       outcome: presentParam(this.params, "outcome") ?? "",
-      stories: await Story.where({ rfc_id: rfcId }).count(),
+      stories: stories != null ? (stories as number) : await Story.where({ rfc_id: rfcId }).count(),
       created_at: createdAt,
     });
     await refine.setSummary({ io: new StringIO(summary), filename: "summary.md", contentType: "text/markdown" });

@@ -202,9 +202,12 @@ Trails.application!.routes().draw(function () {
     // verb takes a list.
     // A refine agent's report, stored for the RFC page's Refinements tab.
     this.post("rfc-refines", { to: "rfc_refines#create" });
+    this.get("rfc-refines", { to: "rfc_refines#index" });
     // An audit agent's report. Its own controller: AuditsController serves the
     // pages, and this one is loopback-only like the rest of the API.
     this.post("audits", { to: "audit_reports#create" });
+    // The list, for ringo. Not `GET /audits`: that is the page, drawn above.
+    this.get("audit-reports", { to: "audit_reports#index" });
     this.post("stories/claim", { to: "mutations#claim" });
     this.post("stories/release", { to: "mutations#release" });
     this.post("stories/in-progress", { to: "mutations#inProgress" });

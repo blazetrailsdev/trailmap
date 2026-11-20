@@ -3,16 +3,13 @@ import { Range } from "@blazetrails/ruby-compat";
 import { type Extended } from "@blazetrails/activesupport";
 import type { ClassMethods } from "@blazetrails/activestorage/attached/model";
 import type { One } from "@blazetrails/activestorage/attached/one";
-import { AUDIT_FILE_RE } from "../../config/audit-files.ts";
+import { AUDIT_FILE_RE, PARAM_RE } from "../../config/audit-files.ts";
 import { ApplicationRecord } from "./application-record.ts";
 
 export { AUDIT_FILE_RE };
 
 /** A report's format, and the content type its body is attached as. */
 export const CONTENT_TYPES: Record<string, string> = { md: "text/markdown", html: "text/html" };
-
-/** The legacy filename, `<slug>-<YYYYMMDDTHHMMSSZ>.<format>`, split in three. */
-const PARAM_RE = /^(.+)-(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)Z\.(md|html)$/;
 
 /** Rails' `find` message and fields (activerecord/lib/active_record/core.rb:280). */
 function notFound(name: string): RecordNotFound {

@@ -90,4 +90,16 @@ class AuditReportsTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     assert_equal 0, Audit.count
   end
+
+  test "lists every audit newest first without its body, and needs no token" do
+    report(REPORT)
+    report(REPORT.merge(slug: "later-audit", writtenAt: "2026-11-20T00:00:00Z", format: "html", body: "<p>x</p>"))
+
+    get "/audit-reports", headers: LOOPBACK
+
+    assert_response :ok
+    assert_equal %w[later-audit-20261120T000000Z.html api-audit-20261119T102030Z.md], response.parsed_body.map { |a| a["name"] }
+    assert_equal({ "name" => "api-audit-20261119T102030Z.md", "repo" => "blazetrailsdev/trails", "slug" => "api-audit",
+                   "title" => "api audit", "format" => "md", "when" => "2026-11-19T10:20:30Z" }, response.parsed_body.last)
+  end
 end

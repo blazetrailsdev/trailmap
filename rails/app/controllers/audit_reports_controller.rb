@@ -8,6 +8,15 @@
 # import that loses the race to the unique index answers 200 with the winner's id. Needs the ingest bearer token.
 class AuditReportsController < ApiController
   include IngestToken
+  skip_before_action :require_ingest_token, only: :index
+
+  # `GET /audit-reports` — every audit, newest first, without its body, for
+  # ringo's Audits list. Not `GET /audits`: that is the page. Needs no token.
+  def index
+    render json: Audit.newest_first.map { |a|
+      { name: a.to_param, repo: a.repo, slug: a.slug, title: a.title, format: a.format, when: a.written_at.utc.iso8601 }
+    }
+  end
 
   def create
     body = params[:body]
