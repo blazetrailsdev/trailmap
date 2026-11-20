@@ -20,8 +20,10 @@ export const DeploysHelper = {
   deployPreviewUrl(run: Pick<DeployRow, "url">): string | null {
     if (!run.url) return null;
     try {
-      const url = new URL(run.url);
-      return url.protocol === "https:" ? url.href : null;
+      // The URL as ringo sent it, not `url.href`: that normalizes (a lowercased
+      // host, a trailing `/`), and Rails' `deploy_preview_url` prints the input
+      // unchanged, so the two pages would link different hrefs for one row.
+      return new URL(run.url).protocol === "https:" ? run.url : null;
     } catch {
       return null;
     }

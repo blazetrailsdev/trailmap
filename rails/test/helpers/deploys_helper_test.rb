@@ -13,6 +13,8 @@ class DeploysHelperTest < ActionView::TestCase
 
   test "deploy_preview_url links only an https URL" do
     assert_equal "https://trailmap-pr-160.deanoftech.com/", deploy_preview_url("url" => "https://trailmap-pr-160.deanoftech.com/")
+    # Unchanged, as the trails app prints it: no lowercasing, no trailing slash added.
+    assert_equal "https://Trailmap-PR-160.deanoftech.com", deploy_preview_url("url" => "https://Trailmap-PR-160.deanoftech.com")
     assert_nil deploy_preview_url("url" => "javascript:alert(1)")
     assert_nil deploy_preview_url("url" => "http://trailmap-pr-160.deanoftech.com/")
     assert_nil deploy_preview_url("url" => "not a url")

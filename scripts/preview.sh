@@ -350,21 +350,26 @@ up() {
   echo "==> preview: https://$domain ($app at $sha)"
 }
 
+# Every step checks itself with `|| return 1` rather than leaning on set -e,
+# because `sweep` calls this on the left of `||`, where bash turns set -e
+# off. A failed step stops the teardown there and reports failure, and the
+# data directory goes LAST, so a preview that failed to go away keeps the
+# trace the next sweep finds it by.
 down() {
-  cancelStale
+  cancelStale || return 1
   if dokku apps:exists "$app" 2>/dev/null; then
-    dokku apps:destroy "$app" --force
+    dokku apps:destroy "$app" --force || return 1
   fi
   # The dns plugin only QUEUES a destroyed app's record for deletion, and
   # `dns:sync:deletions --force` would also delete every other app's queued
   # record. Delete this one record by name instead.
   if dokku dns:records:get "$domain" A >/dev/null 2>&1; then
-    dokku dns:records:delete "$domain" A --force
+    dokku dns:records:delete "$domain" A --force || return 1
   fi
   if dokku postgres:exists "$hub" 2>/dev/null; then
-    dokku postgres:destroy "$hub" --force
+    dokku postgres:destroy "$hub" --force || return 1
   fi
-  rm -rf "$data"
+  rm -rf "$data" || return 1
   echo "==> $app destroyed"
 }
 
@@ -415,7 +420,7 @@ sweep() {
 
 case "$cmd" in
   up) up "${3:-}" ;;
-  down) down ;;
+  down) down || die "$app was not fully torn down; read the output above" ;;
   sweep) sweep ;;
   *) usage ;;
 esac

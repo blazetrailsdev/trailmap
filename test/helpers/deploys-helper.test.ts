@@ -18,6 +18,8 @@ describe("deployKind", () => {
 describe("deployPreviewUrl", () => {
   it("links only an https URL", () => {
     expect(deployPreviewUrl({ url: "https://trailmap-pr-160.deanoftech.com/" })).toBe("https://trailmap-pr-160.deanoftech.com/");
+    // Unchanged, as Rails prints it: no lowercasing, no trailing slash added.
+    expect(deployPreviewUrl({ url: "https://Trailmap-PR-160.deanoftech.com" })).toBe("https://Trailmap-PR-160.deanoftech.com");
     expect(deployPreviewUrl({ url: "javascript:alert(1)" })).toBeNull();
     expect(deployPreviewUrl({ url: "http://trailmap-pr-160.deanoftech.com/" })).toBeNull();
     expect(deployPreviewUrl({ url: "not a url" })).toBeNull();
