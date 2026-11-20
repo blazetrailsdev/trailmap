@@ -34,7 +34,6 @@ interface RefineReport {
   stories?: number;
 }
 
-
 function tally(counts: ImportCounts["audits"], what: string, res: { status: number; body: unknown }): void {
   if (res.status === 201) counts.created++;
   else if (res.status === 200) counts.existing++;

@@ -11,7 +11,6 @@ export { AUDIT_FILE_RE };
 /** A report's format, and the content type its body is attached as. */
 export const CONTENT_TYPES: Record<string, string> = { md: "text/markdown", html: "text/html" };
 
-
 /** Rails' `find` message and fields (activerecord/lib/active_record/core.rb:280). */
 function notFound(name: string): RecordNotFound {
   return new RecordNotFound(`Couldn't find Audit with 'name'=${name}`, "Audit", "name", name);
