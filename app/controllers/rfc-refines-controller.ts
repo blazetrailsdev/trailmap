@@ -16,7 +16,11 @@ import { Story } from "../models/story.ts";
  * optional `when` becomes `created_at`, and an optional numeric `stories`
  * the count, for the import of ringo's history (scripts/import-reports.ts); a
  * report already stored for the same `(rfc, when)` answers 200 with its id, so
- * the import can be run again.
+ * the import can be run again. That is a check, then an insert: the
+ * `(rfc_id, created_at)` index is not unique, so two concurrent posts of one
+ * report can both store it. The import posts one report at a time, and a
+ * refine agent's report carries no `when`, so nothing posts concurrently.
+ * A `stories` that is not a non-negative integer is a 422.
  *
  * Loopback only, like the rest of the API, and it needs the ingest bearer
  * token (IngestToken). An unknown RFC is a 404, a kind
@@ -82,10 +86,14 @@ export class RfcRefinesController extends ApiController {
       }
     }
     const stories = this.params.get("stories");
+    if (stories != null && !(Number.isInteger(stories) && (stories as number) >= 0)) {
+      await this.render({ json: { error: "stories must be a non-negative integer" }, status: 422 });
+      return;
+    }
     const refine = new Refinement({
       rfc_id: rfcId,
       outcome: presentParam(this.params, "outcome") ?? "",
-      stories: typeof stories === "number" ? stories : await Story.where({ rfc_id: rfcId }).count(),
+      stories: stories != null ? (stories as number) : await Story.where({ rfc_id: rfcId }).count(),
       created_at: createdAt,
     });
     await refine.setSummary({ io: new StringIO(summary), filename: "summary.md", contentType: "text/markdown" });

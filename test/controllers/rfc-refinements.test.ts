@@ -169,4 +169,14 @@ describe("RfcRefinements", () => {
     expect(again.body.id).toBe(first.body.id);
     expect(await Refinement.count()).toBe(1);
   });
+
+  it("keeps an imported stories count, zero included, and refuses one that is not a non-negative integer", async () => {
+    const ok = await report({ kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z", stories: 0 });
+    expect(ok.status).toBe(201);
+    expect((await Refinement.find(ok.body.id)).stories).toBe(0);
+
+    for (const bad of [-1, 1.5, "3"]) {
+      expect((await report({ kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", stories: bad })).status).toBe(422);
+    }
+  });
 });

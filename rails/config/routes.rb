@@ -89,7 +89,9 @@ Rails.application.routes.draw do
     get "events", to: "read_models#events"
 
     post "rfc-refines", to: "rfc_refines#create"
+    get "rfc-refines", to: "rfc_refines#index"
     post "audits", to: "audit_reports#create"
+    get "audit-reports", to: "audit_reports#index"
     post "stories/claim", to: "mutations#claim"
     post "stories/release", to: "mutations#release"
     post "stories/in-progress", to: "mutations#in_progress"

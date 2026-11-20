@@ -16,6 +16,7 @@
  * `~/.config/trailmap/ingest-token`, as `rfc-refine-done.sh` reads it.
  */
 import { argv, env, exit, getFs, getPath } from "@blazetrails/ruby-compat";
+import { AUDIT_FILE_RE, PARAM_RE } from "../config/audit-files.ts";
 
 /** One POST to the loopback API: the status and the parsed body. */
 export type Post = (path: string, body: Record<string, unknown>) => Promise<{ status: number; body: unknown }>;
@@ -33,8 +34,6 @@ interface RefineReport {
   stories?: number;
 }
 
-const STAMPED_RE = /^(.+)-(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)Z\.(md|html)$/;
-const AUDIT_RE = /^([a-zA-Z0-9][a-zA-Z0-9._-]*)\.(md|html)$/;
 
 function tally(counts: ImportCounts["audits"], what: string, res: { status: number; body: unknown }): void {
   if (res.status === 201) counts.created++;
@@ -57,14 +56,14 @@ async function importAudits(dataDir: string, post: Post, counts: ImportCounts["a
       const dir = path.join(root, owner, repo, "audits");
       if (!(await fs.exists(dir))) continue;
       for (const name of (await fs.readdir!(dir)).sort()) {
-        const plain = AUDIT_RE.exec(name);
+        const plain = AUDIT_FILE_RE.exec(name);
         if (plain === null) continue;
         const file = path.join(dir, name);
-        const stamped = STAMPED_RE.exec(name);
+        const stamped = PARAM_RE.exec(name);
         const [slug, writtenAt, format] =
           stamped !== null
             ? [stamped[1], `${stamped[2]}-${stamped[3]}-${stamped[4]}T${stamped[5]}:${stamped[6]}:${stamped[7]}Z`, stamped[8]]
-            : [plain[1], new Date(Math.floor((await fs.stat!(file)).mtime.getTime() / 1000) * 1000).toISOString(), plain[2]];
+            : [name.slice(0, -(plain[1]!.length + 1)), new Date(Math.floor((await fs.stat!(file)).mtime.getTime() / 1000) * 1000).toISOString(), plain[1]];
         const body = await fs.readFile(file, "utf8");
         tally(counts, `${owner}/${repo}/${name}`, await post("/audits", { repo: `${owner}/${repo}`, slug, writtenAt, format, body }));
       }
@@ -93,7 +92,7 @@ async function importRefinements(dataDir: string, post: Post, counts: ImportCoun
   const latest = (await readJson<Record<string, RefineReport>>(path.join(dataDir, "refines.json"))) ?? {};
   for (const [rfc, when, rep] of refineReports(history, latest)) {
     const body: Record<string, unknown> = { kind: "rfc-refine", id: rfc, outcome: rep.outcome, summary: rep.summary ?? "", when };
-    if (rep.stories !== undefined && rep.stories > 0) body.stories = rep.stories;
+    if (rep.stories !== undefined) body.stories = rep.stories;
     tally(counts, `${rfc} ${when}`, await post("/rfc-refines", body));
   }
 }

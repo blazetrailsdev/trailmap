@@ -16,3 +16,6 @@ export const AUDIT_FILE_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.(md|html)$/;
  * rejected, as in Rails.
  */
 export const AUDIT_SEGMENT = new RegExp(AUDIT_FILE_RE.source.slice(1, -1));
+
+/** The legacy filename, `<slug>-<YYYYMMDDTHHMMSSZ>.<format>`, split in three: `Audit.find` and the import read it. */
+export const PARAM_RE = /^(.+)-(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)Z\.(md|html)$/;
