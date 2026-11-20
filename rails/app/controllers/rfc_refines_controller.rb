@@ -2,9 +2,9 @@
 # id, its outcome and the summary markdown, stored as an RfcRefinement with the
 # summary attached and `stories` the RFC's story count now. An optional `when`
 # becomes `created_at` and an optional integer `stories` the count, for the
-# import; an existing (rfc, when) answers 200 with its id. That is a check,
-# then an insert on a non-unique index: the import posts one report at a time,
-# and an agent's report carries no `when`. A `stories` that is not a
+# import; an existing (rfc, when) answers 200 with its id, as does a
+# concurrent post that loses the race to the unique (rfc_id, created_at)
+# index. A `stories` that is not a
 # non-negative integer is a 422. Unknown RFC 404, another kind 400, a
 # bad outcome, a summary that is not a string or a `when` that is not a time
 # 422. Needs the ingest bearer token (IngestToken).
@@ -51,7 +51,12 @@ class RfcRefinesController < ApiController
     refine = RfcRefinement.new(rfc_id: rfc_id, outcome: param(:outcome).to_s,
                             stories: stories.nil? ? Story.where(rfc_id: rfc_id).count : stories, created_at: created_at,
                                summary: { io: StringIO.new(summary), filename: "summary.md", content_type: "text/markdown" })
-    return render json: { error: refine.errors.full_messages.join(", ") }, status: :unprocessable_entity unless refine.save
+    begin
+      return render json: { error: refine.errors.full_messages.join(", ") }, status: :unprocessable_entity unless refine.save
+    rescue ActiveRecord::RecordNotUnique
+      winner = RfcRefinement.find_by(rfc_id: rfc_id, created_at: refine.created_at) or raise
+      return render json: { id: winner.id, rfc: rfc_id, outcome: winner.outcome }, status: :ok
+    end
 
     render json: { id: refine.id, rfc: rfc_id, outcome: refine.outcome }, status: :created
   end

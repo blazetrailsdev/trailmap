@@ -13,7 +13,7 @@
 import { Schema } from "@blazetrails/activerecord";
 import type { SQLite3Adapter } from "@blazetrails/activerecord/connection-adapters/sqlite3-adapter.js";
 
-await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_18_000013 }, async (ctx) => {
+await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_20_000014 }, async (ctx) => {
   await ctx.createTable("active_storage_attachments", { force: "cascade" }, (t) => {
     t.string("name", { null: false });
     t.string("record_type", { null: false });
@@ -111,7 +111,7 @@ await Schema.get(8).define<SQLite3Adapter>({ version: 2026_11_18_000013 }, async
     t.integer("stories");
     t.datetime("created_at", { null: false });
     t.datetime("updated_at", { null: false });
-    t.index(["rfc_id", "created_at"], { name: "index_refinements_on_rfc_id_and_created_at" });
+    t.index(["rfc_id", "created_at"], { name: "index_refinements_on_rfc_id_and_created_at", unique: true });
   });
 
   await ctx.createTable("rfcs", { id: "string", force: "cascade" }, (t) => {

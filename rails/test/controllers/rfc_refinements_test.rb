@@ -134,6 +134,21 @@ class RfcRefinementsTest < ActionDispatch::IntegrationTest
     assert_equal 1, RfcRefinement.count
   end
 
+  test "answers the winner's id for a report that loses the race to the unique index" do
+    report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z")
+    first = response.parsed_body["id"]
+    find_by = RfcRefinement.method(:find_by)
+    calls = 0
+    lose_the_check = ->(*args, **kwargs) { (calls += 1) == 1 ? nil : find_by.call(*args, **kwargs) }
+    RfcRefinement.stub(:find_by, lose_the_check) do
+      report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z")
+    end
+
+    assert_response :ok
+    assert_equal first, response.parsed_body["id"]
+    assert_equal 1, RfcRefinement.count
+  end
+
   test "keeps an imported stories count, zero included, and refuses one that is not a non-negative integer" do
     report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z", stories: 0)
     assert_response :created

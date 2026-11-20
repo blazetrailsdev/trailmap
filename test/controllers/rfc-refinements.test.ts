@@ -170,6 +170,22 @@ describe("RfcRefinements", () => {
     expect(await Refinement.count()).toBe(1);
   });
 
+  it("answers the winner's id for a report that loses the race to the unique index", async () => {
+    const first = await report({ kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z" });
+    const findBy = Refinement.findBy;
+    let calls = 0;
+    Refinement.findBy = (async (...args: Parameters<typeof findBy>) => (calls++ === 0 ? null : findBy.apply(Refinement, args))) as typeof findBy;
+    try {
+      const again = await report({ kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z" });
+
+      expect(again.status).toBe(200);
+      expect(again.body.id).toBe(first.body.id);
+    } finally {
+      Refinement.findBy = findBy;
+    }
+    expect(await Refinement.count()).toBe(1);
+  });
+
   it("keeps an imported stories count, zero included, and refuses one that is not a non-negative integer", async () => {
     const ok = await report({ kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z", stories: 0 });
     expect(ok.status).toBe(201);
