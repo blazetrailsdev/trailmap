@@ -65,6 +65,16 @@ describe("isLoopbackRequest", () => {
       ),
     ).toBe(false);
   });
+
+  // A browser's write, which an `.html` audit's script can send from its
+  // sandbox; the CLI and ringo send no Origin at all.
+  it("refuses a write carrying an Origin, null included", () => {
+    for (const origin of ["null", "http://127.0.0.1:3000"]) {
+      expect(isLoopbackRequest(fakeRequest({ HTTP_HOST: "127.0.0.1", REQUEST_METHOD: "POST", HTTP_ORIGIN: origin })), origin).toBe(false);
+    }
+    expect(isLoopbackRequest(fakeRequest({ HTTP_HOST: "127.0.0.1", REQUEST_METHOD: "POST" }))).toBe(true);
+    expect(isLoopbackRequest(fakeRequest({ HTTP_HOST: "127.0.0.1", REQUEST_METHOD: "GET", HTTP_ORIGIN: "null" }))).toBe(true);
+  });
 });
 
 describe("LoopbackOnly", () => {
