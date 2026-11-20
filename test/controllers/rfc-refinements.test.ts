@@ -9,6 +9,7 @@ import { Refinement } from "../../app/models/refinement.ts";
 import { RfcPagesController } from "../../app/controllers/rfc-pages-controller.ts";
 import { RfcRefinesController } from "../../app/controllers/rfc-refines-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
+import { travelTo } from "@blazetrails/activesupport/testing/time-helpers";
 
 async function refinement(attrs: Record<string, unknown>, summary: string): Promise<Refinement> {
   const refine = await Refinement.create(attrs);
@@ -167,6 +168,34 @@ describe("RfcRefinements", () => {
 
     expect(again.status).toBe(200);
     expect(again.body.id).toBe(first.body.id);
+    expect(await Refinement.count()).toBe(1);
+  });
+
+  it("answers the winner's id for a report that loses the race to the unique index", async () => {
+    const first = await report({ kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z" });
+    const findBy = Refinement.findBy;
+    let calls = 0;
+    Refinement.findBy = (async (...args: Parameters<typeof findBy>) => (calls++ === 0 ? null : findBy.apply(Refinement, args))) as typeof findBy;
+    try {
+      const again = await report({ kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z" });
+
+      expect(again.status).toBe(200);
+      expect(again.body.id).toBe(first.body.id);
+    } finally {
+      Refinement.findBy = findBy;
+    }
+    expect(await Refinement.count()).toBe(1);
+  });
+
+  it("answers 500 for a report without a when that collides with a stored one", async () => {
+    await refinement({ rfc_id: "0002-quiet", outcome: "changed", created_at: new Date("2026-08-01T10:00:00Z") }, "a");
+
+    const { status, body } = (await travelTo(new Date("2026-08-01T10:00:00Z"), {}, () =>
+      report({ kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "b" }),
+    )) as Awaited<ReturnType<typeof report>>;
+
+    expect(status).toBe(500);
+    expect(body.error).toBe("internal_server_error");
     expect(await Refinement.count()).toBe(1);
   });
 

@@ -134,6 +134,31 @@ class RfcRefinementsTest < ActionDispatch::IntegrationTest
     assert_equal 1, RfcRefinement.count
   end
 
+  test "answers the winner's id for a report that loses the race to the unique index" do
+    report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z")
+    first = response.parsed_body["id"]
+    find_by = RfcRefinement.method(:find_by)
+    calls = 0
+    lose_the_check = ->(*args, **kwargs) { (calls += 1) == 1 ? nil : find_by.call(*args, **kwargs) }
+    RfcRefinement.stub(:find_by, lose_the_check) do
+      report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z")
+    end
+
+    assert_response :ok
+    assert_equal first, response.parsed_body["id"]
+    assert_equal 1, RfcRefinement.count
+  end
+
+  test "answers 500 for a report without a when that collides with a stored one" do
+    refinement!("a", rfc_id: "0002-quiet", outcome: "changed", created_at: Time.utc(2026, 8, 1, 10))
+
+    travel_to(Time.utc(2026, 8, 1, 10)) { report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "b") }
+
+    assert_response :internal_server_error
+    assert_equal "internal_server_error", response.parsed_body["error"]
+    assert_equal 1, RfcRefinement.count
+  end
+
   test "keeps an imported stories count, zero included, and refuses one that is not a non-negative integer" do
     report(kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z", stories: 0)
     assert_response :created

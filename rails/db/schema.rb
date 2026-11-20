@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_11_18_000013) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_20_000014) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -108,7 +108,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_18_000013) do
     t.integer "stories"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["rfc_id", "created_at"], name: "index_refinements_on_rfc_id_and_created_at"
+    t.index ["rfc_id", "created_at"], name: "index_refinements_on_rfc_id_and_created_at", unique: true
   end
 
   create_table "rfcs", id: :string, force: :cascade do |t|

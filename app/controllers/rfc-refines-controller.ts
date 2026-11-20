@@ -1,5 +1,6 @@
 import { ArgumentError, include, zone, type TimeZone } from "@blazetrails/activesupport";
 import { StringIO } from "@blazetrails/ruby-compat";
+import { RecordNotUnique } from "@blazetrails/activerecord";
 import { ApiController } from "./api-controller.ts";
 import { IngestToken } from "./concerns/ingest-token.ts";
 import { presentParam } from "./concerns/api-params.ts";
@@ -16,10 +17,9 @@ import { Story } from "../models/story.ts";
  * optional `when` becomes `created_at`, and an optional numeric `stories`
  * the count, for the import of ringo's history (scripts/import-reports.ts); a
  * report already stored for the same `(rfc, when)` answers 200 with its id, so
- * the import can be run again. That is a check, then an insert: the
- * `(rfc_id, created_at)` index is not unique, so two concurrent posts of one
- * report can both store it. The import posts one report at a time, and a
- * refine agent's report carries no `when`, so nothing posts concurrently.
+ * the import can be run again. A concurrent post that loses the race to the
+ * unique `(rfc_id, created_at)` index answers 200 with the winner's id; a
+ * report without a `when` that collides raises instead of being dropped.
  * A `stories` that is not a non-negative integer is a 422.
  *
  * Loopback only, like the rest of the API, and it needs the ingest bearer
@@ -97,8 +97,16 @@ export class RfcRefinesController extends ApiController {
       created_at: createdAt,
     });
     await refine.setSummary({ io: new StringIO(summary), filename: "summary.md", contentType: "text/markdown" });
-    if (!(await refine.save())) {
-      await this.render({ json: { error: refine.errors.fullMessages.join(", ") }, status: 422 });
+    try {
+      if (!(await refine.save())) {
+        await this.render({ json: { error: refine.errors.fullMessages.join(", ") }, status: 422 });
+        return;
+      }
+    } catch (e) {
+      if (!(e instanceof RecordNotUnique) || createdAt === null) throw e;
+      const winner = await Refinement.findBy({ rfc_id: rfcId, created_at: createdAt });
+      if (winner === null) throw e;
+      await this.render({ json: { id: winner.id, rfc: rfcId, outcome: winner.outcome }, status: 200 });
       return;
     }
     await this.render({ json: { id: refine.id, rfc: rfcId, outcome: refine.outcome }, status: 201 });
