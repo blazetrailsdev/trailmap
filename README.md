@@ -14,7 +14,8 @@ Design and rollout live in [RFC 0136](https://ringo.deanoftech.com/rfc/0136-trai
 ## Status
 
 Skeleton only. `trails new` output plus vendored framework packages, with a
-root route rendering through a `.tse` template — enough to prove the stack
+root route rendering through a `.tse` template (TypeScript Embedded,
+trails' replacement for Rails' ERB, Embedded RuBy) — enough to prove the stack
 boots end to end. No models, no API, no pages yet.
 
 ## Two databases, two adapters, and a third connection

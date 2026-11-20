@@ -1,7 +1,8 @@
 # The fleet dashboard
 
 `/dashboard` is ringo's root page (`webhook/dashboard.go:2348`) served by
-trailmap: a controller, a `.tse` view and one script, instead of a 2,442-line
+trailmap: a controller, a `.tse` (TypeScript
+Embedded, trails' ERB) view and one script, instead of a 2,442-line
 constant HTML string with a single `%s` in it.
 
 No Go state moved. Every row on the page is process state ringo owns — tmux

@@ -12,7 +12,9 @@ trails and Rails produce the same output and can share data. See
 
 ## Layout
 
-Every TypeScript file has one Ruby counterpart:
+Every TypeScript file has one Ruby counterpart. A view is `.tse`
+(TypeScript Embedded, trails' replacement for ERB, Embedded RuBy) on the
+trails side and `.erb` here:
 
 | trails app | here |
 | --- | --- |

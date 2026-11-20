@@ -115,7 +115,8 @@ the owner/repository hierarchy is **Postgres**, under `Hub`
   is a rewrite of the CLI's ranking functions, and the gate proves the two
   produce byte-identical output over one database. A difference is a defect in
   the port, not a variance to tolerate.
-- Views are `.tse` templates under `app/views`, compiled by
+- Views are `.tse` templates (TypeScript Embedded — trails' replacement for
+  ERB, Embedded RuBy: HTML with TypeScript where ERB has Ruby) under `app/views`, compiled by
   `pnpm views` (app views and test fixtures). Rebuild after editing one; a
   stale build is a confusing failure. It boots the initializers, so it needs
   both database variables; it is deliberately not a `prepare` hook, so

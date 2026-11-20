@@ -90,7 +90,8 @@ non-action helper (trails#9833). `before_action :require_loopback` is
   directory in kebab-case (`rfc-pages/`, trails#8670) and allows hyphens in
   partial names (`shared/_status-badge`). Rails requires a partial name to be a
   Ruby identifier, so it uses `rfc_pages/` and `shared/_status_badge`.
-- **Helpers in views.** `.tse` templates cannot import, and `app/helpers` did
+- **Helpers in views.** `.tse` templates (TypeScript Embedded, trails'
+  replacement for ERB) cannot import, and `app/helpers` did
   not reach views in the vendored trails. So the TypeScript controllers render
   markdown and pass it in, and `_status-state` repeats `statusWord`. The ERB
   templates call helpers directly.
