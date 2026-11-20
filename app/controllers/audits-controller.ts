@@ -4,9 +4,6 @@ import { Audit } from "../models/audit.ts";
 import { renderMarkdown } from "../helpers/markdown-helper.ts";
 import { stripFrontmatter } from "../models/concerns/document.ts";
 
-/** The policy every served audit carries; the page's frame repeats it. */
-export const AUDIT_SANDBOX = "sandbox allow-scripts";
-
 /**
  * `/audits` — the agent-written progress reports, newest first;
  * `/audits/<file>`, the list with one of them open; and
@@ -50,10 +47,12 @@ export class AuditsController extends ApplicationController {
     // are scripts, as ringo serves it, so scripts run — but `sandbox` without
     // `allow-same-origin` gives the document an opaque origin, framed or on
     // its own: it reads no cookie or storage of this origin, and a POST it
-    // makes carries `Origin: null`, which forgery protection refuses. ringo
+    // makes carries `Origin: null`: forgery protection refuses it on a page,
+    // and LoopbackOnly refuses any write carrying an Origin on the
+    // forgery-exempt loopback API (concerns/loopback-only.ts). ringo
     // serves it same-origin to bind its fullscreen key in the frame; this
     // deliberately does not copy that.
-    this.response.setHeader("Content-Security-Policy", AUDIT_SANDBOX);
+    this.response.setHeader("Content-Security-Policy", "sandbox allow-scripts");
     if (audit.isHtml()) {
       await this.render({ html: htmlSafe(source), layout: false });
       return;
