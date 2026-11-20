@@ -4,7 +4,7 @@
 # becomes `created_at` and an optional integer `stories` the count, for the
 # import; an existing (rfc, when) answers 200 with its id, as does a
 # concurrent post that loses the race to the unique (rfc_id, created_at)
-# index. A `stories` that is not a
+# index (one without a `when` raises rather than be dropped). A `stories` that is not a
 # non-negative integer is a 422. Unknown RFC 404, another kind 400, a
 # bad outcome, a summary that is not a string or a `when` that is not a time
 # 422. Needs the ingest bearer token (IngestToken).
@@ -54,7 +54,8 @@ class RfcRefinesController < ApiController
     begin
       return render json: { error: refine.errors.full_messages.join(", ") }, status: :unprocessable_entity unless refine.save
     rescue ActiveRecord::RecordNotUnique
-      winner = RfcRefinement.find_by(rfc_id: rfc_id, created_at: refine.created_at) or raise
+      raise unless created_at
+      winner = RfcRefinement.find_by(rfc_id: rfc_id, created_at: created_at) or raise
       return render json: { id: winner.id, rfc: rfc_id, outcome: winner.outcome }, status: :ok
     end
 
