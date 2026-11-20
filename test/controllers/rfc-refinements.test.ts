@@ -147,4 +147,26 @@ describe("RfcRefinements", () => {
     expect((await report({ kind: "rfc-refine", id: "0136-trailmap", outcome: "changed", when: "soon" })).status).toBe(422);
     expect(await Refinement.count()).toBe(0);
   });
+
+  it("lists every report oldest first without its summary, and needs no token", async () => {
+    await refinement({ rfc_id: "0002-quiet", outcome: "no-change", stories: 3, created_at: "2026-08-02T10:00:00Z" }, "later");
+    await refinement({ rfc_id: "0002-quiet", outcome: "changed", stories: 2, created_at: "2026-08-01T10:00:00Z" }, "earlier");
+    const tc = await controllerTestCase(RfcRefinesController, { Host: "127.0.0.1" });
+    await tc.get("index", { params: { rfc: "0002-quiet" } });
+
+    expect(tc.response.status).toBe(200);
+    expect(JSON.parse(tc.response.body).map((r: any) => [r.rfc, r.when, r.outcome, r.stories])).toEqual([
+      ["0002-quiet", "2026-08-01T10:00:00Z", "changed", 2],
+      ["0002-quiet", "2026-08-02T10:00:00Z", "no-change", 3],
+    ]);
+  });
+
+  it("answers the stored report for one it already has at that time", async () => {
+    const first = await report({ kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z" });
+    const again = await report({ kind: "rfc-refine", id: "0002-quiet", outcome: "changed", summary: "a", when: "2026-08-01T10:00:00Z" });
+
+    expect(again.status).toBe(200);
+    expect(again.body.id).toBe(first.body.id);
+    expect(await Refinement.count()).toBe(1);
+  });
 });

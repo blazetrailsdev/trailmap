@@ -98,4 +98,17 @@ describe("AuditReports", () => {
     expect(status).toBe(404);
     expect(await Audit.count()).toBe(0);
   });
+
+  it("lists every audit newest first without its body, and needs no token", async () => {
+    await report(REPORT);
+    await report({ ...REPORT, slug: "later-audit", writtenAt: "2026-11-20T00:00:00Z", format: "html", body: "<p>x</p>" });
+    const tc = await controllerTestCase(AuditReportsController, LOOPBACK);
+    await tc.get("index");
+
+    expect(tc.response.status).toBe(200);
+    expect(JSON.parse(tc.response.body)).toEqual([
+      { name: "later-audit-20261120T000000Z.html", repo: "blazetrailsdev/trails", slug: "later-audit", title: "later audit", format: "html", when: "2026-11-20T00:00:00Z" },
+      { name: "api-audit-20261119T102030Z.md", repo: "blazetrailsdev/trails", slug: "api-audit", title: "api audit", format: "md", when: "2026-11-19T10:20:30Z" },
+    ]);
+  });
 });
