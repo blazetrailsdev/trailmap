@@ -15,12 +15,13 @@ class AuditsController < ApplicationController
   end
 
   # One audit on its own. Agent-written and served from this origin, so it is
-  # sandboxed: an opaque origin and no scripts.
+  # sandboxed to an opaque origin; scripts run, since an `.html` report's
+  # charts are scripts, and a POST from it carries `Origin: null`.
   def raw
     audit = Audit.find(params[:id])
     source = audit.read
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-    response.headers["Content-Security-Policy"] = "sandbox"
+    response.headers["Content-Security-Policy"] = "sandbox allow-scripts"
     return render html: source.html_safe, layout: false if audit.html?
     @title = audit.title
     @body = helpers.render_markdown(Document.strip_frontmatter(source))

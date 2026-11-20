@@ -28,7 +28,7 @@ class EndpointsTest < ActionDispatch::IntegrationTest
 
     get "/audits/sweep-20261027T101500Z.md/raw"
     assert_response :success
-    assert_equal "sandbox", response.headers["Content-Security-Policy"]
+    assert_equal "sandbox allow-scripts", response.headers["Content-Security-Policy"]
     assert_includes response.body, "<em>it</em>"
     assert_not_includes response.body, "a: b"
 

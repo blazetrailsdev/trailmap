@@ -4,6 +4,9 @@ import { Audit } from "../models/audit.ts";
 import { renderMarkdown } from "../helpers/markdown-helper.ts";
 import { stripFrontmatter } from "../models/concerns/document.ts";
 
+/** The policy every served audit carries; the page's frame repeats it. */
+export const AUDIT_SANDBOX = "sandbox allow-scripts";
+
 /**
  * `/audits` — the agent-written progress reports, newest first;
  * `/audits/<file>`, the list with one of them open; and
@@ -14,6 +17,8 @@ import { stripFrontmatter } from "../models/concerns/document.ts";
  * never reaches an action, and a well-formed one naming no audit is
  * `RecordNotFound`, a 404 — ringo answers the first with a 400; Rails does not
  * tell the two apart.
+ *
+ * The open report has a fullscreen toggle (`audits.js`), as ringo's does.
  *
  * Read-only, and audits only: ringo's page also lists grade report cards and
  * RFC refinements, and carries the "Generate report card" trigger. The cards
@@ -40,13 +45,15 @@ export class AuditsController extends ApplicationController {
     const audit = await Audit.find(String(this.params.get("id")));
     const source = await audit.read();
     this.response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-    // An audit is agent-written and served from trailmap's own origin, so a
-    // script in one could call every state-changing endpoint here. `sandbox`
-    // gives the document an opaque origin and no scripts, opened in the
-    // page's iframe or on its own. ringo does NOT do this — it reaches into
-    // the frame to bind its fullscreen key — and this deliberately does not
-    // copy that.
-    this.response.setHeader("Content-Security-Policy", "sandbox");
+    // An audit is agent-written and served from trailmap's own origin. An
+    // `.html` report is a self-contained document whose charts and toggles
+    // are scripts, as ringo serves it, so scripts run — but `sandbox` without
+    // `allow-same-origin` gives the document an opaque origin, framed or on
+    // its own: it reads no cookie or storage of this origin, and a POST it
+    // makes carries `Origin: null`, which forgery protection refuses. ringo
+    // serves it same-origin to bind its fullscreen key in the frame; this
+    // deliberately does not copy that.
+    this.response.setHeader("Content-Security-Policy", AUDIT_SANDBOX);
     if (audit.isHtml()) {
       await this.render({ html: htmlSafe(source), layout: false });
       return;

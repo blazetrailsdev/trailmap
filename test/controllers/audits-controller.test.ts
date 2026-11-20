@@ -57,10 +57,19 @@ describe("AuditsController", () => {
     expect(body).not.toContain("<iframe");
   });
 
-  it("frames an html audit, sandboxed, rather than inlining it", async () => {
+  it("frames an html audit, sandboxed with its scripts on, rather than inlining it", async () => {
     const body = (await get("show", { id: "b-tie-20260815T000000Z.html" })).body;
-    expect(body).toContain('<iframe sandbox src="/audits/b-tie-20260815T000000Z.html/raw"');
+    expect(body).toContain('<iframe sandbox="allow-scripts" src="/audits/b-tie-20260815T000000Z.html/raw"');
+    expect(body).not.toContain("allow-same-origin");
     expect(body).not.toContain("raw html");
+  });
+
+  it("puts the open audit, markdown or html, under the fullscreen toggle", async () => {
+    for (const file of ["b-tie-20260815T000000Z.html", "a-tie-20260815T000000Z.md"]) {
+      const body = (await get("show", { id: file })).body;
+      expect(body, file).toMatch(/<div class="audits-viewer" data-audit-viewer>\s*<div class="audits-fs"><button type="button" class="btn btn-sm" data-audit-fullscreen hidden>/);
+      expect(body, file).toMatch(/<script src="[^"]*audits[^"]*\.js" type="module">/);
+    }
   });
 
   it("opens the audit its own url names", async () => {
@@ -91,10 +100,10 @@ describe("AuditsController", () => {
     expect(body).not.toContain('href="javascript:');
   });
 
-  it("serves every audit sandboxed, and frames it sandboxed", async () => {
+  it("serves every audit sandboxed to an opaque origin, scripts allowed", async () => {
     for (const file of ["b-tie-20260815T000000Z.html", "a-tie-20260815T000000Z.md"]) {
       const response = await get("raw", { id: file });
-      expect(response.getHeader("Content-Security-Policy"), file).toBe("sandbox");
+      expect(response.getHeader("Content-Security-Policy"), file).toBe("sandbox allow-scripts");
     }
   });
 

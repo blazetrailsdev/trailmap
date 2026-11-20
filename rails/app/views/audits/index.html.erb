@@ -22,12 +22,16 @@
         </a>
       <% end %>
     </div>
-    <% if @body %>
-      <article class="markdown audits-doc"><%= @body %></article>
-    <% else %>
-      <div class="audits-frame">
-        <iframe sandbox src="<%= raw_audit_path(@selected) %>" title="<%= @selected.title %>"></iframe>
-      </div>
-    <% end %>
+    <div class="audits-viewer" data-audit-viewer>
+      <div class="audits-fs"><button type="button" class="btn btn-sm" data-audit-fullscreen hidden>Fullscreen</button></div>
+      <% if @body %>
+        <article class="markdown audits-doc"><%= @body %></article>
+      <% else %>
+        <div class="audits-frame">
+          <iframe sandbox="allow-scripts" src="<%= raw_audit_path(@selected) %>" title="<%= @selected.title %>"></iframe>
+        </div>
+      <% end %>
+    </div>
   </div>
+  <script src="<%= javascript_path("audits") %>" type="module"></script>
 <% end %>
