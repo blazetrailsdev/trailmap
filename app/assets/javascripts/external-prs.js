@@ -131,13 +131,19 @@ function boot(root) {
     if (!response.ok) throw new Error((await response.text()).trim() || response.statusText);
   }
 
+  // Per PR number: why its last trust grant failed.
+  const trustFailed = new Map();
+  // A redraw that arrived while a forward box had focus, run on its blur.
+  let deferred = false;
+
   async function trust(pr, button) {
     if (!window.confirm(`Trust #${pr.pr} by ${pr.author || "?"}? Its CI, reviews and comments will reach automation until another login pushes to it or its head repo changes.`)) return;
     button.disabled = true;
+    trustFailed.delete(pr.pr);
     try {
-      await post("api/pr-trust", { repo, pr: pr.pr });
+      await post("api/pr-trust", { repo, pr: pr.pr, author: pr.author ?? "" });
     } catch (error) {
-      failed.set(pr.pr, error.message);
+      trustFailed.set(pr.pr, error.message);
     }
     await draw();
   }
@@ -159,12 +165,17 @@ function boot(root) {
     const meta = el(
       "div",
       { className: "row-meta" },
-      `${item.kind} by ${item.author} ${timeAgo(Date.parse(item.at))}` + (item.forwardedAt ? ` · forwarded ${timeAgo(Date.parse(item.forwardedAt))}` : ""),
+      `${item.kind} by ${item.author}` + (item.at ? ` ${timeAgo(Date.parse(item.at))}` : "") + (item.forwardedAt ? ` · forwarded ${timeAgo(Date.parse(item.forwardedAt))}` : ""),
     );
     const actions = el("div", { className: "external-actions" });
     if (forwarding.has(item.id)) {
       const text = el("textarea", { className: "external-forward", rows: 4, value: forwarding.get(item.id) });
       text.addEventListener("input", () => forwarding.set(item.id, text.value));
+      text.addEventListener("blur", () => {
+        if (!deferred) return;
+        deferred = false;
+        draw().catch(() => {});
+      });
       const send = el("button", { type: "button", className: "btn", textContent: "Send to agent" });
       const cancel = el("button", { type: "button", className: "btn", textContent: "Cancel" });
       send.addEventListener("click", async () => {
@@ -217,6 +228,7 @@ function boot(root) {
     if (grant) trustButton.title = `granted by ${grant.grantedBy} ${timeAgo(Date.parse(grant.grantedAt))}`;
     trustButton.addEventListener("click", () => trust(pr, trustButton));
     const error = failed.has(pr.pr) ? [el("div", { className: "row-meta external-error", textContent: `Could not start: ${failed.get(pr.pr)}` })] : [];
+    if (trustFailed.has(pr.pr)) error.push(el("div", { className: "row-meta external-error", textContent: `Could not trust: ${trustFailed.get(pr.pr)}` }));
     return el(
       "div",
       { className: "item-row" },
@@ -252,14 +264,23 @@ function boot(root) {
       const [drafts, grants, held] = await Promise.all([Promise.all(prs.map(draftOf)), readList("pr-trust"), readList("external-on-trusted")]);
       if (mine !== generation) return;
       // A forward box being typed in is not rebuilt under the owner's caret.
-      if (document.activeElement?.classList?.contains("external-forward")) return;
+      if (document.activeElement?.classList?.contains("external-forward")) {
+        deferred = true;
+        return;
+      }
       const grantOf = new Map((Array.isArray(grants) ? grants : []).map((grant) => [grant.pr, grant]));
       const groups = heldByPr(held, repo);
       const active = document.activeElement?.classList?.contains("external-focus") ? document.activeElement : null;
       const caret = active ? [active.dataset.pr, active.selectionStart, active.selectionEnd] : null;
       root.hidden = prs.length === 0 && groups.size === 0;
+      // A held group sits under its PR's row; a trusted agent PR, which is
+      // not in the external list, gets its group on its own after the rows.
       list.replaceChildren(
-        ...prs.map((pr, i) => row(pr, reviewState(pr, drafts[i], started.get(pr.pr)), grantOf.get(pr.pr))),
+        ...prs.flatMap((pr, i) => {
+          const held = groups.get(pr.pr);
+          groups.delete(pr.pr);
+          return [row(pr, reviewState(pr, drafts[i], started.get(pr.pr)), grantOf.get(pr.pr)), ...(held ? [heldGroup(pr.pr, held)] : [])];
+        }),
         ...[...groups].map(([pr, items]) => heldGroup(pr, items)),
       );
       const again = caret && list.querySelector(`.external-focus[data-pr="${caret[0]}"]`);

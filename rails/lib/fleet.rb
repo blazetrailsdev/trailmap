@@ -33,8 +33,9 @@ module Fleet
 
   # The query `external-review` forwards, or "" when repo or pr is not one.
   def self.external_review_query(repo, pr)
-    return "" unless repo.match?(%r{\A[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}\z}) && pr.match?(/\A[0-9]{1,10}\z/)
-    "?repo=#{CGI.escape(repo)}&pr=#{pr}"
+    query = repo_query(repo)
+    return "" if query.empty? || !pr.match?(/\A[0-9]{1,10}\z/)
+    "#{query}&pr=#{pr}"
   end
 
   # The repos the spawn dialog offers first, in this order: the ones spawned

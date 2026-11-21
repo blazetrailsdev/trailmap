@@ -114,8 +114,9 @@ export function repoQuery(repo: string): string {
  * when either is not one, so nothing unchecked reaches ringo's path.
  */
 export function externalReviewQuery(repo: string, pr: string): string {
-  if (!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(repo) || !/^[0-9]{1,10}$/.test(pr)) return "";
-  return `?repo=${encodeURIComponent(repo)}&pr=${pr}`;
+  const query = repoQuery(repo);
+  if (query === "" || !/^[0-9]{1,10}$/.test(pr)) return "";
+  return `${query}&pr=${pr}`;
 }
 
 /** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
