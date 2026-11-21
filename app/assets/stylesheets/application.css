@@ -815,6 +815,10 @@ textarea.ctl { height: auto; }
 .review-note { display: flex; flex-wrap: wrap; gap: 0 8px; font-size: 12px; color: var(--ink-2); }
 .review-side.turn { color: var(--ink); font-weight: 600; }
 .meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 2px; }
+/* The pulls tab's External inbox: the focus note and button sit under the row's meta, so a phone keeps the title full width. */
+#externalPrs { margin-bottom: 16px; }
+.external-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.external-actions .external-focus { flex: 1 1 12em; min-width: 0; }
 .row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .figure { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
 .expand {

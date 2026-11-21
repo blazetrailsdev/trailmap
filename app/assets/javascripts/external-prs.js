@@ -97,8 +97,8 @@ function boot(root) {
             (pr.openedAt ? ` · opened ${timeAgo(Date.parse(pr.openedAt))}` : "") +
             ` · ${pr.lastAction || "activity"} by ${pr.lastActor || "?"} ${timeAgo(Date.parse(pr.lastActivityAt))}`,
         ),
+        el("div", { className: "external-actions" }, focus, button),
       ),
-      el("span", { className: "row-actions" }, focus, button),
     );
   }
 
