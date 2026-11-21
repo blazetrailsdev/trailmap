@@ -21,7 +21,7 @@ class DeploysController < ApplicationController
       run = history(base).first.find { |r| r["id"] == id }
       return render plain: DeployLog.read(run["logFile"]) if run && DeployLog.local?(run["logFile"])
     end
-    response = Fleet::Relay.get("#{base}/deploys/log?id=#{ERB::Util.url_encode(id)}", timeout: TIMEOUT)
+    response = Fleet::Relay.get("#{base}/deploys/output?id=#{ERB::Util.url_encode(id)}", timeout: TIMEOUT)
     render plain: response.body, status: response.code.to_i
   rescue Fleet::Relay::Failure => e
     render plain: e.plain, status: e.status

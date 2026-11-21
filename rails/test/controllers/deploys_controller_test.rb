@@ -33,9 +33,9 @@ class DeploysControllerTest < ActionDispatch::IntegrationTest
 
   test "log opens only the file the run names, whatever the request adds" do
     asked = []
-    answers = { "/api/deploys" => [ 200, RUNS ], "/deploys/log?id=ringo-100" => [ 200, "relayed\n" ] }
+    answers = { "/api/deploys" => [ 200, RUNS ], "/deploys/output?id=ringo-100" => [ 200, "relayed\n" ] }
     with_ringo(answers, asked: asked) { get "/deploys/log", params: { id: "ringo-100", file: "pane-13.log" } }
     assert_equal "relayed\n", response.body
-    assert_equal [ "/api/deploys", "/deploys/log?id=ringo-100" ], asked
+    assert_equal [ "/api/deploys", "/deploys/output?id=ringo-100" ], asked
   end
 end
