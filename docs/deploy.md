@@ -733,3 +733,129 @@ the "trails tracking is failing" issue in blazetrailsdev/tasks. After every run 
 writes `pnpm trails:status` to `trails-status.txt` beside `tasks.db`
 (`<tasks checkout>/.git/`, blazetrailsdev/tasks#328). trailmap does not read
 it.
+
+## Preview apps
+
+A PR labelled `preview` gets its own dokku app, `trailmap-pr-<N>`, at
+`https://trailmap-pr-<N>.deanoftech.com`, built from the PR's head and
+serving **copies of production's data**, the hub included. It exists so a
+reviewer can use the pages a PR changes without running it, so a PR's
+screenshots can be shot against it, and so a PR's migrations run against real
+data before they reach production.
+
+btwhooks drives it from GitHub's `pull_request` events: the label going on
+runs `scripts/preview.sh up <N> <sha>`, a push to a labelled PR runs it again
+with the new head, and the label coming off or the PR closing runs
+`scripts/preview.sh down <N>`. The script is the whole recipe. btwhooks only
+decides when to run it, so a PR that changes how trailmap deploys changes its
+preview in the same diff.
+
+### What a preview may touch
+
+Nothing in production can be written. Every database a preview opens is its
+own copy, so the PR's code is never trusted to behave, and the PR's code is
+the thing under review:
+
+| Data | In a preview |
+| --- | --- |
+| Hub (Postgres) | `trailmap-pr-<N>-hub`, a dokku postgres service cloned from `trailmap-hub` (`postgres:export \| postgres:import`) on the first deploy and whenever the PR's migrations change, and linked as `HUB_DATABASE` |
+| `tasks.db`, `stats.db`, `stats-sync.db` | `sqlite3 .backup` copies, taken when the hub is cloned, into `~/.trailmap-previews/pr-<N>/` |
+| Tasks checkout, audits | the production paths, mounted `:ro` |
+| `settings` | emptied in the clone after import. It is where an operator points trailmap at something outside itself (today `ringo_base`, production's fleet), and every outbound call the application makes resolves through it. It is emptied again after the release task, because a PR's migration may seed a row, and then checked; a preview still holding one is stopped. With no row and no `RINGO_BASE`, the fleet relay, deploys and sessions pages have nothing to call |
+| Mail, `GH_TOKEN` | not configured |
+
+**Migrations are tested, and data is kept otherwise.** Each copy is keyed on
+one migration directory's git tree id at the PR's head: the hub, with
+`tasks.db` beside it, on `db/hub-migrate`; the stats database on
+`db/stats-sync-migrate`. A copy whose key is unchanged is kept, with whatever
+a reviewer did in it, and the release task has nothing to run there. A copy
+whose key changed, or that does not exist, or whose last run did not finish
+(the keys are removed before every push and written back only after a
+verified deploy), is taken from production again, so the PR's migrations run
+on real data and never on the half-migrated result of an earlier push.
+`db/migrate` is deliberately not part of any key: the task domain's `primary`
+is `databaseTasks: false`, so the release task never touches `tasks.db`,
+whose history belongs to the tasks CLI. A PR whose migration fails also fails
+its preview deploy, and the deploy log says why.
+
+**Copies are copy-on-write clones.** `/home` is btrfs, and a SQLite copy is
+`cp --reflink` of the database and its `-wal`, taken while holding
+production's write lock (`BEGIN IMMEDIATE`, then `ROLLBACK`: no write
+reaches production). The 8.9 GB stats database clones in under a second and
+shares all but a few MB of its extents with production's. Production points
+`STATS_DB` and `STATS_SYNC_DB` at one file, and a preview gets one copy for
+both. Off a reflink filesystem the script falls back to `sqlite3 .backup`.
+
+Production's hub is only ever read, by `pg_dump`, which takes a consistent
+snapshot without blocking writers. `down` destroys the app, its hub service,
+its SQLite copies and its DNS record.
+
+**Cancelling.** Killing a `git push` does not stop the deploy: dokku's build
+keeps running on the server, holding the app's lock, and goes on to release.
+Each `up` and `down` therefore starts with `dokku builds:cancel`, so a
+superseded run's build dies before the next one pushes. The old container
+serves until the new one replaces it.
+
+### Driven by btwhooks
+
+btwhooks (`webhook/previews.go`) runs the script for the repos in its
+`PREVIEW_REPOS`. Adding the `preview` label deploys the PR's head; a push to
+a labelled PR redeploys; removing the label or closing the PR runs `down`.
+The script is always read from `origin/main`, never from the PR, because it
+runs on the host with dokku access. Each PR has one slot, and the newest
+request wins: a request that arrives while one is running replaces any
+waiting one, and kills the running one if its log has not reached
+`-----> Releasing`. At most two preview builds run at once; teardowns are
+not counted. Runs appear on the btwhooks Deploys page and on trailmap's
+`/deploys` tab, tagged `preview`, `preview teardown` or `preview sweep`, and a
+successful preview links its address.
+
+**Cleaning up.** `scripts/preview.sh sweep` tears down every preview whose PR
+is closed, no longer labelled `preview`, or does not exist. It finds previews
+by every trace `down` removes (the app, the hub service, the data directory,
+the DNS record), so one that half-failed to come up or go away is still found,
+and it leaves alone any PR whose state GitHub did not answer for. btwhooks runs
+it two minutes after it starts, which catches webhooks missed while it was
+down, and every six hours after, skipping a sweep while a preview run is in
+flight. Run it by hand on the box for the same thing at once.
+
+`worker` is scaled to 0. It is the only process that runs jobs (the web
+process enqueues into its own container-local queue), so no job, and so no
+mail, runs in a preview. `TRAILMAP_PREVIEW=<N>` puts a banner over every page
+naming the PR, in both apps; the application uses it for nothing else.
+
+### nginx: a preview must never take production down
+
+**It did, once.** A new dokku app whose Dockerfile EXPOSEs 8080 gets the
+default port map `http:8080:8080`, which renders `listen 8080` on every
+interface. That collides with production's `127.0.0.1:8080` loopback API. A
+failed reload keeps the old config serving, so nothing looked wrong until
+nginx's next full restart could not bind, and production went down with it.
+Four things now stop that, each on its own:
+
+1. **`preview.sh` pins the port map** (`http:80:8080`, plus `https:443:8080`
+   once a certificate exists) before every push, and refuses to push if the
+   pin did not take.
+2. **The sigil renders http/https server blocks for ports 80 and 443 only**,
+   in both `nginx.conf.sigil` and `rails/nginx.conf.sigil`, so no port map
+   can render such a listener for any app. `scripts/check-nginx-sigil.sh`
+   (rule 4, with a self-test) fails CI if that restriction is lost.
+3. **The loopback API block renders for the `trailmap` app only**, so a
+   preview can never emit a second `listen 127.0.0.1:8080`. `PROD_APP` in the
+   script is fixed to that name for the same reason.
+4. **After every deploy, `preview.sh` checks nginx itself.** The preview's
+   rendered config must listen on 80 and 443 only, `/var/log/nginx/error.log`
+   (and `error.log.1`, in case it rotated) must be readable and hold no `[emerg]` since the run started, and production's
+   `127.0.0.1:8080` listener must still be bound. On any miss it runs `down`,
+   which removes the preview's config, and fails, naming the smoke check to
+   run against production.
+
+### One-time setup
+
+None. The box's dokku `dns` plugin (Route53, zone `deanoftech.com`) creates
+`<app>.deanoftech.com` when an app is created, as it does for every app here,
+so a preview's name resolves without a wildcard record. Once it does, the
+preview gets its own Let's Encrypt certificate (HTTP-01). `down` deletes that
+one record by name: the plugin only queues a destroyed app's record, and
+`dns:sync:deletions --force` would also delete every other queued record. The
+postgres plugin creates, links and destroys each preview's hub service.

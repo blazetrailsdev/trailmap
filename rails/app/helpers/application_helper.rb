@@ -21,6 +21,14 @@ module ApplicationHelper
     prefixes.any? { |prefix| here.start_with?(prefix) } ? "section" : nil
   end
 
+  # The PR a preview app serves (TRAILMAP_PREVIEW), for the layout's banner;
+  # nil in a real deployment. The trails app's `previewPr` (config/preview.ts).
+  def preview_pr
+    raw = Rails.configuration.x.preview.pr.to_s.strip
+    pr = Integer(raw, 10, exception: false)
+    pr if pr&.positive? && pr.to_s == raw
+  end
+
   # The word a status badge shows, and the suffix of its `s-` class. Blank is
   # `unknown`, ringo's arm for a dep whose RFC is missing.
   def status_word(status)

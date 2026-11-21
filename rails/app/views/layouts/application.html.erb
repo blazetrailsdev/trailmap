@@ -15,6 +15,9 @@
   <%= javascript_inline_importmap_tag %>
 </head>
 <body>
+  <% if (pr = preview_pr) %>
+    <div class="preview-banner" role="status">Preview of <a href="https://github.com/blazetrailsdev/trailmap/pull/<%= pr %>">trailmap#<%= pr %></a>, built from its head. The data is a copy of production; changes made here are not kept.</div>
+  <% end %>
   <% nav_items = [ [ "RFCs", rfcs_path ], [ "Backlog", backlog_path ], [ "Dashboard", dashboard_path ], [ "Parity", parity_graph_path ], [ "Packages", packages_path ], [ "Audits", audits_path ], [ "Deploys", deploys_path ], [ "Sessions", sessions_path ], [ "Search", search_path ] ].map { |label, path| [ label, path, nav_mark(path) ] } %>
   <% nav_current = nav_items.find { |_, _, mark| mark }&.first.to_s %>
   <nav class="nav">

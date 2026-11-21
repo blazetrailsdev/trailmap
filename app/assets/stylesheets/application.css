@@ -1143,6 +1143,8 @@ body.audit-reading { overflow: hidden; }
 .deploy-err { color: var(--red); overflow-wrap: anywhere; }
 .badge.s-deploy-running { color: var(--yellow-ink); border-color: color-mix(in srgb, var(--yellow-ink) 45%, transparent); }
 .badge.s-deploy-success { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); }
+.badge.s-deploy-cancelled { color: var(--muted); }
+.badge.deploy-kind { font-weight: 400; }
 .badge.s-deploy-failed, .badge.s-deploy-timeout, .badge.s-deploy-error { color: var(--red); border-color: color-mix(in srgb, var(--red) 45%, transparent); }
 
 /* /sessions -- ringo's archive tables; wide, so they scroll inside the card */
@@ -1329,3 +1331,8 @@ body.audit-reading { overflow: hidden; }
 .rfc-priority-form { display: inline-flex; gap: 6px; align-items: center; margin-right: 6px; }
 .rfc-priority select.ctl { width: 72px; }
 .rfc-priority .field-note { margin-top: 6px; }
+
+/* A PR preview app's banner (config/preview.ts). Above the sticky nav, so a
+   screenshot of a preview can never be mistaken for production. */
+.preview-banner { padding: 8px 16px; background: var(--st-self); color: var(--on-action); font-weight: 600; font-size: 14px; text-align: center; }
+.preview-banner a { color: inherit; text-decoration: underline; }

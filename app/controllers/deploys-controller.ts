@@ -25,6 +25,10 @@ export interface DeployRow {
   /** The pane log's path as the tmux server wrote it; only its base name is read. */
   logFile?: string;
   error?: string;
+  /** The dokku branch pushed to, or `preview`, `preview teardown`, `preview sweep` (ringo's webhook/previews.go). */
+  target?: string;
+  /** Where a successful preview serves, as the preview script printed it. */
+  url?: string;
 }
 
 /**

@@ -22,6 +22,25 @@ const RUNS: DeployRow[] = [
   },
 ];
 
+/** Preview runs, as ringo's webhook/previews.go records them. */
+const PREVIEW_RUNS: DeployRow[] = [
+  {
+    id: "trailmap-pr-160-2", app: "trailmap-pr-160", repo: "blazetrailsdev/trailmap", branch: "feature", sha: "f72e177",
+    message: "trailmap#160", status: "success", exitCode: 0, started: "2026-11-19T19:00:00Z", seconds: 145,
+    target: "preview", url: "https://trailmap-pr-160.deanoftech.com/",
+  },
+  {
+    id: "trailmap-pr-160-1", app: "trailmap-pr-160", repo: "blazetrailsdev/trailmap", branch: "feature", sha: "acd09f2",
+    message: "trailmap#160", status: "cancelled", exitCode: 0, started: "2026-11-19T18:50:00Z", seconds: 40,
+    target: "preview", url: "javascript:alert(1)",
+  },
+  {
+    id: "trailmap-previews-1", app: "trailmap-previews", repo: "blazetrailsdev/trailmap", branch: "", sha: "",
+    message: "tear down previews", status: "success", exitCode: 0, started: "2026-11-19T18:00:00Z", seconds: 9,
+    target: "preview sweep",
+  },
+];
+
 let ringo: HttpServer;
 let ringoBaseUrl = "";
 let asked: string[] = [];
@@ -37,6 +56,9 @@ beforeAll(async () => {
     } else if (url.pathname === "/finished/api/deploys") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(RUNS.slice(1)));
+    } else if (url.pathname === "/previews/api/deploys") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify([...PREVIEW_RUNS, ...RUNS.slice(1)]));
     } else if (url.pathname === "/bad-json/api/deploys") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end("<html>not json</html>");
@@ -100,6 +122,19 @@ describe("DeploysController#index", () => {
     // Each row's log expands in place, naming the capture ringo recorded.
     expect(body).toContain('<details class="deploy-log" data-run="trailmap-200">');
     expect(body).toContain('data-src="/deploys/log?id=trailmap-200"');
+  });
+
+  it("tags preview runs, links a successful preview, and links only https", async () => {
+    setEnv("RINGO_BASE", `${ringoBaseUrl}/previews`);
+
+    const body = (await get("index")).body;
+    expect(body).toContain('<span class="badge deploy-kind">preview</span>');
+    expect(body).toContain('<span class="badge deploy-kind">preview sweep</span>');
+    expect(body).toContain('<a class="deploy-url" href="https://trailmap-pr-160.deanoftech.com/">open preview</a>');
+    expect(body).toContain("s-deploy-cancelled");
+    expect(body).not.toContain("javascript:");
+    // A deploy carries no tag.
+    expect(body.match(/deploy-kind/g)).toHaveLength(3);
   });
 
   it("stays still once every run has finished", async () => {
