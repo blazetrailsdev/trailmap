@@ -90,7 +90,20 @@ export const FLEET_READS: Readonly<Record<string, string>> = {
   "spawn-loop": "spawnloop/config",
   "reviewer-config": "reviewer/config",
   "broadcast-targets": "broadcast/targets",
+  // The pulls tab's External inbox (RFC 0253): open external PRs, and one
+  // PR's stored review draft, which takes `repo` and `pr` (`externalReviewQuery`).
+  "external-prs": "api/external-prs",
+  "external-review": "api/external-reviews",
 };
+
+/**
+ * The query `external-review` forwards: `?repo=<owner/repo>&pr=<n>`, or ""
+ * when either is not one, so nothing unchecked reaches ringo's path.
+ */
+export function externalReviewQuery(repo: string, pr: string): string {
+  if (!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(repo) || !/^[0-9]{1,10}$/.test(pr)) return "";
+  return `?repo=${encodeURIComponent(repo)}&pr=${pr}`;
+}
 
 /** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
 export const FLEET_PANE_PATH = "/fleet/pane";
@@ -189,4 +202,6 @@ export const FLEET_CONTROLS: readonly string[] = [
   "spawnloop/dashboard-spawn",
   // /story/<id>'s "Spawn worker".
   "spawnloop/story-spawn",
+  // The pulls tab's "Draft review" on an external PR.
+  "external-review/start",
 ];

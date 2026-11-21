@@ -65,7 +65,7 @@ beforeAll(async () => {
         return;
       }
       const loopState = url.pathname === "/spawnloop/config" && req.method === "GET";
-      if (url.pathname === "/usage-status" || url.pathname === "/reviewer/drain-status" || loopState) {
+      if (url.pathname === "/usage-status" || url.pathname === "/reviewer/drain-status" || url.pathname === "/api/external-reviews" || loopState) {
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify({ asked: url.pathname + url.search }));
         return;
@@ -458,6 +458,15 @@ describe("FleetController#read", () => {
     expect(await asked("codex")).toBe("/reviewer/drain-status?agent=codex");
     expect(await asked("codex&x=1")).toBe("/reviewer/drain-status");
     expect(JSON.parse((await read("usage", { agent: "codex" })).body).asked).toBe("/usage-status");
+  });
+
+  it("forwards an external review's repo and pr, and refuses a read without both", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    const ok = await read("external-review", { repo: "blazetrailsdev/trails", pr: "12" });
+    expect(JSON.parse(ok.body).asked).toBe("/api/external-reviews?repo=blazetrailsdev%2Ftrails&pr=12");
+    expect((await read("external-review", { repo: "blazetrailsdev/trails", pr: "12&x=1" })).status).toBe(400);
+    expect((await read("external-review", { repo: "trails", pr: "12" })).status).toBe(400);
+    expect(received.map((r) => r.url)).toEqual(["/api/external-reviews?repo=blazetrailsdev%2Ftrails&pr=12"]);
   });
 
   it("refuses a read the page has no use for, without calling ringo", async () => {

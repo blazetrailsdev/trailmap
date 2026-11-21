@@ -72,6 +72,18 @@ class FleetControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ "/reviewer/list", "/reviewer/drain-status?agent=codex" ], asked
   end
 
+  test "an external review read forwards repo and pr, and refuses a read without both" do
+    answers = { "/api/external-reviews?repo=blazetrailsdev%2Ftrails&pr=12" => [ 200, "{}" ] }
+    asked = []
+    with_ringo(answers, asked: asked) do
+      get "/fleet/read/external-review", params: { repo: "blazetrailsdev/trails", pr: "12" }
+      assert_response :success
+      get "/fleet/read/external-review", params: { repo: "trails", pr: "12" }
+      assert_response :bad_request
+    end
+    assert_equal [ "/api/external-reviews?repo=blazetrailsdev%2Ftrails&pr=12" ], asked
+  end
+
   test "control forwards an allowlisted path and refuses anything else" do
     posted = []
     relay = lambda do |url, body:, content_type:, timeout:|
