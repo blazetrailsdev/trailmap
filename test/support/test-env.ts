@@ -9,7 +9,6 @@ import { env, setEnv } from "@blazetrails/ruby-compat";
 const LIVE_VARIABLES = [
   "TASKS_DATABASE",
   "TASKS_DIR",
-  "AUDITS_DIR",
   "DEPLOY_LOGS_DIR",
   "FLEET_REPO_PATHS",
   "RINGO_BASE",

@@ -54,8 +54,7 @@ own of:
 
 ```sh
 dokku storage:mount trailmap-rails /home/dean/github/blazetrailsdev:/home/dean/github/blazetrailsdev
-dokku storage:mount trailmap-rails /home/dean/.btwhooks/data/github/blazetrailsdev/trails/audits:/audits:ro
-for key in TASKS_DATABASE TASKS_DIR AUDITS_DIR STATS_DB RINGO_BASE; do
+for key in TASKS_DATABASE TASKS_DIR STATS_DB RINGO_BASE; do
   dokku config:set --no-restart trailmap-rails "$key=$(dokku config:get trailmap "$key")"
 done
 dokku config:set --no-restart trailmap-rails SECRET_KEY_BASE="$(openssl rand -hex 64)"
