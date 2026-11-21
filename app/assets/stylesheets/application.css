@@ -819,6 +819,7 @@ textarea.ctl { height: auto; }
 #externalPrs { margin-bottom: 16px; }
 .external-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .external-actions .external-focus { flex: 1 1 12em; min-width: 0; }
+.external-error { color: var(--red); }
 .row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .figure { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
 .expand {

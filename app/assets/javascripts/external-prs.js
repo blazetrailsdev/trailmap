@@ -9,9 +9,17 @@
  */
 import { timeAgo } from "./fleet-format.js";
 
-/** Whether an envelope event is one the inbox redraws on. */
-export function isInboxEvent(event) {
-  return typeof event?.type === "string" && /^external_(pr|review)\./.test(event.type);
+/**
+ * Whether an envelope event is one this repo's inbox redraws on: an
+ * `external_pr.*` or `external_review.*` event about `nwo`. Another repo's
+ * activity never redraws the rows, so a half-typed focus note is not rebuilt
+ * for nothing.
+ */
+export function isInboxEvent(event, nwo) {
+  const type = event?.type;
+  if (typeof type !== "string") return false;
+  if (!type.startsWith("external_pr.") && !type.startsWith("external_review.")) return false;
+  return event.fields?.repo === nwo;
 }
 
 /**
@@ -19,7 +27,9 @@ export function isInboxEvent(event) {
  *
  * - `stale`: a draft exists, and the PR moved after it was drafted;
  * - `draft ready`: a draft exists;
- * - `drafting`: a review agent was started and has written no draft since;
+ * - `drafting`: a review agent was started (`startedAt`, the server's time on
+ *   `external_review.started`, or `Infinity` between the click and that event)
+ *   and has written no draft since;
  * - `none`: neither.
  *
  * `sent` is the state a review posted to GitHub takes; ringo records no such
@@ -52,31 +62,50 @@ function el(tag, attrs, ...children) {
 function boot(root) {
   const { repo, read, control, socket } = root.dataset;
   const list = root.querySelector(".external-list");
+  // Per PR number, kept across redraws: when its review was started (server
+  // time), why its last start failed, and the focus note being typed.
   const started = new Map();
+  const failed = new Map();
+  const notes = new Map();
   let seen = 0;
 
   async function draftOf(pr) {
-    const response = await fetch(`${read}/external-review?repo=${encodeURIComponent(repo)}&pr=${pr.pr}`, { cache: "no-store" });
-    return response.ok ? response.json() : null;
+    try {
+      const response = await fetch(`${read}/external-review?repo=${encodeURIComponent(repo)}&pr=${pr.pr}`, { cache: "no-store" });
+      return response.ok ? await response.json() : null;
+    } catch {
+      return null;
+    }
   }
 
-  async function start(pr, focus, button) {
+  async function start(pr, button) {
     button.disabled = true;
-    const response = await fetch(`${control}/external-review/start`, {
-      method: "POST",
-      headers: { ...csrfHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ repo, pr: pr.pr, focus }),
-    });
-    if (response.ok) started.set(pr.pr, Date.now());
-    else button.title = (await response.text()).trim() || response.statusText;
+    failed.delete(pr.pr);
+    try {
+      const response = await fetch(`${control}/external-review/start`, {
+        method: "POST",
+        headers: { ...csrfHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ repo, pr: pr.pr, focus: (notes.get(pr.pr) ?? "").trim() }),
+      });
+      if (response.ok) {
+        if (!started.has(pr.pr)) started.set(pr.pr, Infinity);
+      } else {
+        failed.set(pr.pr, (await response.text()).trim() || response.statusText);
+      }
+    } catch (error) {
+      failed.set(pr.pr, error.message);
+    }
     await draw();
   }
 
   function row(pr, state) {
-    const focus = el("input", { type: "text", placeholder: "Focus (optional)", className: "external-focus" });
+    const focus = el("input", { type: "text", placeholder: "Focus (optional)", className: "external-focus", value: notes.get(pr.pr) ?? "" });
+    focus.dataset.pr = String(pr.pr);
+    focus.addEventListener("input", () => notes.set(pr.pr, focus.value));
     const button = el("button", { type: "button", className: "btn", textContent: "Draft review" });
     button.disabled = state === "drafting";
-    button.addEventListener("click", () => start(pr, focus.value.trim(), button));
+    button.addEventListener("click", () => start(pr, button));
+    const error = failed.has(pr.pr) ? [el("div", { className: "row-meta external-error", textContent: `Could not start: ${failed.get(pr.pr)}` })] : [];
     return el(
       "div",
       { className: "item-row" },
@@ -98,6 +127,7 @@ function boot(root) {
             ` · ${pr.lastAction || "activity"} by ${pr.lastActor || "?"} ${timeAgo(Date.parse(pr.lastActivityAt))}`,
         ),
         el("div", { className: "external-actions" }, focus, button),
+        ...error,
       ),
     );
   }
@@ -108,8 +138,15 @@ function boot(root) {
       if (!response.ok) throw new Error(response.status + " " + (await response.text()).trim());
       const prs = prsOf(await response.json(), repo);
       const drafts = await Promise.all(prs.map(draftOf));
+      const active = document.activeElement?.classList?.contains("external-focus") ? document.activeElement : null;
+      const caret = active ? [active.dataset.pr, active.selectionStart, active.selectionEnd] : null;
       root.hidden = prs.length === 0;
       list.replaceChildren(...prs.map((pr, i) => row(pr, reviewState(pr, drafts[i], started.get(pr.pr)))));
+      const again = caret && list.querySelector(`.external-focus[data-pr="${caret[0]}"]`);
+      if (again) {
+        again.focus();
+        again.setSelectionRange(caret[1], caret[2]);
+      }
     } catch (error) {
       root.hidden = false;
       list.replaceChildren(el("div", { className: "empty", textContent: `External PRs unreadable: ${error.message}` }));
@@ -121,17 +158,16 @@ function boot(root) {
     const ws = new WebSocket(scheme + "//" + window.location.host + socket);
     ws.onmessage = (message) => {
       const data = JSON.parse(message.data);
-      const events = (Array.isArray(data) ? [] : data.events || []).filter(isInboxEvent);
+      const events = (Array.isArray(data) ? [] : data.events || []).filter((event) => isInboxEvent(event, repo));
       for (const event of events) {
-        if (event.type === "external_review.started" && event.fields?.repo === repo) {
-          started.set(event.fields.pr, Date.parse(event.at));
-        }
+        if (event.type === "external_review.started") started.set(event.fields.pr, Date.parse(event.at));
       }
       const latest = Math.max(0, ...events.map((event) => Date.parse(event.at) || 0));
+      // The ring replays on connect, so the first frame can carry a start
+      // the initial draw did not know about: it redraws too.
       if (latest > seen) {
-        const first = seen === 0;
         seen = latest;
-        if (!first) draw().catch(() => {});
+        draw().catch(() => {});
       }
     };
     ws.onclose = () => setTimeout(connect, 5000);

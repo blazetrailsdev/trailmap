@@ -52,6 +52,18 @@ class PagesTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "the pulls page mounts the External inbox with the fleet paths its script reads" do
+    require_hub!
+    hub_repo!("trails")
+    get "/blazetrailsdev/trails/pulls"
+    assert_response :success
+    assert_includes response.body, 'id="externalPrs"'
+    assert_includes response.body, 'data-repo="blazetrailsdev/trails"'
+    assert_includes response.body, 'data-read="/fleet/read"'
+    assert_includes response.body, 'data-control="/fleet/control"'
+    assert_includes response.body, 'data-socket="/fleet/socket"'
+  end
+
   test "an unknown owner or repository is a 404" do
     require_hub!
     get "/nobody"

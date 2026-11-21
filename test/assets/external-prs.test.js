@@ -22,6 +22,11 @@ describe("reviewState", () => {
     expect(reviewState(pr, { draftedAt: "2026-11-20T11:00:00Z" }, startedAt)).toBe("drafting");
     expect(reviewState(pr, { draftedAt: "2026-11-20T12:30:00Z" }, startedAt)).toBe("draft ready");
   });
+
+  it("stays drafting between the click and the server's started event, whatever the draft", () => {
+    expect(reviewState(pr, null, Infinity)).toBe("drafting");
+    expect(reviewState(pr, { draftedAt: "2026-11-20T12:30:00Z" }, Infinity)).toBe("drafting");
+  });
 });
 
 describe("prsOf", () => {
@@ -33,10 +38,15 @@ describe("prsOf", () => {
 });
 
 describe("isInboxEvent", () => {
-  it("answers external_pr.* and external_review.* only", () => {
-    expect(isInboxEvent({ type: "external_pr.opened" })).toBe(true);
-    expect(isInboxEvent({ type: "external_review.drafted" })).toBe(true);
-    expect(isInboxEvent({ type: "external_issue.opened" })).toBe(false);
-    expect(isInboxEvent(null)).toBe(false);
+  const nwo = "blazetrailsdev/trails";
+  const fields = { repo: nwo, pr: 7 };
+
+  it("answers external_pr.* and external_review.* about this repo only", () => {
+    expect(isInboxEvent({ type: "external_pr.opened", fields }, nwo)).toBe(true);
+    expect(isInboxEvent({ type: "external_review.drafted", fields }, nwo)).toBe(true);
+    expect(isInboxEvent({ type: "external_issue.opened", fields }, nwo)).toBe(false);
+    expect(isInboxEvent({ type: "external_pr.opened", fields: { repo: "blazetrailsdev/tasks", pr: 7 } }, nwo)).toBe(false);
+    expect(isInboxEvent({ type: "external_pr.opened" }, nwo)).toBe(false);
+    expect(isInboxEvent(null, nwo)).toBe(false);
   });
 });
