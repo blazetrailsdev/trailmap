@@ -48,7 +48,7 @@ class EndpointsTest < ActionDispatch::IntegrationTest
   # ── deploys ──
 
   test "deploys log relays ringo's log and status" do
-    with_ringo({ "/deploys/log?id=run%201" => [ 200, "line one\n" ] }) do
+    with_ringo({ "/deploys/output?id=run%201" => [ 200, "line one\n" ] }) do
       get "/deploys/log", params: { id: "run 1" }
       assert_response :success
       assert_equal "line one\n", response.body

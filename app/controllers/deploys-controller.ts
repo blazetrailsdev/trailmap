@@ -75,7 +75,7 @@ export class DeploysController extends ApplicationController {
       }
     }
     try {
-      const response = await fetch(`${base}/deploys/log?id=${encodeURIComponent(id)}`, {
+      const response = await fetch(`${base}/deploys/output?id=${encodeURIComponent(id)}`, {
         signal: AbortSignal.timeout(DEPLOYS_TIMEOUT_MS),
       });
       await this.render({ plain: await response.text(), status: response.status });

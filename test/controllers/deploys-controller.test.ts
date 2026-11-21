@@ -43,7 +43,7 @@ beforeAll(async () => {
     } else if (url.pathname === "/proxy-down/api/deploys") {
       res.writeHead(502, { "content-type": "text/html" });
       res.end("<html><body>Bad Gateway from nginx</body></html>");
-    } else if (url.pathname === "/deploys/log" && url.searchParams.get("id") === "ringo-100") {
+    } else if (url.pathname === "/deploys/output" && url.searchParams.get("id") === "ringo-100") {
       res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       res.end("-----> Building ringo\n ! push rejected\n");
     } else {
@@ -146,7 +146,7 @@ describe("DeploysController#log", () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toBe("-----> Building ringo\n ! push rejected\n");
-    expect(asked).toEqual(["/deploys/log?id=ringo-100"]);
+    expect(asked).toEqual(["/deploys/output?id=ringo-100"]);
   });
 
   it("passes ringo's 404 for an unknown run through", async () => {
@@ -155,7 +155,7 @@ describe("DeploysController#log", () => {
     const response = await get("log", { id: "nope&x=1" });
 
     expect(response.status).toBe(404);
-    expect(asked).toEqual(["/deploys/log?id=nope%26x%3D1"]);
+    expect(asked).toEqual(["/deploys/output?id=nope%26x%3D1"]);
   });
 
   it("reads a run's own capture off the mounted pane-log directory, not ringo's relay", async () => {
@@ -176,7 +176,7 @@ describe("DeploysController#log", () => {
     // ringo-100 names no file, so a `file` parameter reaches nothing on disk.
     const response = await get("log", { id: "ringo-100", file: "pane-13.log" });
     expect(response.body).toBe("-----> Building ringo\n ! push rejected\n");
-    expect(asked).toEqual(["/api/deploys", "/deploys/log?id=ringo-100"]);
+    expect(asked).toEqual(["/api/deploys", "/deploys/output?id=ringo-100"]);
   });
 
   it("refuses a request with no id without calling ringo", async () => {
