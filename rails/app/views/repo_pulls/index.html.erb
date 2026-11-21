@@ -5,6 +5,14 @@
   RfcPagesController::Tab.new(href: repo_pulls_path(@owner.login, @repo.name, state: "merged"), label: "Merged", count: @tab_counts[:merged], active: @state == "merged"),
 ] %>
 
+<!-- External PRs (RFC 0253), drawn by external-prs.js from ringo's inbox
+     through the fleet relay; hidden until it finds one for this repo. -->
+<div class="box" id="externalPrs" hidden data-repo="<%= @nwo %>" data-read="<%= Fleet::READ_PATH %>"
+     data-control="<%= Fleet::CONTROL_PATH %>" data-socket="<%= Fleet::SOCKET_PATH %>">
+  <div class="box-header"><strong>External</strong></div>
+  <div class="external-list"></div>
+</div>
+
 <p class="muted">A pull request exists here because a story was stamped with it
 (<code>stories.pr</code>). &ldquo;Merged&rdquo; means every story under it is done or closed —
 the only merge signal this database holds.</p>
@@ -31,3 +39,5 @@ the only merge signal this database holds.</p>
     </div>
   <% end %>
 </div>
+
+<script src="<%= javascript_path("external-prs") %>" type="module"></script>

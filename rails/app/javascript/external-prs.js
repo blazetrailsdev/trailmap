@@ -1,0 +1,1 @@
+../../../app/assets/javascripts/external-prs.js
