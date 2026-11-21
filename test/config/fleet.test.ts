@@ -75,6 +75,7 @@ describe("FLEET_CONTROLS", () => {
       "ci-fixer/spawn",
       "drain",
       "drain-one",
+      "external-review/start",
       "merge-pr",
       "pause",
       "poke-stalled",
