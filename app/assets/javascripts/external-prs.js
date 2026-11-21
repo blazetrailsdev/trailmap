@@ -68,6 +68,8 @@ function boot(root) {
   const failed = new Map();
   const notes = new Map();
   let seen = 0;
+  // Only the newest draw() paints: overlapping reads can resolve out of order.
+  let generation = 0;
 
   async function draftOf(pr) {
     try {
@@ -133,11 +135,13 @@ function boot(root) {
   }
 
   async function draw() {
+    const mine = ++generation;
     try {
       const response = await fetch(`${read}/external-prs`, { cache: "no-store" });
       if (!response.ok) throw new Error(response.status + " " + (await response.text()).trim());
       const prs = prsOf(await response.json(), repo);
       const drafts = await Promise.all(prs.map(draftOf));
+      if (mine !== generation) return;
       const active = document.activeElement?.classList?.contains("external-focus") ? document.activeElement : null;
       const caret = active ? [active.dataset.pr, active.selectionStart, active.selectionEnd] : null;
       root.hidden = prs.length === 0;
@@ -148,6 +152,7 @@ function boot(root) {
         again.setSelectionRange(caret[1], caret[2]);
       }
     } catch (error) {
+      if (mine !== generation) return;
       root.hidden = false;
       list.replaceChildren(el("div", { className: "empty", textContent: `External PRs unreadable: ${error.message}` }));
     }
@@ -160,7 +165,12 @@ function boot(root) {
       const data = JSON.parse(message.data);
       const events = (Array.isArray(data) ? [] : data.events || []).filter((event) => isInboxEvent(event, repo));
       for (const event of events) {
-        if (event.type === "external_review.started") started.set(event.fields.pr, Date.parse(event.at));
+        // Ringo's `pr` is a Go int, so a JSON number; Number() keeps the Map
+        // keyed like the list either way. A drafted event clears a start, so
+        // a start whose event never arrived cannot hold the row in drafting.
+        const number = Number(event.fields.pr);
+        if (event.type === "external_review.started") started.set(number, Date.parse(event.at));
+        if (event.type === "external_review.drafted") started.delete(number);
       }
       const latest = Math.max(0, ...events.map((event) => Date.parse(event.at) || 0));
       // The ring replays on connect, so the first frame can carry a start
