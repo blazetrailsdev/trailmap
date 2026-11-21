@@ -72,6 +72,23 @@ class FleetControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ "/reviewer/list", "/reviewer/drain-status?agent=codex" ], asked
   end
 
+  test "a trust grant or held-review read forwards repo, and refuses one without it" do
+    answers = {
+      "/api/pr-trust?repo=blazetrailsdev%2Ftrails" => [ 200, "[]" ],
+      "/api/external-on-trusted?repo=blazetrailsdev%2Ftrails" => [ 200, "[]" ]
+    }
+    asked = []
+    with_ringo(answers, asked: asked) do
+      get "/fleet/read/pr-trust", params: { repo: "blazetrailsdev/trails" }
+      assert_response :success
+      get "/fleet/read/external-on-trusted", params: { repo: "blazetrailsdev/trails" }
+      assert_response :success
+      get "/fleet/read/pr-trust", params: { repo: "trails" }
+      assert_response :bad_request
+    end
+    assert_equal answers.keys, asked
+  end
+
   test "an external review read forwards repo and pr, and refuses a read without both" do
     answers = { "/api/external-reviews?repo=blazetrailsdev%2Ftrails&pr=12" => [ 200, "{}" ] }
     asked = []

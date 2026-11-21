@@ -94,15 +94,29 @@ export const FLEET_READS: Readonly<Record<string, string>> = {
   // PR's stored review draft, which takes `repo` and `pr` (`externalReviewQuery`).
   "external-prs": "api/external-prs",
   "external-review": "api/external-reviews",
+  // Per-PR trust grants, and external reviews held off trusted PRs; both
+  // take `repo` alone (`repoQuery`).
+  "pr-trust": "api/pr-trust",
+  "external-on-trusted": "api/external-on-trusted",
 };
+
+/** The reads that take `?repo=` alone, checked by `repoQuery`. */
+export const REPO_READS: readonly string[] = ["pr-trust", "external-on-trusted"];
+
+/** `?repo=<owner/repo>`, or "" when it is not one. */
+export function repoQuery(repo: string): string {
+  if (!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(repo)) return "";
+  return `?repo=${encodeURIComponent(repo)}`;
+}
 
 /**
  * The query `external-review` forwards: `?repo=<owner/repo>&pr=<n>`, or ""
  * when either is not one, so nothing unchecked reaches ringo's path.
  */
 export function externalReviewQuery(repo: string, pr: string): string {
-  if (!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(repo) || !/^[0-9]{1,10}$/.test(pr)) return "";
-  return `?repo=${encodeURIComponent(repo)}&pr=${pr}`;
+  const query = repoQuery(repo);
+  if (query === "" || !/^[0-9]{1,10}$/.test(pr)) return "";
+  return `${query}&pr=${pr}`;
 }
 
 /** The prefix of the pane-screen relay; the pane page polls `<prefix>/<n>/screen`. */
@@ -204,4 +218,7 @@ export const FLEET_CONTROLS: readonly string[] = [
   "spawnloop/story-spawn",
   // The pulls tab's "Draft review" on an external PR.
   "external-review/start",
+  // Its "Trust this PR", and "Forward to agent" on an external review.
+  "api/pr-trust",
+  "external-review/forward",
 ];

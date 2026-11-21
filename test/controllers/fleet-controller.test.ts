@@ -65,7 +65,7 @@ beforeAll(async () => {
         return;
       }
       const loopState = url.pathname === "/spawnloop/config" && req.method === "GET";
-      if (url.pathname === "/usage-status" || url.pathname === "/reviewer/drain-status" || url.pathname === "/api/external-reviews" || loopState) {
+      if (url.pathname === "/usage-status" || url.pathname === "/reviewer/drain-status" || url.pathname === "/api/external-reviews" || url.pathname === "/api/pr-trust" || url.pathname === "/api/external-on-trusted" || loopState) {
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify({ asked: url.pathname + url.search }));
         return;
@@ -467,6 +467,14 @@ describe("FleetController#read", () => {
     expect((await read("external-review", { repo: "blazetrailsdev/trails", pr: "12&x=1" })).status).toBe(400);
     expect((await read("external-review", { repo: "trails", pr: "12" })).status).toBe(400);
     expect(received.map((r) => r.url)).toEqual(["/api/external-reviews?repo=blazetrailsdev%2Ftrails&pr=12"]);
+  });
+
+  it("forwards a trust grant or held-review read's repo, and refuses one without it", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+    expect(JSON.parse((await read("pr-trust", { repo: "blazetrailsdev/trails" })).body).asked).toBe("/api/pr-trust?repo=blazetrailsdev%2Ftrails");
+    expect(JSON.parse((await read("external-on-trusted", { repo: "blazetrailsdev/trails" })).body).asked).toBe("/api/external-on-trusted?repo=blazetrailsdev%2Ftrails");
+    expect((await read("pr-trust", { repo: "trails" })).status).toBe(400);
+    expect(received).toHaveLength(2);
   });
 
   it("refuses a read the page has no use for, without calling ringo", async () => {

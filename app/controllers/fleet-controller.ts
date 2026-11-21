@@ -1,6 +1,6 @@
 import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { ApplicationController } from "./application-controller.ts";
-import { externalReviewQuery, FLEET_CONTROLS, FLEET_READS, isPaneId, isScreenHash, paneKeysProblem, paneMessageProblem } from "../../config/fleet.ts";
+import { externalReviewQuery, FLEET_CONTROLS, FLEET_READS, REPO_READS, repoQuery, isPaneId, isScreenHash, paneKeysProblem, paneMessageProblem } from "../../config/fleet.ts";
 import { Setting } from "../models/setting.ts";
 import { isWebSocketRequest, relayEvents, type RelaySocket } from "../../lib/fleet-relay.ts";
 import {
@@ -222,7 +222,8 @@ export class FleetController extends ApplicationController {
    * `reviewers`. `agent` is the one query any of them takes, and only
    * `drain-status` takes it (`/reviewer/drain-status?agent=codex`); it is
    * forwarded there alone, and only as a bare word. `external-review` takes
-   * `repo` and `pr`, checked by `externalReviewQuery`, and is a 400 without them.
+   * `repo` and `pr`, checked by `externalReviewQuery`, and is a 400 without them;
+   * the `REPO_READS` take `repo` alone, checked by `repoQuery`.
    */
   async read(): Promise<void> {
     const name = String(this.params.get("name") ?? "");
@@ -231,6 +232,15 @@ export class FleetController extends ApplicationController {
       return;
     }
     const agent = String(this.params.get("agent") ?? "");
+    if (REPO_READS.includes(name)) {
+      const query = repoQuery(String(this.params.get("repo") ?? ""));
+      if (query === "") {
+        await this.render({ plain: "repo is required", status: 400 });
+        return;
+      }
+      await this._relayRead(FLEET_READS[name] + query);
+      return;
+    }
     if (name === "external-review") {
       const query = externalReviewQuery(String(this.params.get("repo") ?? ""), String(this.params.get("pr") ?? ""));
       if (query === "") {
