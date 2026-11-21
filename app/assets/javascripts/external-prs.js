@@ -64,6 +64,25 @@ export function heldByPr(list, nwo) {
   return groups;
 }
 
+/**
+ * The inbox's order: each PR, then its held group if it has one; then the
+ * held groups of PRs not in the list (trusted agent PRs), in ringo's order.
+ * Entries are `{ pr }` or `{ held: [number, items] }`.
+ */
+export function inboxLayout(prs, groups) {
+  const rest = new Map(groups);
+  const out = [];
+  for (const pr of prs) {
+    out.push({ pr });
+    if (rest.has(pr.pr)) {
+      out.push({ held: [pr.pr, rest.get(pr.pr)] });
+      rest.delete(pr.pr);
+    }
+  }
+  for (const entry of rest) out.push({ held: entry });
+  return out;
+}
+
 /** The PRs of `nwo`, newest activity first, as ringo already orders them. */
 export function prsOf(list, nwo) {
   return (Array.isArray(list) ? list : []).filter((pr) => pr && pr.repo === nwo);
@@ -171,8 +190,10 @@ function boot(root) {
     if (forwarding.has(item.id)) {
       const text = el("textarea", { className: "external-forward", rows: 4, value: forwarding.get(item.id) });
       text.addEventListener("input", () => forwarding.set(item.id, text.value));
-      text.addEventListener("blur", () => {
-        if (!deferred) return;
+      text.addEventListener("blur", (event) => {
+        // Focus moving to Send or Cancel: their click handler redraws, and a
+        // redraw now would swap the button out between mousedown and click.
+        if (!deferred || actions.contains(event.relatedTarget)) return;
         deferred = false;
         draw().catch(() => {});
       });
@@ -275,13 +296,11 @@ function boot(root) {
       root.hidden = prs.length === 0 && groups.size === 0;
       // A held group sits under its PR's row; a trusted agent PR, which is
       // not in the external list, gets its group on its own after the rows.
+      const draftFor = new Map(prs.map((pr, i) => [pr, drafts[i]]));
       list.replaceChildren(
-        ...prs.flatMap((pr, i) => {
-          const held = groups.get(pr.pr);
-          groups.delete(pr.pr);
-          return [row(pr, reviewState(pr, drafts[i], started.get(pr.pr)), grantOf.get(pr.pr)), ...(held ? [heldGroup(pr.pr, held)] : [])];
-        }),
-        ...[...groups].map(([pr, items]) => heldGroup(pr, items)),
+        ...inboxLayout(prs, groups).map((entry) =>
+          entry.pr ? row(entry.pr, reviewState(entry.pr, draftFor.get(entry.pr), started.get(entry.pr.pr)), grantOf.get(entry.pr.pr)) : heldGroup(...entry.held),
+        ),
       );
       const again = caret && list.querySelector(`.external-focus[data-pr="${caret[0]}"]`);
       if (again) {

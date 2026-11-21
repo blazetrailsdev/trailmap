@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heldByPr, isInboxEvent, prsOf, reviewState, suggestedInstruction } from "../../app/assets/javascripts/external-prs.js";
+import { heldByPr, inboxLayout, isInboxEvent, prsOf, reviewState, suggestedInstruction } from "../../app/assets/javascripts/external-prs.js";
 
 const pr = { repo: "blazetrailsdev/trails", pr: 7, lastActivityAt: "2026-11-20T10:00:00Z" };
 
@@ -73,5 +73,15 @@ describe("suggestedInstruction", () => {
 describe("isInboxEvent on trust grants", () => {
   it("redraws on pr_trust.* about this repo", () => {
     expect(isInboxEvent({ type: "pr_trust.revoked", fields: { repo: "blazetrailsdev/trails", pr: 7 } }, "blazetrailsdev/trails")).toBe(true);
+  });
+});
+
+describe("inboxLayout", () => {
+  it("puts each held group under its PR's row, and groups with no row last", () => {
+    const a = { pr: 1 };
+    const b = { pr: 2 };
+    const groups = new Map([[9, ["x"]], [2, ["y"]]]);
+    expect(inboxLayout([a, b], groups)).toEqual([{ pr: a }, { pr: b }, { held: [2, ["y"]] }, { held: [9, ["x"]] }]);
+    expect(groups.size).toBe(2);
   });
 });
