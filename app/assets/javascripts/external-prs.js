@@ -214,6 +214,15 @@ function boot(root) {
         forwarding.delete(item.id);
         draw().catch(() => {});
       });
+      // A press on Send or Cancel that drags off fires no click: the
+      // button's own blur runs the redraw text's blur skipped.
+      for (const button of [send, cancel]) {
+        button.addEventListener("blur", () => {
+          if (!deferred) return;
+          deferred = false;
+          draw().catch(() => {});
+        });
+      }
       actions.append(text, send, cancel);
     } else {
       const open = el("button", { type: "button", className: "btn", textContent: "Forward to agent" });
