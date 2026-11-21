@@ -67,6 +67,11 @@ class FleetController < ApplicationController
   def read
     name = params[:name].to_s
     return render plain: "Not a fleet read", status: :not_found unless Fleet::READS.key?(name)
+    if Fleet::REPO_READS.include?(name)
+      query = Fleet.repo_query(params[:repo].to_s)
+      return render plain: "repo is required", status: :bad_request if query.empty?
+      return relay_read(Fleet::READS[name] + query)
+    end
     if name == "external-review"
       query = Fleet.external_review_query(params[:repo].to_s, params[:pr].to_s)
       return render plain: "repo and pr are required", status: :bad_request if query.empty?

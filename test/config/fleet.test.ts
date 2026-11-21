@@ -69,12 +69,14 @@ describe("fleetRepos", () => {
 describe("FLEET_CONTROLS", () => {
   it("lists exactly the endpoints the page has a button for", () => {
     expect([...FLEET_CONTROLS].sort()).toEqual([
+      "api/pr-trust",
       "ask/answer",
       "broadcast",
       "cancel-cleanup",
       "ci-fixer/spawn",
       "drain",
       "drain-one",
+      "external-review/forward",
       "external-review/start",
       "merge-pr",
       "pause",

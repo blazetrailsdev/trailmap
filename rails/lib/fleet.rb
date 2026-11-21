@@ -17,8 +17,19 @@ module Fleet
     "reviewer-config" => "reviewer/config",
     "broadcast-targets" => "broadcast/targets",
     "external-prs" => "api/external-prs",
-    "external-review" => "api/external-reviews"
+    "external-review" => "api/external-reviews",
+    "pr-trust" => "api/pr-trust",
+    "external-on-trusted" => "api/external-on-trusted"
   }.freeze
+
+  # The reads that take `?repo=` alone.
+  REPO_READS = %w[pr-trust external-on-trusted].freeze
+
+  # `?repo=<owner/repo>`, or "" when it is not one.
+  def self.repo_query(repo)
+    return "" unless repo.match?(%r{\A[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}\z})
+    "?repo=#{CGI.escape(repo)}"
+  end
 
   # The query `external-review` forwards, or "" when repo or pr is not one.
   def self.external_review_query(repo, pr)
@@ -37,7 +48,7 @@ module Fleet
     spawnloop/spawn-now ci-fixer/spawn reviewer/assign worker/spawn broadcast drain drain-one
     poke-stalled cancel-cleanup ask/answer reviewer/drain-codex reviewer/drain-claude pause refresh-usage
     spawnloop/rfc-batch-spawn spawnloop/rfc-refine spawnloop/story-spawn spawnloop/dashboard-spawn
-    external-review/start
+    external-review/start api/pr-trust external-review/forward
   ].freeze
 
   SCREEN_HASH_MAX = 128
