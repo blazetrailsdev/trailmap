@@ -29,8 +29,7 @@ dokku domains:set trailmap trailmap.deanoftech.com
 # nested inside this one; it is redundant, and
 #   dokku storage:unmount trailmap \
 #     /home/dean/github/blazetrailsdev/tasks:/home/dean/github/blazetrailsdev/tasks
-# removes it. `dokku storage:list trailmap` should name only this directory and
-# `/audits`.
+# removes it. `dokku storage:list trailmap` should name only this directory.
 dokku storage:mount trailmap \
   /home/dean/github/blazetrailsdev:/home/dean/github/blazetrailsdev
 
@@ -510,16 +509,6 @@ dokku config:show trailmap
 The container runs as uid/gid 1000, the host owner of `tasks.db`, so the bind
 mount is writable with no permission work. `TASKS_DIR` is needed as well as
 `TASKS_DATABASE`: the show pages read each document's markdown off disk.
-
-`/audits` reads ringo's audits directory, read-only. Mount it and name it:
-
-```sh
-dokku storage:mount trailmap \
-  /home/dean/.btwhooks/data/github/blazetrailsdev/trails/audits:/audits:ro
-dokku config:set trailmap AUDITS_DIR=/audits
-```
-
-Unset, `/audits` renders and says there is no directory to list.
 
 `/deploys/log` reads each run's log from ringo's pane-log directory (`<data dir>/sessions/panes`), read-only,
 so a log reads with ringo down. The capture is the `pipe-pane` file ringo's
