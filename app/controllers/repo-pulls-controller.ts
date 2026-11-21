@@ -1,6 +1,7 @@
 import { RepoController } from "./repo-controller.ts";
 import { prNumber, prRefsOf, storiesForRepo } from "../models/concerns/repo-scope.ts";
 import { RESOLVED_DEP_STATUSES } from "../models/story.ts";
+import { FLEET_CONTROL_PATH, FLEET_READ_PATH, FLEET_SOCKET_PATH } from "../../config/fleet.ts";
 
 /** One pull request: its number and the stories stamped with it. */
 export interface PullRow {
@@ -24,6 +25,10 @@ export interface PullRow {
  * "Merged" means every story under the PR is `done` or `closed`. That is the
  * only merge signal in this database; the fleet dashboard gets the real one
  * from ringo's tracker, which RFC 0136 phase B turns into a table.
+ *
+ * Above the list, an External section (RFC 0253) lists ringo's open PRs from
+ * external contributors, drawn in the browser by `external-prs.js` through
+ * the fleet relay, so the page itself still never asks ringo anything.
  */
 export class RepoPullsController extends RepoController {
   static tab = "pulls";
@@ -64,6 +69,9 @@ export class RepoPullsController extends RepoController {
           merged: rows.filter((row) => row.merged).length,
         },
         rows: shown,
+        fleetReadPath: FLEET_READ_PATH,
+        fleetControlPath: FLEET_CONTROL_PATH,
+        fleetSocketPath: FLEET_SOCKET_PATH,
       }),
     });
   }

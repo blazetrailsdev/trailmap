@@ -15,8 +15,16 @@ module Fleet
     "drain-status" => "reviewer/drain-status",
     "spawn-loop" => "spawnloop/config",
     "reviewer-config" => "reviewer/config",
-    "broadcast-targets" => "broadcast/targets"
+    "broadcast-targets" => "broadcast/targets",
+    "external-prs" => "api/external-prs",
+    "external-review" => "api/external-reviews"
   }.freeze
+
+  # The query `external-review` forwards, or "" when repo or pr is not one.
+  def self.external_review_query(repo, pr)
+    return "" unless repo.match?(%r{\A[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}\z}) && pr.match?(/\A[0-9]{1,10}\z/)
+    "?repo=#{CGI.escape(repo)}&pr=#{pr}"
+  end
 
   # The repos the spawn dialog offers first, in this order: the ones spawned
   # into most. Every other repo follows them by name.
@@ -29,6 +37,7 @@ module Fleet
     spawnloop/spawn-now ci-fixer/spawn reviewer/assign worker/spawn broadcast drain drain-one
     poke-stalled cancel-cleanup ask/answer reviewer/drain-codex reviewer/drain-claude pause refresh-usage
     spawnloop/rfc-batch-spawn spawnloop/rfc-refine spawnloop/story-spawn spawnloop/dashboard-spawn
+    external-review/start
   ].freeze
 
   SCREEN_HASH_MAX = 128

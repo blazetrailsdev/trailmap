@@ -282,6 +282,13 @@ describe.skipIf(!hasHubTestDatabase())("the repo tabs", () => {
     expect(open.body).toContain("#7229");
     expect(open.body).not.toContain("#7228");
 
+    // The External inbox's mount point, with the paths external-prs.js reads.
+    expect(open.body).toContain('id="externalPrs"');
+    expect(open.body).toContain('data-repo="blazetrailsdev/trails"');
+    expect(open.body).toContain('data-read="/fleet/read"');
+    expect(open.body).toContain('data-control="/fleet/control"');
+    expect(open.body).toContain('data-socket="/fleet/socket"');
+
     const merged = await get(RepoPullsController, "index", { ...TRAILS, state: "merged" });
     expect(merged.body).toContain("#7228");
 
