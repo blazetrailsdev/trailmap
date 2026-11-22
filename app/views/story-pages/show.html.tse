@@ -1,3 +1,4 @@
+<% contentFor("head", tag("meta", { name: "turbo-visit-control", content: "reload" })) %>
 <% if (story === null) { %>
   <div class="page-header"><h1 class="page-title">Story not found</h1></div>
   <p class="muted">No story in the index has the id <code><%= id %></code>.</p>

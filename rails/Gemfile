@@ -61,3 +61,6 @@ end
 gem "websocket-driver"
 
 gem "wasmtime", "~> 50.0"
+
+# Hotwire Turbo Drive [https://turbo.hotwired.dev]
+gem "turbo-rails", "~> 2.0"

@@ -37,7 +37,8 @@ describe("HomeController", () => {
 
     expect(body).toContain('<input type="checkbox" id="navToggle" class="nav-toggle">');
     expect(body).toContain('<label for="navToggle" class="nav-burger" aria-label="Menu">');
-    expect(body).not.toContain("<script");
+    // Turbo Drive's script is the only one; the menu works without it.
+    expect(body.match(/<script[^>]*>/g)).toEqual([expect.stringMatching(/^<script src="\/vite-test\/assets\/application-[\w-]+\.js" type="module">$/)]);
   });
 
   it("renders a page, not the placeholder heading", async () => {

@@ -12,7 +12,8 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <%= csrf_meta_tags %>
   <%= stylesheet_link_tag "application" %>
-  <%= javascript_inline_importmap_tag %>
+  <%= javascript_importmap_tags %>
+  <%= yield :head %>
 </head>
 <body>
   <% nav_items = [ [ "RFCs", rfcs_path ], [ "Backlog", backlog_path ], [ "Dashboard", dashboard_path ], [ "Parity", parity_graph_path ], [ "Packages", packages_path ], [ "Audits", audits_path ], [ "Deploys", deploys_path ], [ "Sessions", sessions_path ], [ "Search", search_path ] ].map { |label, path| [ label, path, nav_mark(path) ] } %>
