@@ -438,6 +438,26 @@ await until("an exited pane's box to be disabled", () =>
 );
 console.log("ok  pane message, disabled once the pane has exited");
 
+// A repaint mid-typing keeps the field focused with its text, caret and picks:
+// a question's Other box and a choice, then a session's message box.
+const typing = [
+  [`document.querySelectorAll('#s-pr-o-r-8 .ask-other input[type=text]')[0]`, `document.querySelector('#s-pr-o-r-8 input[value="Merge"]')`],
+  [`document.querySelector('#s-pr-o-r-8 .composer textarea')`, null],
+] as const;
+for (const [field, pick] of typing) {
+  await evaluate(
+    `(() => { ${pick ? `${pick}.click();` : ""} const f = ${field}; f.focus(); f.value = "half typed"; f.dataset.old = "1"; f.setSelectionRange(4, 4); ` +
+      `${expand("s-pr-o-r-7")}.click(); return true; })()`,
+  );
+  await until(`a repaint to keep ${field} focused, its text, caret${pick ? " and pick" : ""}`, () =>
+    evaluate(
+      `(() => { const f = ${field}; return !!f && !f.dataset.old && document.activeElement === f && f.value === "half typed" && ` +
+        `f.selectionStart === 4${pick ? ` && ${pick}.checked` : ""}; })()`,
+    ),
+  );
+}
+console.log("ok  typing survives a repaint: a question's Other box, its pick, and a message box");
+
 // At a phone's width the page never scrolls sideways: collapsed, with a card
 // expanded (both PR rows are), and with the palette open.
 await evaluate.cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
@@ -464,5 +484,5 @@ if (drawn.length < 50 || collided.length) {
   throw new Error(`dashboard-e2e: ${drawn.length} class lists drawn, colliding: ${collided.join(", ") || "none"}`);
 }
 console.log(`ok  ${drawn.length} drawn class lists, none wearing two boxes`);
-console.log(`dashboard-e2e: ${CASES.length + 13} cases — every control posts what ringo expects and says what happened`);
+console.log(`dashboard-e2e: ${CASES.length + 14} cases — every control posts what ringo expects and says what happened`);
 exit(0);
