@@ -56,6 +56,7 @@ import {
   terminalPanes,
   trackPanes,
 } from "./fleet-sessions.js";
+import { morph } from "./morph.js";
 import { atBottom, noticeText, screenUrl } from "./pane-format.js";
 import { createPaneLoop, paintScreen } from "./pane-loop.js";
 import {
@@ -152,9 +153,11 @@ function record(rows) {
 }
 
 /*
- * Every repaint replaces the list's markup, so what the viewer is in the
- * middle of -- a half-typed answer or message, the field with the cursor, a
- * log's scroll -- is read off before and put back after.
+ * A repaint morphs the list (`morph.js`), so a node that did not change --
+ * the field being typed in above all -- stays in the page. One that did is
+ * replaced, so what the viewer is in the middle of -- a half-typed answer or
+ * message, the field with the cursor, a log's scroll -- is still read off
+ * before and put back after.
  */
 function keepWhileRepainting(host, paint) {
   const kept = [...host.querySelectorAll("[data-keep]")].map((el) => [el.dataset.keep, el.value, el.checked]);
@@ -265,9 +268,7 @@ function renderSessions(prs, spawns) {
   const list = sessionList(sections, ctx, { [DEFAULT_REPO]: clearFailed });
   shownRows = list.rows;
   shownPrs = prs;
-  keepWhileRepainting(host, () => {
-    host.innerHTML = list.html;
-  });
+  keepWhileRepainting(host, () => morph(host, list.html));
   syncTerminals();
   return list.rows;
 }

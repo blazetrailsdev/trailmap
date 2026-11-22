@@ -438,25 +438,26 @@ await until("an exited pane's box to be disabled", () =>
 );
 console.log("ok  pane message, disabled once the pane has exited");
 
-// A repaint mid-typing keeps the field focused with its text, caret and picks:
-// a question's Other box and a choice, then a session's message box.
+// A repaint mid-typing leaves the field itself in the page, focused with its
+// text, caret and picks: a question's Other box and a choice, then a session's
+// message box. The other row's expand flipping proves the list was repainted.
 const typing = [
   [`document.querySelectorAll('#s-pr-o-r-8 .ask-other input[type=text]')[0]`, `document.querySelector('#s-pr-o-r-8 input[value="Merge"]')`],
   [`document.querySelector('#s-pr-o-r-8 .composer textarea')`, null],
 ] as const;
 for (const [field, pick] of typing) {
   await evaluate(
-    `(() => { ${pick ? `${pick}.click();` : ""} const f = ${field}; f.focus(); f.value = "half typed"; f.dataset.old = "1"; f.setSelectionRange(4, 4); ` +
-      `${expand("s-pr-o-r-7")}.click(); return true; })()`,
+    `(() => { ${pick ? `${pick}.click();` : ""} const f = ${field}; f.focus(); f.value = "half typed"; f.typedIn = true; f.setSelectionRange(4, 4); ` +
+      `window.wasExpanded = ${expand("s-pr-o-r-7")}.getAttribute("aria-expanded"); ${expand("s-pr-o-r-7")}.click(); return true; })()`,
   );
   await until(`a repaint to keep ${field} focused, its text, caret${pick ? " and pick" : ""}`, () =>
     evaluate(
-      `(() => { const f = ${field}; return !!f && !f.dataset.old && document.activeElement === f && f.value === "half typed" && ` +
+      `(() => { const f = ${field}; return !!f && f.typedIn === true && ${expand("s-pr-o-r-7")}.getAttribute("aria-expanded") !== window.wasExpanded && document.activeElement === f && f.value === "half typed" && ` +
         `f.selectionStart === 4${pick ? ` && ${pick}.checked` : ""}; })()`,
     ),
   );
 }
-console.log("ok  typing survives a repaint: a question's Other box, its pick, and a message box");
+console.log("ok  typing survives a repaint, in the same node: a question's Other box, its pick, and a message box");
 
 // At a phone's width the page never scrolls sideways: collapsed, with a card
 // expanded (both PR rows are), and with the palette open.
