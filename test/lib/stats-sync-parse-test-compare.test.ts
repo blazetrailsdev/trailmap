@@ -18,7 +18,29 @@ const legacyFormatLog = `
   activerecord  —  900/1000 tests (90%) (12 skipped)  |  40/50 files  |  7 misplaced
 `;
 
+const permanentFormatLog = `
+  msgpack  —  348/348 tests (26 permanent) (100%) (26 skipped)  |  15/15 files  |  0 misplaced
+  Overall: 348/348 tests (26 permanent) (100%) (26 skipped)  |  15/15 files  |  0 misplaced
+`;
+
 describe("parseTestCompareFromLogs", () => {
+  it("parses a summary carrying a permanent-skip count", () => {
+    const results = parseTestCompareFromLogs(permanentFormatLog);
+
+    expect([...results.keys()]).toEqual(["msgpack"]);
+    expect(results.get("msgpack")).toEqual({
+      matched: 348,
+      total: 348,
+      percent: 100,
+      skipped: 26,
+      filesMapped: 15,
+      filesTotal: 15,
+      misplaced: 0,
+      assertionCountMismatch: 0,
+      assertionKindMismatch: 0,
+    });
+  });
+
   it("parses the current summary format with nested parens and hyphenated packages", () => {
     const results = parseTestCompareFromLogs(currentFormatLog);
 
