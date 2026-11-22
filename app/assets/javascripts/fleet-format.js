@@ -460,6 +460,9 @@ export function controlRequest(action, data, page = {}) {
     }
     // `answerAsk` and `answerAskFree`: both send prose, and nothing empty.
     case "answer-ask": {
+      if (data.missing !== undefined) {
+        return { focus: data.focusId, says: "ask-hint-" + data.id, hint: "Question " + (Number(data.missing) + 1) + " still needs an answer" };
+      }
       const answer = String(data.answer || "").trim();
       if (!answer) return null;
       const errorAlert = (message) => "Failed to send answer: " + message;
@@ -1127,6 +1130,23 @@ export function drainStatus(d) {
 /** A picked option sends its label, under its question when several were asked. */
 export function askAnswer(ask, question, label) {
   return (ask.questions || []).length > 1 ? question.question + " → " + label : label;
+}
+
+/**
+ * Every question's picks as one reply, or the index of the first question
+ * left unanswered. `picks[i]` is the labels (and typed "Other" text) chosen
+ * for question i. One question sends its answer bare; several send a line
+ * each, "question → answer", picks of a multi-select joined by ", ".
+ */
+export function askAnswers(ask, picks) {
+  const questions = ask.questions || [];
+  const lines = [];
+  for (let i = 0; i < questions.length; i++) {
+    const chosen = (picks[i] || []).map((p) => String(p).trim()).filter(Boolean);
+    if (!chosen.length) return { missing: i };
+    lines.push(askAnswer(ask, questions[i], chosen.join(", ")));
+  }
+  return { answer: lines.join("\n") };
 }
 
 // ---------------------------------------------------------------------------

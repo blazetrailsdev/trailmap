@@ -164,20 +164,34 @@ describe("questions in the row", () => {
 
     expect(html).not.toContain("<img");
     expect(html).not.toContain('" onclick="');
-    // Thirteen places: the strip's label, the asker's label and pane, the
-    // header, the question, the option's label and its description (its
-    // title), the id on both buttons and on the free answer's box, and the
-    // answer's question and label.
-    expect(html.split(esc(hostile)).length - 1).toBe(13);
+    // The strip's label, the asker's label and pane, the header, the
+    // question, the option's label (as text and as its value) and its
+    // description, the id five times in each of the two questions (option
+    // name and key, Other pick name and key, Other text key), and on the
+    // hint and Send.
+    expect(html.split(esc(hostile)).length - 1).toBe(20);
   });
 
-  it("renders the flag, each question's options and a free answer, sending answer-ask", () => {
+  it("renders the flag, each question as a group of choices with an Other box, and one Send", () => {
     const html = askStrip({ id: "a1", label: "worker", pane: "%9", at: minutesAgo(3), questions: [second] }, NOW);
 
     expect(html).toContain('<span class="flag">Waiting on you</span>');
-    expect(html).toContain('data-action="answer-ask" data-id="a1" data-answer="Yes"');
-    expect(html).toContain('data-action="answer-ask" data-id="a1" data-free="1"');
+    expect(html).toContain('<input type="radio" name="ask-a1-0" value="Yes"');
+    expect(html).toContain('data-other="1"');
+    expect(html.match(/data-action="answer-ask"/g)).toEqual(['data-action="answer-ask"']);
+    expect(html).toContain('data-action="answer-ask" data-id="a1" data-form="1"');
+    expect(html).toContain(">Send answer<");
     expect(html).toContain("3m ago");
+  });
+
+  it("answers several questions with one Send, and a multi-select with checkboxes", () => {
+    const many = { question: "Which?", multiSelect: true, options: [{ label: "A", description: "the first" }, { label: "B" }] };
+    const html = askStrip({ id: "a2", label: "w", at: minutesAgo(1), questions: [second, many] }, NOW);
+
+    expect(html.match(/<fieldset class="ask-q"/g)).toHaveLength(2);
+    expect(html).toContain('<input type="checkbox" name="ask-a2-1" value="A"');
+    expect(html).toContain('<span class="ask-desc">the first</span>');
+    expect(html).toContain(">Send 2 answers<");
   });
 
   it("goes in the row whose worker pane asked it", () => {
