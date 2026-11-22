@@ -2,7 +2,10 @@
 #
 # Boots what scripts/dashboard-e2e.ts drives: trailmap, pointed at the ringo
 # that script plays, and a headless Chrome. Like any boot, trailmap needs
-# HUB_DATABASE_URL naming a migrated hub; the task database is a scratch file.
+# a hub Postgres; the task database is a scratch file. CI names its service in
+# HUB_DATABASE_URL. Left unset, as on a laptop, this starts a Postgres of its
+# own in Docker, on a port Docker picks, migrates it, and removes it on exit:
+# it never borrows whatever Postgres happens to be listening.
 #
 # A PRODUCTION boot, as scripts/smoke-boot.sh's is: the development server
 # never answers the `/fleet/socket` upgrade, so the page would draw no rows.
@@ -13,6 +16,21 @@ work="$(mktemp -d)"
 ringo="${E2E_RINGO_PORT:-8141}" app="${E2E_APP_PORT:-8142}" cdp="${E2E_CDP_PORT:-9342}"
 chrome="${CHROME_BIN:-$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)}"
 [ -n "$chrome" ] || { echo "dashboard-e2e: no Chrome on PATH (set CHROME_BIN)" >&2; exit 1; }
+
+hubContainer=""
+if [ -z "${HUB_DATABASE_URL:-}" ]; then
+  command -v docker >/dev/null || {
+    echo "dashboard-e2e: HUB_DATABASE_URL is unset and there is no docker to start a throwaway hub Postgres; set HUB_DATABASE_URL to a hub database you can migrate" >&2
+    exit 1
+  }
+  hubContainer="$(docker run -d --rm -e POSTGRES_PASSWORD=e2e -e POSTGRES_DB=trailmap_hub -p 127.0.0.1::5432 postgres:16)"
+  trap 'docker rm -f "$hubContainer" >/dev/null 2>&1 || true' EXIT
+  until docker exec "$hubContainer" pg_isready -q -U postgres 2>/dev/null; do sleep 0.5; done
+  export HUB_DATABASE_URL="postgres://postgres:e2e@$(docker port "$hubContainer" 5432/tcp | head -n 1)/trailmap_hub"
+  # pg_isready answers before the init scripts' restart; a query proves the server is up for good.
+  until docker exec "$hubContainer" psql -U postgres -d trailmap_hub -qc "select 1" >/dev/null 2>&1; do sleep 0.5; done
+  NODE_ENV=test TASKS_DATABASE="$work/migrate.db" pnpm db:migrate >/dev/null
+fi
 
 # The views build boots the app, and sqlite3 refuses to start with no file.
 TASKS_DATABASE="${TASKS_DATABASE:-$work/views-build.db}" pnpm exec trails-tsc-views build --views app/views
@@ -40,6 +58,7 @@ cleanup() {
   for pid in "${pids[@]}"; do kill -KILL -- "-$pid" 2>/dev/null || true; done
   wait 2>/dev/null || true
   rm -rf "$work" || true
+  [ -z "$hubContainer" ] || docker rm -f "$hubContainer" >/dev/null 2>&1 || true
   [ "$hadAssets" = 1 ] || rm -rf public/vite || true
 }
 trap cleanup EXIT
