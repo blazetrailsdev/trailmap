@@ -37,7 +37,7 @@ const ANSWERS: Record<string, [number, string]> = {
   "/ask/answer": [200, ""],
 };
 // A question from PR #8's worker pane, answered in that session's row.
-const ASKS = { pending: [{ id: "ask-1", label: "worker", pane: "%4", at: new Date().toISOString(), questions: [{ question: "Rebase or merge?", options: [{ label: "Rebase" }, { label: "Merge" }] }] }] };
+const ASKS = { pending: [{ id: "ask-1", label: "worker", pane: "%4", at: new Date().toISOString(), questions: [{ question: "Rebase or merge?", options: [{ label: "Rebase" }, { label: "Merge" }] }, { question: "Which base?", options: [{ label: "main" }] }] }] };
 let reviewers: Array<Record<string, unknown>> = [{ ...PR, pr: 8, agent: "copilot" }];
 let ciRed = 1;
 // ringo's usage answer: the pause button and the scraper pill draw from it.
@@ -212,9 +212,16 @@ const CASES: Array<{ name: string; on: string; act?: string; post: [string, unkn
       `${byId("spawnTask")}.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true }))`,
     post: ["/spawnloop/dashboard-spawn", { repoDir: "/w/r", message: "fix the build" }],
     after: `!b.disabled && ${byId("spawnStatus")}.textContent === "Spawned: spawned in %5" && ${byId("spawnTask")}.value === "" && !${byId("spawnDialog")}.open` },
-  { name: "answer a question in its session's row, by option",
-    on: `document.querySelector('#s-pr-o-r-8 .strip.ask button[data-answer="Rebase"]')`,
-    post: ["/ask/answer", { id: "ask-1", answer: "Rebase" }], after: `b.textContent === "sent"` },
+  // Both questions answered with one Send: an option for the first, a typed
+  // Other for the second, which picks itself as it is typed.
+  { name: "answer every question in its session's row with one Send",
+    on: `document.querySelector('#s-pr-o-r-8 .strip.ask .ask-send button')`,
+    act: `(() => { const strip = document.querySelector('#s-pr-o-r-8 .strip.ask'); ` +
+      `strip.querySelector('input[value="Rebase"]').click(); ` +
+      `const other = strip.querySelectorAll('.ask-other input[type=text]')[1]; other.value = "release-8"; ` +
+      `other.dispatchEvent(new Event("input", { bubbles: true })); ` +
+      `strip.querySelector('.ask-send button').click(); })()`,
+    post: ["/ask/answer", { id: "ask-1", answer: "Rebase or merge? → Rebase\nWhich base? → release-8" }], after: `b.textContent === "sent"` },
   { name: "message a session from its expanded card, by ⌘↵", on: `document.querySelector('#s-pr-o-r-8 .composer button')`,
     act: `(() => { const box = document.querySelector('#s-pr-o-r-8 .composer textarea'); box.value = "please rebase"; ` +
       `box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true })); })()`,
@@ -431,6 +438,26 @@ await until("an exited pane's box to be disabled", () =>
 );
 console.log("ok  pane message, disabled once the pane has exited");
 
+// A repaint mid-typing keeps the field focused with its text, caret and picks:
+// a question's Other box and a choice, then a session's message box.
+const typing = [
+  [`document.querySelectorAll('#s-pr-o-r-8 .ask-other input[type=text]')[0]`, `document.querySelector('#s-pr-o-r-8 input[value="Merge"]')`],
+  [`document.querySelector('#s-pr-o-r-8 .composer textarea')`, null],
+] as const;
+for (const [field, pick] of typing) {
+  await evaluate(
+    `(() => { ${pick ? `${pick}.click();` : ""} const f = ${field}; f.focus(); f.value = "half typed"; f.dataset.old = "1"; f.setSelectionRange(4, 4); ` +
+      `${expand("s-pr-o-r-7")}.click(); return true; })()`,
+  );
+  await until(`a repaint to keep ${field} focused, its text, caret${pick ? " and pick" : ""}`, () =>
+    evaluate(
+      `(() => { const f = ${field}; return !!f && !f.dataset.old && document.activeElement === f && f.value === "half typed" && ` +
+        `f.selectionStart === 4${pick ? ` && ${pick}.checked` : ""}; })()`,
+    ),
+  );
+}
+console.log("ok  typing survives a repaint: a question's Other box, its pick, and a message box");
+
 // At a phone's width the page never scrolls sideways: collapsed, with a card
 // expanded (both PR rows are), and with the palette open.
 await evaluate.cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
@@ -457,5 +484,5 @@ if (drawn.length < 50 || collided.length) {
   throw new Error(`dashboard-e2e: ${drawn.length} class lists drawn, colliding: ${collided.join(", ") || "none"}`);
 }
 console.log(`ok  ${drawn.length} drawn class lists, none wearing two boxes`);
-console.log(`dashboard-e2e: ${CASES.length + 13} cases — every control posts what ringo expects and says what happened`);
+console.log(`dashboard-e2e: ${CASES.length + 14} cases — every control posts what ringo expects and says what happened`);
 exit(0);

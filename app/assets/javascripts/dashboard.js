@@ -11,6 +11,7 @@
  * already hold -- every frame repaints from the envelope, as ringo's does.
  */
 import {
+  askAnswers,
   isGrooming,
   claudeHasExited,
   CLEAR_FAILED_ID,
@@ -156,20 +157,22 @@ function record(rows) {
  * log's scroll -- is read off before and put back after.
  */
 function keepWhileRepainting(host, paint) {
-  const kept = [...host.querySelectorAll("[data-keep]")].map((el) => [el.dataset.keep, el.value]);
+  const kept = [...host.querySelectorAll("[data-keep]")].map((el) => [el.dataset.keep, el.value, el.checked]);
   const focused = document.activeElement && host.contains(document.activeElement) ? document.activeElement.dataset.keep : null;
   const selection = focused ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
   const scrolls = [...host.querySelectorAll("[data-log]")].map((el) => [el.dataset.log, el.scrollTop, el.scrollHeight - el.scrollTop - el.clientHeight < 4]);
   paint();
-  for (const [key, value] of kept) {
+  for (const [key, value, checked] of kept) {
     const el = host.querySelector('[data-keep="' + CSS.escape(key) + '"]');
-    if (el) el.value = value;
+    if (!el) continue;
+    if (el.type === "radio" || el.type === "checkbox") el.checked = checked;
+    else el.value = value;
   }
   if (focused) {
     const el = host.querySelector('[data-keep="' + CSS.escape(focused) + '"]');
     if (el) {
       el.focus();
-      if (selection && el.setSelectionRange) el.setSelectionRange(selection[0], selection[1]);
+      if (selection && selection[0] !== null && el.setSelectionRange) el.setSelectionRange(selection[0], selection[1]);
     }
   }
   for (const el of host.querySelectorAll("[data-log]")) {
@@ -602,13 +605,40 @@ poll("asks", 5_000, (answer) => {
 // Enter in a free-text answer is its Send button; ⌘↵ in a message box is its.
 document.addEventListener("keydown", (event) => {
   if (!(event.target instanceof Element) || event.isComposing) return;
-  if (event.key === "Enter" && event.target.matches(".ask-free input")) {
-    event.target.nextElementSibling.click();
+  if (event.key === "Enter" && event.target.matches(".ask input[type=text]")) {
+    event.preventDefault();
+    event.target.closest(".ask").querySelector(".ask-send button").click();
   } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && event.target.matches(".composer textarea")) {
     event.preventDefault();
     event.target.nextElementSibling.click();
   }
 });
+
+// Typing an "Other" answer picks it, and any answer clears the "still needs an answer" hint.
+document.addEventListener("input", (event) => {
+  if (!(event.target instanceof Element) || !event.target.closest(".ask-q")) return;
+  const hint = event.target.closest(".ask").querySelector(".ask-hint");
+  if (hint) hint.textContent = "";
+  if (!event.target.matches(".ask-other input[type=text]")) return;
+  const pick = event.target.previousElementSibling;
+  if (event.target.value.trim() && !pick.checked) pick.checked = true;
+});
+
+/** What a question strip's Send carries: each question's picks, or which one is unanswered. */
+function askForm(button) {
+  const ask = ctx.asks.find((a) => String(a.id) === button.dataset.id);
+  const groups = [...button.closest(".ask").querySelectorAll(".ask-q")];
+  const picks = groups.map((group) =>
+    [...group.querySelectorAll("input:checked")].map((input) =>
+      input.dataset.other ? input.nextElementSibling.value : input.value,
+    ),
+  );
+  const result = ask ? askAnswers(ask, picks) : { answer: "" };
+  if (result.missing === undefined) return { ...button.dataset, answer: result.answer };
+  const first = groups[result.missing].querySelector("input");
+  if (first && !first.id) first.id = "ask-" + button.dataset.id + "-first-" + result.missing;
+  return { ...button.dataset, missing: result.missing, focusId: first ? first.id : "" };
+}
 
 /*
  * A drain is a gh round trip and a pane teardown per reviewer, so minutes; ten
@@ -692,9 +722,9 @@ async function send(request) {
 document.addEventListener("click", async (event) => {
   const button = event.target instanceof Element ? event.target.closest("button[data-action]") : null;
   if (!button || button.disabled) return;
-  // A free-text answer is whatever is in the input beside its button, and a
-  // message is whatever is in the box its button names.
-  let data = button.dataset.free ? { ...button.dataset, answer: button.previousElementSibling.value } : button.dataset;
+  // A question's answers are read off its strip, and a message is whatever
+  // is in the box its button names.
+  let data = button.dataset.form ? askForm(button) : button.dataset;
   if (button.dataset.source) data = { ...button.dataset, text: byId(button.dataset.source).value };
   const request = controlRequest(button.dataset.action, data, {
     nextReviewer,

@@ -11,6 +11,7 @@ import {
   anyFailedSpawn,
   cleanupControl,
   askAnswer,
+  askAnswers,
   DEFAULT_REPO,
   cleanupPending,
   control,
@@ -1440,5 +1441,31 @@ describe("the helpers the session list shares", () => {
     expect(paneOverridePill("limit")).toContain("limit reached");
     expect(paneOverridePill("waiting")).toContain("waiting for answer");
     expect(paneOverridePill("working")).toBeNull();
+  });
+});
+
+describe("askAnswers", () => {
+  const one = { questions: [{ question: "Ship?", options: [{ label: "Yes" }] }] };
+  const two = { questions: [{ question: "Ship?" }, { question: "Which?", multiSelect: true }] };
+
+  it("sends one question's answer bare", () => {
+    expect(askAnswers(one, [["Yes"]])).toEqual({ answer: "Yes" });
+    expect(askAnswer(one, one.questions[0], "Yes")).toBe("Yes");
+  });
+
+  it("sends several as a line each, a multi-select's picks joined", () => {
+    expect(askAnswers(two, [["  no, wait for CI "], ["A", "B"]])).toEqual({ answer: "Ship? → no, wait for CI\nWhich? → A, B" });
+  });
+
+  it("names the first question left unanswered, an empty Other included", () => {
+    expect(askAnswers(two, [["Yes"], []])).toEqual({ missing: 1 });
+    expect(askAnswers(two, [["  "], ["A"]])).toEqual({ missing: 0 });
+  });
+
+  it("points the Send at the unanswered question instead of posting", () => {
+    expect(controlRequest("answer-ask", { id: "q", missing: 1, focusId: "f" })).toEqual({
+      focus: "f", says: "ask-hint-q", hint: "Question 2 still needs an answer",
+    });
+    expect(controlRequest("answer-ask", { id: "q", answer: "a\nb" }).body).toEqual({ id: "q", answer: "a\nb" });
   });
 });

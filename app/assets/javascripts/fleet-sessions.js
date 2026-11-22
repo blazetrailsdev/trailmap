@@ -26,7 +26,6 @@ import {
   OCTICON,
   CI_TITLES,
   activeFixers,
-  askAnswer,
   cleanupControl,
   control,
   esc,
@@ -131,35 +130,43 @@ export function unmatchedAsks(asks, rows) {
 }
 
 /**
- * A question as a strip inside its row: "Waiting on you", each question with
- * a button per option, and a free answer. A MODEL wrote every string here,
- * so every one goes through `esc`, in text and attributes alike.
+ * A question as a strip inside its row: "Waiting on you", then every question
+ * the agent asked as its own group of choices, stacked full width so a long
+ * label and its description read as a paragraph, each with an "Other" box,
+ * and one Send that answers all of them at once. A MODEL wrote every string
+ * here, so every one goes through `esc`, in text and attributes alike.
  */
 export function askStrip(ask, now = Date.now()) {
   const questions = (ask.questions || [])
-    .map((q) => {
+    .map((q, i) => {
+      const name = "ask-" + ask.id + "-" + i;
+      const type = q.multiSelect ? "checkbox" : "radio";
+      const choice = (value, body) =>
+        '<label class="ask-choice"><input type="' + type + '" name="' + esc(name) + '" value="' + esc(value) + '" data-keep="' + esc(name + "=" + value) + '">' + body + "</label>";
       const options = (q.options || [])
         .map((o) =>
-          control("answer-ask", { id: ask.id, answer: askAnswer(ask, q, o.label) }, {
-            cls: "btn btn-sm",
-            title: o.description ? o.description : "Answer with this option",
-            label: esc(o.label),
-          }),
+          choice(o.label, '<span class="ask-label">' + esc(o.label) + "</span>" + (o.description ? '<span class="ask-desc">' + esc(o.description) + "</span>" : "")),
         )
         .join("");
+      const other =
+        '<label class="ask-choice ask-other"><input type="' + type + '" name="' + esc(name) + '" value="" data-other="1" data-keep="' + esc(name + "-other") + '">' +
+        '<input type="text" class="ctl" aria-label="Other answer" placeholder="Other…" data-keep="' + esc(name + "-text") + '"></label>';
       return (
-        '<p class="ask-text">' + (q.header ? '<span class="ask-hdr">' + esc(q.header) + "</span> " : "") + esc(q.question) + "</p>" +
-        (options ? '<div class="ask-opts">' + options + "</div>" : "")
+        '<fieldset class="ask-q" data-q="' + i + '"><legend class="ask-text">' +
+        ((ask.questions || []).length > 1 ? '<span class="ask-num">' + (i + 1) + "</span>" : "") +
+        (q.header ? '<span class="ask-hdr">' + esc(q.header) + "</span> " : "") + esc(q.question) + "</legend>" +
+        '<div class="ask-choices">' + options + other + "</div></fieldset>"
       );
     })
     .join("");
+  const count = (ask.questions || []).length;
   return (
     '<div class="strip ask" role="group" aria-label="Question from ' + esc(ask.label) + '">' +
-    '<span class="flag">Waiting on you</span>' +
-    '<span class="ask-who">' + esc(ask.label) + (ask.pane ? " <code>" + esc(ask.pane) + "</code>" : "") + " · " + timeAgo(ask.at, now) + "</span>" +
+    '<div class="ask-head"><span class="flag">Waiting on you</span>' +
+    '<span class="ask-who">' + esc(ask.label) + (ask.pane ? " <code>" + esc(ask.pane) + "</code>" : "") + " · " + timeAgo(ask.at, now) + "</span></div>" +
     questions +
-    '<div class="ask-free"><input type="text" class="ctl" aria-label="Answer in your own words" placeholder="…or answer in your own words" data-keep="ask-' + esc(ask.id) + '">' +
-    control("answer-ask", { id: ask.id, free: 1 }, { cls: "btn btn-sm", title: "Send your own answer", label: "Send" }) +
+    '<div class="ask-send"><span class="ask-hint" id="ask-hint-' + esc(ask.id) + '" aria-live="polite"></span>' +
+    control("answer-ask", { id: ask.id, form: 1 }, { cls: "btn btn-sm btn-primary", title: "Send every answer at once", label: count > 1 ? "Send " + count + " answers" : "Send answer" }) +
     "</div></div>"
   );
 }
