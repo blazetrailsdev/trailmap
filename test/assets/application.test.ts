@@ -7,16 +7,10 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
  */
 vi.mock("@hotwired/turbo", () => ({}));
 
-const assign = vi.fn();
 const reload = vi.fn();
 
 const optOut = (on: boolean): void => {
   document.head.innerHTML = on ? '<meta name="turbo-visit-control" content="reload">' : "";
-};
-const beforeVisit = (url: string): CustomEvent => {
-  const event = new CustomEvent("turbo:before-visit", { cancelable: true, detail: { url } });
-  document.dispatchEvent(event);
-  return event;
 };
 const visit = (action: string): void => {
   document.dispatchEvent(new CustomEvent("turbo:visit", { detail: { url: "/x", action } }));
@@ -24,24 +18,18 @@ const visit = (action: string): void => {
 
 describe("application.js", () => {
   beforeAll(async () => {
-    Object.defineProperty(window, "location", { value: { assign, reload }, configurable: true });
+    Object.defineProperty(window, "location", { value: { reload }, configurable: true });
+    optOut(true);
     await import("../../app/assets/javascripts/application.js");
   });
-  beforeEach(() => {
-    assign.mockClear();
-    reload.mockClear();
-  });
+  beforeEach(() => reload.mockClear());
 
-  it("lets Drive visit from a page that did not opt out", () => {
-    optOut(false);
-    expect(beforeVisit("/backlog").defaultPrevented).toBe(false);
-    expect(assign).not.toHaveBeenCalled();
-  });
-
-  it("full-loads the visit when leaving a reload page", () => {
-    optOut(true);
-    expect(beforeVisit("/backlog").defaultPrevented).toBe(true);
-    expect(assign).toHaveBeenCalledWith("/backlog");
+  it("hands a reload page's links and forms to the browser", () => {
+    // Turbo skips any link or form under data-turbo="false", so a form on the
+    // RFC or story page POSTs natively instead of by fetch.
+    document.body.innerHTML = '<form action="/rfc/1/status" method="post"><button>Go</button></form>';
+    expect(document.body.dataset.turbo).toBe("false");
+    expect(document.querySelector("form")?.closest('[data-turbo="false"]')).toBe(document.body);
   });
 
   it("reloads a Back or Forward away from a reload page", () => {
@@ -56,5 +44,15 @@ describe("application.js", () => {
     optOut(false);
     visit("restore");
     expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+describe("application.js on a Drive page", () => {
+  it("leaves <body> to Turbo", async () => {
+    vi.resetModules();
+    optOut(false);
+    delete document.body.dataset.turbo;
+    await import("../../app/assets/javascripts/application.js");
+    expect(document.body.dataset.turbo).toBeUndefined();
   });
 });
