@@ -56,6 +56,19 @@ describe("morph", () => {
     );
   });
 
+  it("keeps what was typed in a box that is not focused, and a choice's value stays its identity", () => {
+    const list = host('<p id="q"><input type="text" data-keep="a"><input type="text" data-keep="b"><input type="radio" value="x"></p>');
+    const [a, b] = list.querySelectorAll("input[type=text]");
+    a.value = "typed first";
+    b.focus();
+
+    morph(list, '<p id="q"><input type="text" data-keep="a"><input type="text" data-keep="b"><input type="radio" value="y"></p>');
+
+    expect(list.querySelector("input[type=text]")).toBe(a);
+    expect(a.value).toBe("typed first");
+    expect(list.querySelector("input[type=radio]").value).toBe("y");
+  });
+
   it("keeps a picked choice", () => {
     const list = host(
       '<fieldset id="q"><input type="radio" name="n" value="a"><input type="radio" name="n" value="b"></fieldset>',
