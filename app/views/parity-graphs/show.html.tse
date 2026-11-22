@@ -1,3 +1,4 @@
+<% contentFor("head", tag("meta", { name: "turbo-visit-control", content: "reload" })) %>
 <!-- ringo's chart engine, as files rather than inline: trailmap's pages carry
      no inline JavaScript, and these two are GENERATED from the pinned ringo
      snapshot by scripts/vendor-ringo.sh, linked into app/assets, and built

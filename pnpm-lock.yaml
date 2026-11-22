@@ -102,6 +102,9 @@ importers:
       '@blazetrails/vite-trails':
         specifier: file:vendor/blazetrails-vite-trails-0.1.0.tgz
         version: file:vendor/blazetrails-vite-trails-0.1.0.tgz(@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/pg@file:vendor/blazetrails-pg-0.1.0.tgz(pg@8.23.1))(@types/node@20.19.43)(better-sqlite3@13.0.3)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0))(@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz)(@blazetrails/pg@file:vendor/blazetrails-pg-0.1.0.tgz(pg@8.23.1))(@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz)(@types/node@20.19.43)(better-sqlite3@13.0.3)(tsx@4.23.13)(typescript@7.1.0-dev.20260920.1)(vite@7.3.6(@types/node@20.19.43)(tsx@4.23.13)(yaml@2.9.0))(vitest@3.2.7(@types/node@20.19.43)(happy-dom@20.0.10)(tsx@4.23.13)(yaml@2.9.0))(yaml@2.9.0)
+      '@hotwired/turbo':
+        specifier: 8.0.23
+        version: 8.0.23
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3
@@ -647,6 +650,10 @@ packages:
   '@eslint/plugin-kit@0.6.1':
     resolution: {integrity: sha512-iH1B076HoAshH1mLpHMgwdGeTs0CYwL0SPMkGuSebZrwBp16v415e9NZXg2jtrqPVQjf6IANe2Vtlr5KswtcZQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@hotwired/turbo@8.0.23':
+    resolution: {integrity: sha512-GZ7cijxEZ6Ig71u7rD6LHaRv/wcE/hNsc+nEfiWOkLNqUgLOwo5MNGWOy5ZV9ZUDSiQx1no7YxjTNnT4O6//cQ==}
+    engines: {node: '>= 18'}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -2183,6 +2190,8 @@ snapshots:
     dependencies:
       '@eslint/core': 1.2.1
       levn: 0.4.1
+
+  '@hotwired/turbo@8.0.23': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

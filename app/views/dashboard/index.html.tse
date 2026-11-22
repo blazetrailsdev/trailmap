@@ -1,3 +1,4 @@
+<% contentFor("head", tag("meta", { name: "turbo-visit-control", content: "reload" })) %>
 <!-- Where the page reaches ringo, which is always through trailmap: a
      WebSocket for the event stream, a prefix for the controls, and the
      reviewer list the stream does not carry. On an element rather than in an

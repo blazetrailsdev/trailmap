@@ -1,3 +1,4 @@
+<% contentFor("head", tag("meta", { name: "turbo-visit-control", content: "reload" })) %>
 <%= render({ partial: "shared/repo-header", locals: { repo: repo, owner: owner, nwo: nwo, tabs: tabs } }) %>
 
 <%= render({ partial: "shared/underline-nav", locals: { tabs: [

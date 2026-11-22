@@ -8,3 +8,6 @@
   pin name, to: "#{name}.js"
   pin "/assets/#{name}.js", to: "#{name}.js"
 end
+
+pin "application"
+pin "@hotwired/turbo", to: "turbo.min.js"

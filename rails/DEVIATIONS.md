@@ -25,6 +25,17 @@ connection made there is in place when the block returns.
 `config/initializers/stats-sync-database.ts` starts it without awaiting. Story
 to file: boot awaits prepare callbacks that return a promise.
 
+### app: the trails views write `turbo_page_requires_reload`'s meta by hand
+
+Both apps load Turbo Drive from the layout (`app/assets/javascripts/application.js`,
+shared through the `rails/app/javascript` symlink). A page with its own module
+script opts out of Drive. Rails does that with `turbo-rails`'
+`turbo_page_requires_reload`. trails ports it as `@blazetrails/turbo`'s
+`turboPageRequiresReload`, but trailmap does not vendor that package yet, so the
+trails views write the same `<meta name="turbo-visit-control" content="reload">`
+into `contentFor("head")` by hand. Story `vendor-blazetrails-turbo-for-drive-helpers`
+removes this.
+
 ### trails: route helpers have no generated types
 
 `ApplicationController` declares each route helper it calls by hand, as

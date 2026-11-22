@@ -69,8 +69,9 @@ describe("RfcPagesController#index", () => {
     expect(body).toContain("trailmap");
     // The whole point of the port: ringo's shell fetches its rows.
     expect(body).not.toContain("fetch(");
-    // The rows are in the HTML; the only script is the sort menu's.
-    expect(body.match(/<script[^>]*>/g)).toEqual([expect.stringMatching(/^<script src="\/vite-test\/assets\/rfc-sort-[\w-]+\.js" type="module">$/)]);
+    // The rows are in the HTML; past the layout's Turbo Drive script, the
+    // only script is the sort menu's.
+    expect(body.match(/<script[^>]*>/g)).toEqual([expect.stringMatching(/^<script src="\/vite-test\/assets\/application-[\w-]+\.js" type="module">$/), expect.stringMatching(/^<script src="\/vite-test\/assets\/rfc-sort-[\w-]+\.js" type="module">$/)]);
   });
 
   it("shows the active RFCs by default, and ranks them the way ringo does", async () => {

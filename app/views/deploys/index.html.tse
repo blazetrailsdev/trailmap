@@ -1,3 +1,4 @@
+<% contentFor("head", tag("meta", { name: "turbo-visit-control", content: "reload" })) %>
 <div class="page-header">
   <h1 class="page-title">Deploys</h1>
   <div class="page-subhead">

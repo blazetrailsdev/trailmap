@@ -62,7 +62,8 @@ describe("StoryPagesController#index", () => {
     expect(body).toContain("<!DOCTYPE html>");
     expect(body).toContain('<h1 class="page-title">Backlog</h1>');
     expect(body).not.toContain("fetch(");
-    expect(body).not.toContain("<script");
+    // Turbo Drive's script, in the layout, is the only one.
+    expect(body.match(/<script[^>]*>/g)).toEqual([expect.stringMatching(/^<script src="\/vite-test\/assets\/application-[\w-]+\.js" type="module">$/)]);
   });
 
   it("opens on the work that could actually be picked, in status then queue order", async () => {
