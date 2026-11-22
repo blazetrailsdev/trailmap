@@ -15,7 +15,7 @@ export interface TestComparePackageStats {
 }
 
 const SUMMARY_LINE =
-  / {2}([\w-]+)[ \t]+—[ \t]+(\d+)\/(\d+) tests \(([\d.]+)%\)(?<details>[^\n|]*?)[ \t]+\|[ \t]+(\d+)\/(\d+) files[ \t]+\|[ \t]+(\d+) misplaced/g;
+  / {2}([\w-]+)[ \t]+—[ \t]+(\d+)\/(\d+) tests (?:\(\d+ permanent\) )?\(([\d.]+)%\)(?<details>[^\n|]*?)[ \t]+\|[ \t]+(\d+)\/(\d+) files[ \t]+\|[ \t]+(\d+) misplaced/g;
 
 export function parseTestCompareFromLogs(logs: string): Map<string, TestComparePackageStats> {
   const results = new Map<string, TestComparePackageStats>();
