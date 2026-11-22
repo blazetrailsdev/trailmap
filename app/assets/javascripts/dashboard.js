@@ -605,7 +605,7 @@ poll("asks", 5_000, (answer) => {
 // Enter in a free-text answer is its Send button; ⌘↵ in a message box is its.
 document.addEventListener("keydown", (event) => {
   if (!(event.target instanceof Element) || event.isComposing) return;
-  if (event.key === "Enter" && event.target.matches(".ask input")) {
+  if (event.key === "Enter" && event.target.matches(".ask input[type=text]")) {
     event.preventDefault();
     event.target.closest(".ask").querySelector(".ask-send button").click();
   } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && event.target.matches(".composer textarea")) {
@@ -614,9 +614,12 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// Typing an "Other" answer picks it.
+// Typing an "Other" answer picks it, and any answer clears the "still needs an answer" hint.
 document.addEventListener("input", (event) => {
-  if (!(event.target instanceof Element) || !event.target.matches(".ask-other input[type=text]")) return;
+  if (!(event.target instanceof Element) || !event.target.closest(".ask-q")) return;
+  const hint = event.target.closest(".ask").querySelector(".ask-hint");
+  if (hint) hint.textContent = "";
+  if (!event.target.matches(".ask-other input[type=text]")) return;
   const pick = event.target.previousElementSibling;
   if (event.target.value.trim() && !pick.checked) pick.checked = true;
 });

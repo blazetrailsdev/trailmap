@@ -165,11 +165,11 @@ describe("questions in the row", () => {
     expect(html).not.toContain("<img");
     expect(html).not.toContain('" onclick="');
     // The strip's label, the asker's label and pane, the header, the
-    // question, the option's label (as text and as its value) and its
-    // description, the id five times in each of the two questions (option
+    // question, the option's label (as text, as its value and in its key)
+    // and its description, the id five times in each of the two questions (option
     // name and key, Other pick name and key, Other text key), and on the
     // hint and Send.
-    expect(html.split(esc(hostile)).length - 1).toBe(20);
+    expect(html.split(esc(hostile)).length - 1).toBe(21);
   });
 
   it("renders the flag, each question as a group of choices with an Other box, and one Send", () => {
@@ -178,6 +178,7 @@ describe("questions in the row", () => {
     expect(html).toContain('<span class="flag">Waiting on you</span>');
     expect(html).toContain('<input type="radio" name="ask-a1-0" value="Yes"');
     expect(html).toContain('data-other="1"');
+    expect(html).toContain('data-keep="ask-a1-0=Yes"');
     expect(html.match(/data-action="answer-ask"/g)).toEqual(['data-action="answer-ask"']);
     expect(html).toContain('data-action="answer-ask" data-id="a1" data-form="1"');
     expect(html).toContain(">Send answer<");

@@ -141,11 +141,11 @@ export function askStrip(ask, now = Date.now()) {
     .map((q, i) => {
       const name = "ask-" + ask.id + "-" + i;
       const type = q.multiSelect ? "checkbox" : "radio";
-      const choice = (value, j, body) =>
-        '<label class="ask-choice"><input type="' + type + '" name="' + esc(name) + '" value="' + esc(value) + '" data-keep="' + esc(name + "-" + j) + '">' + body + "</label>";
+      const choice = (value, body) =>
+        '<label class="ask-choice"><input type="' + type + '" name="' + esc(name) + '" value="' + esc(value) + '" data-keep="' + esc(name + "=" + value) + '">' + body + "</label>";
       const options = (q.options || [])
-        .map((o, j) =>
-          choice(o.label, j, '<span class="ask-label">' + esc(o.label) + "</span>" + (o.description ? '<span class="ask-desc">' + esc(o.description) + "</span>" : "")),
+        .map((o) =>
+          choice(o.label, '<span class="ask-label">' + esc(o.label) + "</span>" + (o.description ? '<span class="ask-desc">' + esc(o.description) + "</span>" : "")),
         )
         .join("");
       const other =
