@@ -27,8 +27,10 @@ RUN npm install -g corepack && corepack enable pnpm && pnpm install --frozen-loc
 COPY . .
 # Both boot the app, and sqlite3 refuses to start with no database file. The
 # real one is mounted at run time; a scratch file is enough to build against.
-RUN SECRET_KEY_BASE_DUMMY=1 TASKS_DATABASE=/tmp/build.db pnpm exec trails-tsc-views build --views app/views
-RUN SECRET_KEY_BASE_DUMMY=1 TASKS_DATABASE=/tmp/build.db pnpm run build && rm -f /tmp/build.db
+# No `pnpm run build` here: bin/trails runs the .ts source through tsx, so
+# nothing at run time reads the dist/ it emits, and CI's typecheck job already
+# gates on it. It was ~30s of every deploy spent on output that was discarded.
+RUN SECRET_KEY_BASE_DUMMY=1 TASKS_DATABASE=/tmp/build.db pnpm exec trails-tsc-views build --views app/views && rm -f /tmp/build.db
 
 # Assets go under public/, where production serves them; see the script.
 RUN ./scripts/build-assets.sh
@@ -54,13 +56,13 @@ RUN apt-get update -qq && apt-get install --no-install-recommends -y ca-certific
  && tar -xzf /tmp/gh.tar.gz --strip-components=2 -C /usr/local/bin "gh_${GH_VERSION}_linux_${arch}/bin/gh" \
  && rm -rf /tmp/gh.tar.gz /var/lib/apt/lists/*
 
-COPY --from=build /app /app
-
 # Run as uid 1000, the host user that owns the bind-mounted checkout: a commit
 # written as root leaves root-owned objects in the tasks repo that the host's
 # own agents then cannot rewrite. btwhooks' container does the same.
 # The official node image already ships that account as `node`.
-RUN chown -R node:node /app
+# `--chown` on the COPY, not a `RUN chown -R` after it: the RUN rewrote every
+# file into a second ~230MB layer, so the image carried /app twice.
+COPY --from=build --chown=node:node /app /app
 USER node
 
 # Authoring and ingest commit into the mounted tasks checkout from inside this
