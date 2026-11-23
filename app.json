@@ -5,8 +5,9 @@
         "type": "startup",
         "name": "boot",
         "path": "/up",
-        "attempts": 60,
-        "wait": 1
+        "attempts": 30,
+        "wait": 1,
+        "timeout": 1
       }
     ],
     "worker": [
