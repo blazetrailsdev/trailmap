@@ -145,7 +145,7 @@ describe("Story.readyQueue and Story.bundle", () => {
 
     const bundle = await Story.bundle({ maxLoc: 700 });
     expect(attrs(bundle.stories)).toEqual(attrs(await Story.nextBundle({ index: full, maxLoc: 700 })));
-    expect(bundle.stories.map((s) => s.id)).toEqual(["lead", "mate"]);
+    expect(bundle.stories.map((s) => s.id)).toEqual(["lead", "mate", "other"]);
     expect(bundle.stories.every((s) => s instanceof Story)).toBe(true);
     expect(bundle.emptyReason).toBeNull();
   });
@@ -364,6 +364,17 @@ describe("the ranking functions, over one index", () => {
     expect(bundleScope(index, {}).map((s) => s.id).sort()).toEqual(["c1-a", "c2-a"]);
     expect(bundleScope(index, { cluster: "c1" }).map((s) => s.id)).toEqual(["c1-a"]);
     expect(bundleScope(index, { rfc: "0002-draft" })).toEqual([]);
+  });
+
+  it("nextBundleIn spills leftover budget into the lead's RFC when its cluster can't fill it", async () => {
+    await seed("lead", "0136-trailmap", "ready", { cluster: "c1", est_loc: 150, priority: 1 });
+    await seed("big", "0136-trailmap", "ready", { cluster: "c1", est_loc: 150 });
+    await seed("s1", "0136-trailmap", "ready", { cluster: "c2", est_loc: 40 });
+    await seed("s2", "0136-trailmap", "ready", { cluster: null, est_loc: 60 });
+    await seed("s3", "0136-trailmap", "ready", { cluster: "c2", est_loc: 300 });
+    const bundle = nextBundleIn(await Story.rankingIndex(), { maxLoc: 250 });
+    expect(bundle[0].id).toBe("lead");
+    expect(bundle.map((s) => s.id).sort()).toEqual(["lead", "s1", "s2"]);
   });
 
   it("nextBundleIn and emptyBundleReasonIn answer as Story's wrappers do", async () => {

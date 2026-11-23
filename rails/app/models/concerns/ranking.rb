@@ -105,8 +105,19 @@ module Ranking
     if prioritized.any?
       lead = prioritized.first
       rest = in_scope.select { |s| s.id != lead.id && s.cluster == lead.cluster && !s.est_loc.nil? }
-      fill = StableSort.sort(best_bundle(rest, max_loc - (lead.est_loc || 0))) { |a, b| compare_priority(a, b, ctx) }
-      return [ lead, *fill ]
+      fill = best_bundle(rest, max_loc - (lead.est_loc || 0))
+      # Spill over: top the budget up from the lead's own RFC in other
+      # clusters when its cluster can't use it. Never crosses RFCs.
+      used = (lead.est_loc || 0) + fill.sum { |s| s.est_loc || 0 }
+      taken = [ lead.id, *fill.map(&:id) ].to_set
+      spill = if lead.rfc_id
+        best_bundle(in_scope.select { |s|
+          !taken.include?(s.id) && s.rfc_id == lead.rfc_id && s.cluster != lead.cluster && !s.est_loc.nil?
+        }, max_loc - used)
+      else
+        []
+      end
+      return [ lead, *StableSort.sort(fill + spill) { |a, b| compare_priority(a, b, ctx) } ]
     end
     by_cluster = in_scope.reject { |s| s.est_loc.nil? }.group_by(&:cluster)
     best = []
