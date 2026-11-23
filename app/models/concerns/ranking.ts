@@ -219,8 +219,25 @@ export function nextBundleIn<S extends BundledStory>(
     const rest = inScope.filter(
       (s) => s.id !== lead.id && s.cluster === lead.cluster && s.est_loc !== null,
     );
-    const fill = bestBundle(rest, opts.maxLoc - leadLoc).sort((a, b) => comparePriority(a, b, ctx));
-    return [lead, ...fill];
+    const fill = bestBundle(rest, opts.maxLoc - leadLoc);
+    // Spill over: when the lead's cluster can't use the remaining budget, top
+    // it up from the lead's own RFC in other clusters. Never crosses RFCs; an
+    // explicit --cluster filter has already narrowed inScope.
+    const used = leadLoc + fill.reduce((a, s) => a + (s.est_loc ?? 0), 0);
+    const taken = new Set([lead.id, ...fill.map((s) => s.id)]);
+    const spill = lead.rfc_id
+      ? bestBundle(
+          inScope.filter(
+            (s) =>
+              !taken.has(s.id) &&
+              s.rfc_id === lead.rfc_id &&
+              s.cluster !== lead.cluster &&
+              s.est_loc !== null,
+          ),
+          opts.maxLoc - used,
+        )
+      : [];
+    return [lead, ...[...fill, ...spill].sort((a, b) => comparePriority(a, b, ctx))];
   }
   // Unprioritized path: knapsack same-cluster stories by est_loc, so stories
   // without an estimate can't be packed and are excluded here.

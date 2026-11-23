@@ -101,7 +101,7 @@ class RankingTest < ActiveSupport::TestCase
 
     stories, _, reason = Story.bundle(max_loc: 700)
     assert_equal Story.next_bundle(index: full, max_loc: 700).map(&:attributes), stories.map(&:attributes)
-    assert_equal %w[lead mate], ids(stories)
+    assert_equal %w[lead mate other], ids(stories)
     assert_nil reason
   end
 

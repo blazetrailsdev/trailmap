@@ -110,6 +110,18 @@ class ModelMethodsTest < ActiveSupport::TestCase
     assert_equal [], Ranking.stories_touching_in(index, "lib")
   end
 
+  test "Ranking.next_bundle_in spills leftover budget into the lead's RFC when its cluster can't fill it" do
+    rfc!("0136-t")
+    seed("lead", "0136-t", "ready", cluster: "c1", est_loc: 150, priority: 1)
+    seed("big", "0136-t", "ready", cluster: "c1", est_loc: 150)
+    seed("s1", "0136-t", "ready", cluster: "c2", est_loc: 40)
+    seed("s2", "0136-t", "ready", cluster: nil, est_loc: 60)
+    seed("s3", "0136-t", "ready", cluster: "c2", est_loc: 300)
+    bundle = Ranking.next_bundle_in(Story.ranking_index, max_loc: 250)
+    assert_equal "lead", bundle.first.id
+    assert_equal %w[lead s1 s2], bundle.map(&:id).sort
+  end
+
   # ── RfcClose ──
 
   test "RfcClose.close_if_complete closes an active RFC whose stories are all terminal" do
