@@ -152,19 +152,22 @@ importers:
 packages:
 
   '@blazetrails/actionmailer@file:vendor/blazetrails-actionmailer-0.1.0.tgz':
-    resolution: {integrity: sha512-t6jgxV6ascVYNy+LflTaXgLaFCjbnsshk91gHI54jtDs3I4R94ku22RiGgPbk/DAB6GtAIg0dwFkvRVbiYq4SQ==, tarball: file:vendor/blazetrails-actionmailer-0.1.0.tgz}
+    resolution: {integrity: sha512-cza4doE9QoTxsyPdQJJO3JWrreu7SjRT0/GrZGGxWsDfi/2ViVwUEzwWncZuEKClJEeWcfvqlA2uElNjchKI5g==, tarball: file:vendor/blazetrails-actionmailer-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/actionpack@file:vendor/blazetrails-actionpack-0.1.0.tgz':
-    resolution: {integrity: sha512-/VnjuDvY4NahjOn8BhIw/wsUF7hsrzqhnqa5MFeOJ61J4t8XI4B1wU1sJSaXMCKkBhCU4PAxyw3I5Tfc5oZm7Q==, tarball: file:vendor/blazetrails-actionpack-0.1.0.tgz}
+    resolution: {integrity: sha512-rJvlCch67xXZvi86/HrItBdjcB/HgMZlQpTZCFnzUYwLGlxbGqRy83FxXLvJp4RA1iAONkVL8DGi0oYn1fl4BA==, tarball: file:vendor/blazetrails-actionpack-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
+      '@blazetrails/rack-cache': 0.1.0
       playwright: '>=1.40.0'
       vite: '>=7.0.0'
       vitest: '>=3.0.0'
     peerDependenciesMeta:
+      '@blazetrails/rack-cache':
+        optional: true
       playwright:
         optional: true
       vite:
@@ -173,28 +176,28 @@ packages:
         optional: true
 
   '@blazetrails/actionview@file:vendor/blazetrails-actionview-0.1.0.tgz':
-    resolution: {integrity: sha512-Lt8gFaPLRleGPhosxgYSKlZMsqn4TVMB/9x+XahhkrZr09ZIo9GzRxTMJ0Bxs61Q71F+FjBd+YGEm4wP+MeOcQ==, tarball: file:vendor/blazetrails-actionview-0.1.0.tgz}
+    resolution: {integrity: sha512-o703wULfirxnNgyS4qYao4SP2bR/5DI+5th1d33/FBc/0D5XOiewLZqyt/Af1Fh4em3UsV+Cws9wgAKxTFXYWQ==, tarball: file:vendor/blazetrails-actionview-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/activejob@file:vendor/blazetrails-activejob-0.1.0.tgz':
-    resolution: {integrity: sha512-MR5ZkLxz3jhgrNBGi4ib2ut0h/9G65oE8tNlTaHGiMPjANTMC/k+RZePohnGesIzPXrdHjU/yrq4WGCj1nkG+A==, tarball: file:vendor/blazetrails-activejob-0.1.0.tgz}
+    resolution: {integrity: sha512-EawH8YIkLb3YRQ7JcKRA4ri5OtV/tGVwYdzZ94x0QcS4YePCTZEpKIKuruzR3BPecMBJp1vLCe0FykZY3trNsA==, tarball: file:vendor/blazetrails-activejob-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/activemodel@file:vendor/blazetrails-activemodel-0.1.0.tgz':
-    resolution: {integrity: sha512-W+9frLxbdLzpheYhz+5M7QqiBFbYo+kBkRn8KU8zEUS1PUCPtBavvkUpoQPf/ef77ivfP8NtPz7c1NStA8xDFw==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
+    resolution: {integrity: sha512-yzAQySFb0wLVth7kVVdpWA1aPehWEP1aBzi5LS+0k+q0n1OpIFAnm+t8uj1IQ9XKlj6MugEfuqYPDyqSfblW0w==, tarball: file:vendor/blazetrails-activemodel-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/activerecord-cli@file:vendor/blazetrails-activerecord-cli-0.1.0.tgz':
-    resolution: {integrity: sha512-KkH91gLQJVFu9n03/jwCozwn589vUvy8Oh3boKMlR4zrfuNiqSPxStKXAfSAE++UQhlDBUyncbKPDaeYE+ZOFw==, tarball: file:vendor/blazetrails-activerecord-cli-0.1.0.tgz}
+    resolution: {integrity: sha512-7NngPKsfU8jY2nA4UcUeZsYZI24S0416LBfZxq0ONty2VrbtG4e/7bV0HfXo53yTsruxOvCGq9ObMKRd5xH+Jw==, tarball: file:vendor/blazetrails-activerecord-cli-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     hasBin: true
 
   '@blazetrails/activerecord@file:vendor/blazetrails-activerecord-0.1.0.tgz':
-    resolution: {integrity: sha512-BDItekFH1tiFeXHhrquAQ2MW/g4d5PUUF6Z85aHKl3z64590uuJoucUKXXBKmTuXrylZ+WOYw61RjxliMI/3NQ==, tarball: file:vendor/blazetrails-activerecord-0.1.0.tgz}
+    resolution: {integrity: sha512-se2BTdSYRqEc22dIvgx7ALTF1NrEOPscq+AR3TzZl0Xdyh4v/EkwodZ5yqyW3hM7P4Mq5SmVMtoOIxxQBK6/Kw==, tarball: file:vendor/blazetrails-activerecord-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
@@ -225,17 +228,29 @@ packages:
         optional: true
 
   '@blazetrails/activestorage@file:vendor/blazetrails-activestorage-0.1.0.tgz':
-    resolution: {integrity: sha512-O2CYx4WUv5CbJj4hlaf/Y0uV77KftQBG5k+ZqbWhEx21pbI7zDKH5KHKJXSiknuSLGXUX6Hj/c/NK4M1wU3ObA==, tarball: file:vendor/blazetrails-activestorage-0.1.0.tgz}
+    resolution: {integrity: sha512-qAJYEE+Yudt3+5qEEEYkoNqVPjkSfXN4k46YRhOuBSH+fH0flNFy3e6QC2JRDpcctBwfPpdZTcG/Z2R/B0uMMQ==, tarball: file:vendor/blazetrails-activestorage-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
+      '@aws-sdk/client-s3': ^3.1161.0
+      '@aws-sdk/lib-storage': ^3.1161.0
+      '@aws-sdk/s3-request-presigner': ^3.1161.0
       '@blazetrails/image-processing': 0.1.0
+      '@google-cloud/storage': ^8.4.0
     peerDependenciesMeta:
+      '@aws-sdk/client-s3':
+        optional: true
+      '@aws-sdk/lib-storage':
+        optional: true
+      '@aws-sdk/s3-request-presigner':
+        optional: true
       '@blazetrails/image-processing':
+        optional: true
+      '@google-cloud/storage':
         optional: true
 
   '@blazetrails/activesupport@file:vendor/blazetrails-activesupport-0.1.0.tgz':
-    resolution: {integrity: sha512-cECRneC1ASk3yX4eNKKNBq+D7SEi2chob07kpElaKrHlve1qadX9FfVWf7m8SFGjF7Izl3SpM35Kl55Ovjtlbw==, tarball: file:vendor/blazetrails-activesupport-0.1.0.tgz}
+    resolution: {integrity: sha512-I3Jw75n7yE/Bk+iaHdFv+K7rnRtKcWjQPRWfzGrlb9NLKggq7xz2hcJP8eP0rwABR9kwzNcCPWNCBPO2MC+IqA==, tarball: file:vendor/blazetrails-activesupport-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
@@ -257,77 +272,77 @@ packages:
         optional: true
 
   '@blazetrails/arel@file:vendor/blazetrails-arel-0.1.0.tgz':
-    resolution: {integrity: sha512-R5uO/7o/CtNxFGNP9r3yOWo1vxpC7uAjjD+8vgabAXRNfAwyxOQVz+wd/or5tiTvM/6s8cXseEsmXw7NHHUXIQ==, tarball: file:vendor/blazetrails-arel-0.1.0.tgz}
+    resolution: {integrity: sha512-6OQZM/xkaUxLNlL+Tn9XMp0DQFjI8S/7HfTkSFGpO//8vZWIZLbyI0sefge+XIw+h2D1b0EYs59C0gDZAmJR7A==, tarball: file:vendor/blazetrails-arel-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/builder@file:vendor/blazetrails-builder-0.1.0.tgz':
-    resolution: {integrity: sha512-qEtXRcEDiQ9/Ehd32XcWzwleBRTWV4ifHyw9Gn/GLlKiUmr0f4niBETSy8bKMHUnnH1KUz+L9sLbkwRJGl/uGg==, tarball: file:vendor/blazetrails-builder-0.1.0.tgz}
+    resolution: {integrity: sha512-hLKRo7BR1krc0mkwsBRWtj2teePIxJi63dJPYTmfLeSqaEfT1JWFqPvcdSE0cWer2ISNLOEln5xvF8yi0FkiMw==, tarball: file:vendor/blazetrails-builder-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/date@file:vendor/blazetrails-date-0.1.0.tgz':
-    resolution: {integrity: sha512-7LVkYBoNTdrE13hS+A2f1fP4bSRsYT4PkjK5dYqBTDFsono1W6HOVezvPfAqr9/7jcW3Zjuxfn06jgkrk6wPsQ==, tarball: file:vendor/blazetrails-date-0.1.0.tgz}
+    resolution: {integrity: sha512-WPG4c2TKXYlKvSXwNDE1nSnDkVD36BT74qAsL/m4UekowRMK4MHsxIAC/BuJ87XgpZCsZVQiZMTEcUontQ+i6Q==, tarball: file:vendor/blazetrails-date-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/did-you-mean@file:vendor/blazetrails-did-you-mean-0.1.0.tgz':
-    resolution: {integrity: sha512-B8vlVdwhj7rfFxqpfmM5enHluV/DlSA5sOjB4BCvD4QWZfRR8HcHZAUacGvVwrIkxDp++Wux6yUjnS95J3REqA==, tarball: file:vendor/blazetrails-did-you-mean-0.1.0.tgz}
+    resolution: {integrity: sha512-n8qO/rl1TEPGakzRjekB7R0I/Lu9IZ7fcLXy6ot7nRrGE+ia3u7QgfiLSeZgUB/Rjl3U/peuGlo0JdQ2iWSUvg==, tarball: file:vendor/blazetrails-did-you-mean-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/et-orbi@file:vendor/blazetrails-et-orbi-0.1.0.tgz':
-    resolution: {integrity: sha512-IRvVQNBw3tQwjfSspSj5UaJPKULlCpioxM3hdwZ+VxexNCzRxD1GmwyUYwzDakdLHP3bjMJwlf2oUMp86/d16g==, tarball: file:vendor/blazetrails-et-orbi-0.1.0.tgz}
+    resolution: {integrity: sha512-KnlJiwsqn1QuaokCqc/ONQUBS1NGcJ4An3NaEMg1JsaxjTst/NNf9Rota4EawPqa+p91Ibbatr5Wnabhrk540A==, tarball: file:vendor/blazetrails-et-orbi-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/fugit@file:vendor/blazetrails-fugit-0.1.0.tgz':
-    resolution: {integrity: sha512-EkVUWfKMY55ZJt3/mXk2MczJ86GZ7CwbA3QSjuy8inCkQ3EXsQDA2s3J9W+28FylA1bRp2WjASRvUh4aRi3VtA==, tarball: file:vendor/blazetrails-fugit-0.1.0.tgz}
+    resolution: {integrity: sha512-34bzYPU0E43MraF3sN2M5V6q8x/uYmt+OnuQQSrmFv3HFPU+oOE9fHTPT0Mp5z9ShE0huNpOL1oNbud8g3wblg==, tarball: file:vendor/blazetrails-fugit-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/globalid@file:vendor/blazetrails-globalid-0.1.0.tgz':
-    resolution: {integrity: sha512-5dLzQNHAndjFdQ8nSAvj0aruVLe0uCfOCyeGxFFSkKhCI/8tkbNGbaS8dUsPk7FKBEIfmTaliwdeS7lqhZ46Dg==, tarball: file:vendor/blazetrails-globalid-0.1.0.tgz}
+    resolution: {integrity: sha512-NQS7zEXEo5H2gJhyjKVHA2SwUHTRn6wpNGlDV+mjrZjCOKFzq3keibm5a+tIUoMA5gXgn0pRjBz5N64F77aM5w==, tarball: file:vendor/blazetrails-globalid-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/html-sanitizer@file:vendor/blazetrails-html-sanitizer-0.1.0.tgz':
-    resolution: {integrity: sha512-d3ZM36YLO5ng6sITd60h47Z9hURSpX2GYRJNHHSedO2+j6TYfCqeju+GzzxM7FkK/q1fxZeMEUKHZ4/nGJvtXA==, tarball: file:vendor/blazetrails-html-sanitizer-0.1.0.tgz}
+    resolution: {integrity: sha512-/DkglfDwixktOwoTemNGXQAC1Q2k2GjfqYQ63qTZmntn3qigquxGIUjc4gIz6zlbZiC+8ztVHAsFXNvLuOHTjQ==, tarball: file:vendor/blazetrails-html-sanitizer-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/i18n@file:vendor/blazetrails-i18n-0.1.0.tgz':
-    resolution: {integrity: sha512-XL9FGcDfoPL40q7937XOsJ+VlzlJwCWBzlu7csC5cxgZLV65/iN7O5vMI1OlTiHzp3fAoXs3dTwP0hMqaTo3cA==, tarball: file:vendor/blazetrails-i18n-0.1.0.tgz}
+    resolution: {integrity: sha512-swrhW1htwjalRAj+4pcQkiVuWXGutbHc6ZPEjM3cZ40lpPgsQQ1MSot3xmTUc8fCIWghB4HidYInyUypVRkImg==, tarball: file:vendor/blazetrails-i18n-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/mail@file:vendor/blazetrails-mail-0.1.0.tgz':
-    resolution: {integrity: sha512-FiufAp5ZoSeMjMJtR5dQACefBnw2zkGAxr5pTW/eeDvG1RnZfpPpm6U0FNjYtNmrrYkdrwm3np7X3xDZ7+4sew==, tarball: file:vendor/blazetrails-mail-0.1.0.tgz}
+    resolution: {integrity: sha512-ZHF0cKS8FcNFoxKHV0wsHLR//wScVfpPVCKSD/IfFimkUhuHru0TxJWgZU3LvRtS7/THzSdA1HtiX02okqqo9g==, tarball: file:vendor/blazetrails-mail-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/marcel@file:vendor/blazetrails-marcel-0.1.0.tgz':
-    resolution: {integrity: sha512-sTNUd4/08xI+tZzx99DO3F0AKLjWzmX2pCM56575iA4t2qLBUqBKfcY04OrCdBCbTgHuBqVFNQIXX4ymChq+dA==, tarball: file:vendor/blazetrails-marcel-0.1.0.tgz}
+    resolution: {integrity: sha512-eDkA15P3gqJRl0HTCjhCqu1YVizr00kFeSSzs5/g3tUsvBssDvweetpbBU4isYqcgLd/gsPb1Sys12MPCNC2xQ==, tarball: file:vendor/blazetrails-marcel-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/mini-mime@file:vendor/blazetrails-mini-mime-0.1.0.tgz':
-    resolution: {integrity: sha512-AQxavTQ8WTFgFsMSqM6BeYbPb/nqt1efy/qQ+kcu7FkwW5/AEPZwdkqeGgJolDC6MwriISMuQKAJFnG4NM8d3g==, tarball: file:vendor/blazetrails-mini-mime-0.1.0.tgz}
+    resolution: {integrity: sha512-CL3EUq6suU/DWFgeauLmJ/Soihvv0QGCACvsObAwYYzr9h8jw44BYR7E+cOO0EZNc3cYZ/dBeqrJiqDEu0NVuQ==, tarball: file:vendor/blazetrails-mini-mime-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/net-smtp@file:vendor/blazetrails-net-smtp-0.1.0.tgz':
-    resolution: {integrity: sha512-srx6i7YIptiTTg3vBlVTAMloNaDmoWnhwy0T+zNkzk2AqpMb9b6KKE3FDsps1IAogNOm2n2VXEctdTk73oG/oQ==, tarball: file:vendor/blazetrails-net-smtp-0.1.0.tgz}
+    resolution: {integrity: sha512-SA1b036t6C5YQSXvWl1OMSrKwW4LeYVAoM3nk9KdqT9zmXymUTZrl9UHAsCVGR7YJutUCjl2oO0UnxA95XVexw==, tarball: file:vendor/blazetrails-net-smtp-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/nokogiri@file:vendor/blazetrails-nokogiri-0.1.0.tgz':
-    resolution: {integrity: sha512-Ac+UfocH2Yf4uGiAxvmr4FGzTkFrg6fYE0GgAUW8fBBjWheIeN5tCnYq+3F1v+PMEo57Rc0jifhNyZuNre9nMQ==, tarball: file:vendor/blazetrails-nokogiri-0.1.0.tgz}
+    resolution: {integrity: sha512-zSrC+I9eIJcNK8ONVMJFt8m16tK7+jTd6ZHJXO9npS9Gyadhx8nCujEXzVAZ2nrWd1EmdqfrtMJb6Xd0IG2AZg==, tarball: file:vendor/blazetrails-nokogiri-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/pg@file:vendor/blazetrails-pg-0.1.0.tgz':
-    resolution: {integrity: sha512-Yt9jWPnW55EeY57KRQJdRGs2G8/OHfG4Tr5vsm2FaR7Qg+ZuCE7qtAosAn8J2QPEeX9M4zN19ciWyEIuJY7E/A==, tarball: file:vendor/blazetrails-pg-0.1.0.tgz}
+    resolution: {integrity: sha512-F/4TjogkjrAyrmsHFg3CFVhR8/3o30C6ylBMD3ZWOlfKwt9LCj/nqrs9LVELJAWnqNvB7QwtcA6UgynECZyHnA==, tarball: file:vendor/blazetrails-pg-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
@@ -337,54 +352,54 @@ packages:
         optional: true
 
   '@blazetrails/raabro@file:vendor/blazetrails-raabro-0.1.0.tgz':
-    resolution: {integrity: sha512-AU243C1Em+J+5VF/b9fwE4gvY/3C1oWk3hWiFQCvhPAh1B+UOkcmhI41mT8Wk1iJWV5OCdR5Mu4o3YaQLAKRvQ==, tarball: file:vendor/blazetrails-raabro-0.1.0.tgz}
+    resolution: {integrity: sha512-gI92Md4MLq+YL9EHyCsz+wt1LUkOcBXTGJVPJY5peYZXsSmS/oRAlBz1dT5vMq9UHlR8Zm2rqwjAvMxOGKKiuQ==, tarball: file:vendor/blazetrails-raabro-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/rack-proxy@file:vendor/blazetrails-rack-proxy-0.1.0.tgz':
-    resolution: {integrity: sha512-6boy5Yh1Y5jfdBYppivuoE4hFgxMAtEITtmFdKmnflnmxNbU05FC+fgiJ7EqnkqUNrbJ3ayuZ+kNYOV4b+UFFQ==, tarball: file:vendor/blazetrails-rack-proxy-0.1.0.tgz}
+    resolution: {integrity: sha512-vYXoGtDzmT9V+GdYobZd8yGU416IxCk1mNjRzyhRT4hC9QbokIVMt5NqYMTVbKyH7abZC3O1VNkpF9IeDbXZ5g==, tarball: file:vendor/blazetrails-rack-proxy-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/rack-session@file:vendor/blazetrails-rack-session-0.1.0.tgz':
-    resolution: {integrity: sha512-Lk7NwCsTyHIgWKwCjU2f4JTA2d8d10hHnMLNZNzcuBXpH6DT2dp4egnJriozjWcAqBvDNCJ0wsRZb27eQFQV6Q==, tarball: file:vendor/blazetrails-rack-session-0.1.0.tgz}
+    resolution: {integrity: sha512-zRYZAsBzpAZGE3FwO58zBur1bo/rMjaa4DiG7n/0a5So5FXCrVG40k0G3cRBtHL7T2BIWNEaCpXKCbxftX7s1Q==, tarball: file:vendor/blazetrails-rack-session-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/rack-test@file:vendor/blazetrails-rack-test-0.1.0.tgz':
-    resolution: {integrity: sha512-x6ZBurEsws4MINuOxXIV7Ah6iCKRqG429/SiQ3BForSkgllclEpDoQj3eJl2ID48nFhfxqwflH8Etiwbex43fw==, tarball: file:vendor/blazetrails-rack-test-0.1.0.tgz}
+    resolution: {integrity: sha512-YFdW7IXsJmhaO26TXzLB6S6+UD+HW5zTE0k9Ne/PYFztkwd8RZQK8IkOUGLtktyGMwcTuWAIkGkZLnD/XDcxNQ==, tarball: file:vendor/blazetrails-rack-test-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/rack@file:vendor/blazetrails-rack-0.1.0.tgz':
-    resolution: {integrity: sha512-Xuxe3PnOhyiZ/v/FLWY0APWt/xRfET2hdvuQl6snz6t9gA4xQ6kRWMskg1VcjSWGccqu64VaLY25BfMEFpKNNw==, tarball: file:vendor/blazetrails-rack-0.1.0.tgz}
+    resolution: {integrity: sha512-yc0coWMjR3/jMvddOh/Yfj+H769g56DBAHcdbpSaGhk35EnBqu5WhYsD0GBSW6l/64wkIZOy+Bf9Af5YTXcZpA==, tarball: file:vendor/blazetrails-rack-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/rackup@file:vendor/blazetrails-rackup-0.1.0.tgz':
-    resolution: {integrity: sha512-NNGAK3V9eLNnrDNir6ibAu1OaF7IeWT85L2sF00O3StSTYIiQjO4goo+Owfic5tGhmLwnWmqgEA3cg78kxmsmw==, tarball: file:vendor/blazetrails-rackup-0.1.0.tgz}
+    resolution: {integrity: sha512-X4Uhmg9976smuxWwuHpNY63YGgeYbg5U8SVknsEisNr1zpN13YuOSMF5vqFuU2LpNJkAgwBWxvUMPY7rjOkU/A==, tarball: file:vendor/blazetrails-rackup-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     hasBin: true
 
   '@blazetrails/rake@file:vendor/blazetrails-rake-0.1.0.tgz':
-    resolution: {integrity: sha512-brJIYZLAg5SuHFDNCh4THGljYAIWKAdyRHWm+qguNhK7VZydOfIS99+XSstyKXf/9a4QUM/djG+aQjOYmNJtug==, tarball: file:vendor/blazetrails-rake-0.1.0.tgz}
+    resolution: {integrity: sha512-cqYJLIV1P/2VfsFcuKiZTAi6RorIzZdvhDkNYG+hnHXey/sZY1lONhoEupxDoxRQXhoej+qbQvLk/dOrAR94tQ==, tarball: file:vendor/blazetrails-rake-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     hasBin: true
 
   '@blazetrails/ruby-compat@file:vendor/blazetrails-ruby-compat-0.1.0.tgz':
-    resolution: {integrity: sha512-wNKT5NXhcYNXHV5cg4E6SesqYbEdB8hq7sXFtsUB3d3Jgjv/n95FB8DcsTHGqymHmaTwgj7TWElD+g6mvp1xvw==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
+    resolution: {integrity: sha512-u7XgHKBLGJ5ewVcx2AqyXNsXFSnS2H2xMS7uYuTARQAKBX7OgiAMLnzMbJhuTaDLk78M+vXJR8cMKGTLBCtDRw==, tarball: file:vendor/blazetrails-ruby-compat-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/solid-queue@file:vendor/blazetrails-solid-queue-0.1.0.tgz':
-    resolution: {integrity: sha512-wCmRgLYxuR+Vh5hYbB89Y0EWZnYHImMf4J24AClqt9E1gKfftLgg5+Ef8KYZt8ZjpbrMvzUKwD3him89Q0gNVQ==, tarball: file:vendor/blazetrails-solid-queue-0.1.0.tgz}
+    resolution: {integrity: sha512-PP2tLjATm7DLzeKG8Uk7zsP63ZBOCviL1Ydpzr5x6lJZGbuI3zs9iMNyilGO7OX9JbNDDqnX0lM1CrFuHZI5MA==, tarball: file:vendor/blazetrails-solid-queue-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/sqlite3@file:vendor/blazetrails-sqlite3-0.1.0.tgz':
-    resolution: {integrity: sha512-Xle7gH2Rod/u0TrZ61q9zvTSisabrExaMswILbi97UrhyETL6YPvYNXnK+feergjlpEwNbfclla0/dhbcD7iSw==, tarball: file:vendor/blazetrails-sqlite3-0.1.0.tgz}
+    resolution: {integrity: sha512-8pkFCwogLtAoreaOqN66LP48SzbXfJggfxLOtZ3A9bFmN5fK7WQTrLMehx1G00xxwuJ7q5HuoWLYSV6zsvOxjQ==, tarball: file:vendor/blazetrails-sqlite3-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
@@ -400,12 +415,12 @@ packages:
         optional: true
 
   '@blazetrails/thor@file:vendor/blazetrails-thor-0.1.0.tgz':
-    resolution: {integrity: sha512-O9lPJ2wHETAaPvabpqgfcVwqzW8aULXulayuScEBO7EHkZdpm4fRv67IkGkzlZv1AM2KSMVUKu2R+nwgvzEozA==, tarball: file:vendor/blazetrails-thor-0.1.0.tgz}
+    resolution: {integrity: sha512-Qh6LGQLKmnBWTokLUaUunn+88Yy5s8HTqZEvWMri821Xvw7ZXzZNFS6HJyitXBg9j9O87siT9Vxl9xeOHK0Omg==, tarball: file:vendor/blazetrails-thor-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/trails-tsc@file:vendor/blazetrails-trails-tsc-0.1.0.tgz':
-    resolution: {integrity: sha512-jHFy+Q309L8PbM7Sus3WlgWwZ9RSYRGGeRvX5KttlGsOjSljF3Y82VxLpN4r/AOVd6lys3hb4/ecRWbELeLXNQ==, tarball: file:vendor/blazetrails-trails-tsc-0.1.0.tgz}
+    resolution: {integrity: sha512-4tf7Z55SZFyD8oHjgeR9Xc0V81lLWyok5Ij2uG0XdxXisZTqPSRQLScWs9Uc9x1f39oqxDyDEXwaIbvK3Qo3XQ==, tarball: file:vendor/blazetrails-trails-tsc-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     hasBin: true
@@ -413,7 +428,7 @@ packages:
       '@blazetrails/actionview': 0.1.0
 
   '@blazetrails/trailties@file:vendor/blazetrails-trailties-0.1.0.tgz':
-    resolution: {integrity: sha512-maCikWUAvYxDShOXtavFcMhbZdMXwvnNzrGLLUlZkoD1k9IvSGD4HazGlolrT33Ut92VIcelsY8z+2tObw049Q==, tarball: file:vendor/blazetrails-trailties-0.1.0.tgz}
+    resolution: {integrity: sha512-UTY62v4RBFPstUuTQwmjvDyLwG1/lPlRGM+1RMvVQxVZP6+8C1bJTpA0XP94CrwoKwRtoGdfcHNWnPsxjuWgyA==, tarball: file:vendor/blazetrails-trailties-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     hasBin: true
@@ -422,6 +437,7 @@ packages:
       '@blazetrails/actionmailbox': 0.1.0
       '@blazetrails/actiontext': 0.1.0
       '@blazetrails/activestorage': 0.1.0
+      '@blazetrails/rack-cache': 0.1.0
       typescript: 7.1.0-dev.20260920.1
     peerDependenciesMeta:
       '@blazetrails/actioncable':
@@ -432,21 +448,23 @@ packages:
         optional: true
       '@blazetrails/activestorage':
         optional: true
+      '@blazetrails/rack-cache':
+        optional: true
       typescript:
         optional: true
 
   '@blazetrails/tse-compiler@file:vendor/blazetrails-tse-compiler-0.1.0.tgz':
-    resolution: {integrity: sha512-oRqgmw5UvkQD7INOIL/T8s+axsA6Sp+ToU+Ip5F1FxcGbEowx14WwVxwYmhhE/MBDF63D/93v+BWvkwUg4OAwA==, tarball: file:vendor/blazetrails-tse-compiler-0.1.0.tgz}
+    resolution: {integrity: sha512-a9hVbdCsqNdOjEXrLVeIrl3BjSxV/54mBlnW25u3r/0PTHR3Bk4Hr/12cEyqNRd27ylR8KtarvF2OeGWm+f3Og==, tarball: file:vendor/blazetrails-tse-compiler-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/tzinfo@file:vendor/blazetrails-tzinfo-0.1.0.tgz':
-    resolution: {integrity: sha512-bwkR3U9IxzcJEoubaqX9fX4F51vTdLzrUy6rJPV7WZ0+z+V6IMAHt3ZWolP9qyJ3hUIcFiR3utSzTuag9MxB2A==, tarball: file:vendor/blazetrails-tzinfo-0.1.0.tgz}
+    resolution: {integrity: sha512-I/zJJN1adD4LLFW10ijVKoM/a1mvwhJ4JlhLGYkscMAyX9+Ed3gxvb9oUWuRiOaRo8ptxvW/6JQcqzh8hTzuyQ==, tarball: file:vendor/blazetrails-tzinfo-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/vite-assets@file:vendor/blazetrails-vite-assets-0.1.0.tgz':
-    resolution: {integrity: sha512-b2x+PWrG03tQUKDuVXtnV6RlpA/A96Zgk7rfbeYXkttQVdysd3MpQzsqTVfGlx0xqcvbhde15nARj0x5uLmMYg==, tarball: file:vendor/blazetrails-vite-assets-0.1.0.tgz}
+    resolution: {integrity: sha512-vOJDgK8TmoEjaopwtppPZfrPpagtbTYEQxUJItdmn4svf8GG9g7S8Lyun6fjCeX9A0dwXpDHHkCINyK5OGLsFA==, tarball: file:vendor/blazetrails-vite-assets-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
     peerDependencies:
@@ -456,12 +474,12 @@ packages:
         optional: true
 
   '@blazetrails/vite-trails@file:vendor/blazetrails-vite-trails-0.1.0.tgz':
-    resolution: {integrity: sha512-0NQx/i/hzdouPrvLJ4XoU1ikjmBLDmzjJdC50uHohslPaSRk9+DZAFRjSxPsBJeOVjlaAcso3JPCfXYf/8s++Q==, tarball: file:vendor/blazetrails-vite-trails-0.1.0.tgz}
+    resolution: {integrity: sha512-2toLBFxCHmxQCFg8greJWq+iLUfZBOJzPj0PZm+QNlXB7xT6nwCQ4beCxrISOjUjSZBbVV53OjPcIPLSjgR0kA==, tarball: file:vendor/blazetrails-vite-trails-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
   '@blazetrails/zeitwerk@file:vendor/blazetrails-zeitwerk-0.1.0.tgz':
-    resolution: {integrity: sha512-4Cqp7M38nX3wlvHiTzir0wUMSR1B1uJOXHMosFKr3K1GpHGAg2WPAh1xDqeH7QoN3T29EUJKDslc5jkK5C61zA==, tarball: file:vendor/blazetrails-zeitwerk-0.1.0.tgz}
+    resolution: {integrity: sha512-pGtxlGneqtt3dF/PciUGaxg23rYK7PlzjMsGrX8hiYxinhT4/VUWsMzpho/oEATrVMgrQ9ud034/2gnB8G1LJg==, tarball: file:vendor/blazetrails-zeitwerk-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=26'}
 
@@ -1566,6 +1584,7 @@ snapshots:
       - '@blazetrails/msgpack'
       - '@blazetrails/nokogiri'
       - '@blazetrails/rack'
+      - '@blazetrails/rack-cache'
       - generic-pool
       - ioredis
       - playwright
@@ -1706,6 +1725,7 @@ snapshots:
       - '@blazetrails/mysql2'
       - '@blazetrails/nokogiri'
       - '@blazetrails/pg'
+      - '@blazetrails/rack-cache'
       - '@types/node'
       - better-sqlite3
       - expo-sqlite
@@ -1916,6 +1936,7 @@ snapshots:
       - '@blazetrails/nokogiri'
       - '@blazetrails/pg'
       - '@blazetrails/rack'
+      - '@blazetrails/rack-cache'
       - '@types/node'
       - better-sqlite3
       - expo-sqlite
@@ -2057,6 +2078,7 @@ snapshots:
       - '@blazetrails/nokogiri'
       - '@blazetrails/pg'
       - '@blazetrails/rack'
+      - '@blazetrails/rack-cache'
       - '@types/node'
       - better-sqlite3
       - expo-sqlite
