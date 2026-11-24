@@ -761,6 +761,12 @@ with the new head, and the label coming off or the PR closing runs
 decides when to run it, so a PR that changes how trailmap deploys changes its
 preview in the same diff.
 
+The script also keeps the link in the PR's body: a block between
+`<!-- trailmap-preview -->` markers at the end of the body, rewritten in place
+on every `up` (the URL and the deployed sha) and `down` ("torn down"), so it
+appears once however often the PR is pushed. It runs through `gh` as the box's
+user, and a failed edit is reported without failing the deploy.
+
 ### What a preview may touch
 
 Nothing in production can be written. Every database a preview opens is its

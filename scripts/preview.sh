@@ -56,6 +56,27 @@ forPr() {
   domain="$app.deanoftech.com"
 }
 
+# The PR body carries the preview's link between these markers, rewritten in
+# place on every up and down so it never repeats. Best effort: the preview
+# itself is already up (or gone) when this runs, so a GitHub that does not
+# answer is reported and not a failure.
+PREVIEW_BEGIN='<!-- trailmap-preview -->'
+PREVIEW_END='<!-- /trailmap-preview -->'
+prBody() {
+  local line="$1" body
+  if ! body="$(gh pr view "$pr" -R "$PREVIEW_REPO" --json body -q .body)"; then
+    echo "==> could not read #$pr's body; its preview link is not updated" >&2
+    return 0
+  fi
+  body="$(printf '%s\n' "$body" | awk -v b="$PREVIEW_BEGIN" -v e="$PREVIEW_END" '
+    $0 == b { skip = 1; next } skip && $0 == e { skip = 0; next } !skip')"
+  # Trailing blank lines left by a removed block would grow on every run.
+  body="$(printf '%s' "$body" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+  printf '%s\n\n%s\n%s\n%s\n' "$body" "$PREVIEW_BEGIN" "$line" "$PREVIEW_END" |
+    gh pr edit "$pr" -R "$PREVIEW_REPO" --body-file - >/dev/null ||
+    echo "==> could not edit #$pr's body; its preview link is not updated" >&2
+}
+
 [ $# -ge 1 ] || usage
 cmd="$1"
 if [ "$cmd" != sweep ]; then
@@ -348,6 +369,7 @@ up() {
   echo "$hubKey" >"$data/hub.key"
   [ -z "$statsDb$statsSyncDb" ] || echo "$statsKey" >"$data/stats.key"
   echo "==> preview: https://$domain ($app at $sha)"
+  prBody "**Preview:** https://$domain (at \`${sha:0:7}\`, production data copied at deploy; writes are discarded)"
 }
 
 # Every step checks itself with `|| return 1` rather than leaning on set -e,
@@ -371,6 +393,7 @@ down() {
   fi
   rm -rf "$data" || return 1
   echo "==> $app destroyed"
+  prBody "**Preview:** torn down."
 }
 
 # Every preview PR number anything on the box still names: an app, a hub
