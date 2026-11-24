@@ -275,12 +275,19 @@ up() {
   if ! dokku apps:exists "$app" 2>/dev/null; then
     echo "==> creating $app"
     dokku apps:create "$app"
-    # Set explicitly so the name never depends on the global vhost, and so the
-    # dns plugin's domain-add trigger drops any deletion still queued for this
-    # name by an earlier `down` of the same PR.
-    dokku domains:set "$app" "$domain"
-    dokku sso:protect "$app"
-    dokku ps:set "$app" restart-policy no
+  fi
+  # Applied on EVERY up, not only after apps:create: a run cancelled by a
+  # newer push can stop right after the create, and the next run would
+  # otherwise find the app and skip all of this (no domain, no sso, and a
+  # release task that dies on a missing SECRET_KEY_BASE).
+  # Set explicitly so the name never depends on the global vhost, and so the
+  # dns plugin's domain-add trigger drops any deletion still queued for this
+  # name by an earlier `down` of the same PR.
+  dokku domains:set "$app" "$domain"
+  dokku sso:protect "$app"
+  dokku ps:set "$app" restart-policy no
+  # Kept once set, so a redeploy does not sign everyone out.
+  if [ -z "$(dokku config:get "$app" SECRET_KEY_BASE || true)" ]; then
     dokku config:set --no-restart "$app" SECRET_KEY_BASE="$(openssl rand -hex 64)"
   fi
   pinPorts
