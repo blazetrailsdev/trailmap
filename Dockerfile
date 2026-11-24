@@ -28,6 +28,11 @@ COPY . .
 # Both boot the app, and sqlite3 refuses to start with no database file. The
 # real one is mounted at run time; a scratch file is enough to build against.
 RUN SECRET_KEY_BASE_DUMMY=1 TASKS_DATABASE=/tmp/build.db pnpm exec trails-tsc-views build --views app/views
+# The image builds dist/ even though nothing runs it yet: the goal is an image
+# that runs built JavaScript instead of the .ts source through tsx, and it
+# cannot until trails stops hardcoding .ts filenames (trails story
+# compiled-app-cannot-boot-without-tsx). Building it here keeps the emit
+# working in the exact image that ships, so the switch is a CMD change.
 RUN SECRET_KEY_BASE_DUMMY=1 TASKS_DATABASE=/tmp/build.db pnpm run build && rm -f /tmp/build.db
 
 # Assets go under public/, where production serves them; see the script.
@@ -54,13 +59,13 @@ RUN apt-get update -qq && apt-get install --no-install-recommends -y ca-certific
  && tar -xzf /tmp/gh.tar.gz --strip-components=2 -C /usr/local/bin "gh_${GH_VERSION}_linux_${arch}/bin/gh" \
  && rm -rf /tmp/gh.tar.gz /var/lib/apt/lists/*
 
-COPY --from=build /app /app
-
 # Run as uid 1000, the host user that owns the bind-mounted checkout: a commit
 # written as root leaves root-owned objects in the tasks repo that the host's
 # own agents then cannot rewrite. btwhooks' container does the same.
 # The official node image already ships that account as `node`.
-RUN chown -R node:node /app
+# `--chown` on the COPY, not a `RUN chown -R` after it: the RUN rewrote every
+# file into a second ~230MB layer, so the image carried /app twice.
+COPY --from=build --chown=node:node /app /app
 USER node
 
 # Authoring and ingest commit into the mounted tasks checkout from inside this

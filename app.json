@@ -5,8 +5,16 @@
         "type": "startup",
         "name": "boot",
         "path": "/up",
-        "attempts": 12,
-        "wait": 5
+        "attempts": 30,
+        "wait": 1,
+        "timeout": 1
+      }
+    ],
+    "worker": [
+      {
+        "type": "startup",
+        "name": "stays-up",
+        "uptime": 5
       }
     ]
   }
