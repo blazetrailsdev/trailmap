@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { DeploysHelper } from "../../app/helpers/deploys-helper.ts";
 
-const { deployKind, deployPreviewUrl, deployScreenPath } = DeploysHelper;
+const { deployKind, deployPreviewUrl, deployScreenPath, deployDuration } = DeploysHelper;
 
 describe("deployKind", () => {
   it("tags preview runs and nothing else", () => {
@@ -34,5 +34,12 @@ describe("deployPreviewUrl", () => {
 describe("deployScreenPath", () => {
   it("names the run alone, encoded", () => {
     expect(deployScreenPath({ id: "a b" })).toBe("/deploys/screen?id=a%20b");
+  });
+});
+
+describe("deployDuration", () => {
+  it("writes seconds, then minutes and seconds, as Rails' deploy_duration does", () => {
+    expect(deployDuration(42)).toBe("42s");
+    expect(deployDuration(125)).toBe("2m 5s");
   });
 });
