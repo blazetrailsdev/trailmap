@@ -27,13 +27,13 @@ RUN npm install -g corepack && corepack enable pnpm && pnpm install --frozen-loc
 COPY . .
 # Both boot the app, and sqlite3 refuses to start with no database file. The
 # real one is mounted at run time; a scratch file is enough to build against.
-# No `pnpm run build` here, for now: bin/trails runs the .ts source through
-# tsx, so nothing at run time reads the dist/ it emits, and CI's typecheck job
-# already gates on it. The image is meant to run that built JavaScript instead;
-# it cannot yet, because trails hardcodes .ts filenames (trails story
-# compiled-app-cannot-boot-without-tsx). When that lands, this step comes back
-# and the image drops tsx.
-RUN SECRET_KEY_BASE_DUMMY=1 TASKS_DATABASE=/tmp/build.db pnpm exec trails-tsc-views build --views app/views && rm -f /tmp/build.db
+# The image builds dist/ even though nothing runs it yet: the goal is an image
+# that runs built JavaScript instead of the .ts source through tsx, and it
+# cannot until trails stops hardcoding .ts filenames (trails story
+# compiled-app-cannot-boot-without-tsx). Building it here keeps the emit
+# working in the exact image that ships, so the switch is a CMD change.
+RUN SECRET_KEY_BASE_DUMMY=1 TASKS_DATABASE=/tmp/build.db pnpm exec trails-tsc-views build --views app/views
+RUN SECRET_KEY_BASE_DUMMY=1 TASKS_DATABASE=/tmp/build.db pnpm run build && rm -f /tmp/build.db
 
 # Assets go under public/, where production serves them; see the script.
 RUN ./scripts/build-assets.sh
