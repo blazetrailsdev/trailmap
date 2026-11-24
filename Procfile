@@ -20,6 +20,9 @@
 # NO `--database` flag. The unflagged command registers both configurations
 # and migrates both; `--database hub` loads the task domain's SQLite schema
 # into Postgres (docs/deploy.md).
+#
+# A PR preview app runs it too, against its own clone of the hub
+# (docs/deploy.md, "Preview apps"): that is how a PR's migration is tested.
 release: bin/trails db:prepare
 
 # `web` is declared even though the Dockerfile's CMD says the same thing, and

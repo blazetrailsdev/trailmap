@@ -2,7 +2,7 @@
 <div class="page-header">
   <h1 class="page-title">Deploys</h1>
   <div class="page-subhead">
-    <span class="muted">Every dokku deploy ringo has run, newest first. Read-only; the history is relayed from ringo, and each log is read from ringo's pane-log directory.</span>
+    <span class="muted">Every dokku deploy ringo has run, PR previews included, newest first. Read-only; the history is relayed from ringo, and each log is read from ringo's pane-log directory.</span>
   </div>
 </div>
 
@@ -25,6 +25,10 @@
       <div class="deploy-row">
         <span class="badge s-deploy-<%= run.status %>"><%= run.status %></span>
         <span class="deploy-app"><%= run.app %></span>
+        <% const kind = deployKind(run); %>
+        <% if (kind !== null) { %><span class="badge deploy-kind"><%= kind %></span><% } %>
+        <% const previewUrl = deployPreviewUrl(run); %>
+        <% if (previewUrl !== null) { %><a class="deploy-url" href="<%= previewUrl %>">open preview</a><% } %>
         <code class="muted"><%= run.sha %></code>
         <span class="deploy-msg"><%= run.message %></span>
         <% if (run.error) { %><span class="deploy-err"><%= run.error %></span><% } %>

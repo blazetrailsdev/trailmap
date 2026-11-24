@@ -79,6 +79,17 @@ check() {
     status=1
   fi
 
+  # Rule 4: no server block for a port other than 80 and 443. dokku's default
+  # port map for a Dockerfile app that EXPOSEs 8080 renders `listen 8080` on
+  # every interface, which collides with the loopback block and takes nginx
+  # (and production with it) down on the next reload. A PR preview app did.
+  if ! grep -qF '{{ if and (or (eq $scheme "http") (eq $scheme "https")) (or (eq $listen_port "80") (eq $listen_port "443")) }}' "$sigil"; then
+    echo "error: the http/https server blocks are not restricted to listen ports 80 and 443." >&2
+    echo "       A default port map (http:8080:8080) would then render a listener that" >&2
+    echo "       collides with the loopback API and fails nginx's next reload." >&2
+    status=1
+  fi
+
   return "$status"
 }
 
@@ -111,6 +122,15 @@ if [ "${1:-}" = "--self-test" ]; then
     fail=1
   else
     echo "self-test ok: an X-Forwarded-* in the loopback block is caught"
+  fi
+
+  cp "$SIGIL" "$tmp/sigil"
+  sed -i 's/{{ if and (or (eq $scheme "http") (eq $scheme "https")) (or (eq $listen_port "80") (eq $listen_port "443")) }}/{{ if or (eq $scheme "http") (eq $scheme "https") }}/' "$tmp/sigil"
+  if check "$tmp/sigil" >/dev/null 2>&1; then
+    echo "self-test FAILED: server blocks for any listen port were not caught" >&2
+    fail=1
+  else
+    echo "self-test ok: server blocks for ports other than 80/443 are caught"
   fi
 
   if ! check "$SIGIL" >/dev/null 2>&1; then
