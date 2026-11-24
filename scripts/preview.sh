@@ -284,6 +284,11 @@ up() {
   # dns plugin's domain-add trigger drops any deletion still queued for this
   # name by an earlier `down` of the same PR.
   dokku domains:set "$app" "$domain"
+  # Not left to the dns plugin's create trigger, which a cancelled first run
+  # can miss: an app outside DNS management never gets its record. Both are
+  # idempotent; sync creates the A record only when it is missing.
+  dokku dns:apps:enable "$app"
+  dokku dns:apps:sync "$app"
   dokku sso:protect "$app"
   dokku ps:set "$app" restart-policy no
   # Kept once set, so a redeploy does not sign everyone out.
