@@ -286,9 +286,10 @@ up() {
   dokku domains:set "$app" "$domain"
   # Not left to the dns plugin's create trigger, which a cancelled first run
   # can miss: an app outside DNS management never gets its record. Both are
-  # idempotent; sync creates the A record only when it is missing.
+  # idempotent; sync creates the A record only when it is missing, and a
+  # failed sync warns rather than failing a redeploy whose record exists.
   dokku dns:apps:enable "$app"
-  dokku dns:apps:sync "$app"
+  dokku dns:apps:sync "$app" || echo "==> WARNING: dns:apps:sync failed for $app; does $domain resolve?"
   dokku sso:protect "$app"
   dokku ps:set "$app" restart-policy no
   # Kept once set, so a redeploy does not sign everyone out.
