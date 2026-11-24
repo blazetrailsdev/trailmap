@@ -24,6 +24,9 @@ export const DeploysHelper = {
    */
   deployPreviewUrl(run: Pick<DeployRow, "url">): string | null {
     if (!run.url) return null;
+    // WHATWG parsing is more lenient than Ruby's URI: it accepts `https:host`
+    // and trims whitespace around the input, both of which Rails rejects.
+    if (/\s/.test(run.url) || !/^https:\/\/[^/?#]/i.test(run.url)) return null;
     try {
       // The URL as ringo sent it, not `url.href`: that normalizes (a lowercased
       // host, a trailing `/`), and Rails' `deploy_preview_url` prints the input

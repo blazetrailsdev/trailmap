@@ -19,6 +19,10 @@ class DeploysHelperTest < ActionView::TestCase
     assert_nil deploy_preview_url("url" => "http://trailmap-pr-160.deanoftech.com/")
     assert_nil deploy_preview_url("url" => "not a url")
     assert_nil deploy_preview_url({})
+    # Inputs WHATWG URL accepts and Ruby's URI does not.
+    assert_nil deploy_preview_url("url" => "https:trailmap-pr-160.deanoftech.com")
+    assert_nil deploy_preview_url("url" => " https://trailmap-pr-160.deanoftech.com ")
+    assert_nil deploy_preview_url("url" => "https://")
   end
 
   test "deploy_screen_path names the run alone, encoded" do

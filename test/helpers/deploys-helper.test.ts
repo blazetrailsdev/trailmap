@@ -24,6 +24,10 @@ describe("deployPreviewUrl", () => {
     expect(deployPreviewUrl({ url: "http://trailmap-pr-160.deanoftech.com/" })).toBeNull();
     expect(deployPreviewUrl({ url: "not a url" })).toBeNull();
     expect(deployPreviewUrl({})).toBeNull();
+    // Inputs WHATWG URL accepts and Ruby's URI does not.
+    expect(deployPreviewUrl({ url: "https:trailmap-pr-160.deanoftech.com" })).toBeNull();
+    expect(deployPreviewUrl({ url: " https://trailmap-pr-160.deanoftech.com " })).toBeNull();
+    expect(deployPreviewUrl({ url: "https://" })).toBeNull();
   });
 });
 
