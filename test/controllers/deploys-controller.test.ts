@@ -65,6 +65,9 @@ beforeAll(async () => {
     } else if (url.pathname === "/proxy-down/api/deploys") {
       res.writeHead(502, { "content-type": "text/html" });
       res.end("<html><body>Bad Gateway from nginx</body></html>");
+    } else if (url.pathname === "/deploys/output" && url.searchParams.get("id") === "ringo-colour") {
+      res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+      res.end("-----> \x1b[31mfailed\x1b[0m <b>\nab\rX\n");
     } else if (url.pathname === "/deploys/output" && url.searchParams.get("id") === "ringo-100") {
       res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       res.end("-----> Building ringo\n ! push rejected\n");
@@ -121,7 +124,9 @@ describe("DeploysController#index", () => {
     expect(body).not.toMatch(/<script>|<script type="module">/);
     // Each row's log expands in place, naming the capture ringo recorded.
     expect(body).toContain('<details class="deploy-log" data-run="trailmap-200">');
-    expect(body).toContain('data-src="/deploys/log?id=trailmap-200"');
+    // ...replayed through the terminal emulator, with the raw capture beside it.
+    expect(body).toContain('<pre class="terminal" data-src="/deploys/screen?id=trailmap-200">');
+    expect(body).toContain('href="/deploys/log?id=trailmap-200"');
   });
 
   it("tags preview runs, links a successful preview, and links only https", async () => {
@@ -227,5 +232,35 @@ describe("DeploysController#log", () => {
     expect((await get("log", { id: "ringo-100" })).status).toBe(503);
     setEnv("RINGO_BASE", "http://127.0.0.1:1");
     expect((await get("log", { id: "ringo-100" })).status).toBe(502);
+  });
+});
+
+describe("DeploysController#screen", () => {
+  it("replays a run's log through the terminal emulator: colours drawn, redraws applied, text escaped", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await get("screen", { id: "ringo-colour" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toBe('-----&gt; <span style="color:#e06c75;">failed</span> &lt;b&gt;\nXb\n');
+    expect(asked).toEqual(["/deploys/output?id=ringo-colour"]);
+  });
+
+  it("passes a refusal through as plain text, unrendered", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await get("screen", { id: "nope" });
+
+    expect(response.status).toBe(404);
+    expect(response.body).toBe("unknown deploy\n");
+  });
+
+  it("answers 404 for no id", async () => {
+    setEnv("RINGO_BASE", ringoBaseUrl);
+
+    const response = await get("screen");
+
+    expect(response.status).toBe(404);
+    expect(response.body).toBe("unknown deploy");
   });
 });

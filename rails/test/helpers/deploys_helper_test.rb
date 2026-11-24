@@ -20,4 +20,8 @@ class DeploysHelperTest < ActionView::TestCase
     assert_nil deploy_preview_url("url" => "not a url")
     assert_nil deploy_preview_url({})
   end
+
+  test "deploy_screen_path names the run alone, encoded" do
+    assert_equal "/deploys/screen?id=a%20b", deploy_screen_path("id" => "a b")
+  end
 end

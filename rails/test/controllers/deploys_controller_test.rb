@@ -38,4 +38,24 @@ class DeploysControllerTest < ActionDispatch::IntegrationTest
     assert_equal "relayed\n", response.body
     assert_equal [ "/api/deploys", "/deploys/output?id=ringo-100" ], asked
   end
+
+  test "screen replays a run's log through the terminal emulator: colours drawn, redraws applied, text escaped" do
+    answers = { "/api/deploys" => [ 200, RUNS ], "/deploys/output?id=ringo-100" => [ 200, "-----> \e[31mfailed\e[0m <b>\nab\rX\n" ] }
+    with_ringo(answers) { get "/deploys/screen", params: { id: "ringo-100" } }
+    assert_response :ok
+    assert_equal "-----&gt; <span style=\"color:#e06c75;\">failed</span> &lt;b&gt;\nXb\n", response.body
+  end
+
+  test "screen passes a refusal through as plain text, unrendered" do
+    answers = { "/api/deploys" => [ 200, RUNS ], "/deploys/output?id=nope" => [ 404, "unknown deploy\n" ] }
+    with_ringo(answers) { get "/deploys/screen", params: { id: "nope" } }
+    assert_response :not_found
+    assert_equal "unknown deploy\n", response.body
+  end
+
+  test "screen answers 404 for no id" do
+    get "/deploys/screen"
+    assert_response :not_found
+    assert_equal "unknown deploy", response.body
+  end
 end

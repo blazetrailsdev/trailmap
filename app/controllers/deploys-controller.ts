@@ -1,7 +1,9 @@
+import { htmlSafe } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.ts";
 import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { Setting } from "../models/setting.ts";
 import { deployLogsDir, readDeployLog, readsDeployLogLocally } from "../models/deploy-log.ts";
+import { renderPaneLog } from "../../lib/ringo-core.ts";
 
 /**
  * How long ringo has to answer for the deploy history or one run's log. A
@@ -9,6 +11,9 @@ import { deployLogsDir, readDeployLog, readsDeployLogLocally } from "../models/d
  * one file read.
  */
 export const DEPLOYS_TIMEOUT_MS = 5_000;
+
+/** The scrollback rows a replayed deploy log keeps, as the pane view does. */
+export const DEPLOY_SCREEN_MAX_LINES = 20_000;
 
 /** One row of ringo's `/api/deploys` (`webhook/deploys_page.go`, `HandleDeploysAPI`). */
 export interface DeployRow {
@@ -60,31 +65,56 @@ export class DeploysController extends ApplicationController {
   /** One run's log, as ringo serves it: the capture verbatim, as plain text. */
   async log(): Promise<void> {
     this.noStore();
+    const read = await this._readLog();
+    if (read === null) return;
+    await this.render({ plain: read.text, status: read.status });
+  }
+
+  /**
+   * One run's log replayed through ringo's terminal emulator, the one the
+   * pane view uses: a deploy log is a tmux pane capture too, so its colours
+   * and in-place redraws are drawn rather than shown as escape codes. An HTML
+   * fragment for the row's `pre.terminal`; a refusal stays plain text.
+   */
+  async screen(): Promise<void> {
+    this.noStore();
+    const read = await this._readLog();
+    if (read === null) return;
+    if (read.status !== 200) {
+      await this.render({ plain: read.text, status: read.status });
+      return;
+    }
+    const { html } = await renderPaneLog(new TextEncoder().encode(read.text), DEPLOY_SCREEN_MAX_LINES);
+    await this.render({ html: htmlSafe(html), status: 200 });
+  }
+
+  /** The run's log text and status, or `null` once a refusal is rendered. */
+  private async _readLog(): Promise<{ text: string; status: number } | null> {
     const id = String(this.params.get("id") ?? "");
     if (id === "") {
       await this.render({ plain: "unknown deploy", status: 404 });
-      return;
+      return null;
     }
     const base = await Setting.ringoBase();
     if (base === null) {
       await this.render({ plain: "no ringo origin is configured", status: 503 });
-      return;
+      return null;
     }
     if (deployLogsDir() !== "") {
       const run = (await deployHistory(base)).runs.find((r) => r.id === id);
       if (run?.logFile && readsDeployLogLocally(run.logFile)) {
         // ringo answers a missing capture 200 with the reason as the text.
-        await this.render({ plain: await readDeployLog(run.logFile) });
-        return;
+        return { text: await readDeployLog(run.logFile), status: 200 };
       }
     }
     try {
       const response = await fetch(`${base}/deploys/output?id=${encodeURIComponent(id)}`, {
         signal: AbortSignal.timeout(DEPLOYS_TIMEOUT_MS),
       });
-      await this.render({ plain: await response.text(), status: response.status });
+      return { text: await response.text(), status: response.status };
     } catch (error) {
       await this.render(ringoFailure(error, DEPLOYS_TIMEOUT_MS));
+      return null;
     }
   }
 }

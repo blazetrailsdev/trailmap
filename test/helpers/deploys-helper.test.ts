@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { DeploysHelper } from "../../app/helpers/deploys-helper.ts";
 
-const { deployKind, deployPreviewUrl } = DeploysHelper;
+const { deployKind, deployPreviewUrl, deployScreenPath } = DeploysHelper;
 
 describe("deployKind", () => {
   it("tags preview runs and nothing else", () => {
@@ -24,5 +24,11 @@ describe("deployPreviewUrl", () => {
     expect(deployPreviewUrl({ url: "http://trailmap-pr-160.deanoftech.com/" })).toBeNull();
     expect(deployPreviewUrl({ url: "not a url" })).toBeNull();
     expect(deployPreviewUrl({})).toBeNull();
+  });
+});
+
+describe("deployScreenPath", () => {
+  it("names the run alone, encoded", () => {
+    expect(deployScreenPath({ id: "a b" })).toBe("/deploys/screen?id=a%20b");
   });
 });

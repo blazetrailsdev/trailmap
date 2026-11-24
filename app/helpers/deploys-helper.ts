@@ -6,6 +6,11 @@ export const DeploysHelper = {
     return `/deploys/log?id=${encodeURIComponent(run.id)}`;
   },
 
+  /** The same log replayed through the terminal emulator, for the row's inline view. */
+  deployScreenPath(run: Pick<DeployRow, "id">): string {
+    return `/deploys/screen?id=${encodeURIComponent(run.id)}`;
+  },
+
   /** A preview run's kind, for its tag: `preview`, `preview teardown`, `preview sweep`. Null for a deploy. */
   deployKind(run: Pick<DeployRow, "target">): string | null {
     const target = run.target ?? "";

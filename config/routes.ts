@@ -86,6 +86,7 @@ Trails.application!.routes().draw(function () {
   // log URL, `?id=`, is kept so a link copied from either page works on both.
   this.get("deploys", { to: "deploys#index", as: "deploys" });
   this.get("deploys/log", { to: "deploys#log", as: "deploys_log" });
+  this.get("deploys/screen", { to: "deploys#screen", as: "deploys_screen" });
 
   // The session archive, relayed read-only from ringo (SessionsController):
   // the index, one PR's archives at ringo's own path, and ringo's JSON.

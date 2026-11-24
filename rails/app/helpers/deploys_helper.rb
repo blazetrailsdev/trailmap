@@ -4,6 +4,11 @@ module DeploysHelper
     "/deploys/log?id=#{ERB::Util.url_encode(run["id"].to_s)}"
   end
 
+  # The same log replayed through the terminal emulator, for the row's inline view.
+  def deploy_screen_path(run)
+    "/deploys/screen?id=#{ERB::Util.url_encode(run["id"].to_s)}"
+  end
+
   # A preview run's kind, for its tag: `preview`, `preview teardown`, `preview sweep`. Nil for a deploy.
   def deploy_kind(run)
     target = run["target"].to_s
