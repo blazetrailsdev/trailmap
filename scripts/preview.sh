@@ -151,7 +151,7 @@ migrationsKey() { echo "$1=$(git rev-parse --verify --quiet "$2:$1" || echo none
 # so the deploy that would render the bad listener never starts.
 pinPorts() {
   local -a want=(http:80:8080)
-  if dokku letsencrypt:active "$app" >/dev/null 2>&1; then want+=(https:443:8080); fi
+  if [ "$(dokku letsencrypt:active "$app" 2>/dev/null)" = true ]; then want+=(https:443:8080); fi
   dokku ports:set "$app" "${want[@]}"
   local got
   got="$(dokku ports:report "$app" --ports-map)"
@@ -275,12 +275,25 @@ up() {
   if ! dokku apps:exists "$app" 2>/dev/null; then
     echo "==> creating $app"
     dokku apps:create "$app"
-    # Set explicitly so the name never depends on the global vhost, and so the
-    # dns plugin's domain-add trigger drops any deletion still queued for this
-    # name by an earlier `down` of the same PR.
-    dokku domains:set "$app" "$domain"
-    dokku sso:protect "$app"
-    dokku ps:set "$app" restart-policy no
+  fi
+  # Applied on EVERY up, not only after apps:create: a run cancelled by a
+  # newer push can stop right after the create, and the next run would
+  # otherwise find the app and skip all of this (no domain, no sso, and a
+  # release task that dies on a missing SECRET_KEY_BASE).
+  # Set explicitly so the name never depends on the global vhost, and so the
+  # dns plugin's domain-add trigger drops any deletion still queued for this
+  # name by an earlier `down` of the same PR.
+  dokku domains:set "$app" "$domain"
+  # Not left to the dns plugin's create trigger, which a cancelled first run
+  # can miss: an app outside DNS management never gets its record. Both are
+  # idempotent; sync creates the A record only when it is missing, and a
+  # failed sync warns rather than failing a redeploy whose record exists.
+  dokku dns:apps:enable "$app"
+  dokku dns:apps:sync "$app" || echo "==> WARNING: dns:apps:sync failed for $app; does $domain resolve?"
+  dokku sso:protect "$app"
+  dokku ps:set "$app" restart-policy no
+  # Kept once set, so a redeploy does not sign everyone out.
+  if [ -z "$(dokku config:get "$app" SECRET_KEY_BASE || true)" ]; then
     dokku config:set --no-restart "$app" SECRET_KEY_BASE="$(openssl rand -hex 64)"
   fi
   pinPorts
@@ -353,7 +366,7 @@ up() {
     die "$hub still holds $left settings row(s) after the scrub; $app stopped"
   fi
 
-  if ! dokku letsencrypt:active "$app" >/dev/null 2>&1; then
+  if [ "$(dokku letsencrypt:active "$app" 2>/dev/null)" != true ]; then
     dokku letsencrypt:enable "$app" || echo "==> WARNING: no TLS certificate for $app; does $domain resolve?"
   fi
   # Re-pinned: a certificate adds https:443, and nothing the plugin does may

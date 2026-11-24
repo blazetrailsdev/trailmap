@@ -858,9 +858,13 @@ Four things now stop that, each on its own:
 
 ### One-time setup
 
-None. The box's dokku `dns` plugin (Route53, zone `deanoftech.com`) creates
-`<app>.deanoftech.com` when an app is created, as it does for every app here,
-so a preview's name resolves without a wildcard record. Once it does, the
+None. Every `up` runs `dns:apps:enable` and `dns:apps:sync` for the app, so
+the box's dokku `dns` plugin (Route53, zone `deanoftech.com`) creates
+`<app>.deanoftech.com` if it is missing. The plugin's create trigger is not
+relied on: a first run cancelled right after `apps:create` left #199's app
+outside DNS management with no record. A failed sync only warns, as
+`letsencrypt:enable` does, so a Route53 hiccup does not fail a redeploy whose
+record already exists. A preview's name resolves without a wildcard record. Once it does, the
 preview gets its own Let's Encrypt certificate (HTTP-01). `down` deletes that
 one record by name: the plugin only queues a destroyed app's record, and
 `dns:sync:deletions --force` would also delete every other queued record. The
