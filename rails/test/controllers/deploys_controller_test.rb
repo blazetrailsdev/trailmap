@@ -58,4 +58,30 @@ class DeploysControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     assert_equal "unknown deploy", response.body
   end
+
+  test "screen hands the emulator the capture's bytes, undecoded" do
+    raw = "ok \xFF\xE2\x82\n".b
+    answers = { "/api/deploys" => [ 200, RUNS ], "/deploys/output?id=ringo-100" => [ 200, raw ] }
+    with_ringo(answers) { get "/deploys/screen", params: { id: "ringo-100" } }
+    assert_equal RingoCore.render_pane_log(raw, SessionsController::PANE_VIEW_MAX_LINES)["html"].b, response.body.b
+  end
+
+  test "screen replays only the tail of a long log, as the pane view does" do
+    long = "HEAD-MARKER\n" + ("x" * SessionsController::PANE_VIEW_MAX_BYTES) + "\nTAIL-MARKER\n"
+    answers = { "/api/deploys" => [ 200, RUNS ], "/deploys/output?id=ringo-100" => [ 200, long ] }
+    with_ringo(answers) { get "/deploys/screen", params: { id: "ringo-100" } }
+    assert_response :ok
+    assert_includes response.body, "TAIL-MARKER"
+    refute_includes response.body, "HEAD-MARKER"
+  end
+
+  test "screen answers an emulator failure as a plain-text refusal, not an error page" do
+    answers = { "/api/deploys" => [ 200, RUNS ], "/deploys/output?id=ringo-100" => [ 200, "log\n" ] }
+    failing = ->(*) { raise RingoCore::Error, "ringo core pane exited 2: bad capture" }
+    RingoCore.stub(:render_pane_log, failing) do
+      with_ringo(answers) { get "/deploys/screen", params: { id: "ringo-100" } }
+    end
+    assert_response :internal_server_error
+    assert_equal "log not rendered: ringo core pane exited 2: bad capture", response.body
+  end
 end

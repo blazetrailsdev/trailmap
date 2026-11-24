@@ -4,8 +4,6 @@
 # row names none or nothing is mounted.
 class DeploysController < ApplicationController
   TIMEOUT = 5
-  # The scrollback rows a replayed deploy log keeps, as the pane view does.
-  SCREEN_MAX_LINES = 20_000
 
   def index
     no_store
@@ -27,7 +25,18 @@ class DeploysController < ApplicationController
     text, status = read_log
     return unless text
     return render plain: text, status: status unless status == 200
-    render html: RingoCore.render_pane_log(text.b, SCREEN_MAX_LINES)["html"].html_safe
+    # The pane view's bounds: the tail of the capture, at most its rows kept,
+    # so one request's emulator work is capped however long the deploy ran.
+    bytes = text.b
+    bytes = bytes.byteslice(-SessionsController::PANE_VIEW_MAX_BYTES, SessionsController::PANE_VIEW_MAX_BYTES) if bytes.bytesize > SessionsController::PANE_VIEW_MAX_BYTES
+    html = begin
+      RingoCore.render_pane_log(bytes, SessionsController::PANE_VIEW_MAX_LINES)["html"]
+    rescue StandardError => e
+      # A refusal in plain text, as a relay failure is: the row shows it as
+      # the reason rather than inlining an error page.
+      return render plain: "log not rendered: #{e.message}", status: :internal_server_error
+    end
+    render html: html.html_safe
   end
 
   private

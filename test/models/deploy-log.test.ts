@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Trails } from "@blazetrails/trailties";
 import "../../config/application.ts";
-import { deployLogName, deployLogsDir, readDeployLog, readsDeployLogLocally } from "../../app/models/deploy-log.ts";
+import { deployLogName, deployLogsDir, deployScreen, readDeployLog, readDeployLogBytes, readsDeployLogLocally } from "../../app/models/deploy-log.ts";
 import { DeploysHelper } from "../../app/helpers/deploys-helper.ts";
 
 const mount = (dir: string | undefined) => {
@@ -35,6 +35,25 @@ describe("DeployLog", () => {
     expect(await readDeployLog("pane-99.log")).toBe(
       "(pane log unreadable: test/fixtures/deploy-logs/pane-99.log: no such file or directory)",
     );
+  });
+
+  it("readDeployLogBytes returns the capture undecoded, raw or gzipped", async () => {
+    mount("test/fixtures/deploy-logs");
+    expect(new TextDecoder().decode(await readDeployLogBytes("pane-12.log"))).toBe("-----> Building trailmap\n");
+    expect(new TextDecoder().decode(await readDeployLogBytes("pane-13.log"))).toBe("=====> Application deployed\n");
+  });
+
+  it("deployScreen replays only the tail, within the rows asked for", async () => {
+    const bytes = new TextEncoder().encode("HEAD\nmiddle\nTAIL\n");
+    const screen = await deployScreen(bytes, 5, 100);
+    expect(screen).toEqual({ html: "TAIL\n" });
+  });
+
+  it("deployScreen answers an emulator failure as a problem, not a throw", async () => {
+    const failing = () => Promise.reject(new Error("ringo core pane exited 2: bad capture"));
+    expect(await deployScreen(new Uint8Array([0x61]), 100, 100, failing)).toEqual({
+      problem: "log not rendered: ringo core pane exited 2: bad capture",
+    });
   });
 
   it("deployLogPath names the run alone, never a file", () => {

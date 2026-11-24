@@ -2,8 +2,8 @@ import { htmlSafe } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.ts";
 import { ringoFailure } from "../../lib/ringo-failure.ts";
 import { Setting } from "../models/setting.ts";
-import { deployLogsDir, readDeployLog, readsDeployLogLocally } from "../models/deploy-log.ts";
-import { renderPaneLog } from "../../lib/ringo-core.ts";
+import { PANE_VIEW_MAX_BYTES, PANE_VIEW_MAX_LINES } from "./sessions-controller.ts";
+import { deployLogsDir, deployScreen, readDeployLogBytes, readsDeployLogLocally } from "../models/deploy-log.ts";
 
 /**
  * How long ringo has to answer for the deploy history or one run's log. A
@@ -11,9 +11,6 @@ import { renderPaneLog } from "../../lib/ringo-core.ts";
  * one file read.
  */
 export const DEPLOYS_TIMEOUT_MS = 5_000;
-
-/** The scrollback rows a replayed deploy log keeps, as the pane view does. */
-export const DEPLOY_SCREEN_MAX_LINES = 20_000;
 
 /** One row of ringo's `/api/deploys` (`webhook/deploys_page.go`, `HandleDeploysAPI`). */
 export interface DeployRow {
@@ -67,7 +64,7 @@ export class DeploysController extends ApplicationController {
     this.noStore();
     const read = await this._readLog();
     if (read === null) return;
-    await this.render({ plain: read.text, status: read.status });
+    await this.render({ plain: new TextDecoder().decode(read.bytes), status: read.status });
   }
 
   /**
@@ -81,15 +78,21 @@ export class DeploysController extends ApplicationController {
     const read = await this._readLog();
     if (read === null) return;
     if (read.status !== 200) {
-      await this.render({ plain: read.text, status: read.status });
+      await this.render({ plain: new TextDecoder().decode(read.bytes), status: read.status });
       return;
     }
-    const { html } = await renderPaneLog(new TextEncoder().encode(read.text), DEPLOY_SCREEN_MAX_LINES);
-    await this.render({ html: htmlSafe(html), status: 200 });
+    // The pane view's bounds, so one request's emulator work is capped
+    // however long the deploy ran.
+    const screen = await deployScreen(read.bytes, PANE_VIEW_MAX_BYTES, PANE_VIEW_MAX_LINES);
+    if ("problem" in screen) {
+      await this.render({ plain: screen.problem, status: 500 });
+      return;
+    }
+    await this.render({ html: htmlSafe(screen.html), status: 200 });
   }
 
-  /** The run's log text and status, or `null` once a refusal is rendered. */
-  private async _readLog(): Promise<{ text: string; status: number } | null> {
+  /** The run's log bytes and status, or `null` once a refusal is rendered. */
+  private async _readLog(): Promise<{ bytes: Uint8Array; status: number } | null> {
     const id = String(this.params.get("id") ?? "");
     if (id === "") {
       await this.render({ plain: "unknown deploy", status: 404 });
@@ -104,14 +107,14 @@ export class DeploysController extends ApplicationController {
       const run = (await deployHistory(base)).runs.find((r) => r.id === id);
       if (run?.logFile && readsDeployLogLocally(run.logFile)) {
         // ringo answers a missing capture 200 with the reason as the text.
-        return { text: await readDeployLog(run.logFile), status: 200 };
+        return { bytes: await readDeployLogBytes(run.logFile), status: 200 };
       }
     }
     try {
       const response = await fetch(`${base}/deploys/output?id=${encodeURIComponent(id)}`, {
         signal: AbortSignal.timeout(DEPLOYS_TIMEOUT_MS),
       });
-      return { text: await response.text(), status: response.status };
+      return { bytes: new Uint8Array(await response.arrayBuffer()), status: response.status };
     } catch (error) {
       await this.render(ringoFailure(error, DEPLOYS_TIMEOUT_MS));
       return null;
