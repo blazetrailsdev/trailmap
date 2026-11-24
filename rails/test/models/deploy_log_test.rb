@@ -33,4 +33,14 @@ class DeployLogTest < ActiveSupport::TestCase
     Rails.configuration.x.deploys.logs_dir = nil
     assert_not DeployLog.local?("pane-12.log")
   end
+
+  test "screen replays only the tail, within the rows asked for" do
+    assert_equal({ html: "TAIL\n" }, DeployLog.screen("HEAD\nmiddle\nTAIL\n", 5, 100))
+  end
+
+  test "screen answers an emulator failure as a problem, not a raise" do
+    failing = ->(*) { raise RingoCore::Error, "ringo core pane exited 2: bad capture" }
+    assert_equal({ problem: "log not rendered: ringo core pane exited 2: bad capture" },
+                 DeployLog.screen("a", 100, 100, render: failing))
+  end
 end

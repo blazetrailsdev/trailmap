@@ -74,14 +74,4 @@ class DeploysControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "TAIL-MARKER"
     refute_includes response.body, "HEAD-MARKER"
   end
-
-  test "screen answers an emulator failure as a plain-text refusal, not an error page" do
-    answers = { "/api/deploys" => [ 200, RUNS ], "/deploys/output?id=ringo-100" => [ 200, "log\n" ] }
-    failing = ->(*) { raise RingoCore::Error, "ringo core pane exited 2: bad capture" }
-    RingoCore.stub(:render_pane_log, failing) do
-      with_ringo(answers) { get "/deploys/screen", params: { id: "ringo-100" } }
-    end
-    assert_response :internal_server_error
-    assert_equal "log not rendered: ringo core pane exited 2: bad capture", response.body
-  end
 end
