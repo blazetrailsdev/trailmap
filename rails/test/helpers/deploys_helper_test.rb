@@ -28,4 +28,8 @@ class DeploysHelperTest < ActionView::TestCase
   test "deploy_screen_path names the run alone, encoded" do
     assert_equal "/deploys/screen?id=a%20b", deploy_screen_path("id" => "a b")
   end
+
+  test "deploy_log_path names the run alone, never a file" do
+    assert_equal "/deploys/log?id=a%20b", deploy_log_path("id" => "a b")
+  end
 end
