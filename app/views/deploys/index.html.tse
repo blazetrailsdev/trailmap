@@ -35,7 +35,7 @@
         <time class="muted" datetime="<%= run.started %>"><%= run.started.slice(0, 16).replace("T", " ") %> UTC · <%= deployDuration(run.seconds) %></time>
         <details class="deploy-log" data-run="<%= run.id %>">
           <summary>log</summary>
-          <pre data-src="<%= deployLogPath(run) %>"></pre>
+          <pre class="terminal" data-src="<%= deployScreenPath(run) %>"></pre>
           <a href="<%= deployLogPath(run) %>">raw</a>
         </details>
       </div>

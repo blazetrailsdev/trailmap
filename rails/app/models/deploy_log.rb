@@ -24,4 +24,16 @@ module DeployLog
     return Zlib::GzipReader.open("#{path}.gz", &:read) if File.exist?("#{path}.gz")
     "(pane log unreadable: #{path}: no such file or directory)"
   end
+
+  # The log replayed through ringo's terminal emulator, within the bounds the
+  # caller passes (the pane view's): the tail of the capture, at most its rows
+  # kept. An emulator failure comes back as a `:problem` to answer in plain
+  # text, as a relay failure is.
+  def self.screen(bytes, max_bytes, max_lines, render: RingoCore.method(:render_pane_log))
+    bytes = bytes.b
+    bytes = bytes.byteslice(-max_bytes, max_bytes) if bytes.bytesize > max_bytes
+    { html: render.call(bytes, max_lines)["html"] }
+  rescue StandardError => e
+    { problem: "log not rendered: #{e.message}" }
+  end
 end

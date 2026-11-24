@@ -1186,9 +1186,9 @@ body.audit-reading { overflow: hidden; }
 .session-role { display: inline-block; padding: 0 6px; border-radius: 6px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); }
 .session-role.agent { color: var(--accent); }
 .session-role.reviewer { color: var(--purple); }
-.deploy-log { flex-basis: 100%; }
+.deploy-log { flex-basis: 100%; min-width: 0; max-width: 100%; }
 .deploy-log summary { cursor: pointer; color: var(--accent, inherit); }
-.deploy-log pre { max-height: 32em; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
+.deploy-log pre.terminal { height: auto; min-height: 0; max-height: 32em; margin: 6px 0; }
 
 /* /sessions/transcript: ringo's transcript page (webhook/transcript_page.go),
    its rules on this palette. Every step hangs off one rail under its prompt,

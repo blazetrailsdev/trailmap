@@ -21,7 +21,8 @@ async function loadLog(details) {
     const response = await fetch(pre.dataset.src, { cache: "no-store" });
     const text = await response.text();
     if (!response.ok) throw new Error(response.status + " " + text.trim());
-    pre.textContent = text;
+    // ringo-core's HTML: it escapes the capture and adds only its own spans.
+    pre.innerHTML = text;
   } catch (error) {
     delete pre.dataset.loaded;
     pre.textContent = "(log unreadable: " + error.message + ")";

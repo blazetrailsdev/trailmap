@@ -36,6 +36,7 @@ Rails.application.routes.draw do
 
   get "deploys", to: "deploys#index", as: :deploys
   get "deploys/log", to: "deploys#log", as: :deploys_log
+  get "deploys/screen", to: "deploys#screen", as: :deploys_screen
 
   get "sessions", to: "sessions#index", as: :sessions
   get "sessions/file", to: "sessions#file", as: :sessions_file

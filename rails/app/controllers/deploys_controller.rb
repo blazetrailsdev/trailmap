@@ -13,21 +13,50 @@ class DeploysController < ApplicationController
 
   def log
     no_store
-    id = params[:id].to_s
-    return render plain: "unknown deploy", status: :not_found if id.empty?
-    base = Setting.ringo_base or return render plain: "no ringo origin is configured", status: :service_unavailable
-    # The run's own file, from its row: never a name the request supplies.
-    if DeployLog.dir
-      run = history(base).first.find { |r| r["id"] == id }
-      return render plain: DeployLog.read(run["logFile"]) if run && DeployLog.local?(run["logFile"])
-    end
-    response = Fleet::Relay.get("#{base}/deploys/output?id=#{ERB::Util.url_encode(id)}", timeout: TIMEOUT)
-    render plain: response.body, status: response.code.to_i
-  rescue Fleet::Relay::Failure => e
-    render plain: e.plain, status: e.status
+    text, status = read_log
+    render plain: text, status: status if text
+  end
+
+  # One run's log replayed through ringo's terminal emulator, the one the pane
+  # view uses: a deploy log is a tmux pane capture too. An HTML fragment for
+  # the row's `pre.terminal`; a refusal stays plain text.
+  def screen
+    no_store
+    text, status = read_log
+    return unless text
+    return render plain: text, status: status unless status == 200
+    # The pane view's bounds, so one request's emulator work is capped
+    # however long the deploy ran.
+    screen = DeployLog.screen(text, SessionsController::PANE_VIEW_MAX_BYTES, SessionsController::PANE_VIEW_MAX_LINES)
+    return render plain: screen[:problem], status: :internal_server_error if screen[:problem]
+    render html: screen[:html].html_safe
   end
 
   private
+
+  # The run's log text and status, or nil once a refusal is rendered.
+  def read_log
+    id = params[:id].to_s
+    if id.empty?
+      render plain: "unknown deploy", status: :not_found
+      return
+    end
+    base = Setting.ringo_base
+    if base.nil?
+      render plain: "no ringo origin is configured", status: :service_unavailable
+      return
+    end
+    # The run's own file, from its row: never a name the request supplies.
+    if DeployLog.dir
+      run = history(base).first.find { |r| r["id"] == id }
+      return [ DeployLog.read(run["logFile"]), 200 ] if run && DeployLog.local?(run["logFile"])
+    end
+    response = Fleet::Relay.get("#{base}/deploys/output?id=#{ERB::Util.url_encode(id)}", timeout: TIMEOUT)
+    [ response.body, response.code.to_i ]
+  rescue Fleet::Relay::Failure => e
+    render plain: e.plain, status: e.status
+    nil
+  end
 
   # ringo's deploy history, and why there is none to show.
   def history(base)

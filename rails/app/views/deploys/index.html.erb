@@ -33,7 +33,7 @@
         <time class="muted" datetime="<%= run["started"] %>"><%= run["started"].to_s[0, 16].sub("T", " ") %> UTC · <%= deploy_duration(run["seconds"].to_i) %></time>
         <details class="deploy-log" data-run="<%= run["id"] %>">
           <summary>log</summary>
-          <pre data-src="<%= deploy_log_path(run) %>"></pre>
+          <pre class="terminal" data-src="<%= deploy_screen_path(run) %>"></pre>
           <a href="<%= deploy_log_path(run) %>">raw</a>
         </details>
       </div>
