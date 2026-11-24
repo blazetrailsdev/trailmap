@@ -68,7 +68,9 @@ prBody() {
     echo "==> could not read #$pr's body; its preview link is not updated" >&2
     return 0
   fi
-  body="$(printf '%s\n' "$body" | awk -v b="$PREVIEW_BEGIN" -v e="$PREVIEW_END" '
+  # A body saved from GitHub's web UI has CRLF line endings, which would keep
+  # the markers from matching and add a block on every run: normalise to LF.
+  body="$(printf '%s\n' "$body" | tr -d '\r' | awk -v b="$PREVIEW_BEGIN" -v e="$PREVIEW_END" '
     $0 == b { skip = 1; next } skip && $0 == e { skip = 0; next } !skip')"
   # Trailing blank lines left by a removed block would grow on every run.
   body="$(printf '%s' "$body" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
