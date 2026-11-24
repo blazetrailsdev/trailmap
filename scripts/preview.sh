@@ -151,7 +151,7 @@ migrationsKey() { echo "$1=$(git rev-parse --verify --quiet "$2:$1" || echo none
 # so the deploy that would render the bad listener never starts.
 pinPorts() {
   local -a want=(http:80:8080)
-  if dokku letsencrypt:active "$app" >/dev/null 2>&1; then want+=(https:443:8080); fi
+  if [ "$(dokku letsencrypt:active "$app" 2>/dev/null)" = true ]; then want+=(https:443:8080); fi
   dokku ports:set "$app" "${want[@]}"
   local got
   got="$(dokku ports:report "$app" --ports-map)"
@@ -365,7 +365,7 @@ up() {
     die "$hub still holds $left settings row(s) after the scrub; $app stopped"
   fi
 
-  if ! dokku letsencrypt:active "$app" >/dev/null 2>&1; then
+  if [ "$(dokku letsencrypt:active "$app" 2>/dev/null)" != true ]; then
     dokku letsencrypt:enable "$app" || echo "==> WARNING: no TLS certificate for $app; does $domain resolve?"
   fi
   # Re-pinned: a certificate adds https:443, and nothing the plugin does may
