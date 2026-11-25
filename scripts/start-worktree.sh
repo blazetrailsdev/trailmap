@@ -2,6 +2,7 @@
 # start-worktree.sh — spin up a fresh trailmap worktree ready to develop in.
 #
 # Usage: scripts/start-worktree.sh <name>
+#        scripts/start-worktree.sh --branch <existing-branch> [<name>]
 #
 #   1. Creates $WORKTREES_ROOT/<name> on a new branch <name> off origin/main.
 #   2. Links .claude config (skills + per-machine permissions) from main.
@@ -18,16 +19,36 @@
 # tarballs under vendor/ — is tracked in git, so a worktree checkout already has
 # them and `pnpm install` resolves the file: overrides in pnpm-workspace.yaml
 # without any cross-worktree linking.
+#
+# --branch checks out an EXISTING branch instead of cutting a new one: the
+# dashboard's respawn button re-attaches an agent to an open PR whose worktree
+# was reaped, and branching off origin/main would silently diverge from the PR.
+# Same interface as trails' script, since ringo calls both the same way.
 set -euo pipefail
 
-if [[ $# -ne 1 || -z "${1:-}" ]]; then
+usage() {
   echo "usage: scripts/start-worktree.sh <name>" >&2
+  echo "       scripts/start-worktree.sh --branch <existing-branch> [<name>]" >&2
   exit 2
+}
+
+BRANCH=""
+if [[ "${1:-}" == "--branch" ]]; then
+  BRANCH="${2:-}"
+  [[ -n "$BRANCH" && $# -le 3 ]] || usage
+  # A branch may contain "/", a directory name may not: flatten by default.
+  NAME="${3:-$(printf '%s' "$BRANCH" | tr '/' '-')}"
+else
+  [[ $# -eq 1 && -n "${1:-}" ]] || usage
+  NAME="$1"
 fi
 
-NAME="$1"
 case "$NAME" in
-  */*|.|..) echo "error: <name> must be a bare directory name" >&2; exit 2 ;;
+  */*|.|..|"") echo "error: <name> must be a bare directory name" >&2; exit 2 ;;
+esac
+# A leading dash would be read as a git flag; ".." could escape into another ref.
+case "$BRANCH" in
+  -*|*..*) echo "error: invalid branch name: $BRANCH" >&2; exit 2 ;;
 esac
 
 # Invoked from a child worktree, `--show-toplevel` returns the child (whose
@@ -63,8 +84,21 @@ mkdir -p "$WORKTREES_ROOT"
 
 # Branch off origin/main, not local main: the main checkout's branch may lag,
 # and an ff-merge there breaks on a dirty tree or colliding untracked files.
-echo "==> Creating worktree at $TARGET on new branch '$NAME' from origin/main"
-git -C "$MAIN_REPO" worktree add -b "$NAME" "$TARGET" origin/main
+if [[ -n "$BRANCH" ]]; then
+  echo "==> Creating worktree at $TARGET on existing branch '$BRANCH'"
+  # Never invent the branch: that would produce the divergence --branch avoids.
+  if git -C "$MAIN_REPO" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+    git -C "$MAIN_REPO" worktree add "$TARGET" "$BRANCH"
+  elif git -C "$MAIN_REPO" show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+    git -C "$MAIN_REPO" worktree add --track -b "$BRANCH" "$TARGET" "origin/$BRANCH"
+  else
+    echo "error: branch $BRANCH exists neither locally nor on origin" >&2
+    exit 1
+  fi
+else
+  echo "==> Creating worktree at $TARGET on new branch '$NAME' from origin/main"
+  git -C "$MAIN_REPO" worktree add -b "$NAME" "$TARGET" origin/main
+fi
 flock -u 9
 exec 9>&-
 
@@ -79,7 +113,10 @@ cleanup_partial_worktree() {
     rm -rf "$TARGET"
     git -C "$MAIN_REPO" worktree prune 2>/dev/null || true
   fi
-  git -C "$MAIN_REPO" branch -D "$NAME" 2>/dev/null || true
+  # Under --branch the branch holds an open PR's commits: never delete it.
+  if [[ -z "$BRANCH" ]]; then
+    git -C "$MAIN_REPO" branch -D "$NAME" 2>/dev/null || true
+  fi
 }
 trap cleanup_partial_worktree EXIT
 
@@ -149,4 +186,4 @@ fi
 echo
 echo "Done. New worktree:"
 echo "  $TARGET"
-echo "  branch: $NAME (push with: git push -u origin $NAME)"
+echo "  branch: ${BRANCH:-$NAME} (push with: git push -u origin ${BRANCH:-$NAME})"
