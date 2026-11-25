@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -31,6 +31,20 @@ function sandbox(): string {
     "init",
   );
   git(repo, "push", "-q", "origin", "HEAD:main");
+  git(
+    repo,
+    "-c",
+    "user.name=t",
+    "-c",
+    "user.email=t@t",
+    "commit",
+    "-q",
+    "--allow-empty",
+    "-m",
+    "pr work",
+  );
+  git(repo, "push", "-q", "origin", "HEAD:refs/heads/fix/pr-branch");
+  git(repo, "reset", "-q", "--hard", "HEAD~1");
   mkdirSync(join(repo, "scripts"));
   copyFileSync(script, join(repo, "scripts", "start-worktree.sh"));
   return root;
@@ -42,7 +56,7 @@ function run(root: string, ...args: string[]) {
     [join(root, "repo", "scripts", "start-worktree.sh"), ...args],
     {
       encoding: "utf8",
-      env: { ...process.env, WORKTREES_ROOT: join(root, "wt") },
+      env: { ...process.env, HOME: root, WORKTREES_ROOT: join(root, "wt") },
     },
   );
 }
@@ -78,5 +92,18 @@ describe("start-worktree.sh --branch", () => {
 
   it("still rejects extra arguments without --branch", () => {
     expect(run(root, "a", "b").status).toBe(2);
+  });
+
+  it("checks out an origin-only branch with its commits, under a flattened name", () => {
+    const r = run(root, "--branch", "fix/pr-branch");
+    expect(r.status, r.stderr).toBe(0);
+    const wt = join(root, "wt", "fix-pr-branch");
+    const head = (...args: string[]) =>
+      execFileSync("git", args, { cwd: wt, encoding: "utf8" }).trim();
+    expect(head("rev-parse", "--abbrev-ref", "HEAD")).toBe("fix/pr-branch");
+    expect(head("log", "-1", "--format=%s")).toBe("pr work");
+    expect(head("rev-parse", "--abbrev-ref", "@{upstream}")).toBe(
+      "origin/fix/pr-branch",
+    );
   });
 });
