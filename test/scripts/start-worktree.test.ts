@@ -1,5 +1,11 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -45,6 +51,11 @@ function sandbox(): string {
   );
   git(repo, "push", "-q", "origin", "HEAD:refs/heads/fix/pr-branch");
   git(repo, "reset", "-q", "--hard", "HEAD~1");
+  // The checkout is under test, not pnpm: a no-op shim keeps the install
+  // (its store, its network, its view of the environment) out of it.
+  mkdirSync(join(root, "bin"));
+  writeFileSync(join(root, "bin", "pnpm"), "#!/bin/sh\nexit 0\n");
+  chmodSync(join(root, "bin", "pnpm"), 0o755);
   mkdirSync(join(repo, "scripts"));
   copyFileSync(script, join(repo, "scripts", "start-worktree.sh"));
   return root;
@@ -58,6 +69,7 @@ function run(root: string, ...args: string[]) {
       encoding: "utf8",
       env: {
         ...process.env,
+        PATH: `${join(root, "bin")}:${process.env.PATH}`,
         TASKS_CANONICAL: join(root, "no-tasks"),
         WORKTREES_ROOT: join(root, "wt"),
       },
@@ -106,6 +118,10 @@ describe("start-worktree.sh --branch", () => {
       execFileSync("git", args, { cwd: wt, encoding: "utf8" }).trim();
     expect(head("rev-parse", "--abbrev-ref", "HEAD")).toBe("fix/pr-branch");
     expect(head("log", "-1", "--format=%s")).toBe("pr work");
+    expect(
+      existsSync(join(wt, "package.json")),
+      head("ls-tree", "-r", "--name-only", "HEAD"),
+    ).toBe(true);
     expect(head("rev-parse", "--abbrev-ref", "@{upstream}")).toBe(
       "origin/fix/pr-branch",
     );
