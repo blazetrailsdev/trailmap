@@ -9,6 +9,7 @@
  * connection to hijack.
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { clearRingoReadCache } from "../../lib/ringo-read-cache.ts";
 import { getHttpAsync, setEnv, type HttpServer } from "@blazetrails/ruby-compat";
 import {
   FleetController,
@@ -145,6 +146,7 @@ afterAll(async () => {
 });
 
 afterEach(() => {
+  clearRingoReadCache();
   for (const release of hung.splice(0)) release();
   received = [];
   setEnv("RINGO_BASE", undefined);
