@@ -147,7 +147,7 @@ WORKTREE_CREATED=0  # success — disable EXIT-trap cleanup
 # Per-worktree tasks checkout, so concurrent agents never race a shared one.
 # Best-effort throughout: on any failure the agent degrades to the canonical
 # checkout, which is what bin/tasks falls back to anyway.
-TASKS_CANONICAL="$HOME/github/blazetrailsdev/tasks"
+TASKS_CANONICAL="${TASKS_CANONICAL:-$HOME/github/blazetrailsdev/tasks}"
 TASKS_WORKTREES_ROOT="${TASKS_WORKTREES_ROOT:-$(dirname "$WORKTREES_ROOT")/tasks-worktrees}"
 TASKS_WT="$TASKS_WORKTREES_ROOT/$NAME"
 

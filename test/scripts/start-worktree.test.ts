@@ -56,7 +56,11 @@ function run(root: string, ...args: string[]) {
     [join(root, "repo", "scripts", "start-worktree.sh"), ...args],
     {
       encoding: "utf8",
-      env: { ...process.env, HOME: root, WORKTREES_ROOT: join(root, "wt") },
+      env: {
+        ...process.env,
+        TASKS_CANONICAL: join(root, "no-tasks"),
+        WORKTREES_ROOT: join(root, "wt"),
+      },
     },
   );
 }
@@ -96,7 +100,7 @@ describe("start-worktree.sh --branch", () => {
 
   it("checks out an origin-only branch with its commits, under a flattened name", () => {
     const r = run(root, "--branch", "fix/pr-branch");
-    expect(r.status, r.stderr).toBe(0);
+    expect(r.status, r.stdout + r.stderr).toBe(0);
     const wt = join(root, "wt", "fix-pr-branch");
     const head = (...args: string[]) =>
       execFileSync("git", args, { cwd: wt, encoding: "utf8" }).trim();
