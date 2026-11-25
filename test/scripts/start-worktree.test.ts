@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import {
   chmodSync,
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   writeFileSync,
@@ -24,6 +25,11 @@ function sandbox(): string {
   git(root, "init", "-q", "--bare", "origin.git");
   const repo = join(root, "repo");
   git(root, "clone", "-q", "origin.git", "repo");
+  writeFileSync(
+    join(repo, "package.json"),
+    '{"name":"sandbox","private":true}\n',
+  );
+  git(repo, "add", "package.json");
   git(
     repo,
     "-c",
@@ -32,7 +38,6 @@ function sandbox(): string {
     "user.email=t@t",
     "commit",
     "-q",
-    "--allow-empty",
     "-m",
     "init",
   );
