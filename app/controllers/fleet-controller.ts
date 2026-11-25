@@ -1,4 +1,5 @@
 import { ringoFailure } from "../../lib/ringo-failure.ts";
+import { cachedRingoRead, clearRingoReadCache } from "../../lib/ringo-read-cache.ts";
 import { ApplicationController } from "./application-controller.ts";
 import { externalReviewQuery, FLEET_CONTROLS, FLEET_READS, REPO_READS, repoQuery, isPaneId, isScreenHash, paneKeysProblem, paneMessageProblem } from "../../config/fleet.ts";
 import { Setting } from "../models/setting.ts";
@@ -125,6 +126,9 @@ export class FleetController extends ApplicationController {
         ...(body === "" ? {} : { body: body as BodyInit }),
         ...(contentType ? { headers: { "content-type": String(contentType) } } : {}),
       });
+      // A control changes what the reads report; the page re-reads straight
+      // after, and must not be shown the state from before the press.
+      clearRingoReadCache();
       await this.render({ plain: await response.text(), status: response.status });
     } catch (error) {
       await this.render(ringoFailure(error, CONTROL_TIMEOUT_MS));
@@ -303,14 +307,16 @@ export class FleetController extends ApplicationController {
 
     this.noStore();
     try {
-      const response = await fetch(`${base}/${path}`, {
-        signal: AbortSignal.timeout(REVIEWERS_TIMEOUT_MS),
+      const answer = await cachedRingoRead(`${base}/${path}`, async () => {
+        const response = await fetch(`${base}/${path}`, {
+          signal: AbortSignal.timeout(REVIEWERS_TIMEOUT_MS),
+        });
+        return { ok: response.ok, status: response.status, text: await response.text() };
       });
-      const text = await response.text();
-      if (response.ok) {
-        await this.render({ json: text });
+      if (answer.ok) {
+        await this.render({ json: answer.text });
       } else {
-        await this.render({ plain: text, status: response.status });
+        await this.render({ plain: answer.text, status: answer.status });
       }
     } catch (error) {
       await this.render(ringoFailure(error, REVIEWERS_TIMEOUT_MS));
