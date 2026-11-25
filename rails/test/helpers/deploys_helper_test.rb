@@ -13,15 +13,33 @@ class DeploysHelperTest < ActionView::TestCase
 
   test "deploy_preview_url links only an https URL" do
     assert_equal "https://trailmap-pr-160.deanoftech.com/", deploy_preview_url("url" => "https://trailmap-pr-160.deanoftech.com/")
-    # Unchanged, as the trails app prints it: no lowercasing, no trailing slash added.
+    # As the trails app prints it: the host keeps its case, no trailing slash is added.
     assert_equal "https://Trailmap-PR-160.deanoftech.com", deploy_preview_url("url" => "https://Trailmap-PR-160.deanoftech.com")
     assert_nil deploy_preview_url("url" => "javascript:alert(1)")
     assert_nil deploy_preview_url("url" => "http://trailmap-pr-160.deanoftech.com/")
     assert_nil deploy_preview_url("url" => "not a url")
     assert_nil deploy_preview_url({})
+    # Inputs WHATWG URL accepts and Ruby's URI does not.
+    assert_nil deploy_preview_url("url" => "https:trailmap-pr-160.deanoftech.com")
+    assert_nil deploy_preview_url("url" => " https://trailmap-pr-160.deanoftech.com ")
+    assert_nil deploy_preview_url("url" => "https://")
+    # Ruby's RFC 3986 grammar decides, and its `to_s` is the href.
+    assert_nil deploy_preview_url("url" => "https://a.com/<x>")
+    assert_nil deploy_preview_url("url" => "https://a.com/%zz")
+    assert_nil deploy_preview_url("url" => "https://a.com/\"")
+    assert_nil deploy_preview_url("url" => "https://a.com\\x")
+    assert_nil deploy_preview_url("url" => "https://h\u00e9st.com")
+    assert_equal "https://a.com", deploy_preview_url("url" => "HTTPS://a.com")
+    assert_equal "https://a.com:99999", deploy_preview_url("url" => "https://a.com:99999")
+    assert_equal "https://a.com/", deploy_preview_url("url" => "https://a.com:443/")
+    assert_equal "https://a.com?q=a%20b", deploy_preview_url("url" => "https://a.com?q=a b")
   end
 
   test "deploy_screen_path names the run alone, encoded" do
     assert_equal "/deploys/screen?id=a%20b", deploy_screen_path("id" => "a b")
+  end
+
+  test "deploy_log_path names the run alone, never a file" do
+    assert_equal "/deploys/log?id=a%20b", deploy_log_path("id" => "a b")
   end
 end

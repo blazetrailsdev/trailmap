@@ -1,3 +1,4 @@
+import { HTTPS, InvalidURIError, URI } from "@blazetrails/ruby-compat";
 import type { DeployRow } from "../controllers/deploys-controller.ts";
 
 export const DeploysHelper = {
@@ -19,18 +20,15 @@ export const DeploysHelper = {
 
   /**
    * A preview's address, linked only when it is an https URL: it is relayed
-   * from ringo, which read it from a log, and an href is no place to trust
-   * that blindly.
+   * from ringo, which read it from a log.
    */
   deployPreviewUrl(run: Pick<DeployRow, "url">): string | null {
-    if (!run.url) return null;
     try {
-      // The URL as ringo sent it, not `url.href`: that normalizes (a lowercased
-      // host, a trailing `/`), and Rails' `deploy_preview_url` prints the input
-      // unchanged, so the two pages would link different hrefs for one row.
-      return new URL(run.url).protocol === "https:" ? run.url : null;
-    } catch {
-      return null;
+      const uri = URI.parse(run.url ?? "");
+      return uri instanceof HTTPS && uri.host ? uri.toString() : null;
+    } catch (error) {
+      if (error instanceof InvalidURIError) return null;
+      throw error;
     }
   },
 
