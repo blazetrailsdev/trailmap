@@ -114,7 +114,9 @@ cleanup_partial_worktree() {
     git -C "$MAIN_REPO" worktree prune 2>/dev/null || true
   fi
   # Under --branch the branch holds an open PR's commits: never delete it.
-  if [[ -z "$BRANCH" ]]; then
+  if [[ -n "$BRANCH" ]]; then
+    echo "    keeping existing branch $BRANCH (not created by this run)" >&2
+  else
     git -C "$MAIN_REPO" branch -D "$NAME" 2>/dev/null || true
   fi
 }

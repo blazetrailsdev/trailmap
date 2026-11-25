@@ -5,16 +5,18 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 /**
  * The dashboard's respawn button re-attaches an agent with
  * `start-worktree.sh --branch <branch> [<name>]`, the trails interface.
- * These cover the paths that exit before any worktree or install happens.
+ * These cover argument validation, re-attaching to an existing local or
+ * origin branch, and keeping that branch when setup fails after checkout.
  */
 const script = resolve("scripts/start-worktree.sh");
 
@@ -56,10 +58,14 @@ function sandbox(): string {
   );
   git(repo, "push", "-q", "origin", "HEAD:refs/heads/fix/pr-branch");
   git(repo, "reset", "-q", "--hard", "HEAD~1");
+  git(repo, "branch", "-q", "local-only");
   // The checkout is under test, not pnpm: a no-op shim keeps the install
   // (its store, its network, its view of the environment) out of it.
   mkdirSync(join(root, "bin"));
-  writeFileSync(join(root, "bin", "pnpm"), "#!/bin/sh\nexit 0\n");
+  writeFileSync(
+    join(root, "bin", "pnpm"),
+    '#!/bin/sh\nexit "${PNPM_SHIM_EXIT:-0}"\n',
+  );
   chmodSync(join(root, "bin", "pnpm"), 0o755);
   mkdirSync(join(repo, "scripts"));
   copyFileSync(script, join(repo, "scripts", "start-worktree.sh"));
@@ -67,6 +73,14 @@ function sandbox(): string {
 }
 
 function run(root: string, ...args: string[]) {
+  return runWith(root, {}, ...args);
+}
+
+function runWith(
+  root: string,
+  extra: Record<string, string>,
+  ...args: string[]
+) {
   return spawnSync(
     "bash",
     [join(root, "repo", "scripts", "start-worktree.sh"), ...args],
@@ -77,6 +91,7 @@ function run(root: string, ...args: string[]) {
         PATH: `${join(root, "bin")}:${process.env.PATH}`,
         TASKS_CANONICAL: join(root, "no-tasks"),
         WORKTREES_ROOT: join(root, "wt"),
+        ...extra,
       },
     },
   );
@@ -84,6 +99,7 @@ function run(root: string, ...args: string[]) {
 
 describe("start-worktree.sh --branch", () => {
   const root = sandbox();
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
 
   it("prints both usages when --branch has no value", () => {
     const r = run(root, "--branch");
@@ -130,5 +146,20 @@ describe("start-worktree.sh --branch", () => {
     expect(head("rev-parse", "--abbrev-ref", "@{upstream}")).toBe(
       "origin/fix/pr-branch",
     );
+  });
+
+  it("keeps an existing local branch when setup fails after checkout", () => {
+    const r = runWith(root, { PNPM_SHIM_EXIT: "1" }, "--branch", "local-only");
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("keeping existing branch");
+    expect(existsSync(join(root, "wt", "local-only"))).toBe(false);
+    const ref = spawnSync(
+      "git",
+      ["show-ref", "--verify", "refs/heads/local-only"],
+      {
+        cwd: join(root, "repo"),
+      },
+    );
+    expect(ref.status).toBe(0);
   });
 });
