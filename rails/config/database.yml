@@ -27,7 +27,7 @@ hub: &hub
 development:
   primary:
     <<: *sqlite
-    database: <%= ENV.fetch("TASKS_DATABASE") { "storage/development.sqlite3" }.strip %>
+    database: <%= ENV["TASKS_DATABASE"].to_s.strip.presence || "storage/development.sqlite3" %>
     database_tasks: <%= ENV["TASKS_DATABASE"].to_s.strip.empty? %>
   hub:
     <<: *hub

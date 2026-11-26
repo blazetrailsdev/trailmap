@@ -34,6 +34,16 @@ describe("config/database.ts", () => {
     });
   }
 
+  it("points development's primary at TASKS_DATABASE, or at a scratch file db:migrate owns", () => {
+    const config = primaryDatabaseConfig("development");
+    expect(config.configurationHash).toMatchObject({
+      adapter: "sqlite3",
+      database: tasksDatabase ?? "storage/development.sqlite3",
+      pool: 1,
+    });
+    expect(config.databaseTasks()).toBe(tasksDatabase == null);
+  });
+
   it("falls back to a scratch file db:migrate owns when there is no tasks database", () => {
     expect(tasksEntry("storage/development.sqlite3", undefined)).toMatchObject({
       database: "storage/development.sqlite3",
