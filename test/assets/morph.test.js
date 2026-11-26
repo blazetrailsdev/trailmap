@@ -69,6 +69,15 @@ describe("morph", () => {
     expect(list.querySelector("input[type=radio]").value).toBe("y");
   });
 
+  it("takes a hidden or button input's value from the new markup", () => {
+    const list = host('<p id="h"><input type="hidden" value="1"><input type="submit" value="Send"></p>');
+
+    morph(list, '<p id="h"><input type="hidden" value="2"><input type="submit" value="Sending…"></p>');
+
+    expect(list.querySelector("input[type=hidden]").value).toBe("2");
+    expect(list.querySelector("input[type=submit]").value).toBe("Sending…");
+  });
+
   it("keeps a picked choice", () => {
     const list = host(
       '<fieldset id="q"><input type="radio" name="n" value="a"><input type="radio" name="n" value="b"></fieldset>',

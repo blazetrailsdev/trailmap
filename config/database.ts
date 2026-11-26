@@ -45,7 +45,7 @@ export const STATS_SYNC_MIGRATIONS_PATH = "db/stats-sync-migrate";
  */
 const databaseConfigurations = {
   development: {
-    primary: tasksEntry(),
+    primary: tasksEntry("storage/development.sqlite3"),
     hub: hubEntry(),
   },
   test: {
@@ -164,18 +164,25 @@ export function hasHubDatabase(): boolean {
  * initializer connects to it at boot, and an unset `TASKS_DATABASE` leaves no
  * database file, which fails that boot loudly rather than serving 500s.
  *
+ * development without `TASKS_DATABASE` is rails/config/database.yml's
+ * development primary: a scratch `storage/development.sqlite3` that
+ * `db:migrate` owns, since it is not the CLI's file.
+ *
  * `readonly` came off when the mutation endpoints landed; `timeout` and the
  * journal mode are docs/write-protocol.md's. `pool: 1` serializes the mutation
  * verbs in the process, since SQLite takes one writer at a time.
  */
-function tasksEntry(): Record<string, unknown> {
+export function tasksEntry(
+  fallback?: string,
+  database = tasksDatabasePath(),
+): Record<string, unknown> {
   return {
     adapter: "sqlite3",
-    database: tasksDatabasePath(),
+    database: database ?? fallback,
     pool: 1,
     timeout: writeProtocol.busyTimeoutMs,
     pragmas: { journal_mode: writeProtocol.journalMode },
-    databaseTasks: false,
+    databaseTasks: database == null && fallback != null,
   };
 }
 

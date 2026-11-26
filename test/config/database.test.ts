@@ -6,11 +6,13 @@ import databaseConfigurations, {
   primaryDatabaseConfig,
   recordTasksDatabaseIdentity,
   tasksDatabaseIdentity,
+  tasksEntry,
 } from "../../config/database.ts";
 import { writeProtocol } from "../../config/write-protocol.ts";
 
 describe("config/database.ts", () => {
-  for (const envName of ["development", "production"]) {
+  const tasksDatabase = env.TASKS_DATABASE?.trim() || undefined;
+  for (const envName of tasksDatabase ? ["development", "production"] : ["production"]) {
     it(`points ${envName}'s primary at TASKS_DATABASE, one connection, no database tasks`, () => {
       const config = primaryDatabaseConfig(envName);
       expect(config.configurationHash).toMatchObject({
@@ -31,6 +33,21 @@ describe("config/database.ts", () => {
       expect(names).toContain("hub");
     });
   }
+
+  it("falls back to a scratch file db:migrate owns when there is no tasks database", () => {
+    expect(tasksEntry("storage/development.sqlite3", undefined)).toMatchObject({
+      database: "storage/development.sqlite3",
+      databaseTasks: true,
+    });
+  });
+
+  it("never runs database tasks on the CLI's file, fallback or not", () => {
+    expect(tasksEntry("storage/development.sqlite3", "/x/tasks.db")).toMatchObject({
+      database: "/x/tasks.db",
+      databaseTasks: false,
+    });
+    expect(tasksEntry(undefined, undefined).databaseTasks).toBe(false);
+  });
 
   it("keeps test's primary a scratch file trails db may build", () => {
     expect(primaryDatabaseConfig("test").databaseTasks()).toBe(true);

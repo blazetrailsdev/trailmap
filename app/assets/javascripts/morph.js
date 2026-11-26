@@ -25,11 +25,12 @@ export function morph(host, html) {
 const vetoed = new WeakSet();
 
 const CHOICE = new Set(["radio", "checkbox"]);
+const SERVER_OWNED = new Set(["hidden", "submit", "button", "reset", "image"]);
 
 function keepTyped(event) {
   const el = event.target;
   const name = event.detail.attributeName;
   const choice = el instanceof HTMLInputElement && CHOICE.has(el.type);
-  const typed = el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !choice);
+  const typed = el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !choice && !SERVER_OWNED.has(el.type));
   if ((name === "checked" && choice) || (name === "value" && typed)) event.preventDefault();
 }

@@ -59,7 +59,7 @@ export function isLoopbackRequest(request: LoopbackRequest): boolean {
     if (value != null && String(value).trim() !== "") return false;
   }
 
-  const method = String(request.getHeader("REQUEST_METHOD") ?? "GET").toUpperCase();
+  const method = String(request.getHeader("REQUEST_METHOD") ?? "").toUpperCase();
   if (!SAFE_METHODS.includes(method) && request.getHeader("HTTP_ORIGIN") != null) return false;
 
   const host = request.getHeader("HTTP_HOST");
