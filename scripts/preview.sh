@@ -63,17 +63,22 @@ forPr() {
 PREVIEW_BEGIN='<!-- trailmap-preview -->'
 PREVIEW_END='<!-- /trailmap-preview -->'
 prBody() {
-  local line="$1" body
-  if ! body="$(gh pr view "$pr" -R "$PREVIEW_REPO" --json body -q .body)"; then
+  local line="$1" body orig
+  if ! orig="$(gh pr view "$pr" -R "$PREVIEW_REPO" --json body -q .body)"; then
     echo "==> could not read #$pr's body; its preview link is not updated" >&2
     return 0
   fi
   # A body saved from GitHub's web UI has CRLF line endings, which would keep
   # the markers from matching and add a block on every run: normalise to LF.
-  body="$(printf '%s\n' "$body" | tr -d '\r' | awk -v b="$PREVIEW_BEGIN" -v e="$PREVIEW_END" '
+  body="$(printf '%s\n' "$orig" | tr -d '\r' | awk -v b="$PREVIEW_BEGIN" -v e="$PREVIEW_END" '
     $0 == b { skip = 1; next } skip && $0 == e { skip = 0; next } !skip')"
-  # Trailing blank lines left by a removed block would grow on every run.
-  body="$(printf '%s' "$body" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+  # A body edited by someone while this deploy ran would be overwritten by
+  # the write below, so read it again and skip the write if it moved.
+  local now
+  if ! now="$(gh pr view "$pr" -R "$PREVIEW_REPO" --json body -q .body)" || [ "$now" != "$orig" ]; then
+    echo "==> WARNING: #$pr's body changed during this run; its preview link is not updated" >&2
+    return 0
+  fi
   printf '%s\n\n%s\n%s\n%s\n' "$body" "$PREVIEW_BEGIN" "$line" "$PREVIEW_END" |
     gh pr edit "$pr" -R "$PREVIEW_REPO" --body-file - >/dev/null ||
     echo "==> could not edit #$pr's body; its preview link is not updated" >&2
@@ -178,14 +183,15 @@ assertNginx() {
     bad+="cannot read $log (the deploying user must be in group adm); "
   else
     emerg="$(cat "$log.1" "$log" 2>/dev/null | awk -v since="$since" '($1 " " $2) >= since && /\[emerg\]/')"
-    [ -z "$emerg" ] || bad+="nginx logged: $(echo "$emerg" | tail -1); "
+    [ -z "$emerg" ] || bad+="nginx logged (the shared error.log; the line may be another app's): $(echo "$emerg" | tail -1); "
   fi
   ss -ltn | awk '{print $4}' | grep -qx '127.0.0.1:8080' || bad+="production's 127.0.0.1:8080 listener is gone; "
   if [ -n "$bad" ]; then
     echo "==> NGINX CHECK FAILED: $bad" >&2
     echo "==> tearing $app down so its config cannot break production's" >&2
-    down
-    die "nginx check failed for $app: $bad check production now: scripts/smoke-prod.sh --tier 0 --tier 1"
+    local torn="its config is removed."
+    down || torn="the teardown FAILED, so its nginx config may still be on disk under /home/dokku/$app/nginx.conf."
+    die "nginx check failed for $app: $bad $torn check production now: scripts/smoke-prod.sh --tier 0 --tier 1"
   fi
 }
 
@@ -412,14 +418,15 @@ down() {
 }
 
 # Every preview PR number anything on the box still names: an app, a hub
-# service, a data directory or a DNS record. Each is a trace `down` removes,
-# so a preview that half-failed to come up or go away is still found by
-# whichever of them is left.
+# service or a data directory. Each is a trace `down` removes, so a preview
+# that half-failed to come up or go away is still found by whichever of them
+# is left, and `down` then deletes its DNS record too. A DNS record that
+# outlived all three is not found here: the dns plugin lists zones, not
+# records, so there is nothing to enumerate it by.
 previewPrs() {
   {
     dokku apps:list 2>/dev/null
     dokku postgres:list 2>/dev/null
-    dokku dns:zones 2>/dev/null
     find "$PREVIEW_ROOT" -mindepth 1 -maxdepth 1 -name 'pr-*' -printf "$PROD_APP-%f\n" 2>/dev/null
   } | grep -oE "(^|[^a-z0-9-])$PROD_APP-pr-[0-9]+([^0-9]|$)" | grep -oE 'pr-[0-9]+' | cut -d- -f2 | sort -un
 }
