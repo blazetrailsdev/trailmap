@@ -15,6 +15,7 @@ class ApiController < ApplicationController
   def render_server_error(error)
     raise error unless ActionDispatch::ExceptionWrapper.status_code_for_exception(error.class.name) == 500
     logger.error("#{error.class.name}: #{error.message}\n#{error.backtrace&.join("\n")}")
+    Rails.error.report(error, handled: true, severity: :error, source: "api")
     render json: { error: "internal_server_error", message: error.message }, status: :internal_server_error
   end
 
