@@ -3,6 +3,21 @@ import { ActionController, DebugExceptions, ExceptionWrapper } from "@blazetrail
 import { RecordNotFound } from "@blazetrails/activerecord";
 import { ReadModelsController } from "../../app/controllers/read-models-controller.ts";
 import { controllerTestCase } from "../support/controller-test-case.ts";
+import { Trails } from "@blazetrails/trailties";
+import type { ErrorSubscriber } from "@blazetrails/activesupport";
+
+/** Every report `Trails.error` receives during the test that calls it. */
+function recordReports() {
+  const reports: { error: Error; handled: boolean; severity: string; source: string }[] = [];
+  const subscriber: ErrorSubscriber = {
+    report(error, { handled, severity, source }) {
+      reports.push({ error, handled, severity, source });
+    },
+  };
+  Trails.error.subscribe(subscriber);
+  onTestFinished(() => Trails.error.unsubscribe(subscriber));
+  return reports;
+}
 
 const BROWSER_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 
@@ -24,6 +39,31 @@ class MissingReadModelsController extends ReadModelsController {
  * written down on `ApiController`.
  */
 describe("a 500", () => {
+  // The rescue keeps the error from the executor, which reports only what
+  // escapes (Rails' executor.rb), so the rescue reports it: once, as handled,
+  // and at severity error rather than the reporter's default for a handled one.
+  it("is reported to Trails.error exactly once, as a handled error", async () => {
+    const reports = recordReports();
+    const tc = await controllerTestCase(FailingReadModelsController, { Host: "127.0.0.1" });
+    await tc.get("index");
+
+    expect(tc.response.status).toBe(500);
+    expect(reports).toHaveLength(1);
+    expect(reports[0]).toMatchObject({ handled: true, severity: "error", source: "api" });
+    expect(reports[0]!.error.message).toBe("no such table: stories");
+  });
+
+  it("does not report an error it re-raises for the framework to map (404, 400)", async () => {
+    const reports = recordReports();
+    const key = "ActiveRecord::RecordNotFound";
+    ExceptionWrapper.rescueResponses[key] = ":not_found";
+    onTestFinished(() => void delete ExceptionWrapper.rescueResponses[key]);
+
+    const tc = await controllerTestCase(MissingReadModelsController, { Host: "127.0.0.1" });
+    await expect(tc.get("index")).rejects.toThrow(RecordNotFound);
+    expect(reports).toEqual([]);
+  });
+
   it("is JSON from the loopback API, whatever the client accepts", async () => {
     for (const accept of ["application/json", BROWSER_ACCEPT, ""]) {
       const headers: Record<string, string> = { Host: "127.0.0.1" };

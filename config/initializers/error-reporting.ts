@@ -24,7 +24,7 @@ if (dsn) {
   Trails.error.subscribe({
     report(error, { handled, severity, context, source }) {
       Sentry.withScope((scope) => {
-        scope.setLevel(severity === "warning" ? "warning" : severity === "info" ? "info" : "error");
+        scope.setLevel(severity); // the reporter's three severities are all Sentry levels
         scope.setTag("source", source);
         scope.setTag("handled", String(handled));
         if (Object.keys(context).length > 0) scope.setContext("trails", context);

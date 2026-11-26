@@ -296,6 +296,23 @@ writable.
 package, because the no-stats answer is `{"error": …}`, which satisfies a looser
 "is an object" check and let the page be dark in production unnoticed.
 
+## Error reporting
+
+Errors go to Bugsink (`https://bugsink.deanoftech.com`, behind SSO), which
+speaks the Sentry protocol. `config/initializers/error-reporting.ts` turns it
+on when `SENTRY_DSN` is set, and does nothing when it is not (development,
+tests, preview apps).
+
+```sh
+dokku config:set trailmap SENTRY_DSN=http://<key>@bugsink.web:8000/<project-id>
+```
+
+The DSN comes from the `trailmap` project in Bugsink, with its host rewritten
+from the public URL to `bugsink.web:8000`: the app posts over the dokku
+`fleet` network, because SSO would turn the public URL's ingest away. Bugsink
+must be attached to `fleet` (`dokku network:set bugsink attach-post-deploy
+fleet`) and allow that host name (`ALLOWED_HOSTS` includes `bugsink.web`).
+
 ## Deploying
 
 ```sh

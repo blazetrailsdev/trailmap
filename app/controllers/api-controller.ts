@@ -37,7 +37,9 @@ export class ApiController extends ApplicationController {
     // audience is loopback only, and it is what the CLI prints.
     ApiController.logger?.error(`${error.name}: ${error.message}\n${error.stack ?? ""}`);
     // Nor does it reach the error reporter, so report it too.
-    Trails.error.report(error, { handled: true, source: "api" });
+    // Handled, because it was rescued; severity "error" all the same, since the
+    // reporter would otherwise file a handled error as a warning.
+    Trails.error.report(error, { handled: true, severity: "error", source: "api" });
     await this.render({
       json: { error: "internal_server_error", message: error.message },
       status: 500,
