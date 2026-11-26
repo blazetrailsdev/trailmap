@@ -51,6 +51,7 @@
     "@blazetrails/vite-assets": "file:vendor/blazetrails-vite-assets-0.1.0.tgz",
     "@blazetrails/vite-trails": "file:vendor/blazetrails-vite-trails-0.1.0.tgz",
     "@hotwired/turbo": "8.0.23",
+    "@sentry/node": "^10.78.0",
     "better-sqlite3": "^13.0.3",
     "pg": "^8.23.1",
     "websocket-driver": "0.7.4"

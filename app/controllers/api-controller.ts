@@ -1,5 +1,6 @@
 import { ExceptionWrapper } from "@blazetrails/actionpack";
 import { include } from "@blazetrails/activesupport";
+import { Trails } from "@blazetrails/trailties";
 import { ApplicationController } from "./application-controller.ts";
 import { LoopbackOnly } from "./concerns/loopback-only.ts";
 
@@ -35,6 +36,8 @@ export class ApiController extends ApplicationController {
     // logged it, so it is logged here. The message goes in the body too: the
     // audience is loopback only, and it is what the CLI prints.
     ApiController.logger?.error(`${error.name}: ${error.message}\n${error.stack ?? ""}`);
+    // Nor does it reach the error reporter, so report it too.
+    Trails.error.report(error, { handled: true, source: "api" });
     await this.render({
       json: { error: "internal_server_error", message: error.message },
       status: 500,
