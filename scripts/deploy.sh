@@ -57,9 +57,18 @@ runningImage() {
   docker inspect "$APP.web.1" --format '{{.Image}}' 2>/dev/null || true
 }
 
+gitRevNote=""
 fail() {
-  echo "DEPLOY FAILED: $*" >&2
+  echo "DEPLOY FAILED: $*$gitRevNote" >&2
   exit 1
+}
+
+# A redeploy of the commit already deployed is a no-op for both `git push`
+# ("Everything up-to-date") and `git:from-image` ("No changes detected"), so the
+# container would never be replaced and the checks below would fail a good
+# deploy. Rebuild instead.
+alreadyAt() {
+  [ "$(dokku config:get "$1" GIT_REV 2>/dev/null || true)" = "$2" ]
 }
 
 before="$(runningContainer)"
@@ -77,7 +86,10 @@ sha="$(git rev-parse "origin/$BRANCH")"
 echo "==> deploying $sha"
 
 pushStatus=0
-if [ "$fromImage" = 1 ]; then
+if alreadyAt "$APP" "$sha"; then
+  echo "==> $APP is already at $sha; rebuilding it in place"
+  dokku ps:rebuild "$APP" || pushStatus=$?
+elif [ "$fromImage" = 1 ]; then
   docker pull "$REGISTRY_IMAGE:$sha" ||
     fail "$REGISTRY_IMAGE:$sha is not pullable. CI pushes it only after the
   image job passes on $BRANCH; wait for it, or deploy without --from-image."
@@ -85,6 +97,9 @@ if [ "$fromImage" = 1 ]; then
   # rather than $sha; set it first so the release (and Sentry's `release`)
   # carries the trailmap commit.
   dokku config:set --no-restart "$APP" GIT_REV="$sha"
+  gitRevNote="
+  NOTE: GIT_REV on $APP was already set to $sha before the release, so it does
+  not describe the container that is running."
   dokku git:from-image "$APP" "$REGISTRY_IMAGE:$sha" || pushStatus=$?
 else
   # Forced: a from-image deploy leaves that synthetic commit on dokku's trunk,
@@ -155,7 +170,12 @@ echo "==> deployed: $before -> $after in $(( $(date +%s) - started ))s; smoke ti
 # 0 audits against trailmap's 95). docs/deploy-rails.md has the app.
 if [ "$deployRails" = 1 ]; then
   railsBefore="$(docker inspect "$RAILS_APP.web.1" --format '{{.Id}}' 2>/dev/null || true)"
-  git push "$RAILS_REMOTE" "+$sha:refs/heads/trunk" || true
+  if alreadyAt "$RAILS_APP" "$sha"; then
+    echo "==> $RAILS_APP is already at $sha; rebuilding it in place"
+    dokku ps:rebuild "$RAILS_APP" || true
+  else
+    git push "$RAILS_REMOTE" "+$sha:refs/heads/trunk" || true
+  fi
   railsAfter="$(docker inspect "$RAILS_APP.web.1" --format '{{.Id}}' 2>/dev/null || true)"
   [ -n "$railsAfter" ] && [ "$railsBefore" != "$railsAfter" ] ||
     fail "trailmap is deployed, but $RAILS_APP.web.1 was not replaced

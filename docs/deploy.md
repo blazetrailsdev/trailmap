@@ -355,10 +355,12 @@ force-pushes (`+<sha>:trunk`): `git:from-image` leaves a synthetic commit on
 dokku's `trunk`, so a plain `git push dokku main:trunk` after one is refused as
 a non-fast-forward. Both modes deploy `origin/main`'s commit, not the local
 branch, and `--from-image` sets `GIT_REV` to that commit before the release,
-since `git:from-image` would otherwise record its synthetic one.
+since `git:from-image` would otherwise record its synthetic one. A redeploy of
+the commit already running (`GIT_REV` equals the sha) runs `dokku ps:rebuild`
+instead, because both a push and `git:from-image` would be no-ops.
 
-Either way the script then redeploys the Rails twin (`git push dokku-rails
-main:trunk`, docs/deploy-rails.md) and fails if `trailmap-rails.web.1` was not
+Either way the script then redeploys the Rails twin at the same commit
+(`git push dokku-rails +<origin/main sha>:trunk`, docs/deploy-rails.md) and fails if `trailmap-rails.web.1` was not
 replaced, so the twin cannot fall behind unnoticed. `--no-rails` skips it.
 
 The app deploys while it is running — no `ps:stop`, no downtime. nginx holds
