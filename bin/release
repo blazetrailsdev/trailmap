@@ -1,0 +1,28 @@
+#!/bin/sh
+# dokku's release task (Procfile). Runs `bin/trails db:prepare`; when it fails,
+# mails its last lines to $EMAIL over the same SMTP relay the app's mailers use
+# (SMTP_ADDRESS, SMTP_PORT, SMTP_USER_NAME, SMTP_PASSWORD), then exits with the
+# task's own status so dokku still refuses the deploy and keeps the old
+# containers. It mails with curl rather than through the app because the app
+# booting is exactly what may have failed (trailmap#180).
+set -u
+log=$(mktemp)
+bin/trails db:prepare >"$log" 2>&1
+status=$?
+cat "$log"
+if [ "$status" -ne 0 ] && [ -n "${EMAIL:-}" ] && [ -n "${SMTP_ADDRESS:-}" ]; then
+  msg=$(mktemp)
+  {
+    printf 'From: %s\r\nTo: %s\r\nSubject: [trailmap] release task failed (exit %s) at %s\r\n\r\n' \
+      "$EMAIL" "$EMAIL" "$status" "${GIT_REV:-unknown rev}"
+    printf 'bin/trails db:prepare exited %s. dokku kept the previous containers live.\n\nLast lines:\n\n' "$status"
+    tail -n 40 "$log"
+  } >"$msg"
+  auth=""
+  [ -n "${SMTP_USER_NAME:-}" ] && auth="--user ${SMTP_USER_NAME}:${SMTP_PASSWORD:-}"
+  # shellcheck disable=SC2086
+  curl -sS --ssl --max-time 30 --url "smtp://${SMTP_ADDRESS}:${SMTP_PORT:-587}" \
+    --mail-from "$EMAIL" --mail-rcpt "$EMAIL" $auth -T "$msg" \
+    || echo "bin/release: could not mail the failure" >&2
+fi
+exit "$status"

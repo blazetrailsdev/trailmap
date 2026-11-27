@@ -9,3 +9,6 @@ declare module "*/app/assets/javascripts/audits.js" {}
 
 // application.js too: the layout's Turbo Drive script, which exports nothing.
 declare module "*/app/assets/javascripts/application.js" {}
+
+// external-prs.js: the DOM test imports it only to boot it.
+declare module "*/app/assets/javascripts/external-prs.js" {}
