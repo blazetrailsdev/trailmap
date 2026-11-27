@@ -1,4 +1,3 @@
-<% contentFor("head", tag("meta", { name: "turbo-visit-control", content: "reload" })) %>
 <% const { rfc, stories, moves } = this; const counts = this.counts!; %>
 <% if (rfc === null) { %>
   <div class="page-header"><h1 class="page-title">RFC not found</h1></div>

@@ -11,6 +11,7 @@ function page(payload) {
   const status = { classList: { toggle() {} } };
   vi.stubGlobal("window", { confirm: () => true });
   vi.stubGlobal("document", {
+    addEventListener() {},
     querySelectorAll: (selector) => (selector === "button[data-relay]" ? [button] : []),
     querySelector: (selector) =>
       selector === "[data-relay-note]" ? note : selector === "[data-relay-status]" ? status : null,

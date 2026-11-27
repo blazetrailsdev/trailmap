@@ -55,6 +55,9 @@ INTENDED = [
   # Vite serves an asset by its source path in development and as
   # `name-<8 chars>` in production, and names ringo's chart entries
   # `ringo-parity*` (vite.config.ts). Propshaft fingerprints with 8 hex digits.
+  # A development trails server serves page scripts from config/vite.json's
+  # publicOutputDir, `/vite-dev/assets/` (`/vite-test/` under test).
+  [ %r{/vite-(?:dev|test)/assets/}, "/assets/" ],
   [ %r{/assets/ringo-parity-css-}, "/assets/parity-" ],
   [ %r{/assets/ringo-parity-}, "/assets/parity-draw-" ],
   [ %r{/assets/(?:javascripts/|stylesheets/)?([a-z-]+?)(?:-[A-Za-z0-9_-]{8})?\.(js|css)}, '/assets/\\1.\\2' ],
