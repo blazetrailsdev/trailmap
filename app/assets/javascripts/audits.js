@@ -34,8 +34,9 @@ if (viewer && button) {
       toggle();
       return;
     }
-    const target = event.target;
-    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+    // Escape above leaves from anywhere, a field included, as on ringo; `f`
+    // is a letter there.
+    if (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable]")) return;
     if (event.key === "f" || event.key === "F") {
       event.preventDefault();
       toggle();

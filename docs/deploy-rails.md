@@ -83,6 +83,10 @@ git remote add dokku-rails dokku@localhost:trailmap-rails
 git push dokku-rails HEAD:trunk   # this box deploys from `trunk`
 ```
 
+`scripts/deploy.sh` does this after every `trailmap` deploy, force-pushing
+the same `origin/main` sha trailmap shipped (`ps:rebuild` when the twin is
+already at it), and fails when the twin's container was not replaced.
+
 ## Checks
 
 ```sh

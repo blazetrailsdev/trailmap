@@ -16,7 +16,8 @@ class AuditsController < ApplicationController
 
   # One audit on its own. Agent-written and served from this origin, so it is
   # sandboxed to an opaque origin; scripts run, since an `.html` report's
-  # charts are scripts, and a POST from it carries `Origin: null`.
+  # charts are scripts. A POST from it carries `Origin: null`, which forgery
+  # protection refuses on a page and LoopbackOnly refuses on the API.
   def raw
     audit = Audit.find(params[:id])
     source = audit.read

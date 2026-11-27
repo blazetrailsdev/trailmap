@@ -13,7 +13,7 @@ const key = (k: string, target: EventTarget = document, init: KeyboardEventInit 
 
 describe("audits.js", () => {
   beforeAll(async () => {
-    document.body.innerHTML = `<input id="q">
+    document.body.innerHTML = `<input id="q"><select id="s"><option>f</option></select><div contenteditable id="e"></div>
       <div class="audits-viewer" data-audit-viewer>
         <div class="audits-fs"><button type="button" class="btn btn-sm" data-audit-fullscreen hidden>Fullscreen</button></div>
         <article class="markdown audits-doc"><h1>r</h1></article>
@@ -46,8 +46,14 @@ describe("audits.js", () => {
     expect(viewer().classList.contains("full")).toBe(false);
   });
 
-  it("ignores f typed into a field or with a modifier", () => {
-    key("f", document.getElementById("q") as HTMLElement);
+  it("leaves on Escape typed in a field", () => {
+    key("f");
+    key("Escape", document.getElementById("q") as HTMLElement);
+    expect(viewer().classList.contains("full")).toBe(false);
+  });
+
+  it("ignores f typed into an input, select or editable, or with a modifier", () => {
+    for (const id of ["q", "s", "e"]) key("f", document.getElementById(id) as HTMLElement);
     key("f", document, { ctrlKey: true });
     expect(viewer().classList.contains("full")).toBe(false);
   });

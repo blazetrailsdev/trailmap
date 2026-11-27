@@ -56,6 +56,17 @@ describe("MutationsController", () => {
     expect(body).toEqual({ ok: true, lines: ["claimed s1 as agent-a"] });
   });
 
+  // What a script in an `.html` audit could send from its sandbox: a form
+  // POST, Origin null. The verb skips forgery protection, so only
+  // LoopbackOnly's Origin rule stands between it and the write.
+  it("refuses a browser's write, Origin null, and claims nothing", async () => {
+    const tc = await controllerTestCase(MutationsController, { Host: "127.0.0.1", Origin: "null" });
+    await tc.post("claim", { params: { ids: ["s1"], assignee: "page" } });
+
+    expect(tc.response.status).toBe(404);
+    expect((await find("s1")).assignee).toBeNull();
+  });
+
   it("claims a batch and reports the CLI's lines", async () => {
     const { status, body } = await post("claim", { ids: ["s1", "s2"], assignee: "agent-a" });
 
