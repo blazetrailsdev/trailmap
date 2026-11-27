@@ -36,9 +36,17 @@ beforeEach(async () => {
   await story("v-block", "ready");
   await story("v-close", "ready");
   await story("v-release", "claimed");
+  await story("v-draft", "blocked");
 });
 
 describe("the story page's buttons", () => {
+  it("offers Back to draft on a ready or blocked story only", async () => {
+    expect(await page("a-ready")).toContain("Back to draft");
+    expect(await page("a-blocked")).toContain("Back to draft");
+    expect(await page("a-draft")).not.toContain("Back to draft");
+    expect(await page("a-claimed")).not.toContain("Back to draft");
+  });
+
   it("offers Mark ready only on a draft", async () => {
     expect(await page("a-draft")).toContain("Mark ready");
     expect(await page("a-ready")).not.toContain("Mark ready");
@@ -88,6 +96,18 @@ describe("the story page's verbs", () => {
     expect((await Story.find("v-block")).blocked_by).toBe("waiting");
     await post("closeStory", { id: "v-close", reason: "superseded" });
     expect((await Story.find("v-close")).closed_reason).toBe("superseded");
+  });
+
+  it("moves a blocked story back to draft, clearing the block", async () => {
+    await Story.where({ id: "v-draft" }).updateAll({ blocked_by: "waiting" });
+    expect((await post("backToDraft", { id: "v-draft" })).status).toBe(303);
+    const story = await Story.find("v-draft");
+    expect(story.status).toBe("draft");
+    expect(story.blocked_by).toBeNull();
+  });
+
+  it("refuses back-to-draft on a claimed story", async () => {
+    expect((await post("backToDraft", { id: "a-claimed" })).status).toBe(409);
   });
 
   it("releases a claim", async () => {
