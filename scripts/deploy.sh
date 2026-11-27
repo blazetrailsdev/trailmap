@@ -143,6 +143,9 @@ if [ -n "$before" ] && [ "$before" = "$after" ]; then
   \`dokku config:get $APP GIT_REV\`, which reports the built commit either way."
 fi
 
+# Replaced: the new container is the release that carries the new GIT_REV.
+gitRevNote=""
+
 if [ "$beforeImage" = "$afterImage" ]; then
   echo "==> image unchanged, which is expected when the commit is unchanged:
   the container was still replaced ($before -> $after)."
