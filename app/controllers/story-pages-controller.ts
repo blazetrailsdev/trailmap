@@ -1,7 +1,7 @@
 import type { SafeBuffer } from "@blazetrails/activesupport";
 import { ApplicationController } from "./application-controller.ts";
 import { Rfc } from "../models/rfc.ts";
-import { Story } from "../models/story.ts";
+import { Story, type StoryStatus } from "../models/story.ts";
 import { StoryDep } from "../models/story-dep.ts";
 import { StoryPackage } from "../models/story-package.ts";
 import { StoryRfcDep } from "../models/story-rfc-dep.ts";
@@ -254,6 +254,11 @@ export class StoryPagesController extends ApplicationController {
   /** `POST /story/<id>/ready` — `status-set <id> ready --from draft`, ringo's `HandleStoryReady`. */
   async markReady(): Promise<void> {
     await this._act("ready", (story) => Story.statusSetAll([story.id], "ready", { from: "draft" }));
+  }
+
+  /** `POST /story/<id>/draft` — `status-set <id> draft`, offered on a ready or blocked story. */
+  async backToDraft(): Promise<void> {
+    await this._act("draft", (story) => Story.statusSetAll([story.id], "draft", { from: story.status as StoryStatus }));
   }
 
   /** `POST /story/<id>/top` — `priority <id> 0`, ringo's `HandleStoryTop`. */

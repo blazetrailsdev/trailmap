@@ -5,6 +5,7 @@ describe("storyActions", () => {
   it("offers a draft every move but release", () => {
     expect(storyActions("draft", null)).toEqual({
       ready: true,
+      draft: false,
       top: true,
       block: true,
       close: true,
@@ -23,10 +24,18 @@ describe("storyActions", () => {
     expect(storyActions("blocked", null)).toMatchObject({ block: false, top: true, close: true });
   });
 
+  it("offers back-to-draft only to a ready or blocked story", () => {
+    expect(storyActions("ready", null).draft).toBe(true);
+    expect(storyActions("blocked", null).draft).toBe(true);
+    expect(storyActions("claimed", null).draft).toBe(false);
+    expect(storyActions("draft", null).draft).toBe(false);
+  });
+
   it("offers nothing to a finished story", () => {
     for (const status of ["done", "closed"]) {
       expect(storyActions(status, null)).toEqual({
         ready: false,
+        draft: false,
         top: false,
         block: false,
         close: false,

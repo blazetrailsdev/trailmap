@@ -3,10 +3,11 @@
  *
  * ringo's rules (`CanReady`, `CanTopQueue`, `CanClose`, `CanSpawn`,
  * webhook/story.go:134-146), over the stored status: the one `--from draft`
- * compares. `block` and `release` are trailmap's: ringo's page never had them.
+ * compares. `block`, `release` and `draft` (back to draft) are trailmap's: ringo's page never had them.
  */
 export interface StoryActions {
   ready: boolean;
+  draft: boolean;
   top: boolean;
   block: boolean;
   close: boolean;
@@ -18,6 +19,7 @@ export function storyActions(status: string | null, priority: number | null): St
   const open = status !== "done" && status !== "closed";
   return {
     ready: status === "draft",
+    draft: status === "ready" || status === "blocked",
     top: (status === "draft" || status === "ready" || status === "blocked") && priority !== 0,
     block: open && status !== "blocked",
     close: open,

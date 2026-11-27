@@ -61,6 +61,11 @@ class StoryPagesController < ApplicationController
     act(:ready) { |story| Story.status_set_all([ story.id ], "ready", from: "draft") }
   end
 
+  # `status-set <id> draft`, offered on a ready or blocked story.
+  def back_to_draft
+    act(:draft) { |story| Story.status_set_all([ story.id ], "draft", from: story.status) }
+  end
+
   # `priority <id> 0`, ringo's `HandleStoryTop`.
   def top_queue
     act(:top) { |story| story.priority_set(0) }

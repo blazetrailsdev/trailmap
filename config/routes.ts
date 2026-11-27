@@ -123,6 +123,7 @@ Trails.application!.routes().draw(function () {
   this.post("rfc/:id/ready-drafts", { to: "rfc_pages#readyDrafts", as: "rfc_ready_drafts" });
   this.get("story/:id", { to: "story_pages#show", as: "story" });
   this.post("story/:id/ready", { to: "story_pages#markReady", as: "story_ready" });
+  this.post("story/:id/draft", { to: "story_pages#backToDraft", as: "story_draft" });
   this.post("story/:id/top", { to: "story_pages#topQueue", as: "story_top" });
   this.post("story/:id/block", { to: "story_pages#blockStory", as: "story_block" });
   this.post("story/:id/close", { to: "story_pages#closeStory", as: "story_close" });

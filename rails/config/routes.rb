@@ -56,6 +56,7 @@ Rails.application.routes.draw do
   post "rfc/:id/ready-drafts", to: "rfc_pages#ready_drafts", format: false, as: :rfc_ready_drafts
   get "story/:id", to: "story_pages#show", format: false, as: :story
   post "story/:id/ready", to: "story_pages#mark_ready", format: false, as: :story_ready
+  post "story/:id/draft", to: "story_pages#back_to_draft", format: false, as: :story_draft
   post "story/:id/top", to: "story_pages#top_queue", format: false, as: :story_top
   post "story/:id/block", to: "story_pages#block_story", format: false, as: :story_block
   post "story/:id/close", to: "story_pages#close_story", format: false, as: :story_close

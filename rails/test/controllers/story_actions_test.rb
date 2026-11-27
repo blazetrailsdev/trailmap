@@ -19,6 +19,11 @@ class StoryActionsTest < ActionDispatch::IntegrationTest
     assert_includes page("a-draft"), "Mark ready"
     assert_not_includes page("a-ready"), "Mark ready"
     assert_includes page("a-claimed"), "Release claim"
+    assert_includes page("a-ready"), "Back to draft"
+    assert_includes page("a-blocked"), "Back to draft"
+    assert_not_includes page("a-draft"), "Back to draft"
+    assert_not_includes page("a-claimed"), "Back to draft"
+    assert_includes page("a-ready"), "This story is stored as ready. Move it back to draft?"
     assert_not_includes page("a-blocked"), ">Block<"
     assert_not_includes page("a-done"), "Spawn worker"
     assert_includes page("a-ready"), "Spawn a worker for a-ready now, using the current loop settings?"
@@ -34,6 +39,20 @@ class StoryActionsTest < ActionDispatch::IntegrationTest
     assert_equal "waiting", Story.find("a-ready").blocked_by
     post "/story/a-claimed/release"
     assert_equal "ready", Story.find("a-claimed").status
+  end
+
+  test "moves a blocked story back to draft, clearing the block" do
+    Story.where(id: "a-blocked").update_all(blocked_by: "waiting")
+    post "/story/a-blocked/draft"
+    assert_response :see_other
+    story = Story.find("a-blocked")
+    assert_equal "draft", story.status
+    assert_nil story.blocked_by
+    post "/story/a-ready/draft"
+    assert_response :see_other
+    assert_equal "draft", Story.find("a-ready").status
+    post "/story/a-claimed/draft"
+    assert_response :conflict
   end
 
   test "shows the refusals" do

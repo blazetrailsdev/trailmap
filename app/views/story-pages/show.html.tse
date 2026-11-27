@@ -94,6 +94,9 @@
           <% if (actions.top) { %>
             <%= buttonTo("Top of queue", storyTopPath(story.id), { class: "btn" }) %>
           <% } %>
+          <% if (actions.draft) { %>
+            <%= buttonTo("Back to draft", storyDraftPath(story.id), { form: { "data-confirm": `This story is stored as ${story.status}. Move it back to draft? It leaves the ready queue.` }, class: "btn" }) %>
+          <% } %>
           <% if (actions.release) { %>
             <%= buttonTo("Release claim", storyReleasePath(story.id), { form: { "data-confirm": "Release this claim? The story goes back to ready." }, class: "btn" }) %>
           <% } %>
