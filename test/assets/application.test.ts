@@ -25,8 +25,8 @@ describe("application.js", () => {
   beforeEach(() => reload.mockClear());
 
   it("hands a reload page's links and forms to the browser", () => {
-    // Turbo skips any link or form under data-turbo="false", so a form on the
-    // RFC or story page POSTs natively instead of by fetch.
+    // Turbo skips any link or form under data-turbo="false", so a form on a
+    // reload page POSTs natively instead of by fetch.
     document.body.innerHTML = '<form action="/rfc/1/status" method="post"><button>Go</button></form>';
     expect(document.body.dataset.turbo).toBe("false");
     expect(document.querySelector("form")?.closest('[data-turbo="false"]')).toBe(document.body);

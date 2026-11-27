@@ -74,4 +74,37 @@ class DeploysControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "TAIL-MARKER"
     refute_includes response.body, "HEAD-MARKER"
   end
+  PREVIEW_RUNS = [
+    { id: "trailmap-pr-160-2", app: "trailmap-pr-160", status: "success", started: "2026-11-19T19:00:00Z",
+      target: "preview", url: "https://trailmap-pr-160.deanoftech.com/" },
+    { id: "trailmap-pr-160-1", app: "trailmap-pr-160", status: "cancelled", started: "2026-11-19T18:50:00Z",
+      target: "preview", url: "javascript:alert(1)" },
+    { id: "trailmap-previews-1", app: "trailmap-previews", status: "success", started: "2026-11-19T18:00:00Z",
+      target: "preview sweep" },
+    { id: "trailmap-200", app: "trailmap", status: "success", started: "2026-11-19T17:00:00Z" }
+  ].to_json
+
+  test "tags preview runs, links a successful preview, and links only https" do
+    with_ringo({ "/api/deploys" => [ 200, PREVIEW_RUNS ] }) { get "/deploys" }
+    assert_response :success
+    assert_includes response.body, '<span class="badge deploy-kind">preview</span>'
+    assert_includes response.body, '<span class="badge deploy-kind">preview sweep</span>'
+    assert_includes response.body, '<a class="deploy-url" href="https://trailmap-pr-160.deanoftech.com/">open preview</a>'
+    assert_includes response.body, "s-deploy-cancelled"
+    assert_not_includes response.body, "javascript:"
+    assert_equal 3, response.body.scan("deploy-kind").size
+  end
+
+  test "a preview shows its banner, and production does not" do
+    was = Rails.configuration.x.preview.pr
+    Rails.configuration.x.preview.pr = "160"
+    with_ringo({ "/api/deploys" => [ 200, "[]" ] }) { get "/deploys" }
+    assert_includes response.body, 'class="preview-banner"'
+    assert_includes response.body, 'href="https://github.com/blazetrailsdev/trailmap/pull/160">trailmap#160</a>'
+    Rails.configuration.x.preview.pr = nil
+    with_ringo({ "/api/deploys" => [ 200, "[]" ] }) { get "/deploys" }
+    assert_not_includes response.body, "preview-banner"
+  ensure
+    Rails.configuration.x.preview.pr = was
+  end
 end

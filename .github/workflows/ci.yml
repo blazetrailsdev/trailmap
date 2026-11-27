@@ -202,10 +202,17 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # smoke-hub-migrate.sh diffs against main's hub migrations.
+          fetch-depth: 0
       - name: Build the image from this commit
         run: docker build -t trailmap:ci .
       - name: The built image migrates, serves /up and its stylesheet, and stops cleanly
         run: ./scripts/smoke-image.sh trailmap:ci
+      # The step above prepares an EMPTY hub, which loads the schema and runs
+      # no migration; a production hub is behind, and migrates (trailmap#180).
+      - name: The release command migrates a hub that is behind this commit
+        run: ./scripts/smoke-hub-migrate.sh trailmap:ci origin/main
       # On main, the image that just passed the smoke test is the release:
       # scripts/deploy.sh --from-image runs `dokku git:from-image` on this tag,
       # so the box builds nothing. Pull requests push nothing.

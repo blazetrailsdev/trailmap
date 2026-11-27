@@ -1,63 +1,83 @@
 import { relayBody, relayed } from "./rfc-format.js";
 
 /*
- * /rfc/<id> and /story/<id>: the lifecycle buttons ask before they post, with the confirm
- * text ringo's page asked (`rfcStatusMoves`, webhook/rfcs.go:1158).
+ * Turbo Drive swaps <body>, and this module runs once per document, so every
+ * binding below happens in bind(), on every `turbo:load` as well as now.
+ * `bound` keeps an element that both reach from being bound twice. A WeakSet,
+ * not an attribute: Turbo's snapshot cache clones <body>, and a clone keeps
+ * an attribute but none of the listeners, so a restored page would look bound.
  */
-for (const form of document.querySelectorAll("form[data-confirm]")) {
-  form.addEventListener("submit", (event) => {
-    if (!window.confirm(form.dataset.confirm)) event.preventDefault();
-  });
-}
+const bound = new WeakSet();
 
-/*
- * "Spawn batch", "Refine stories" and "Sunset" start an agent, which is ringo's dispatch: they
- * post through trailmap's `fleet/control` relay with ringo's own payload and
- * confirm text (webhook/rfcs.go), and show ringo's answer — its error text
- * verbatim when it refuses or cannot be reached.
- * /story/<id>'s "Spawn worker" is the same relay.
- */
-const relayStatus = document.querySelector("[data-relay-status]");
-const relayButtons = document.querySelectorAll("button[data-relay]");
-const relayNote = document.querySelector("[data-relay-note]");
+function bind() {
+  /*
+   * /rfc/<id> and /story/<id>: the lifecycle buttons ask before they post, with the confirm
+   * text ringo's page asked (`rfcStatusMoves`, webhook/rfcs.go:1158).
+   */
+  for (const form of document.querySelectorAll("form[data-confirm]")) {
+    if (bound.has(form)) continue;
+    bound.add(form);
+    form.addEventListener("submit", (event) => {
+      if (!window.confirm(form.dataset.confirm)) event.preventDefault();
+    });
+  }
 
-function showRelay(text, failed) {
-  relayStatus.textContent = text;
-  relayStatus.classList.toggle("err", failed);
-  relayStatus.hidden = text === "";
-}
+  /*
+   * "Spawn batch", "Refine stories" and "Sunset" start an agent, which is ringo's dispatch: they
+   * post through trailmap's `fleet/control` relay with ringo's own payload and
+   * confirm text (webhook/rfcs.go), and show ringo's answer — its error text
+   * verbatim when it refuses or cannot be reached.
+   * /story/<id>'s "Spawn worker" is the same relay.
+   */
+  const relayStatus = document.querySelector("[data-relay-status]");
+  const relayButtons = document.querySelectorAll("button[data-relay]");
+  const relayNote = document.querySelector("[data-relay-note]");
 
-for (const button of relayButtons) {
-  button.addEventListener("click", async () => {
-    if (!window.confirm(button.dataset.confirm)) return;
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    for (const b of relayButtons) b.disabled = true;
-    showRelay("Spawning…", false);
-    try {
-      const response = await fetch(`/fleet/control/${button.dataset.relay}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(meta ? { "X-CSRF-Token": meta.content } : {}) },
-        body: relayBody(button.dataset.payload, relayNote ? relayNote.value : ""),
-      });
-      const text = await response.text();
-      if (!response.ok) throw new Error(text.trim() || response.statusText);
-      let data = null;
+  function showRelay(text, failed) {
+    relayStatus.textContent = text;
+    relayStatus.classList.toggle("err", failed);
+    relayStatus.hidden = text === "";
+  }
+
+  for (const button of relayButtons) {
+    if (bound.has(button)) continue;
+    bound.add(button);
+    button.addEventListener("click", async () => {
+      if (!window.confirm(button.dataset.confirm)) return;
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      for (const b of relayButtons) b.disabled = true;
+      showRelay("Spawning…", false);
       try {
-        data = JSON.parse(text);
-      } catch {
-        // rfc-refine answers with no JSON body; only the batch reports stories.
+        const response = await fetch(`/fleet/control/${button.dataset.relay}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(meta ? { "X-CSRF-Token": meta.content } : {}) },
+          body: relayBody(button.dataset.payload, relayNote ? relayNote.value : ""),
+        });
+        const text = await response.text();
+        if (!response.ok) throw new Error(text.trim() || response.statusText);
+        let data = null;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          // rfc-refine answers with no JSON body; only the batch reports stories.
+        }
+        showRelay(relayed(button.dataset.relay, data), false);
+        // As ringo's page: a second pass starts from fresh instructions.
+        if (relayNote) relayNote.value = "";
+      } catch (error) {
+        showRelay(String(error.message || error), true);
       }
-      showRelay(relayed(button.dataset.relay, data), false);
-      // As ringo's page: a second pass starts from fresh instructions.
-      if (relayNote) relayNote.value = "";
-    } catch (error) {
-      showRelay(String(error.message || error), true);
-    }
-    for (const b of relayButtons) b.disabled = false;
-  });
+      for (const b of relayButtons) b.disabled = false;
+    });
+  }
+
+  // The priority select submits on change, as ringo's does; <noscript> keeps a Set button.
+  for (const select of document.querySelectorAll("select[data-autosubmit]")) {
+    if (bound.has(select)) continue;
+    bound.add(select);
+    select.addEventListener("change", () => select.form?.requestSubmit());
+  }
 }
 
-// The priority select submits on change, as ringo's does; <noscript> keeps a Set button.
-for (const select of document.querySelectorAll("select[data-autosubmit]")) {
-  select.addEventListener("change", () => select.form?.requestSubmit());
-}
+bind();
+document.addEventListener("turbo:load", bind);

@@ -20,4 +20,36 @@ describe("rfc-sort.js", () => {
     select.dispatchEvent(new Event("change"));
     expect(assign).toHaveBeenLastCalledWith("/rfcs?status=draft");
   });
+
+  it("binds the menu a Drive visit renders, through Turbo, once", () => {
+    document.body.innerHTML = `
+      <select data-sort-menu>
+        <option value="priority" data-href="/rfcs" selected>priority</option>
+        <option value="open" data-href="/rfcs?sort=open">most open</option>
+      </select>`;
+    const visit = vi.fn();
+    window.Turbo = { visit };
+    document.dispatchEvent(new Event("turbo:load"));
+    document.dispatchEvent(new Event("turbo:load"));
+    const select = document.querySelector("select");
+    select.value = "open";
+    select.dispatchEvent(new Event("change"));
+    expect(visit).toHaveBeenCalledTimes(1);
+    expect(visit).toHaveBeenCalledWith("/rfcs?sort=open");
+    delete window.Turbo;
+  });
+
+  it("binds a restored snapshot's clone of the menu", () => {
+    const visit = vi.fn();
+    window.Turbo = { visit };
+    document.dispatchEvent(new Event("turbo:load"));
+    // Turbo's snapshot cache: a deep clone of <body>, restored on Back.
+    document.body.replaceWith(document.body.cloneNode(true));
+    document.dispatchEvent(new Event("turbo:load"));
+    const select = document.querySelector("select");
+    select.value = "open";
+    select.dispatchEvent(new Event("change"));
+    expect(visit).toHaveBeenCalledTimes(1);
+    delete window.Turbo;
+  });
 });
