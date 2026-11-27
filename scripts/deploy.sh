@@ -94,7 +94,10 @@ if [ "$fromImage" = 1 ]; then
   # from-image deploy has passed every check below; never GIT_REV, which is
   # set ahead of the release. Image ids cannot serve: git:from-image builds a
   # `FROM <image>` wrapper, so the running image is never the pulled one.
-  if [ "$(dokku config:get "$APP" DEPLOYED_IMAGE 2>/dev/null || true)" = "$REGISTRY_IMAGE:$sha" ]; then
+  # GIT_REV must agree too, so a deploy outside this script (a manual push of
+  # another commit) makes the marker stale and the full from-image runs.
+  if [ "$(dokku config:get "$APP" DEPLOYED_IMAGE 2>/dev/null || true)" = "$REGISTRY_IMAGE:$sha" ] &&
+    alreadyAt "$APP" "$sha"; then
     echo "==> $APP already runs $REGISTRY_IMAGE:$sha; rebuilding it in place"
     dokku ps:rebuild "$APP" || pushStatus=$?
   else
@@ -106,7 +109,7 @@ if [ "$fromImage" = 1 ]; then
     gitRevNote="
   NOTE: GIT_REV on $APP was set to $sha before the release, so it does not
   describe the container that is running; restore it with
-  dokku config:set --no-restart $APP GIT_REV=$oldRev"
+  $(if [ -n "$oldRev" ]; then echo "dokku config:set --no-restart $APP GIT_REV=$oldRev"; else echo "dokku config:unset --no-restart $APP GIT_REV"; fi)"
     if ! dokku git:from-image "$APP" "$REGISTRY_IMAGE:$sha"; then
       pushStatus=1
       if [ -n "$oldRev" ]; then

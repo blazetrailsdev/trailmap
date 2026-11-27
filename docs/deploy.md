@@ -359,9 +359,15 @@ since `git:from-image` would otherwise record its synthetic one. A redeploy of
 the commit already running runs `dokku ps:rebuild` instead, because both a push
 and `git:from-image` would be no-ops. In `--from-image` mode "already running"
 means `DEPLOYED_IMAGE` (set only after a from-image deploy passes every check,
-cleared by a push deploy) names `<image>:<sha>`, never `GIT_REV`, which the script sets ahead of the release (and puts back if
+cleared by a push deploy) names `<image>:<sha>` AND `GIT_REV` is the sha;
+`GIT_REV` alone never decides it, which the script sets ahead of the release (and puts back if
 `git:from-image` fails); in push mode it is `GIT_REV`, which dokku sets from the
-pushed commit.
+pushed commit. **The marker is only as good as the last deploy through
+the script.** A manual `git push dokku`, `ps:rebuild` or rollback leaves
+`DEPLOYED_IMAGE` behind; if `GIT_REV` still names the same sha, the next
+`--from-image` takes the rebuild path and the box runs a git build of that same
+commit, not the CI image. After deploying by hand, run
+`dokku config:unset --no-restart trailmap DEPLOYED_IMAGE`.
 
 Either way the script then redeploys the Rails twin at the same commit
 (`git push dokku-rails +<origin/main sha>:trunk`, docs/deploy-rails.md) and fails if `trailmap-rails.web.1` was not
