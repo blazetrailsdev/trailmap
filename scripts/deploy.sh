@@ -90,9 +90,11 @@ if [ "$fromImage" = 1 ]; then
   docker pull "$REGISTRY_IMAGE:$sha" ||
     fail "$REGISTRY_IMAGE:$sha is not pullable. CI pushes it only after the
   image job passes on $BRANCH; wait for it, or deploy without --from-image."
-  # The witness here is the image, not GIT_REV: the running container is on
-  # exactly the pulled image only when $sha is what is deployed.
-  if [ "$(docker inspect "$REGISTRY_IMAGE:$sha" --format '{{.Id}}')" = "$beforeImage" ]; then
+  # The witness here is DEPLOYED_IMAGE, which the script sets only after a
+  # from-image deploy has passed every check below; never GIT_REV, which is
+  # set ahead of the release. Image ids cannot serve: git:from-image builds a
+  # `FROM <image>` wrapper, so the running image is never the pulled one.
+  if [ "$(dokku config:get "$APP" DEPLOYED_IMAGE 2>/dev/null || true)" = "$REGISTRY_IMAGE:$sha" ]; then
     echo "==> $APP already runs $REGISTRY_IMAGE:$sha; rebuilding it in place"
     dokku ps:rebuild "$APP" || pushStatus=$?
   else
@@ -107,7 +109,11 @@ if [ "$fromImage" = 1 ]; then
   dokku config:set --no-restart $APP GIT_REV=$oldRev"
     if ! dokku git:from-image "$APP" "$REGISTRY_IMAGE:$sha"; then
       pushStatus=1
-      dokku config:set --no-restart "$APP" GIT_REV="$oldRev" && gitRevNote=""
+      if [ -n "$oldRev" ]; then
+        dokku config:set --no-restart "$APP" GIT_REV="$oldRev" && gitRevNote=""
+      else
+        dokku config:unset --no-restart "$APP" GIT_REV && gitRevNote=""
+      fi
     fi
   fi
 elif alreadyAt "$APP" "$sha"; then
@@ -174,6 +180,13 @@ echo "$smoke"
 # the vendored ringo snapshot can be checked for staleness (CI cannot see
 # btwhooks at all). A warning, never a failure: bumping the pin is its own PR.
 (cd "$(dirname "$0")/.." && pnpm ringo:pin) || true
+
+# Recorded only now, after the checks: the next --from-image run trusts it.
+if [ "$fromImage" = 1 ]; then
+  dokku config:set --no-restart "$APP" DEPLOYED_IMAGE="$REGISTRY_IMAGE:$sha"
+else
+  dokku config:unset --no-restart "$APP" DEPLOYED_IMAGE >/dev/null 2>&1 || true
+fi
 
 echo "==> deployed: $before -> $after in $(( $(date +%s) - started ))s; smoke tiers 0 and 1 pass."
 

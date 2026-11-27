@@ -358,8 +358,8 @@ branch, and `--from-image` sets `GIT_REV` to that commit before the release,
 since `git:from-image` would otherwise record its synthetic one. A redeploy of
 the commit already running runs `dokku ps:rebuild` instead, because both a push
 and `git:from-image` would be no-ops. In `--from-image` mode "already running"
-means the running container's image IS the pulled `<image>:<sha>`, never
-`GIT_REV`, which the script sets ahead of the release (and puts back if
+means `DEPLOYED_IMAGE` (set only after a from-image deploy passes every check,
+cleared by a push deploy) names `<image>:<sha>`, never `GIT_REV`, which the script sets ahead of the release (and puts back if
 `git:from-image` fails); in push mode it is `GIT_REV`, which dokku sets from the
 pushed commit.
 
