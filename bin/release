@@ -18,11 +18,11 @@ if [ "$status" -ne 0 ] && [ -n "${EMAIL:-}" ] && [ -n "${SMTP_ADDRESS:-}" ]; the
     printf 'bin/trails db:prepare exited %s. dokku kept the previous containers live.\n\nLast lines:\n\n' "$status"
     tail -n 40 "$log"
   } >"$msg"
-  auth=""
-  [ -n "${SMTP_USER_NAME:-}" ] && auth="--user ${SMTP_USER_NAME}:${SMTP_PASSWORD:-}"
-  # shellcheck disable=SC2086
+  set --
+  [ -n "${SMTP_USER_NAME:-}" ] && set -- --user "${SMTP_USER_NAME}:${SMTP_PASSWORD:-}"
   curl -sS --ssl --max-time 30 --url "smtp://${SMTP_ADDRESS}:${SMTP_PORT:-587}" \
-    --mail-from "$EMAIL" --mail-rcpt "$EMAIL" $auth -T "$msg" \
+    --mail-from "$EMAIL" --mail-rcpt "$EMAIL" "$@" -T "$msg" \
     || echo "bin/release: could not mail the failure" >&2
 fi
+rm -f "$log" "${msg:-}"
 exit "$status"
