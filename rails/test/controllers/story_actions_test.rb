@@ -23,6 +23,7 @@ class StoryActionsTest < ActionDispatch::IntegrationTest
     assert_includes page("a-blocked"), "Back to draft"
     assert_not_includes page("a-draft"), "Back to draft"
     assert_not_includes page("a-claimed"), "Back to draft"
+    assert_includes page("a-ready"), "This story is stored as ready. Move it back to draft?"
     assert_not_includes page("a-blocked"), ">Block<"
     assert_not_includes page("a-done"), "Spawn worker"
     assert_includes page("a-ready"), "Spawn a worker for a-ready now, using the current loop settings?"
@@ -47,6 +48,9 @@ class StoryActionsTest < ActionDispatch::IntegrationTest
     story = Story.find("a-blocked")
     assert_equal "draft", story.status
     assert_nil story.blocked_by
+    post "/story/a-ready/draft"
+    assert_response :see_other
+    assert_equal "draft", Story.find("a-ready").status
     post "/story/a-claimed/draft"
     assert_response :conflict
   end

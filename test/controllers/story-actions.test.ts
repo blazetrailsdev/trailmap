@@ -37,6 +37,7 @@ beforeEach(async () => {
   await story("v-close", "ready");
   await story("v-release", "claimed");
   await story("v-draft", "blocked");
+  await story("v-redraft", "ready");
 });
 
 describe("the story page's buttons", () => {
@@ -104,6 +105,15 @@ describe("the story page's verbs", () => {
     const story = await Story.find("v-draft");
     expect(story.status).toBe("draft");
     expect(story.blocked_by).toBeNull();
+  });
+
+  it("moves a ready story back to draft", async () => {
+    expect((await post("backToDraft", { id: "v-redraft" })).status).toBe(303);
+    expect((await Story.find("v-redraft")).status).toBe("draft");
+  });
+
+  it("names the stored status in the Back to draft confirm", async () => {
+    expect(await page("a-ready")).toContain("This story is stored as ready. Move it back to draft?");
   });
 
   it("refuses back-to-draft on a claimed story", async () => {
