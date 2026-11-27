@@ -86,21 +86,33 @@ sha="$(git rev-parse "origin/$BRANCH")"
 echo "==> deploying $sha"
 
 pushStatus=0
-if alreadyAt "$APP" "$sha"; then
-  echo "==> $APP is already at $sha; rebuilding it in place"
-  dokku ps:rebuild "$APP" || pushStatus=$?
-elif [ "$fromImage" = 1 ]; then
+if [ "$fromImage" = 1 ]; then
   docker pull "$REGISTRY_IMAGE:$sha" ||
     fail "$REGISTRY_IMAGE:$sha is not pullable. CI pushes it only after the
   image job passes on $BRANCH; wait for it, or deploy without --from-image."
-  # git:from-image deploys from a synthetic commit, so GIT_REV would name that
-  # rather than $sha; set it first so the release (and Sentry's `release`)
-  # carries the trailmap commit.
-  dokku config:set --no-restart "$APP" GIT_REV="$sha"
-  gitRevNote="
-  NOTE: GIT_REV on $APP was already set to $sha before the release, so it does
-  not describe the container that is running."
-  dokku git:from-image "$APP" "$REGISTRY_IMAGE:$sha" || pushStatus=$?
+  # The witness here is the image, not GIT_REV: the running container is on
+  # exactly the pulled image only when $sha is what is deployed.
+  if [ "$(docker inspect "$REGISTRY_IMAGE:$sha" --format '{{.Id}}')" = "$beforeImage" ]; then
+    echo "==> $APP already runs $REGISTRY_IMAGE:$sha; rebuilding it in place"
+    dokku ps:rebuild "$APP" || pushStatus=$?
+  else
+    # git:from-image deploys from a synthetic commit, so GIT_REV would name that
+    # rather than $sha; set it first so the release (and Sentry's `release`)
+    # carries the trailmap commit, and put the old value back if it fails.
+    oldRev="$(dokku config:get "$APP" GIT_REV 2>/dev/null || true)"
+    dokku config:set --no-restart "$APP" GIT_REV="$sha"
+    gitRevNote="
+  NOTE: GIT_REV on $APP was set to $sha before the release, so it does not
+  describe the container that is running; restore it with
+  dokku config:set --no-restart $APP GIT_REV=$oldRev"
+    if ! dokku git:from-image "$APP" "$REGISTRY_IMAGE:$sha"; then
+      pushStatus=1
+      dokku config:set --no-restart "$APP" GIT_REV="$oldRev" && gitRevNote=""
+    fi
+  fi
+elif alreadyAt "$APP" "$sha"; then
+  echo "==> $APP is already at $sha; rebuilding it in place"
+  dokku ps:rebuild "$APP" || pushStatus=$?
 else
   # Forced: a from-image deploy leaves that synthetic commit on dokku's trunk,
   # which a plain push would be refused as a non-fast-forward.
@@ -170,12 +182,14 @@ echo "==> deployed: $before -> $after in $(( $(date +%s) - started ))s; smoke ti
 # 0 audits against trailmap's 95). docs/deploy-rails.md has the app.
 if [ "$deployRails" = 1 ]; then
   railsBefore="$(docker inspect "$RAILS_APP.web.1" --format '{{.Id}}' 2>/dev/null || true)"
+  railsStatus=0
   if alreadyAt "$RAILS_APP" "$sha"; then
     echo "==> $RAILS_APP is already at $sha; rebuilding it in place"
-    dokku ps:rebuild "$RAILS_APP" || true
+    dokku ps:rebuild "$RAILS_APP" || railsStatus=$?
   else
-    git push "$RAILS_REMOTE" "+$sha:refs/heads/trunk" || true
+    git push "$RAILS_REMOTE" "+$sha:refs/heads/trunk" || railsStatus=$?
   fi
+  echo "==> $RAILS_APP deploy command exited $railsStatus (non-zero is expected; see docs/deploy.md)"
   railsAfter="$(docker inspect "$RAILS_APP.web.1" --format '{{.Id}}' 2>/dev/null || true)"
   [ -n "$railsAfter" ] && [ "$railsBefore" != "$railsAfter" ] ||
     fail "trailmap is deployed, but $RAILS_APP.web.1 was not replaced

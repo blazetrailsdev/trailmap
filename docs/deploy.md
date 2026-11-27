@@ -356,8 +356,12 @@ dokku's `trunk`, so a plain `git push dokku main:trunk` after one is refused as
 a non-fast-forward. Both modes deploy `origin/main`'s commit, not the local
 branch, and `--from-image` sets `GIT_REV` to that commit before the release,
 since `git:from-image` would otherwise record its synthetic one. A redeploy of
-the commit already running (`GIT_REV` equals the sha) runs `dokku ps:rebuild`
-instead, because both a push and `git:from-image` would be no-ops.
+the commit already running runs `dokku ps:rebuild` instead, because both a push
+and `git:from-image` would be no-ops. In `--from-image` mode "already running"
+means the running container's image IS the pulled `<image>:<sha>`, never
+`GIT_REV`, which the script sets ahead of the release (and puts back if
+`git:from-image` fails); in push mode it is `GIT_REV`, which dokku sets from the
+pushed commit.
 
 Either way the script then redeploys the Rails twin at the same commit
 (`git push dokku-rails +<origin/main sha>:trunk`, docs/deploy-rails.md) and fails if `trailmap-rails.web.1` was not
