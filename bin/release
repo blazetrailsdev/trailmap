@@ -1,28 +1,38 @@
 #!/bin/sh
-# dokku's release task (Procfile). Runs `bin/trails db:prepare`; when it fails,
+# dokku's release task, for both apps: `bin/release bin/trails db:prepare`
+# (Procfile) and `../bin/release bin/rails db:prepare` (rails/Procfile). Runs
+# its arguments; when they fail,
 # mails its last lines to $EMAIL over the same SMTP relay the app's mailers use
 # (SMTP_ADDRESS, SMTP_PORT, SMTP_USER_NAME, SMTP_PASSWORD), then exits with the
 # task's own status so dokku still refuses the deploy and keeps the old
 # containers. It mails with curl rather than through the app because the app
 # booting is exactly what may have failed (trailmap#180).
 set -u
+task="$*"
 log=$(mktemp)
-bin/trails db:prepare >"$log" 2>&1
-status=$?
-cat "$log"
+# Streamed to the deploy log as it runs; the status survives the pipe through
+# a file, since POSIX sh has no pipefail.
+statusFile=$(mktemp)
+{ "$@" 2>&1; echo $? >"$statusFile"; } | tee "$log"
+status=$(cat "$statusFile")
 if [ "$status" -ne 0 ] && [ -n "${EMAIL:-}" ] && [ -n "${SMTP_ADDRESS:-}" ]; then
   msg=$(mktemp)
   {
     printf 'From: %s\r\nTo: %s\r\nSubject: [trailmap] release task failed (exit %s) at %s\r\n\r\n' \
       "$EMAIL" "$EMAIL" "$status" "${GIT_REV:-unknown rev}"
-    printf 'bin/trails db:prepare exited %s. dokku kept the previous containers live.\n\nLast lines:\n\n' "$status"
+    printf '%s exited %s. dokku kept the previous containers live.\n\nLast lines:\n\n' "$task" "$status"
     tail -n 40 "$log"
   } >"$msg"
   set --
   [ -n "${SMTP_USER_NAME:-}" ] && set -- --user "${SMTP_USER_NAME}:${SMTP_PASSWORD:-}"
-  curl -sS --ssl --max-time 30 --url "smtp://${SMTP_ADDRESS}:${SMTP_PORT:-587}" \
+  # STARTTLS required, never opportunistic: the credentials must not go in
+  # the clear. Port 465 is implicit TLS.
+  port=${SMTP_PORT:-587}
+  scheme=smtp
+  [ "$port" = 465 ] && scheme=smtps
+  curl -sS --ssl-reqd --max-time 30 --url "$scheme://${SMTP_ADDRESS}:$port" \
     --mail-from "$EMAIL" --mail-rcpt "$EMAIL" "$@" -T "$msg" \
     || echo "bin/release: could not mail the failure" >&2
 fi
-rm -f "$log" "${msg:-}"
+rm -f "$log" "$statusFile" "${msg:-}"
 exit "$status"

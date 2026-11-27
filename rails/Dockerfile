@@ -21,9 +21,10 @@ ENV RAILS_ENV="production" \
     BUNDLE_WITHOUT="development:test"
 
 # Runtime libraries: sqlite3 for the task domain and stats, libpq for the hub,
-# git for /up/ready's identity check against the mounted tasks checkout.
+# git for /up/ready's identity check against the mounted tasks checkout,
+# curl for ../bin/release's failure mail.
 RUN apt-get update -qq \
- && apt-get install --no-install-recommends -y libsqlite3-0 libpq5 libyaml-0-2 git \
+ && apt-get install --no-install-recommends -y libsqlite3-0 libpq5 libyaml-0-2 git curl \
  && rm -rf /var/lib/apt/lists/*
 
 FROM base AS build
@@ -39,6 +40,7 @@ RUN bundle install && rm -rf ~/.bundle "${BUNDLE_PATH}"/ruby/*/cache
 # The shared assets the symlinks point at, then the app.
 COPY app/assets/ /app/app/assets/
 COPY vendor/ringo/parity.css vendor/ringo/parity-draw.js /app/vendor/ringo/
+COPY bin/release /app/bin/release
 COPY rails/ ./
 
 RUN bundle exec bootsnap precompile app/ lib/ \

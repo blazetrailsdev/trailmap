@@ -25,7 +25,7 @@
 # (docs/deploy.md, "Preview apps"): that is how a PR's migration is tested.
 # bin/release wraps it and mails the last lines to $EMAIL when it fails
 # (trailmap#180: a failed release otherwise leaves the old image live, silently).
-release: bin/release
+release: bin/release bin/trails db:prepare
 
 # `web` is declared even though the Dockerfile's CMD says the same thing, and
 # the duplication is deliberate. A Procfile takes precedence over CMD for the
