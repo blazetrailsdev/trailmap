@@ -143,6 +143,13 @@ traffic, so a release that adds a hub table migrates on the way in. A failed
 release task fails the deploy and leaves the running containers alone, so a
 hub that cannot be migrated never gets a container serving pages against it.
 
+That failure is silent on its own: `/up` stays green on the old containers and
+`dokku logs:failed` finds nothing (trailmap#180). So the task is `bin/release`,
+which runs `bin/trails db:prepare` and, when it fails, mails its last 40 lines
+to `EMAIL` over `SMTP_ADDRESS` with curl (not through the app, whose boot may
+be what failed), then exits with the task's status so dokku still refuses the
+deploy.
+
 `release` rather than `app.json`'s `scripts.dokku.predeploy`, which also
 works: a predeploy container is COMMITTED back into the built image — that is
 what it is for — and `db:migrate` rewrites `db/schema.ts` and

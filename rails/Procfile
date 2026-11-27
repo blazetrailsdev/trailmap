@@ -8,7 +8,9 @@
 #
 # `db:prepare`, not `db:migrate`: it also loads db/queue_schema.rb into the empty
 # `queue` database, which has no migrations.
-release: bin/rails db:prepare
+# ../bin/release (the trails app's, copied into the image) mails the last
+# lines to EMAIL when it fails, as it does for the trails app (trailmap#180).
+release: ../bin/release bin/rails db:prepare
 web: bin/rails server -b 0.0.0.0 -p 8080
 # Solid Queue's supervisor (config/queue.yml). Scale it to 1: dokku ps:scale.
 worker: bin/jobs
