@@ -83,6 +83,11 @@ RUN git config --global --add safe.directory '*' \
 # zero-downtime release. Binding 0.0.0.0 is the container's interface, not the
 # box's.
 ENV PORT=8080
+# SIGUSR2 makes any node process in the container print a diagnostic report
+# (JS stack, libuv handles, heap) to stdout, and it works with the event loop
+# blocked: the signal is serviced off the main thread. docs/deploy.md,
+# "Detecting a hang", has the one-liner.
+ENV NODE_OPTIONS="--report-on-signal --report-filename=stdout"
 EXPOSE 8080
 # Keep in step with `web` in the Procfile, which takes precedence over this on
 # a dokku deploy. This CMD is what `docker run` uses — CI's boot job, and

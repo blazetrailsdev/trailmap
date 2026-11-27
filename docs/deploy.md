@@ -650,6 +650,43 @@ dokku enter trailmap web -- sh -lc \
 kill -9 "$(docker inspect -f '{{.State.Pid}}' "$(docker ps -q --filter name=trailmap.web.1)")"
 ```
 
+## Detecting a hang
+
+On 2026-11-25 the web process stopped answering for over 15 minutes and nothing
+noticed: the public URL kept answering 302, because Authelia's redirect sits in
+front of the app. Two pieces close that.
+
+**The alert.** An Uptime Kuma HTTP monitor that bypasses SSO by asking the web
+container directly on the dokku `fleet` network. Kuma has to be on that network
+once:
+
+```sh
+dokku network:set uptime-kuma attach-post-deploy fleet && dokku ps:rebuild uptime-kuma
+```
+
+Then, in Kuma: type HTTP(s), URL `http://trailmap.web.1:8080/up`, heartbeat
+interval 30s, request timeout 10s, retries 2, and the box's notification
+attached. A blocked event loop fails three beats in a row, so it alerts in
+about 90 seconds, inside the two-minute bound. `/up` reads no row, so the
+monitor measures the listener and the event loop and nothing else; a dead
+database is `/up/ready`'s job.
+
+**The diagnostic, BEFORE any restart.** The image sets
+`NODE_OPTIONS=--report-on-signal --report-filename=stdout`, so `SIGUSR2` makes
+a node process print a report (JavaScript stack, every active libuv handle and
+request, heap) to its stdout, even with the event loop blocked. The server is
+the node process running tsx's `loader.mjs`; the two above it are wrappers.
+There is no `ps` in the image, so find it through `/proc`:
+
+```sh
+docker exec trailmap.web.1 sh -c 'for p in /proc/[0-9]*; do grep -qa loader.mjs $p/cmdline 2>/dev/null && kill -USR2 ${p#/proc/}; done'; sleep 2; dokku logs trailmap -p web -n 3000 > ~/trailmap-hang-$(date -u +%FT%H%MZ).log
+```
+
+The report lands in `dokku logs` and survives into the saved file, which the
+restart (`dokku ps:restart trailmap web`) does not touch. Its `javascriptStack`
+says what was running; `libuv` lists the open sockets, so a pile of held
+relays to ringo shows up as one handle per connection.
+
 ## Gotchas found the hard way
 
 - **Node 26 or newer.** The vendored `@blazetrails/*` packages declare
