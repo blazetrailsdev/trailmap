@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
  * ringo calls trailmap's and trails' start-worktree.sh with one interface and
@@ -21,6 +21,9 @@ const trailsScript =
   join(homedir(), "github/blazetrailsdev/trails/scripts/start-worktree.sh");
 const required = !!process.env.TRAILS_START_WORKTREE;
 const present = existsSync(trailsScript);
+// CI checks out trails' main, unpinned: name the commit, so a red here that
+// nothing in the diff explains points at the trails push that caused it.
+const trailsRev = process.env.TRAILS_START_WORKTREE_REV ?? "(local checkout)";
 
 type Row = { args: string[]; name?: string };
 const table: Row[] = [
@@ -69,11 +72,15 @@ function probe(root: string, args: string[]) {
 describe.skipIf(!present && !required)(
   "start-worktree.sh matches trails' interface",
   () => {
-    const mine = sandbox(resolve("scripts/start-worktree.sh"));
-    const theirs = present ? sandbox(trailsScript) : mine;
+    let mine = "";
+    let theirs = "";
+    // Built here, not in the describe body: a skipped suite is still collected.
+    beforeAll(() => {
+      mine = sandbox(resolve("scripts/start-worktree.sh"));
+      theirs = present ? sandbox(trailsScript) : mine;
+    });
     afterAll(() => {
-      rmSync(mine, { recursive: true, force: true });
-      rmSync(theirs, { recursive: true, force: true });
+      for (const root of [mine, theirs]) if (root) rmSync(root, { recursive: true, force: true });
     });
 
     it("finds trails' script", () => {
@@ -83,7 +90,7 @@ describe.skipIf(!present && !required)(
     for (const row of table) {
       it(`agrees on ${JSON.stringify(row.args)}`, () => {
         const expected = probe(theirs, row.args);
-        expect(probe(mine, row.args)).toEqual(expected);
+        expect(probe(mine, row.args), `against trails ${trailsRev}`).toEqual(expected);
         if (row.name) expect(expected).toEqual({ status: 1, target: row.name });
         else expect(expected.status).toBe(2);
       });

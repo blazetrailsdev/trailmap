@@ -538,7 +538,7 @@ function parsed(text) {
 
 export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
 
-const SHELLS = new Set(["bash", "zsh", "fish", "sh", "dash", "ksh", "tcsh", "csh"]);
+const SHELLS = new Set(["bash", "zsh", "fish", "sh", "dash", "ksh", "tcsh", "csh", "nu", "pwsh", "xonsh"]);
 
 /**
  * Whether a pane's screen (the `/fleet/pane/:id/screen` body) shows Claude
@@ -550,7 +550,9 @@ const SHELLS = new Set(["bash", "zsh", "fish", "sh", "dash", "ksh", "tcsh", "csh
  * that decides it: Claude is gone once a shell is the foreground process. A
  * shell allowlist rather than "anything but claude/node", because the native
  * Claude Code binary shows up under its version (`2.1.3`), which must read as
- * still running.
+ * still running. The allowlist fails safe: a shell not on it reads as Claude
+ * still running, so End pane's `waitForShell` times out and says "Claude has
+ * not exited after 20s; not sending exit" rather than typing anything.
  *
  * Without `command` (an older ringo) this falls back to reading the screen:
  * `toText` turns its HTML into text (the page passes the browser's parser), a

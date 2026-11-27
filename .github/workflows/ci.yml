@@ -116,7 +116,7 @@ jobs:
           path: .trails
           sparse-checkout: scripts/start-worktree.sh
           sparse-checkout-cone-mode: false
-      - run: pnpm test
+      - run: TRAILS_START_WORKTREE_REV="$(git -C .trails rev-parse HEAD)" pnpm test
         env:
           TRAILS_START_WORKTREE: ${{ github.workspace }}/.trails/scripts/start-worktree.sh
 

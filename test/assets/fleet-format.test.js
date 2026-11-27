@@ -914,6 +914,8 @@ describe("a pane message", () => {
     const claudeScreen = "? for shortcuts\n>";
     expect(claudeHasExited({ command: "bash", html: claudeScreen }, text)).toBe(true);
     expect(claudeHasExited({ command: "-zsh", html: claudeScreen }, text)).toBe(true);
+    expect(claudeHasExited({ command: "nu", html: claudeScreen }, text)).toBe(true);
+    expect(claudeHasExited({ command: "login", html: claudeScreen }, text)).toBe(false);
     expect(claudeHasExited({ command: "claude", html: "Goodbye!\n$ " }, text)).toBe(false);
     expect(claudeHasExited({ command: "node", html: "Goodbye!\n$ " }, text)).toBe(false);
     expect(claudeHasExited({ command: "2.1.3", html: "Goodbye!\n$ " }, text)).toBe(false);
