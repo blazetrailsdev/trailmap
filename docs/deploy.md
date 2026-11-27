@@ -307,6 +307,15 @@ tests, preview apps).
 dokku config:set trailmap SENTRY_DSN=http://<key>@bugsink.web:8000/<project-id>
 ```
 
+The Rails twin reports the same way, through `sentry-rails`
+(`rails/config/initializers/sentry.rb`), to its own Bugsink project
+`trailmap-rails` in team `fleet`:
+
+```sh
+dokku network:set trailmap-rails attach-post-deploy fleet
+dokku config:set trailmap-rails SENTRY_DSN=http://<key>@bugsink.web:8000/<project-id>
+```
+
 The DSN comes from the `trailmap` project in Bugsink, with its host rewritten
 from the public URL to `bugsink.web:8000`: the app posts over the dokku
 `fleet` network, because SSO would turn the public URL's ingest away. Bugsink
@@ -319,6 +328,50 @@ fleet`) and allow that host name (`ALLOWED_HOSTS` includes `bugsink.web`).
 git remote add dokku dokku@localhost:trailmap   # once
 ./scripts/deploy.sh
 ```
+
+### From the CI-built image (the default)
+
+```sh
+./scripts/deploy.sh --from-image
+```
+
+CI's `image` job builds the Dockerfile, boots the result with
+`scripts/smoke-image.sh`, and on `main` pushes it to
+`ghcr.io/blazetrailsdev/trailmap:<sha>` with the workflow's `GITHUB_TOKEN`
+(`packages: write`). `--from-image` pulls the tag for `origin/main` and runs
+`dokku git:from-image trailmap <image>`, so the box runs no build and ships
+exactly the bytes CI tested. The `release` task (`db:prepare`, Procfile) and
+the healthchecks run as before. The box needs a pull credential once, because
+the package is private:
+
+```sh
+# a classic PAT with read:packages only
+echo "$TOKEN" | docker login ghcr.io -u <github-user> --password-stdin
+```
+
+`git push dokku` still works (`./scripts/deploy.sh` without the flag), and is
+the fallback when ghcr is unreachable or CI has not pushed the commit yet. It
+force-pushes (`+<sha>:trunk`): `git:from-image` leaves a synthetic commit on
+dokku's `trunk`, so a plain `git push dokku main:trunk` after one is refused as
+a non-fast-forward. Both modes deploy `origin/main`'s commit, not the local
+branch, and `--from-image` sets `GIT_REV` to that commit before the release,
+since `git:from-image` would otherwise record its synthetic one. A redeploy of
+the commit already running runs `dokku ps:rebuild` instead, because both a push
+and `git:from-image` would be no-ops. In `--from-image` mode "already running"
+means `DEPLOYED_IMAGE` (set only after a from-image deploy passes every check,
+cleared by a push deploy) names `<image>:<sha>` AND `GIT_REV` is the sha;
+`GIT_REV` alone never decides it, since the script sets `GIT_REV` ahead of
+the release (and puts it back if `git:from-image` fails); in push mode it is `GIT_REV`, which dokku sets from the
+pushed commit. **The marker is only as good as the last deploy through
+the script.** A manual `git push dokku`, `ps:rebuild` or rollback leaves
+`DEPLOYED_IMAGE` behind; if `GIT_REV` still names the same sha, the next
+`--from-image` takes the rebuild path and the box runs a git build of that same
+commit, not the CI image. After deploying by hand, run
+`dokku config:unset --no-restart trailmap DEPLOYED_IMAGE`.
+
+Either way the script then redeploys the Rails twin at the same commit
+(`git push dokku-rails +<origin/main sha>:trunk`, docs/deploy-rails.md) and fails if `trailmap-rails.web.1` was not
+replaced, so the twin cannot fall behind unnoticed. `--no-rails` skips it.
 
 The app deploys while it is running — no `ps:stop`, no downtime. nginx holds
 `127.0.0.1:8080`, not the container, so dokku's zero-downtime release (new
