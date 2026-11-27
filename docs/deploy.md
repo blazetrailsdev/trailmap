@@ -307,6 +307,15 @@ tests, preview apps).
 dokku config:set trailmap SENTRY_DSN=http://<key>@bugsink.web:8000/<project-id>
 ```
 
+The Rails twin reports the same way, through `sentry-rails`
+(`rails/config/initializers/sentry.rb`), to its own Bugsink project
+`trailmap-rails` in team `fleet`:
+
+```sh
+dokku network:set trailmap-rails attach-post-deploy fleet
+dokku config:set trailmap-rails SENTRY_DSN=http://<key>@bugsink.web:8000/<project-id>
+```
+
 The DSN comes from the `trailmap` project in Bugsink, with its host rewritten
 from the public URL to `bugsink.web:8000`: the app posts over the dokku
 `fleet` network, because SSO would turn the public URL's ingest away. Bugsink
@@ -319,6 +328,33 @@ fleet`) and allow that host name (`ALLOWED_HOSTS` includes `bugsink.web`).
 git remote add dokku dokku@localhost:trailmap   # once
 ./scripts/deploy.sh
 ```
+
+### From the CI-built image (the default)
+
+```sh
+./scripts/deploy.sh --from-image
+```
+
+CI's `image` job builds the Dockerfile, boots the result with
+`scripts/smoke-image.sh`, and on `main` pushes it to
+`ghcr.io/blazetrailsdev/trailmap:<sha>` with the workflow's `GITHUB_TOKEN`
+(`packages: write`). `--from-image` pulls the tag for `origin/main` and runs
+`dokku git:from-image trailmap <image>`, so the box runs no build and ships
+exactly the bytes CI tested. The `release` task (`db:prepare`, Procfile) and
+the healthchecks run as before. The box needs a pull credential once, because
+the package is private:
+
+```sh
+# a classic PAT with read:packages only
+echo "$TOKEN" | docker login ghcr.io -u <github-user> --password-stdin
+```
+
+`git push dokku` still works (`./scripts/deploy.sh` without the flag), and is
+the fallback when ghcr is unreachable or CI has not pushed the commit yet.
+
+Either way the script then redeploys the Rails twin (`git push dokku-rails
+main:trunk`, docs/deploy-rails.md) and fails if `trailmap-rails.web.1` was not
+replaced, so the twin cannot fall behind unnoticed. `--no-rails` skips it.
 
 The app deploys while it is running — no `ps:stop`, no downtime. nginx holds
 `127.0.0.1:8080`, not the container, so dokku's zero-downtime release (new

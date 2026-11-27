@@ -29,6 +29,24 @@ APP="${TRAILMAP_APP:-trailmap}"
 REMOTE="${TRAILMAP_REMOTE:-dokku}"
 BRANCH="${TRAILMAP_BRANCH:-main}"
 HOSTNAME_PUBLIC="${TRAILMAP_HOSTNAME:-trailmap.deanoftech.com}"
+REGISTRY_IMAGE="${TRAILMAP_IMAGE:-ghcr.io/blazetrailsdev/trailmap}"
+RAILS_REMOTE="${TRAILMAP_RAILS_REMOTE:-dokku-rails}"
+
+# --from-image: deploy the image CI built and smoke-tested on main
+# (.github/workflows/ci.yml, `image`), tagged with the commit, instead of
+# building on the box. Without it, `git push` builds the Dockerfile here, which
+# is the fallback when ghcr is unreachable or CI has not pushed the commit yet.
+# --no-rails: skip redeploying the Rails twin afterwards.
+fromImage=0
+deployRails=1
+for arg in "$@"; do
+  case "$arg" in
+    --from-image) fromImage=1 ;;
+    --no-rails) deployRails=0 ;;
+    *) echo "usage: $0 [--from-image] [--no-rails]" >&2; exit 2 ;;
+  esac
+done
+started="$(date +%s)"
 
 runningContainer() {
   docker inspect "$APP.web.1" --format '{{.Id}}' 2>/dev/null || true
@@ -53,8 +71,17 @@ echo "==> running image before:     ${beforeImage:-<not running>}"
 # status is not the verdict — the checks below are — and it is captured rather
 # than left to `set -e`.
 pushStatus=0
-git push "$REMOTE" "$BRANCH:trunk" || pushStatus=$?
-echo "==> push exited $pushStatus (non-zero is expected; see docs/deploy.md)"
+if [ "$fromImage" = 1 ]; then
+  git fetch origin "$BRANCH"
+  sha="$(git rev-parse "origin/$BRANCH")"
+  docker pull "$REGISTRY_IMAGE:$sha" ||
+    fail "$REGISTRY_IMAGE:$sha is not pullable. CI pushes it only after the
+  image job passes on $BRANCH; wait for it, or deploy without --from-image."
+  dokku git:from-image "$APP" "$REGISTRY_IMAGE:$sha" || pushStatus=$?
+else
+  git push "$REMOTE" "$BRANCH:trunk" || pushStatus=$?
+fi
+echo "==> deploy command exited $pushStatus (non-zero is expected; see docs/deploy.md)"
 
 after="$(runningContainer)"
 afterImage="$(runningImage)"
@@ -111,4 +138,18 @@ echo "$smoke"
 # btwhooks at all). A warning, never a failure: bumping the pin is its own PR.
 (cd "$(dirname "$0")/.." && pnpm ringo:pin) || true
 
-echo "==> deployed: $before -> $after; smoke tiers 0 and 1 pass."
+echo "==> deployed: $before -> $after in $(( $(date +%s) - started ))s; smoke tiers 0 and 1 pass."
+
+# The Rails twin follows every trailmap deploy, so the two cannot drift apart
+# unnoticed (trailmap-rails once served a pre-RFC-0243 build for days and listed
+# 0 audits against trailmap's 95). docs/deploy-rails.md has the app.
+if [ "$deployRails" = 1 ]; then
+  railsBefore="$(docker inspect trailmap-rails.web.1 --format '{{.Id}}' 2>/dev/null || true)"
+  git push "$RAILS_REMOTE" "$BRANCH:trunk" || true
+  railsAfter="$(docker inspect trailmap-rails.web.1 --format '{{.Id}}' 2>/dev/null || true)"
+  [ -n "$railsAfter" ] && [ "$railsBefore" != "$railsAfter" ] ||
+    fail "trailmap is deployed, but trailmap-rails.web.1 was not replaced
+  (${railsBefore:-<none>} -> ${railsAfter:-<none>}); the twin is stale. Read the
+  push output above."
+  echo "==> trailmap-rails redeployed: $railsBefore -> $railsAfter"
+fi
