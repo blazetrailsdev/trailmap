@@ -350,7 +350,12 @@ echo "$TOKEN" | docker login ghcr.io -u <github-user> --password-stdin
 ```
 
 `git push dokku` still works (`./scripts/deploy.sh` without the flag), and is
-the fallback when ghcr is unreachable or CI has not pushed the commit yet.
+the fallback when ghcr is unreachable or CI has not pushed the commit yet. It
+force-pushes (`+<sha>:trunk`): `git:from-image` leaves a synthetic commit on
+dokku's `trunk`, so a plain `git push dokku main:trunk` after one is refused as
+a non-fast-forward. Both modes deploy `origin/main`'s commit, not the local
+branch, and `--from-image` sets `GIT_REV` to that commit before the release,
+since `git:from-image` would otherwise record its synthetic one.
 
 Either way the script then redeploys the Rails twin (`git push dokku-rails
 main:trunk`, docs/deploy-rails.md) and fails if `trailmap-rails.web.1` was not

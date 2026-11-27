@@ -31,6 +31,7 @@ BRANCH="${TRAILMAP_BRANCH:-main}"
 HOSTNAME_PUBLIC="${TRAILMAP_HOSTNAME:-trailmap.deanoftech.com}"
 REGISTRY_IMAGE="${TRAILMAP_IMAGE:-ghcr.io/blazetrailsdev/trailmap}"
 RAILS_REMOTE="${TRAILMAP_RAILS_REMOTE:-dokku-rails}"
+RAILS_APP="${TRAILMAP_RAILS_APP:-trailmap-rails}"
 
 # --from-image: deploy the image CI built and smoke-tested on main
 # (.github/workflows/ci.yml, `image`), tagged with the commit, instead of
@@ -70,16 +71,25 @@ echo "==> running image before:     ${beforeImage:-<not running>}"
 # plugin runs last and cannot reach Uptime Kuma on this box. So the push's exit
 # status is not the verdict — the checks below are — and it is captured rather
 # than left to `set -e`.
+# Both apps ship this one commit, origin's, whatever the local checkout holds.
+git fetch origin "$BRANCH"
+sha="$(git rev-parse "origin/$BRANCH")"
+echo "==> deploying $sha"
+
 pushStatus=0
 if [ "$fromImage" = 1 ]; then
-  git fetch origin "$BRANCH"
-  sha="$(git rev-parse "origin/$BRANCH")"
   docker pull "$REGISTRY_IMAGE:$sha" ||
     fail "$REGISTRY_IMAGE:$sha is not pullable. CI pushes it only after the
   image job passes on $BRANCH; wait for it, or deploy without --from-image."
+  # git:from-image deploys from a synthetic commit, so GIT_REV would name that
+  # rather than $sha; set it first so the release (and Sentry's `release`)
+  # carries the trailmap commit.
+  dokku config:set --no-restart "$APP" GIT_REV="$sha"
   dokku git:from-image "$APP" "$REGISTRY_IMAGE:$sha" || pushStatus=$?
 else
-  git push "$REMOTE" "$BRANCH:trunk" || pushStatus=$?
+  # Forced: a from-image deploy leaves that synthetic commit on dokku's trunk,
+  # which a plain push would be refused as a non-fast-forward.
+  git push "$REMOTE" "+$sha:refs/heads/trunk" || pushStatus=$?
 fi
 echo "==> deploy command exited $pushStatus (non-zero is expected; see docs/deploy.md)"
 
@@ -144,12 +154,17 @@ echo "==> deployed: $before -> $after in $(( $(date +%s) - started ))s; smoke ti
 # unnoticed (trailmap-rails once served a pre-RFC-0243 build for days and listed
 # 0 audits against trailmap's 95). docs/deploy-rails.md has the app.
 if [ "$deployRails" = 1 ]; then
-  railsBefore="$(docker inspect trailmap-rails.web.1 --format '{{.Id}}' 2>/dev/null || true)"
-  git push "$RAILS_REMOTE" "$BRANCH:trunk" || true
-  railsAfter="$(docker inspect trailmap-rails.web.1 --format '{{.Id}}' 2>/dev/null || true)"
+  railsBefore="$(docker inspect "$RAILS_APP.web.1" --format '{{.Id}}' 2>/dev/null || true)"
+  git push "$RAILS_REMOTE" "+$sha:refs/heads/trunk" || true
+  railsAfter="$(docker inspect "$RAILS_APP.web.1" --format '{{.Id}}' 2>/dev/null || true)"
   [ -n "$railsAfter" ] && [ "$railsBefore" != "$railsAfter" ] ||
-    fail "trailmap is deployed, but trailmap-rails.web.1 was not replaced
+    fail "trailmap is deployed, but $RAILS_APP.web.1 was not replaced
   (${railsBefore:-<none>} -> ${railsAfter:-<none>}); the twin is stale. Read the
   push output above."
-  echo "==> trailmap-rails redeployed: $railsBefore -> $railsAfter"
+  railsImage="$(docker inspect "$RAILS_APP.web.1" --format '{{.Image}}')"
+  railsLatest="$(docker inspect "dokku/$RAILS_APP:latest" --format '{{.Id}}' 2>/dev/null || true)"
+  [ -z "$railsLatest" ] || [ "$railsLatest" = "$railsImage" ] ||
+    fail "$RAILS_APP.web.1 runs $railsImage but dokku/$RAILS_APP:latest is
+  $railsLatest: the twin is serving a STALE image."
+  echo "==> $RAILS_APP redeployed at $sha: $railsBefore -> $railsAfter"
 fi
