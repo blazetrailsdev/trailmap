@@ -538,21 +538,31 @@ function parsed(text) {
 
 export const plural = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
 
+const SHELLS = new Set(["bash", "zsh", "fish", "sh", "dash", "ksh", "tcsh", "csh", "nu", "pwsh", "xonsh"]);
+
 /**
  * Whether a pane's screen (the `/fleet/pane/:id/screen` body) shows Claude
  * gone: the pane itself gone, or no Claude UI left and a shell prompt on the
  * last line. End pane types the shell's `exit` only once this holds, so it is
  * never typed into Claude as a prompt.
  *
- * `toText` turns the screen's HTML into its text; the page passes the
- * browser's own parser. ringo reports no pane command, so this reads the
- * screen: a prompt is a last line ending in `>`, `$`, `#`, `%` (zsh) or `❯`,
- * and any of Claude Code's own UI strings in the last four non-blank lines
- * means not yet.
+ * When ringo reports the pane's command (tmux `#{pane_current_command}`),
+ * that decides it: Claude is gone once a shell is the foreground process. A
+ * shell allowlist rather than "anything but claude/node", because the native
+ * Claude Code binary shows up under its version (`2.1.3`), which must read as
+ * still running. The allowlist fails safe: a shell not on it reads as Claude
+ * still running, so End pane's `waitForShell` times out and says "Claude has
+ * not exited after 20s; not sending exit" rather than typing anything.
+ *
+ * Without `command` (an older ringo) this falls back to reading the screen:
+ * `toText` turns its HTML into text (the page passes the browser's parser), a
+ * prompt is a last line ending in `>`, `$`, `#`, `%` (zsh) or `❯`, and any of
+ * Claude Code's own UI strings in the last four non-blank lines means not yet.
  */
 export function claudeHasExited(body, toText) {
   if (!body || typeof body !== "object") return false;
   if (body.exists === false) return true;
+  if (typeof body.command === "string" && body.command) return SHELLS.has(body.command.replace(/^-/, ""));
   if (typeof body.html !== "string") return false;
   // Only the bottom of the screen: Claude's UI sits there while it runs, and
   // scrollback above a shell prompt may quote the same strings.
