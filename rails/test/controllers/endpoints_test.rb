@@ -47,6 +47,21 @@ class EndpointsTest < ActionDispatch::IntegrationTest
 
   # ── deploys ──
 
+  # A script in an `.html` audit runs in its sandbox and can send a form POST,
+  # Origin null. The API skips forgery protection, so LoopbackOnly refuses it.
+  test "the loopback API refuses a browser's write, Origin null" do
+    rfc!("0001-a")
+    story!("s1", rfc_id: "0001-a")
+    post "/stories/claim", params: { ids: [ "s1" ], assignee: "page" }, headers: LOOPBACK.merge("HTTP_ORIGIN" => "null")
+    assert_response :not_found
+    assert_nil Story.find("s1").assignee
+
+    post "/stories/claim", params: { ids: [ "s1" ], assignee: "cli" }.to_json,
+      headers: LOOPBACK.merge("CONTENT_TYPE" => "application/json")
+    assert_response :success
+    assert_equal "cli", Story.find("s1").assignee
+  end
+
   test "deploys log relays ringo's log and status" do
     with_ringo({ "/deploys/output?id=run%201" => [ 200, "line one\n" ] }) do
       get "/deploys/log", params: { id: "run 1" }

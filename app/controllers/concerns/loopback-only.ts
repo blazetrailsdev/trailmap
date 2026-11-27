@@ -22,6 +22,8 @@ const FORWARDED_HEADERS = [
 
 const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "::1", "[::1]"];
 
+const SAFE_METHODS = ["GET", "HEAD", "OPTIONS"];
+
 /** `example.com:8080` → `example.com`, `[::1]:8080` → `[::1]`. */
 function stripPort(host: string): string {
   if (host.startsWith("[")) return host.replace(/\]:\d+$/, "]");
@@ -42,12 +44,23 @@ function stripPort(host: string): string {
  * client-supplied `X-Forwarded-Host` can steer. `request.local` cannot stand
  * in for either check: docker's userland proxy rewrites the source address, so
  * even a loopback request arrives from the bridge gateway.
+ *
+ * A write that carries `Origin` is refused too. Browsers send it on every
+ * POST, `Origin: null` from a sandboxed frame included, and the API's two
+ * clients never do: Node's fetch and Go's `net/http` send none. The API skips
+ * forgery protection, so without this a page viewed on loopback — an `.html`
+ * audit, whose scripts run in its sandbox — could land a form POST on a
+ * mutation verb, unable to read the answer but not needing to. The pages'
+ * own same-origin GETs to the API carry no `Origin`, and a GET writes nothing.
  */
 export function isLoopbackRequest(request: LoopbackRequest): boolean {
   for (const header of FORWARDED_HEADERS) {
     const value = request.getHeader(header);
     if (value != null && String(value).trim() !== "") return false;
   }
+
+  const method = String(request.getHeader("REQUEST_METHOD") ?? "").toUpperCase();
+  if (!SAFE_METHODS.includes(method) && request.getHeader("HTTP_ORIGIN") != null) return false;
 
   const host = request.getHeader("HTTP_HOST");
   if (host == null) return false;

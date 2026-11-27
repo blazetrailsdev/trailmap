@@ -9,6 +9,12 @@ export default defineConfig({
     // browser JavaScript (it is served to the page, not compiled), so its
     // test is plain JavaScript too.
     include: ["test/**/*.test.ts", "test/**/*.test.js"],
+    // A file's first page render imports every compiled view and boots the
+    // app's initializers; on a cold module cache on the dev box that took
+    // over 5s (the default) while CI's warmer runner stays under it, so the
+    // first test of rendered-class-collisions and one-status-vocabulary
+    // failed locally only.
+    testTimeout: 20_000,
     globalSetup: ["test/global-setup.ts"],
     setupFiles: ["test/test-helper.ts"],
   },

@@ -25,10 +25,18 @@ if [ -z "${HUB_DATABASE_URL:-}" ]; then
   }
   hubContainer="$(docker run -d --rm -e POSTGRES_PASSWORD=e2e -e POSTGRES_DB=trailmap_hub -p 127.0.0.1::5432 postgres:16)"
   trap 'docker rm -f "$hubContainer" >/dev/null 2>&1 || true' EXIT
-  until docker exec "$hubContainer" pg_isready -q -U postgres 2>/dev/null; do sleep 0.5; done
-  export HUB_DATABASE_URL="postgres://postgres:e2e@$(docker port "$hubContainer" 5432/tcp | head -n 1)/trailmap_hub"
+  # Each wait gives up after 60s: a container that exits is removed (--rm), and
+  # every later `docker exec` fails, which would otherwise spin forever.
+  hubWait() {
+    for _ in $(seq 120); do "$@" >/dev/null 2>&1 && return 0; sleep 0.5; done
+    echo "dashboard-e2e: the throwaway hub Postgres never came up" >&2
+    docker logs "$hubContainer" 2>&1 | tail -n 20 >&2 || true
+    exit 1
+  }
+  hubWait docker exec "$hubContainer" pg_isready -q -U postgres
   # pg_isready answers before the init scripts' restart; a query proves the server is up for good.
-  until docker exec "$hubContainer" psql -U postgres -d trailmap_hub -qc "select 1" >/dev/null 2>&1; do sleep 0.5; done
+  hubWait docker exec "$hubContainer" psql -U postgres -d trailmap_hub -qc "select 1"
+  export HUB_DATABASE_URL="postgres://postgres:e2e@$(docker port "$hubContainer" 5432/tcp | head -n 1)/trailmap_hub"
   NODE_ENV=test TASKS_DATABASE="$work/migrate.db" pnpm db:migrate >/dev/null
 fi
 

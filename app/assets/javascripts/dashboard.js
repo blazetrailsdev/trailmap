@@ -153,27 +153,30 @@ function record(rows) {
 }
 
 /*
- * A repaint morphs the list (`morph.js`), so a node that did not change --
+ * A repaint morphs the list (`morph.js`, Turbo's idiomorph), so a node that did not change --
  * the field being typed in above all -- stays in the page. One that did is
  * replaced, so what the viewer is in the middle of -- a half-typed answer or
  * message, the field with the cursor, a log's scroll -- is still read off
  * before and put back after.
  */
 function keepWhileRepainting(host, paint) {
-  const kept = [...host.querySelectorAll("[data-keep]")].map((el) => [el.dataset.keep, el.value, el.checked]);
-  const focused = document.activeElement && host.contains(document.activeElement) ? document.activeElement.dataset.keep : null;
-  const selection = focused ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+  const kept = [...host.querySelectorAll("[data-keep]")].map((el) => [el.dataset.keep, el.value, el.checked, el]);
+  const active = document.activeElement && host.contains(document.activeElement) ? document.activeElement : null;
+  const focused = active ? active.dataset.keep : null;
+  const selection = focused ? [active.selectionStart, active.selectionEnd] : null;
   const scrolls = [...host.querySelectorAll("[data-log]")].map((el) => [el.dataset.log, el.scrollTop, el.scrollHeight - el.scrollTop - el.clientHeight < 4]);
   paint();
-  for (const [key, value, checked] of kept) {
+  for (const [key, value, checked, was] of kept) {
     const el = host.querySelector('[data-keep="' + CSS.escape(key) + '"]');
-    if (!el) continue;
+    // A node the morph kept still holds its own state; only a replaced one needs it back.
+    if (!el || el === was) continue;
     if (el.type === "radio" || el.type === "checkbox") el.checked = checked;
     else el.value = value;
   }
   if (focused) {
     const el = host.querySelector('[data-keep="' + CSS.escape(focused) + '"]');
-    if (el) {
+    // Still focused means the morph kept it, caret and all: leave it be.
+    if (el && document.activeElement !== el) {
       el.focus();
       if (selection && selection[0] !== null && el.setSelectionRange) el.setSelectionRange(selection[0], selection[1]);
     }
