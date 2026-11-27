@@ -84,8 +84,8 @@ RUN git config --global --add safe.directory '*' \
 # box's.
 ENV PORT=8080
 # SIGUSR2 makes any node process in the container print a diagnostic report
-# (JS stack, libuv handles, heap) to stdout, and it works with the event loop
-# blocked: the signal is serviced off the main thread. docs/deploy.md,
+# (JS stack, libuv handles, heap) to stdout, even while JS busy-loops (not
+# while it is stuck inside a single synchronous native call). docs/deploy.md,
 # "Detecting a hang", has the one-liner.
 ENV NODE_OPTIONS="--report-on-signal --report-filename=stdout"
 EXPOSE 8080

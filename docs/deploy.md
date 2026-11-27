@@ -664,9 +664,11 @@ once:
 dokku network:set uptime-kuma attach-post-deploy fleet && dokku ps:rebuild uptime-kuma
 ```
 
-Then, in Kuma: type HTTP(s), URL `http://trailmap.web.1:8080/up`, heartbeat
+Then, in Kuma: type HTTP(s), URL `http://trailmap.web:8080/up`, heartbeat
 interval 30s, request timeout 10s, retries 2, and the box's notification
-attached. A blocked event loop fails three beats in a row, so it alerts in
+attached. `trailmap.web` is the network alias dokku registers for the process
+type; the numbered `trailmap.web.1` is renamed during a zero-downtime deploy
+and would page on every release. A blocked event loop fails three beats in a row, so it alerts in
 about 90 seconds, inside the two-minute bound. `/up` reads no row, so the
 monitor measures the listener and the event loop and nothing else; a dead
 database is `/up/ready`'s job.
@@ -674,13 +676,26 @@ database is `/up/ready`'s job.
 **The diagnostic, BEFORE any restart.** The image sets
 `NODE_OPTIONS=--report-on-signal --report-filename=stdout`, so `SIGUSR2` makes
 a node process print a report (JavaScript stack, every active libuv handle and
-request, heap) to its stdout, even with the event loop blocked. The server is
+request, heap) to its stdout while JavaScript is spinning on the main thread. A loop
+stuck inside one synchronous native call (an `execSync`, say) prints nothing
+until that call returns: the stack is taken by an isolate interrupt, which only
+runs between JavaScript instructions. If no report appears, that absence is the
+finding. The server is
 the node process running tsx's `loader.mjs`; the two above it are wrappers.
 There is no `ps` in the image, so find it through `/proc`:
 
 ```sh
-docker exec trailmap.web.1 sh -c 'for p in /proc/[0-9]*; do grep -qa loader.mjs $p/cmdline 2>/dev/null && kill -USR2 ${p#/proc/}; done'; sleep 2; dokku logs trailmap -p web -n 3000 > ~/trailmap-hang-$(date -u +%FT%H%MZ).log
+docker exec trailmap.web.1 sh -c 'for p in /proc/[0-9]*; do grep -qa "loader[.]mjs" $p/cmdline 2>/dev/null && kill -USR2 ${p#/proc/}; done'; sleep 2; dokku logs trailmap -p web -n 3000 > ~/trailmap-hang-$(date -u +%FT%H%MZ).log
 ```
+
+The bracket keeps the pattern from matching the `sh -c` loop's own command
+line, which would otherwise be killed by its own `SIGUSR2` before it reached
+the server.
+
+The setting is image-wide, so it also reaches the worker and release
+containers. If you ever `dokku config:set NODE_OPTIONS=...` (a heap cap, say),
+APPEND to `--report-on-signal --report-filename=stdout`. Replacing it disables
+the report without any error.
 
 The report lands in `dokku logs` and survives into the saved file, which the
 restart (`dokku ps:restart trailmap web`) does not touch. Its `javascriptStack`
