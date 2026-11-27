@@ -26,6 +26,9 @@ import { PackageFileStat } from "../app/models/package-file-stat.ts";
 import { PackageTagSite } from "../app/models/package-tag-site.ts";
 import { PackageSkipTest } from "../app/models/package-skip-test.ts";
 import { ClaudeMdSection } from "../app/models/claude-md-section.ts";
+import { Attachment } from "@blazetrails/activestorage/attachment";
+import { Blob } from "@blazetrails/activestorage/blob";
+import { VariantRecord } from "@blazetrails/activestorage/variant-record";
 
 /**
  * The models on each of trailmap's three connections, and the schema warm-up
@@ -35,7 +38,8 @@ import { ClaudeMdSection } from "../app/models/claude-md-section.ts";
  * seat, and lib/ is not an autoload path.
  */
 // The task domain, on the SQLite tasks database.
-const MODELS = [Rfc, Story, StoryDep, StoryRfcDep, StoryPath, StoryPackage, Event, Meta];
+// Active Storage's own models too: it is attached to Base (trailmap#174).
+const MODELS = [Rfc, Story, StoryDep, StoryRfcDep, StoryPath, StoryPackage, Event, Meta, Blob, Attachment, VariantRecord];
 
 /**
  * The models on the OTHER connection — the `hub` Postgres database

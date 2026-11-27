@@ -909,6 +909,17 @@ describe("a pane message", () => {
     expect(claudeHasExited(null, text)).toBe(false);
   });
 
+  it("trusts ringo's pane command over the screen when it is present", () => {
+    const text = (html) => html.replace(/<[^>]*>/g, "");
+    const claudeScreen = "? for shortcuts\n>";
+    expect(claudeHasExited({ command: "bash", html: claudeScreen }, text)).toBe(true);
+    expect(claudeHasExited({ command: "-zsh", html: claudeScreen }, text)).toBe(true);
+    expect(claudeHasExited({ command: "claude", html: "Goodbye!\n$ " }, text)).toBe(false);
+    expect(claudeHasExited({ command: "node", html: "Goodbye!\n$ " }, text)).toBe(false);
+    expect(claudeHasExited({ command: "2.1.3", html: "Goodbye!\n$ " }, text)).toBe(false);
+    expect(claudeHasExited({ command: "", html: "Goodbye!\n$ " }, text)).toBe(true);
+  });
+
   it("logs a sent line and clears its box; shows ringo's refusal beside it", () => {
     const request = controlRequest("pane-send", { pane: "%42", text: "go", key: "k", says: "note", clears: "box" });
 

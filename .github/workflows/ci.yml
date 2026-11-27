@@ -107,7 +107,18 @@ jobs:
           # which `trails db` skips (`databaseTasks: false`, config/database.ts).
           NODE_ENV: test
         run: pnpm db:migrate
+      # trails' start-worktree.sh, for test/scripts/start-worktree-interface.test.ts:
+      # ringo calls both copies with one interface. main, not TRAILS_PIN, because
+      # ringo runs trails' main checkout.
+      - uses: actions/checkout@v4
+        with:
+          repository: blazetrailsdev/trails
+          path: .trails
+          sparse-checkout: scripts/start-worktree.sh
+          sparse-checkout-cone-mode: false
       - run: pnpm test
+        env:
+          TRAILS_START_WORKTREE: ${{ github.workspace }}/.trails/scripts/start-worktree.sh
 
   # The sso plugin re-injects Authelia's auth directives into the generated
   # nginx config on every reload, using two text matchers that a comment can

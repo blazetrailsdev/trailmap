@@ -18,7 +18,8 @@ const APP = String(env.E2E_APP);
 const PR = { owner: "o", repo: "r", pr: 7, title: "A pull request", branch: "a-branch", ciStatus: "success" };
 const ENVELOPE = {
   // #8's reviewer is pinned and its pane gone, so its `+` is a respawn.
-  prs: [PR, { ...PR, pr: 8, pane: "%4" }],
+  // #9 is live on %11, whose screen carries a dimmed suggestion.
+  prs: [PR, { ...PR, pr: 8, pane: "%4" }, { ...PR, pr: 9, pane: "%11" }],
   spawns: [{ story_id: "a-story", branch: "b-branch", status: "failed" }],
   fixers: [{ owner: "o", repo: "r", consecutive_red: 1, red_sha: "abc1234" }],
 };
@@ -64,6 +65,20 @@ const READS: Record<string, () => unknown> = {
 const posts: Array<[string, unknown]> = [];
 const PANE_SCREEN = { exists: true, html: "<span>$ </span>", hash: "h1", cwd: "/w/r", lines: 1, status: "idle" };
 const PANE_GONE = "pane %5 has exited";
+// Pane %11's screen as ringo renders a suggestion: dim text after the prompt.
+const SUGGESTION = "check the CI run and fix what failed";
+const suggesting = (text: string | null, hash: string) => ({
+  exists: true,
+  hash,
+  cwd: "/w/r",
+  lines: 2,
+  status: "idle",
+  html: "● CI is running.\n&gt;&nbsp;" + (text ? `<span style="opacity:.65;">${text}</span>` : ""),
+});
+let screen11 = suggesting(SUGGESTION, "s1");
+let screen11Reads = 0;
+// While set, a send to %11 is held here until released: the in-flight state.
+let held11: (() => void) | null = null;
 
 const ringo = (await getHttpAsync()).createServer((req, res) => {
   const path = req.url ?? "/";
@@ -84,7 +99,9 @@ const ringo = (await getHttpAsync()).createServer((req, res) => {
   } else if (/^\/pane\/\d+\/screen/.test(path)) {
     // Pane 5 is live; pane 6 has exited, as ringo says it.
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify(path.startsWith("/pane/5/") ? PANE_SCREEN : { exists: false }));
+    if (path.startsWith("/pane/11/")) screen11Reads++;
+    const body = path.startsWith("/pane/5/") ? PANE_SCREEN : path.startsWith("/pane/11/") ? screen11 : { exists: false };
+    res.end(JSON.stringify(body));
   } else if (req.method !== "POST") {
     res.writeHead(READS[path] ? 200 : 404, { "content-type": "application/json" });
     res.end(JSON.stringify(READS[path]?.() ?? null));
@@ -104,7 +121,7 @@ const ringo = (await getHttpAsync()).createServer((req, res) => {
       let [status, text] = ANSWERS[path] ?? [404, "not a ringo endpoint"];
       // ringo types a line into a live pane, and refuses one for a pane that went meanwhile.
       if (path === "/pane/5/send") [status, text] = sent.text === "too late" ? [410, PANE_GONE] : [204, ""];
-      if (path === "/pane/4/send") [status, text] = [204, ""];
+      if (path === "/pane/4/send" || path === "/pane/11/send") [status, text] = [204, ""];
       // A setting ringo refuses, by its size; anything else IS the loop's new state.
       if (path === "/spawnloop/config") {
         if (sent.live_cap > 50) [status, text] = [400, "live_cap must be at most 50"];
@@ -114,10 +131,12 @@ const ringo = (await getHttpAsync()).createServer((req, res) => {
         }
       }
       // A broadcast is held a moment, so the page's in-flight state can be seen.
-      setTimeout(() => {
+      const answer = (): void => {
         res.writeHead(status);
         res.end(text);
-      }, path === "/broadcast" ? 500 : 0);
+      };
+      if (path === "/pane/11/send") held11 = answer;
+      else setTimeout(answer, path === "/broadcast" ? 500 : 0);
     });
   }
 });
@@ -397,6 +416,48 @@ await until("the refused setting to be put back", () =>
   ),
 );
 console.log("ok  spawn loop, a refused setting alerts and takes ringo's value back");
+
+// The Send suggestion button in a live session's composer. It sends the
+// suggestion as typed; while it is in flight its slot is not repainted, even
+// by a screen that suggests something else; and a screen with no suggestion
+// takes it away.
+const suggest = `document.querySelector('#s-pr-o-r-9 [data-suggest="%11"] button')`;
+await evaluate(`${expand("s-pr-o-r-9")}.click(); true`);
+await until("the Send suggestion button beside its suggestion", () =>
+  evaluate(
+    `${suggest}?.textContent === "Send suggestion" && ` +
+      `document.querySelector('#s-pr-o-r-9 .pane-suggest-text').textContent === ${JSON.stringify(SUGGESTION)}`,
+  ),
+);
+before = posts.length;
+await evaluate(`${suggest}.click(); true`);
+const suggested = await until("the suggestion's POST", async () => held11 && posts[before]);
+if (JSON.stringify(suggested) !== JSON.stringify(["/pane/11/send", { text: SUGGESTION }])) {
+  throw new Error(`dashboard-e2e: Send suggestion sent ${JSON.stringify(suggested)}`);
+}
+const note9 = `document.querySelector('#s-pr-o-r-9 .composer .field-status')`;
+await until("the button to say it is sending", () =>
+  evaluate(
+    `${suggest}.disabled && ${suggest}.textContent === "Sending…" && ` +
+      `${note9}.textContent === "Sending message" && ${note9}.classList.contains("sr-only")`,
+  ),
+);
+screen11 = suggesting("something else", "s2");
+const reads = screen11Reads;
+await until("a screen poll during the send", async () => screen11Reads > reads + 1);
+await new Promise((resolve) => setTimeout(resolve, 300));
+if (!(await evaluate(`${suggest}?.textContent === "Sending…" && ${suggest}.dataset.text === ${JSON.stringify(SUGGESTION)}`))) {
+  throw new Error("dashboard-e2e: a screen poll repainted the suggestion slot mid-send");
+}
+// Back to the same suggestion before answering, so the label can be read
+// before a poll redraws the slot.
+screen11 = suggesting(SUGGESTION, "s1");
+(held11 as (() => void) | null)?.();
+held11 = null;
+await until("the label back once ringo answered", () => evaluate(`!${suggest}.disabled && ${suggest}.textContent === "Send suggestion"`));
+screen11 = suggesting(null, "s3");
+await until("the button to go with the suggestion", () => evaluate(`!${suggest} && !!document.querySelector('#s-pr-o-r-9 .composer')`));
+console.log("ok  Send suggestion, sent as suggested, held mid-send, and gone with the suggestion");
 
 // The pane page's message box: a line goes through the relay with the page's
 // CSRF token and the box empties on a 204; ringo's refusal is shown as its own

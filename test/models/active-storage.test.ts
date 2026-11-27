@@ -1,10 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Extended } from "@blazetrails/activesupport";
 import { StringIO, TopLevel, constSet, rbModRemoveConst } from "@blazetrails/ruby-compat";
-import { Attachment } from "@blazetrails/activestorage/attachment";
 import type { ClassMethods } from "@blazetrails/activestorage/attached/model";
 import type { One } from "@blazetrails/activestorage/attached/one";
-import { Blob } from "@blazetrails/activestorage/blob";
 import { ApplicationRecord } from "../../app/models/application-record.ts";
 
 /**
@@ -22,9 +20,7 @@ class User extends ApplicationRecord {
 constSet(TopLevel, "User", User);
 
 describe("ActiveStorage on Base", () => {
-  // lib/model-schemas.ts cannot import Blob or Attachment at boot: story
-  // blob-import-before-attached-model-initializer.
-  beforeAll(() => Promise.all([User, Blob, Attachment].map((model) => model.loadSchema())));
+  beforeAll(() => User.loadSchema());
   afterAll(() => rbModRemoveConst(TopLevel, "User"));
 
   it("attaching a new blob from a Hash to an existing record", async () => {
