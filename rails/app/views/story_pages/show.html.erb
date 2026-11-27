@@ -93,6 +93,9 @@
           <% if @actions.top %>
             <%= button_to "Top of queue", story_top_path(@story.id), class: "btn" %>
           <% end %>
+          <% if @actions.draft %>
+            <%= button_to "Back to draft", story_draft_path(@story.id), form: { "data-confirm": "Move this story back to draft? It leaves the ready queue." }, class: "btn" %>
+          <% end %>
           <% if @actions.release %>
             <%= button_to "Release claim", story_release_path(@story.id), form: { "data-confirm": "Release this claim? The story goes back to ready." }, class: "btn" %>
           <% end %>
