@@ -3,15 +3,20 @@ import { relayBody, relayed } from "./rfc-format.js";
 /*
  * Turbo Drive swaps <body>, and this module runs once per document, so every
  * binding below happens in bind(), on every `turbo:load` as well as now.
- * `data-bound` keeps an element that both reach from being bound twice.
+ * `bound` keeps an element that both reach from being bound twice. A WeakSet,
+ * not an attribute: Turbo's snapshot cache clones <body>, and a clone keeps
+ * an attribute but none of the listeners, so a restored page would look bound.
  */
+const bound = new WeakSet();
+
 function bind() {
   /*
    * /rfc/<id> and /story/<id>: the lifecycle buttons ask before they post, with the confirm
    * text ringo's page asked (`rfcStatusMoves`, webhook/rfcs.go:1158).
    */
-  for (const form of document.querySelectorAll("form[data-confirm]:not([data-bound])")) {
-    form.dataset.bound = "";
+  for (const form of document.querySelectorAll("form[data-confirm]")) {
+    if (bound.has(form)) continue;
+    bound.add(form);
     form.addEventListener("submit", (event) => {
       if (!window.confirm(form.dataset.confirm)) event.preventDefault();
     });
@@ -35,8 +40,8 @@ function bind() {
   }
 
   for (const button of relayButtons) {
-    if (button.dataset.bound != null) continue;
-    button.dataset.bound = "";
+    if (bound.has(button)) continue;
+    bound.add(button);
     button.addEventListener("click", async () => {
       if (!window.confirm(button.dataset.confirm)) return;
       const meta = document.querySelector('meta[name="csrf-token"]');
@@ -67,8 +72,9 @@ function bind() {
   }
 
   // The priority select submits on change, as ringo's does; <noscript> keeps a Set button.
-  for (const select of document.querySelectorAll("select[data-autosubmit]:not([data-bound])")) {
-    select.dataset.bound = "";
+  for (const select of document.querySelectorAll("select[data-autosubmit]")) {
+    if (bound.has(select)) continue;
+    bound.add(select);
     select.addEventListener("change", () => select.form?.requestSubmit());
   }
 }

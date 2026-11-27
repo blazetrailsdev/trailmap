@@ -38,4 +38,18 @@ describe("rfc-sort.js", () => {
     expect(visit).toHaveBeenCalledWith("/rfcs?sort=open");
     delete window.Turbo;
   });
+
+  it("binds a restored snapshot's clone of the menu", () => {
+    const visit = vi.fn();
+    window.Turbo = { visit };
+    document.dispatchEvent(new Event("turbo:load"));
+    // Turbo's snapshot cache: a deep clone of <body>, restored on Back.
+    document.body.replaceWith(document.body.cloneNode(true));
+    document.dispatchEvent(new Event("turbo:load"));
+    const select = document.querySelector("select");
+    select.value = "open";
+    select.dispatchEvent(new Event("change"));
+    expect(visit).toHaveBeenCalledTimes(1);
+    delete window.Turbo;
+  });
 });

@@ -29,13 +29,15 @@ cleanup() {
 trap cleanup EXIT
 
 versions=$(ls db/hub-migrate | sed -n 's/^\([0-9]\{14\}\)_.*/\1/p' | sort)
-changed=$(git diff --name-only "$(git merge-base "$base" HEAD)" HEAD -- db/hub-migrate \
+changed=$(git diff --name-only --diff-filter=AM "$(git merge-base "$base" HEAD)" HEAD -- db/hub-migrate \
   | sed -n 's|^db/hub-migrate/\([0-9]\{14\}\)_.*|\1|p' | sort | head -1)
 first="${changed:-$(echo "$versions" | tail -1)}"
 start=$(echo "$versions" | awk -v f="$first" '$1 < f' | tail -1)
 if [ -z "$start" ]; then
-  echo "smoke-hub-migrate: no hub migration precedes $first; nothing to start from" >&2
-  exit 1
+  # The branch changes the first hub migration: there is no older hub, and
+  # smoke-image.sh already prepares an empty one.
+  echo "smoke-hub-migrate: no hub migration precedes $first; skipped"
+  exit 0
 fi
 echo "smoke-hub-migrate: hub at $start, pending from $first"
 
