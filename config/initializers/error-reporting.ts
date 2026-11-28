@@ -16,7 +16,7 @@ const dsn = process.env["SENTRY_DSN"];
 if (dsn) {
   Sentry.init({
     dsn,
-    environment: process.env["NODE_ENV"] ?? "production",
+    environment: String(Trails.env),
     release: process.env["GIT_REV"],
     sendDefaultPii: false,
   });
