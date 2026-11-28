@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Node 26 or newer, always: the vendored @blazetrails/* packages declare
+# Node 26 or newer, always: the @blazetrails/* packages declare
 # engines.node >=26, and @blazetrails/rack uses duplicate named capture
 # groups (ES2025), which throw a SyntaxError at import time on Node 20 and 22.
 # Keep this in step with .node-version and the CI workflow.
@@ -11,17 +11,13 @@ LABEL fly_launch_runtime="Trails"
 
 WORKDIR /app
 
-ENV NODE_ENV="production"
+ENV TRAILS_ENV="production" NODE_ENV="production"
 
 FROM base AS build
 
 RUN apt-get update -qq && apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
 
-# The @blazetrails/* packages are vendored tarballs, not registry packages, so
-# vendor/ and the workspace overrides that point at it have to be present
-# before install.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .pnpmfile.cjs ./
-COPY vendor/ ./vendor/
 RUN npm install -g corepack && corepack enable pnpm && pnpm install --frozen-lockfile
 
 COPY . .

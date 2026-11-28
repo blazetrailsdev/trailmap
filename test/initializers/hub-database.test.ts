@@ -1,3 +1,4 @@
+import { Trails } from "@blazetrails/trailties";
 import { describe, expect, it } from "vitest";
 import { env, setEnv } from "@blazetrails/ruby-compat";
 import { Trailmap } from "../../config/application.ts";
@@ -58,14 +59,14 @@ describe("connectToHubDatabase", () => {
    */
   it("refuses to boot a served environment with no HUB_DATABASE_URL", async () => {
     const url = env.HUB_DATABASE_URL;
-    const nodeEnv = env.NODE_ENV;
+    const trailsEnv = Trails.env;
     setEnv("HUB_DATABASE_URL", undefined);
-    setEnv("NODE_ENV", "production");
+    Trails.env = "production";
     try {
       await expect(connectToHubDatabase()).rejects.toThrow(/HUB_DATABASE_URL is not set/);
     } finally {
       setEnv("HUB_DATABASE_URL", url);
-      setEnv("NODE_ENV", nodeEnv);
+      Trails.env = trailsEnv;
     }
   });
 

@@ -37,7 +37,7 @@ if [ -z "${HUB_DATABASE_URL:-}" ]; then
   # pg_isready answers before the init scripts' restart; a query proves the server is up for good.
   hubWait docker exec "$hubContainer" psql -U postgres -d trailmap_hub -qc "select 1"
   export HUB_DATABASE_URL="postgres://postgres:e2e@$(docker port "$hubContainer" 5432/tcp | head -n 1)/trailmap_hub"
-  NODE_ENV=test TASKS_DATABASE="$work/migrate.db" pnpm db:migrate >/dev/null
+  TRAILS_ENV=test TASKS_DATABASE="$work/migrate.db" pnpm db:migrate >/dev/null
 fi
 
 # The views build boots the app, and sqlite3 refuses to start with no file.
@@ -72,7 +72,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 
-NODE_ENV=production SECRET_KEY_BASE=dashboard-e2e-not-a-secret \
+TRAILS_ENV=production NODE_ENV=production SECRET_KEY_BASE=dashboard-e2e-not-a-secret \
   RINGO_BASE="http://127.0.0.1:$ringo" FLEET_REPO_PATHS="o/r=/w/r" TASKS_DATABASE="$work/tasks.sqlite3" \
   setsid bin/trails server -b 127.0.0.1 -p "$app" >"$work/server.log" 2>&1 &
 pids+=($!)

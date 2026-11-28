@@ -58,7 +58,7 @@ run=(docker run --rm --network "$name" -v "$data":/data
 
 # The tasks database, shaped as the CLI's: the task domain's schema, as
 # smoke-image.sh hands it over.
-"${run[@]}" -e NODE_ENV=test \
+"${run[@]}" -e TRAILS_ENV=test \
   -e "HUB_DATABASE_URL=postgres://postgres:postgres@$name-pg:5432/trailmap_hub_scratch" "$image" sh -c 'bin/trails db:migrate && cp storage/test.sqlite3 /data/tasks.db'
 
 # The hub as production's stood before this branch: migrated, not loaded, by
@@ -71,7 +71,7 @@ for v in $(echo "$versions" | awk -v s="$start" '$1 <= s'); do cp db/hub-migrate
 chmod -R a+rX "$before"
 docker exec "$name-pg" psql -q -U postgres -d trailmap_hub -c \
   'create table schema_migrations (version character varying primary key)'
-"${run[@]}" -e NODE_ENV=production -v "$before":/app/db/hub-migrate:ro "$image" bin/trails db:migrate
+"${run[@]}" -e TRAILS_ENV=production -v "$before":/app/db/hub-migrate:ro "$image" bin/trails db:migrate
 rm -rf "$before"
 
 was=$(docker exec "$name-pg" psql -U postgres -d trailmap_hub -tAc 'select max(version) from schema_migrations')
@@ -80,7 +80,7 @@ if [ "$was" != "$start" ]; then
   exit 1
 fi
 echo "smoke-hub-migrate: the release command over that hub"
-"${run[@]}" -e NODE_ENV=production "$image" bin/trails db:prepare
+"${run[@]}" -e TRAILS_ENV=production "$image" bin/trails db:prepare
 
 at=$(docker exec "$name-pg" psql -U postgres -d trailmap_hub -tAc 'select max(version) from schema_migrations')
 want=$(echo "$versions" | tail -1)

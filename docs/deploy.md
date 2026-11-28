@@ -50,7 +50,7 @@ dokku ps:set trailmap restart-policy on-failure:10
 # framework's `active_record.initialize_database` connects at boot, so a
 # container without TASKS_DATABASE will not start (it once came up and 500ed
 # with `ConnectionNotDefined` on every page that reads a row).
-dokku config:set --no-restart trailmap NODE_ENV=production \
+dokku config:set --no-restart trailmap TRAILS_ENV=production NODE_ENV=production \
   TASKS_DATABASE=/home/dean/github/blazetrailsdev/tasks/.git/tasks.db \
   TASKS_DIR=/home/dean/github/blazetrailsdev/tasks
 
@@ -714,7 +714,7 @@ relays to ringo shows up as one handle per connection.
 
 ## Gotchas found the hard way
 
-- **Node 26 or newer.** The vendored `@blazetrails/*` packages declare
+- **Node 26 or newer.** The `@blazetrails/*` packages declare
   `engines.node >=26` (trails#9804), and `@blazetrails/rack` uses duplicate
   named capture groups (ES2025); on Node 20 and 22 it throws a `SyntaxError`
   at import. Node 26 no longer bundles corepack, so the Dockerfile installs
@@ -856,15 +856,13 @@ difference had a cause:
 Not reproduced in those six runs: the `gh pr list` failure seen once in an
 overlapping E2E run.
 
-### trails tracking (tasks CLI)
+### trails tracking
 
-The host crontab runs the tasks repo's `scripts/track-trails-cron.sh` hourly at
-:17 (`scripts/track-trails-cron.sh --crontab` prints the entry). The wrapper runs
-`pnpm trails:track` through the login shell, and a failed run opens or comments on
-the "trails tracking is failing" issue in blazetrailsdev/tasks. After every run it
-writes `pnpm trails:status` to `trails-status.txt` beside `tasks.db`
-(`<tasks checkout>/.git/`, blazetrailsdev/tasks#328). trailmap does not read
-it.
+trailmap installs `@blazetrails/*` from npm, so it no longer tracks trails
+`main`: `pnpm trails:track` and the tarball vendoring it drove are gone, and the
+host crontab's `scripts/track-trails-cron.sh` entry is removed with them. The
+`canary` workflow (`.github/workflows/canary.yml`), run by hand, tries a new
+`alpha` instead.
 
 ## Preview apps
 

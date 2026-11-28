@@ -1,5 +1,4 @@
 import { Trails } from "@blazetrails/trailties";
-import { env } from "@blazetrails/ruby-compat";
 import { hasHubDatabase, hubDatabaseConfig } from "../database.ts";
 import { Hub } from "../../app/models/hub.ts";
 import { loadHubSchemas, missingHubTables } from "../../lib/model-schemas.ts";
@@ -47,7 +46,7 @@ import { loadHubSchemas, missingHubTables } from "../../lib/model-schemas.ts";
  */
 export async function connectToHubDatabase(): Promise<void> {
   if (!hasHubDatabase()) {
-    if ((env.NODE_ENV ?? "development") === "test") return;
+    if (Trails.env.isTest()) return;
     throw new Error(
       "HUB_DATABASE_URL is not set, so the owner/repository pages would fail with " +
         "ConnectionNotDefined on the first row they read. Point it at the hub " +

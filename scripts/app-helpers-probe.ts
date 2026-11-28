@@ -2,7 +2,7 @@
  * Boot the application, render one template that calls an `app/helpers`
  * method, and print what came out.
  *
- *     NODE_ENV=test tsx scripts/app-helpers-probe.ts
+ *     TRAILS_ENV=test tsx scripts/app-helpers-probe.ts
  *     => {"status":200,"body":"<p>a <strong>bold</strong> claim</p>\n"}
  *
  * A script rather than a test body because the thing being proven is wired at

@@ -32,7 +32,7 @@ describe("app/helpers", () => {
     const result = child.spawnSync("node_modules/.bin/tsx", ["scripts/app-helpers-probe.ts"], {
       encoding: "utf8",
       // `test` is the one environment that boots with no tasks database.
-      env: { ...env, NODE_ENV: "test", TASKS_DATABASE: undefined },
+      env: { ...env, TRAILS_ENV: "test", TASKS_DATABASE: undefined },
     });
 
     expect(result.status, result.stderr).toBe(0);

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Cold-start boot smoke test.
 #
-# Installs a clean checkout from the vendored tarballs, boots the server and
+# Installs a clean checkout from the registry, boots the server and
 # requests a page. Three of the six framework bugs the boot probe found only
 # appear from a cold start — a warm node_modules hides them — so this runs
 # against `git archive` output, never the working tree's node_modules.
@@ -18,15 +18,6 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 git -C "$repo" archive HEAD | tar -x -C "$work"
-
-# Every @blazetrails/* dependency must resolve to a vendored tarball. If one
-# ever resolves to a registry URL the install stops being deterministic — and
-# in CI, where the framework is unpublished, it simply cannot be fetched.
-if grep -n "@blazetrails" "$work/pnpm-lock.yaml" | grep -qE "registry|https?://"; then
-  echo "smoke-boot: a @blazetrails dependency resolves to a registry" >&2
-  grep -n "@blazetrails" "$work/pnpm-lock.yaml" | grep -E "registry|https?://" >&2
-  exit 1
-fi
 
 cd "$work"
 pnpm install --frozen-lockfile
@@ -56,19 +47,19 @@ TASKS_DATABASE="${TASKS_DATABASE:-$work/views-build.db}" pnpm exec trails-tsc-vi
 # also why there is no `--database` flag here — see the note on the CI step
 # that prepares the hub schema.
 trails="bin/trails"
-NODE_ENV=test "$trails" db:create
-NODE_ENV=test "$trails" db:migrate
+TRAILS_ENV=test "$trails" db:create
+TRAILS_ENV=test "$trails" db:migrate
 export TASKS_DATABASE="$work/storage/test.sqlite3"
 export TASKS_DIR="$work"
 
-# PRODUCTION, laid out as the image is. The Dockerfile sets NODE_ENV=production
+# PRODUCTION, laid out as the image is. The Dockerfile sets TRAILS_ENV=production
 # and the framework honours it, so a boot in the default environment tests a
 # server the deployment never runs: development mounts Vite, which serves
 # `app/assets` off disk and needs no secret. Two deploys failed behind a green
 # run of this script for exactly that reason — a container that hung on every
 # request for want of `secret_key_base`, then pages with no stylesheet.
 ./scripts/build-assets.sh
-export NODE_ENV=production
+export TRAILS_ENV=production NODE_ENV=production
 export SECRET_KEY_BASE=smoke-boot-not-a-secret
 
 port=8123

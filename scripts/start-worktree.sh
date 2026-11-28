@@ -15,10 +15,8 @@
 # path has to be derived identically.
 #
 # What this does NOT do, unlike trails': symlink fetched upstream Ruby sources.
-# trailmap has no parity suite. Its equivalent — the vendored @blazetrails/*
-# tarballs under vendor/ — is tracked in git, so a worktree checkout already has
-# them and `pnpm install` resolves the file: overrides in pnpm-workspace.yaml
-# without any cross-worktree linking.
+# trailmap has no parity suite, and @blazetrails/* installs from npm, so
+# `pnpm install` needs no cross-worktree linking.
 #
 # --branch checks out an EXISTING branch instead of cutting a new one: the
 # dashboard's respawn button re-attaches an agent to an open PR whose worktree

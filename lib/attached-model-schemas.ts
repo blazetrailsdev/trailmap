@@ -1,5 +1,5 @@
-import { Attachment } from "@blazetrails/activestorage/attachment";
-import { Blob } from "@blazetrails/activestorage/blob";
+import { Attachment } from "@blazetrails/activestorage/app/models/active-storage/attachment";
+import { Blob } from "@blazetrails/activestorage/app/models/active-storage/blob";
 import { Audit } from "../app/models/audit.ts";
 import { Refinement } from "../app/models/refinement.ts";
 

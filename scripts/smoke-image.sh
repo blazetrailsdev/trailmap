@@ -59,7 +59,7 @@ rm -f "$data"/tasks.db*
 # Nothing in deployment creates the tasks database, so the test environment's
 # scratch primary — the same schema, empty — is handed over as it, as
 # smoke-boot.sh does.
-"${run[@]}" --rm -e NODE_ENV=test "$image" sh -c \
+"${run[@]}" --rm -e TRAILS_ENV=test "$image" sh -c \
   'bin/trails db:migrate && cp storage/test.sqlite3 /data/tasks.db'
 
 echo "smoke-image: the image's own CMD"

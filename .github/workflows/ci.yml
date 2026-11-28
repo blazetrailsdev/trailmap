@@ -105,11 +105,11 @@ jobs:
           HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
           # The test environment: development's primary is TASKS_DATABASE,
           # which `trails db` skips (`databaseTasks: false`, config/database.ts).
-          NODE_ENV: test
+          TRAILS_ENV: test
         run: pnpm db:migrate
       # trails' start-worktree.sh, for test/scripts/start-worktree-interface.test.ts:
-      # ringo calls both copies with one interface. main, not TRAILS_PIN, because
-      # ringo runs trails' main checkout.
+      # ringo calls both copies with one interface. main, not the installed alpha,
+      # because ringo runs trails' main checkout.
       - uses: actions/checkout@v4
         with:
           repository: blazetrailsdev/trails
@@ -257,8 +257,8 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # NODE_ENV=test: see "Prepare the hub schema" on the test job.
-      - run: NODE_ENV=test pnpm db:migrate
+      # TRAILS_ENV=test: see "Prepare the hub schema" on the test job.
+      - run: TRAILS_ENV=test pnpm db:migrate
       # Builds the views itself.
       - run: ./scripts/dashboard-e2e.sh
 
@@ -310,19 +310,19 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: NODE_ENV=test pnpm exec trails-tsc-views build --views app/views
+      - run: TRAILS_ENV=test pnpm exec trails-tsc-views build --views app/views
       # No `--database hub` — see the note on the test job.
       - name: Prepare the hub schema
         env:
           HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
-          NODE_ENV: test
+          TRAILS_ENV: test
         run: pnpm db:migrate
       - name: The show pages still say what ringo said
-        run: NODE_ENV=test pnpm gate:snapshot
+        run: TRAILS_ENV=test pnpm gate:snapshot
       # Proves the gate still detects a difference, rather than passing because
       # it stopped looking.
       - name: The snapshot gate still goes red on a difference
-        run: NODE_ENV=test pnpm gate:snapshot --self-test
+        run: TRAILS_ENV=test pnpm gate:snapshot --self-test
 
   # THE GATE (RFC 0136). trailmap's ready queue is a rewrite of the CLI's
   # ranking functions, and the only thing that makes that safe is proving the
@@ -370,7 +370,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: NODE_ENV=test pnpm exec trails-tsc-views build --views app/views
+      - run: TRAILS_ENV=test pnpm exec trails-tsc-views build --views app/views
       - run: pnpm install --frozen-lockfile
         working-directory: tasks
       - name: Ingest the content tree into a database both sides can read
@@ -405,7 +405,7 @@ jobs:
       # HUB_DATABASE_URL, so the test `hub` takes no part in `trails db`
       # (config/database.ts) and `db:migrate` reaches the primary alone. With
       # one database there is no `db:migrate:primary`.
-      - run: NODE_ENV=test bin/trails db:migrate
+      - run: TRAILS_ENV=test bin/trails db:migrate
       - name: The live-database tests, against the ingested database
         env:
           TASKS_DATABASE: ${{ github.workspace }}/tmp/ci-tasks.db
@@ -437,7 +437,7 @@ jobs:
       - name: Prepare the hub schema
         env:
           HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
-          NODE_ENV: test
+          TRAILS_ENV: test
         run: pnpm db:migrate
       - name: /rfcs and /backlog == ringo's, per tab
         env:
@@ -507,19 +507,19 @@ jobs:
           go-version-file: vendor/ringo/go/.go-version
           cache: false
       - run: pnpm install --frozen-lockfile
-      - run: NODE_ENV=test pnpm exec trails-tsc-views build --views app/views
+      - run: TRAILS_ENV=test pnpm exec trails-tsc-views build --views app/views
       # No `--database hub` — see the note on the test job.
       - name: Prepare the hub schema
         env:
           HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
           # The test environment: development's primary is TASKS_DATABASE,
           # which `trails db` skips (`databaseTasks: false`, config/database.ts).
-          NODE_ENV: test
+          TRAILS_ENV: test
         run: pnpm db:migrate
       - name: /graphs/parity/data == ringo's /spawnloop/parity, point for point
-        run: NODE_ENV=test pnpm gate:parity --fixture
+        run: TRAILS_ENV=test pnpm gate:parity --fixture
       - name: The parity gate still goes red on a changed point
-        run: NODE_ENV=test pnpm gate:parity --fixture --self-test
+        run: TRAILS_ENV=test pnpm gate:parity --fixture --self-test
 
   # Ported from trails' Preflight job. CLAUDE.md forbids Claude attribution in
   # commits and PR bodies here exactly as it does there, and trailmap is a
