@@ -711,7 +711,7 @@ relays to ringo shows up as one handle per connection.
 
 ## Gotchas found the hard way
 
-- **Node 26 or newer.** The vendored `@blazetrails/*` packages declare
+- **Node 26 or newer.** The `@blazetrails/*` packages declare
   `engines.node >=26` (trails#9804), and `@blazetrails/rack` uses duplicate
   named capture groups (ES2025); on Node 20 and 22 it throws a `SyntaxError`
   at import. Node 26 no longer bundles corepack, so the Dockerfile installs

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Node 26 or newer, always: the vendored @blazetrails/* packages declare
+# Node 26 or newer, always: the @blazetrails/* packages declare
 # engines.node >=26, and @blazetrails/rack uses duplicate named capture
 # groups (ES2025), which throw a SyntaxError at import time on Node 20 and 22.
 # Keep this in step with .node-version and the CI workflow.
