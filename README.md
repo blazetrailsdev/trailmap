@@ -88,7 +88,7 @@ neither: `pnpm` is not in the runtime image and the hub is migrated by a dokku
 
 ```sh
 export HUB_TEST_DATABASE_URL="$(scripts/dev-hub-url.sh --test)"
-HUB_DATABASE_URL="$HUB_TEST_DATABASE_URL" NODE_ENV=test pnpm db:migrate
+HUB_DATABASE_URL="$HUB_TEST_DATABASE_URL" TRAILS_ENV=test pnpm db:migrate
 ```
 
 The suite never reads `HUB_DATABASE_URL` or the other serving variables

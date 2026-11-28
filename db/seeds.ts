@@ -3,6 +3,7 @@ import { Repository } from "../app/models/repository.ts";
 import { RepositorySetting } from "../app/models/repository-setting.ts";
 import { RepositoryCollaborator } from "../app/models/repository-collaborator.ts";
 import { CONTENT_REPO } from "../app/models/concerns/repo-scope.ts";
+import { Trails } from "@blazetrails/trailties";
 import { env } from "@blazetrails/ruby-compat";
 import { hasHubDatabase } from "../config/database.ts";
 import { ParityDay } from "../app/models/parity-day.ts";
@@ -24,7 +25,7 @@ import { ParityDay } from "../app/models/parity-day.ts";
  * and then undo it with `Hub.removeConnection()` so the command could exit.
  * Re-adding either is a regression, not a fix.
  *
- * The `hasHubDatabase()` guard is reachable only under `NODE_ENV=test` now:
+ * The `hasHubDatabase()` guard is reachable only under `TRAILS_ENV=test` now:
  * everywhere else the hub initializer THROWS when `HUB_DATABASE_URL` is
  * unset, so the application never boots and this file is never imported. It
  * stays because the test environment legitimately has no hub.
@@ -109,7 +110,7 @@ if (!hasHubDatabase()) {
   // table, so `/graphs/parity` draws its charts on a box with no STATS_DB.
   // `rails/db/seeds.rb` writes the same rows. Story:
   // seed-parity-days-so-the-parity-chart-can-be-shot.
-  if ((env.NODE_ENV ?? "development") === "development" && (await ParityDay.count()) === 0) {
+  if (Trails.env.isDevelopment() && (await ParityDay.count()) === 0) {
     const packages = ["activerecord", "actionpack", "activesupport"];
     const rows: Record<string, unknown>[] = [];
     const now = new Date();

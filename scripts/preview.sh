@@ -326,6 +326,7 @@ up() {
   for m in "${mounts[@]}"; do dokku storage:mount "$app" "$m"; done
 
   local -a env=(
+    TRAILS_ENV=production
     NODE_ENV=production
     TRAILMAP_PREVIEW="$pr"
     TASKS_DIR="$tasksDir"

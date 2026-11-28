@@ -11,7 +11,7 @@ LABEL fly_launch_runtime="Trails"
 
 WORKDIR /app
 
-ENV NODE_ENV="production"
+ENV TRAILS_ENV="production" NODE_ENV="production"
 
 FROM base AS build
 

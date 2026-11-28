@@ -47,19 +47,19 @@ TASKS_DATABASE="${TASKS_DATABASE:-$work/views-build.db}" pnpm exec trails-tsc-vi
 # also why there is no `--database` flag here — see the note on the CI step
 # that prepares the hub schema.
 trails="bin/trails"
-NODE_ENV=test "$trails" db:create
-NODE_ENV=test "$trails" db:migrate
+TRAILS_ENV=test "$trails" db:create
+TRAILS_ENV=test "$trails" db:migrate
 export TASKS_DATABASE="$work/storage/test.sqlite3"
 export TASKS_DIR="$work"
 
-# PRODUCTION, laid out as the image is. The Dockerfile sets NODE_ENV=production
+# PRODUCTION, laid out as the image is. The Dockerfile sets TRAILS_ENV=production
 # and the framework honours it, so a boot in the default environment tests a
 # server the deployment never runs: development mounts Vite, which serves
 # `app/assets` off disk and needs no secret. Two deploys failed behind a green
 # run of this script for exactly that reason — a container that hung on every
 # request for want of `secret_key_base`, then pages with no stylesheet.
 ./scripts/build-assets.sh
-export NODE_ENV=production
+export TRAILS_ENV=production NODE_ENV=production
 export SECRET_KEY_BASE=smoke-boot-not-a-secret
 
 port=8123

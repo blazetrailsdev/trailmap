@@ -190,7 +190,9 @@ export function tasksEntry(
  * The resolved `primary` of an environment, as the framework reads it — for
  * scripts that connect without booting the application.
  */
-export function primaryDatabaseConfig(envName = env.NODE_ENV ?? "development"): HashConfig {
+export function primaryDatabaseConfig(
+  envName = env.TRAILS_ENV ?? env.RACK_ENV ?? "development",
+): HashConfig {
   const config = new DatabaseConfigurations(databaseConfigurations).configsFor({
     envName,
     name: "primary",

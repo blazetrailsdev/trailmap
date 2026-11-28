@@ -50,7 +50,7 @@ dokku ps:set trailmap restart-policy on-failure:10
 # framework's `active_record.initialize_database` connects at boot, so a
 # container without TASKS_DATABASE will not start (it once came up and 500ed
 # with `ConnectionNotDefined` on every page that reads a row).
-dokku config:set --no-restart trailmap NODE_ENV=production \
+dokku config:set --no-restart trailmap TRAILS_ENV=production NODE_ENV=production \
   TASKS_DATABASE=/home/dean/github/blazetrailsdev/tasks/.git/tasks.db \
   TASKS_DIR=/home/dean/github/blazetrailsdev/tasks
 
