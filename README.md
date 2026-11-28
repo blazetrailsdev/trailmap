@@ -22,14 +22,14 @@ boots end to end. No models, no API, no pages yet.
 trailmap serves from two databases, and they are not the same kind. A third,
 which it only reads, fills one chart:
 
-|               | `primary`                               | `hub`                          | stats                                                                            |
-| ------------- | --------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
-| Adapter       | sqlite3                                 | **postgresql**                 | node-sqlite, `readonly: true`                                                    |
-| Holds         | the task domain — RFCs, stories, events | the owner/repository hierarchy | the trails port's comparison runs, which `/graphs/parity` is projected from      |
-| Pointed at by | `TASKS_DATABASE` (the CLI's live file)  | `HUB_DATABASE_URL`             | `STATS_DB` — **optional**; unset, the page says so                               |
-| Migrations    | `db/migrate`                            | `db/hub-migrate`               | none here — `db/stats-sync-migrate`, applied to `STATS_SYNC_DB`, owns its schema |
-| Schema        | `db/schema.ts`                          | `db/hub_schema.ts`             | none                                                                             |
-| Base class    | `ActiveRecord::Base`                    | `Hub` (`app/models/hub.ts`)    | `Stats` (`app/models/stats.ts`)                                                  |
+| | `primary` | `hub` | stats |
+| --- | --- | --- | --- |
+| Adapter | sqlite3 | **postgresql** | node-sqlite, `readonly: true` |
+| Holds | the task domain — RFCs, stories, events | the owner/repository hierarchy | the trails port's comparison runs, which `/graphs/parity` is projected from |
+| Pointed at by | `TASKS_DATABASE` (the CLI's live file) | `HUB_DATABASE_URL` | `STATS_DB` — **optional**; unset, the page says so |
+| Migrations | `db/migrate` | `db/hub-migrate` | none here — `db/stats-sync-migrate`, applied to `STATS_SYNC_DB`, owns its schema |
+| Schema | `db/schema.ts` | `db/hub_schema.ts` | none |
+| Base class | `ActiveRecord::Base` | `Hub` (`app/models/hub.ts`) | `Stats` (`app/models/stats.ts`) |
 
 `STATS_DB` names a file on the host, so the deployed app needs its DIRECTORY
 bind-mounted, writable, as well as the variable set: a read-only connection to
@@ -102,9 +102,10 @@ exercises what npm users get: each package's `files`, its exact internal pins,
 and its optional peers (`@blazetrails/sqlite3`, `@blazetrails/pg`).
 
 `.github/workflows/canary.yml` is run by hand after a trails publish. It
-installs the newest `@blazetrails/trailties@alpha` version into a copy of trailmap, then runs
-`pnpm build`, `pnpm test` and `pnpm smoke`; a red run names the trails version
-that broke it. A bump is its own PR, once the canary is green for that version.
+installs the newest `@blazetrails/trailties@alpha` version into a copy of
+trailmap, then runs `pnpm build`, `pnpm test` and `pnpm smoke`; a red run names
+the trails version that broke it. A bump is its own PR, once the canary is
+green for that version.
 
 ## A framework bug gets fixed in trails, never patched here
 
@@ -275,7 +276,7 @@ ringo's server computes. `pnpm gate:pages --self-test=bar` builds trailmap's
 bar from the wrong RFC status and expects red; it needs no trailmap server.
 
 It fetches every page on both sides and takes about ten minutes over the live
-database. `RINGO_BASE` has to reach ringo _without_ SSO — `ringo.deanoftech.com` answers
+database. `RINGO_BASE` has to reach ringo *without* SSO — `ringo.deanoftech.com` answers
 a 302 to the login page, which the gate reports as such rather than diffing a
 redirect. Every difference lands in `tmp/page-equivalence-problems.txt`; the
 terminal shows the first twenty.
@@ -306,9 +307,9 @@ pnpm gate:snapshot --self-test  # proves it still goes red on a difference
 
 Two files are written by one pass and belong together:
 
-| file                                         | what it holds                             |
-| -------------------------------------------- | ----------------------------------------- |
-| `test/fixtures/ringo-show-pages.ndjson`      | ringo's facts, one page per line          |
+| file | what it holds |
+| --- | --- |
+| `test/fixtures/ringo-show-pages.ndjson` | ringo's facts, one page per line |
 | `test/fixtures/ringo-show-pages-rows.ndjson` | the database rows they were rendered from |
 
 The rows travel with the facts because this database never stands still. It is
@@ -464,3 +465,4 @@ TASKS_DIR=~/github/blazetrailsdev/tasks pnpm dev
 when the two are not arranged that way. When neither names a checkout the
 pages still render their metadata and say, in place of the document, why they
 could not read it.
+

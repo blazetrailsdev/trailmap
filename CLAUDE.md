@@ -94,7 +94,7 @@ the owner/repository hierarchy is **Postgres**, under `Hub`
   the reviewable diff, and embed them with
   `<img src=".../blob/screenshots/pr-<N>/<file>.png?raw=1" width="100%">`.
 - **A phone-width shot needs a real 390px viewport.** `google-chrome
---headless=new --window-size=390,...` lays the page out wider and crops the
+  --headless=new --window-size=390,...` lays the page out wider and crops the
   capture, so every page looks like it overflows (#36's 390px shot is that
   artefact). Use the playwright build:
   `~/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell --no-sandbox --window-size=390,1400 --screenshot=<file>.png <url>`.
@@ -146,8 +146,8 @@ and Rails:
   - Active Record encrypted columns: either side decrypts a value the other
     encrypted, given the same keys.
   - MessagePack payloads.
-    Add each of these to both apps together, with a test on each side that reads
-    the other side's output.
+  Add each of these to both apps together, with a test on each side that reads
+  the other side's output.
 - **Idiomatic on each side.** `rails/` is written the way Rails wants it
   written. Wherever the trails app has to differ, record it in
   `rails/DEVIATIONS.md`. Each entry there is a trails story waiting to be filed,
