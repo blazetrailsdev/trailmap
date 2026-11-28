@@ -682,8 +682,9 @@ database is `/up/ready`'s job.
 
 **The diagnostic, BEFORE any restart.** The image sets
 `NODE_OPTIONS=--report-on-signal --report-filename=stdout --report-exclude-env`,
-so `SIGUSR2` makes a node process print a report (JavaScript stack, every active libuv handle and
-request, heap) to its stdout while JavaScript is spinning on the main thread. A loop
+so `SIGUSR2` makes a node process print a report (JavaScript stack, every
+active libuv handle and request, heap) to its stdout while JavaScript is
+spinning on the main thread. A loop
 stuck inside one synchronous native call (an `execSync`, say) prints nothing
 until that call returns: the stack is taken by an isolate interrupt, which only
 runs between JavaScript instructions. If no report appears, that absence is the
