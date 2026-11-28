@@ -1,4 +1,5 @@
 import { DatabaseConfigurations, type HashConfig } from "@blazetrails/activerecord";
+import { Trails } from "@blazetrails/trailties";
 import { env, getFs } from "@blazetrails/ruby-compat";
 import { writeProtocol } from "./write-protocol.ts";
 
@@ -191,7 +192,7 @@ export function tasksEntry(
  * scripts that connect without booting the application.
  */
 export function primaryDatabaseConfig(
-  envName = env.TRAILS_ENV ?? env.RACK_ENV ?? "development",
+  envName = String(Trails.env),
 ): HashConfig {
   const config = new DatabaseConfigurations(databaseConfigurations).configsFor({
     envName,
