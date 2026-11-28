@@ -681,9 +681,10 @@ monitor measures the listener and the event loop and nothing else; a dead
 database is `/up/ready`'s job.
 
 **The diagnostic, BEFORE any restart.** The image sets
-`NODE_OPTIONS=--report-on-signal --report-filename=stdout`, so `SIGUSR2` makes
-a node process print a report (JavaScript stack, every active libuv handle and
-request, heap) to its stdout while JavaScript is spinning on the main thread. A loop
+`NODE_OPTIONS=--report-on-signal --report-filename=stdout --report-exclude-env`,
+so `SIGUSR2` makes a node process print a report (JavaScript stack, every
+active libuv handle and request, heap) to its stdout while JavaScript is
+spinning on the main thread. A loop
 stuck inside one synchronous native call (an `execSync`, say) prints nothing
 until that call returns: the stack is taken by an isolate interrupt, which only
 runs between JavaScript instructions. If no report appears, that absence is the
@@ -701,8 +702,10 @@ the server.
 
 The setting is image-wide, so it also reaches the worker and release
 containers. If you ever `dokku config:set NODE_OPTIONS=...` (a heap cap, say),
-APPEND to `--report-on-signal --report-filename=stdout`. Replacing it disables
-the report without any error.
+APPEND to `--report-on-signal --report-filename=stdout --report-exclude-env`.
+Replacing it disables the report without any error, and dropping
+`--report-exclude-env` puts every secret in the app's environment into
+`dokku logs` the next time someone sends `SIGUSR2`.
 
 The report lands in `dokku logs` and survives into the saved file, which the
 restart (`dokku ps:restart trailmap web`) does not touch. Its `javascriptStack`
