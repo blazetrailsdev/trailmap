@@ -858,7 +858,7 @@ overlapping E2E run.
 trailmap installs `@blazetrails/*` from npm, so it no longer tracks trails
 `main`: `pnpm trails:track` and the tarball vendoring it drove are gone, and the
 host crontab's `scripts/track-trails-cron.sh` entry is removed with them. The
-`canary` workflow (`.github/workflows/canary.yml`) tries each new `alpha`
+`canary` workflow (`.github/workflows/canary.yml`), run by hand, tries a new `alpha`
 instead.
 
 ## Preview apps

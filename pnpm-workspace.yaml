@@ -2,8 +2,7 @@ allowBuilds:
   better-sqlite3: true
   esbuild: true
 
-
-# pnpm 11 defaults minimumReleaseAge on, and trailmap installs each new
+# pnpm 11 defaults minimumReleaseAge on, and trailmap may install a new
 # @blazetrails alpha the day it is published (the canary workflow). Only this
 # scope is exempt.
 minimumReleaseAgeExclude:

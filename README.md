@@ -101,8 +101,8 @@ trailmap is the first consumer of published trails. `package.json` pins every
 exercises what npm users get: each package's `files`, its exact internal pins,
 and its optional peers (`@blazetrails/sqlite3`, `@blazetrails/pg`).
 
-`.github/workflows/canary.yml` runs daily and on demand. It installs the
-newest `@blazetrails/trails@alpha` into a copy of trailmap, then runs
+`.github/workflows/canary.yml` is run by hand after a trails publish. It
+installs the newest `@blazetrails/trailties@alpha` version into a copy of trailmap, then runs
 `pnpm build`, `pnpm test` and `pnpm smoke`; a red run names the trails version
 that broke it. A bump is its own PR, once the canary is green for that version.
 

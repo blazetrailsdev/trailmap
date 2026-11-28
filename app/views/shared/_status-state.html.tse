@@ -23,17 +23,16 @@
   actionview — and then puts every statement from the template INSIDE the
   `export default function render(...)` that `virtualizeTseWithDeltas` opens,
   so there is nowhere for a shared `normalizeStatus` to be pulled in from.
-  The compiler is a committed tarball, so that is checkable from a fresh
-  clone with no extra checkout and no `node_modules`:
+  That is checkable in the installed compiler after `pnpm install`:
 
-      tar -xzOf vendor/blazetrails-trails-tsc-0.1.0.tgz \
-        package/dist/plugins/tse.js | grep -n "buildPreamble\|function render"
+      grep -n "buildPreamble\|function render" \
+        node_modules/@blazetrails/trails-tsc/dist/plugins/tse.js
 
   Anchored to the two function names rather than line numbers, which drift.
   `app/helpers` is the
-  other candidate and is inert in the vendored trails, per the note in
+  other candidate and is inert in the installed trails, per the note in
   `_status-badge`. Both partials collapse onto one `ApplicationHelper` call
-  with the pin bump that fixes that (`bump-vendored-trails-for-testcase-request-bodies`);
+  with the version bump that fixes that (`bump-vendored-trails-for-testcase-request-bodies`);
   until then, two copies of one expression is the cost of not duplicating the
   hue table, which is the part #7 actually cares about and which lives only in
   the stylesheet.

@@ -10,7 +10,7 @@ The rules that most often bite an outside contributor or reviewer:
   application built on trails; if a fix would be identical in any other trails
   app, or reaches into framework internals, it belongs in
   `blazetrailsdev/trails` with a test there — not in `app/`, `config/`, or a
-  `lib/` shim. See `CLAUDE.md` for the reproduce → fix → re-vendor loop.
+  `lib/` shim. See `CLAUDE.md` for the reproduce → fix → bump loop.
 - **`@blazetrails/*` is installed from npm** at the pinned `alpha` version,
   which can lag trails `main` — read `node_modules/@blazetrails/*` when
   behaviour surprises you.

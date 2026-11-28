@@ -108,8 +108,8 @@ jobs:
           NODE_ENV: test
         run: pnpm db:migrate
       # trails' start-worktree.sh, for test/scripts/start-worktree-interface.test.ts:
-      # ringo calls both copies with one interface. main, not TRAILS_PIN, because
-      # ringo runs trails' main checkout.
+      # ringo calls both copies with one interface. main, not the installed alpha,
+      # because ringo runs trails' main checkout.
       - uses: actions/checkout@v4
         with:
           repository: blazetrailsdev/trails
