@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Cold-start boot smoke test.
 #
-# Installs a clean checkout from the vendored tarballs, boots the server and
+# Installs a clean checkout from the registry, boots the server and
 # requests a page. Three of the six framework bugs the boot probe found only
 # appear from a cold start — a warm node_modules hides them — so this runs
 # against `git archive` output, never the working tree's node_modules.
@@ -18,15 +18,6 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 git -C "$repo" archive HEAD | tar -x -C "$work"
-
-# Every @blazetrails/* dependency must resolve to a vendored tarball. If one
-# ever resolves to a registry URL the install stops being deterministic — and
-# in CI, where the framework is unpublished, it simply cannot be fetched.
-if grep -n "@blazetrails" "$work/pnpm-lock.yaml" | grep -qE "registry|https?://"; then
-  echo "smoke-boot: a @blazetrails dependency resolves to a registry" >&2
-  grep -n "@blazetrails" "$work/pnpm-lock.yaml" | grep -E "registry|https?://" >&2
-  exit 1
-fi
 
 cd "$work"
 pnpm install --frozen-lockfile

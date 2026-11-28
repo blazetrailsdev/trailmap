@@ -13,7 +13,7 @@ Design and rollout live in [RFC 0136](https://ringo.deanoftech.com/rfc/0136-trai
 
 ## Status
 
-Skeleton only. `trails new` output plus vendored framework packages, with a
+Skeleton only. `trails new` output plus the published framework packages, with a
 root route rendering through a `.tse` template — enough to prove the stack
 boots end to end. No models, no API, no pages yet.
 
@@ -22,14 +22,14 @@ boots end to end. No models, no API, no pages yet.
 trailmap serves from two databases, and they are not the same kind. A third,
 which it only reads, fills one chart:
 
-| | `primary` | `hub` | stats |
-| --- | --- | --- | --- |
-| Adapter | sqlite3 | **postgresql** | node-sqlite, `readonly: true` |
-| Holds | the task domain — RFCs, stories, events | the owner/repository hierarchy | the trails port's comparison runs, which `/graphs/parity` is projected from |
-| Pointed at by | `TASKS_DATABASE` (the CLI's live file) | `HUB_DATABASE_URL` | `STATS_DB` — **optional**; unset, the page says so |
-| Migrations | `db/migrate` | `db/hub-migrate` | none here — `db/stats-sync-migrate`, applied to `STATS_SYNC_DB`, owns its schema |
-| Schema | `db/schema.ts` | `db/hub_schema.ts` | none |
-| Base class | `ActiveRecord::Base` | `Hub` (`app/models/hub.ts`) | `Stats` (`app/models/stats.ts`) |
+|               | `primary`                               | `hub`                          | stats                                                                            |
+| ------------- | --------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
+| Adapter       | sqlite3                                 | **postgresql**                 | node-sqlite, `readonly: true`                                                    |
+| Holds         | the task domain — RFCs, stories, events | the owner/repository hierarchy | the trails port's comparison runs, which `/graphs/parity` is projected from      |
+| Pointed at by | `TASKS_DATABASE` (the CLI's live file)  | `HUB_DATABASE_URL`             | `STATS_DB` — **optional**; unset, the page says so                               |
+| Migrations    | `db/migrate`                            | `db/hub-migrate`               | none here — `db/stats-sync-migrate`, applied to `STATS_SYNC_DB`, owns its schema |
+| Schema        | `db/schema.ts`                          | `db/hub_schema.ts`             | none                                                                             |
+| Base class    | `ActiveRecord::Base`                    | `Hub` (`app/models/hub.ts`)    | `Stats` (`app/models/stats.ts`)                                                  |
 
 `STATS_DB` names a file on the host, so the deployed app needs its DIRECTORY
 bind-mounted, writable, as well as the variable set: a read-only connection to
@@ -94,35 +94,24 @@ HUB_DATABASE_URL="$HUB_TEST_DATABASE_URL" NODE_ENV=test pnpm db:migrate
 The suite never reads `HUB_DATABASE_URL` or the other serving variables
 below (`test/support/test-env.ts`), so one shell can serve and test.
 
-## Framework packages are vendored, not installed
+## Framework packages are installed from npm
 
-`@blazetrails/*` is unpublished, so trailmap consumes immutable tarballs packed
-from a pinned trails commit:
+trailmap is the first consumer of published trails. `package.json` pins every
+`@blazetrails/*` package it imports to one exact `alpha` version, so an install
+exercises what npm users get: each package's `files`, its exact internal pins,
+and its optional peers (`@blazetrails/sqlite3`, `@blazetrails/pg`).
 
-- `vendor/*.tgz` — the packed packages, committed.
-- `vendor/TRAILS_PIN` — the trails commit they were built from.
-- `pnpm-workspace.yaml` — `overrides` mapping every `@blazetrails/*` to its
-  tarball. These live here rather than in `package.json` because pnpm 11 only
-  honours the workspace-file form.
-
-Bumping the framework is deliberate and revertible:
-
-```sh
-./scripts/vendor-trails.sh ~/github/blazetrailsdev/trails HEAD
-pnpm install
-```
-
-The script builds what it packs: a throwaway detached worktree at the ref gets
-`pnpm install --frozen-lockfile` and `pnpm build`, is packed, and is removed.
-The ref need not be checked out, and the checkout's `dist/` and uncommitted
-changes never reach a tarball.
+`.github/workflows/canary.yml` runs daily and on demand. It installs the
+newest `@blazetrails/trails@alpha` into a copy of trailmap, then runs
+`pnpm build`, `pnpm test` and `pnpm smoke`; a red run names the trails version
+that broke it. A bump is its own PR, once the canary is green for that version.
 
 ## A framework bug gets fixed in trails, never patched here
 
 trailmap is the first real application built on trails, so it finds framework
 bugs — that is part of what it is for. **Every one of them gets fixed in
 trails.** Do not work around it in `app/`, `config/`, or a `lib/` shim, and do
-not edit anything under `vendor/`.
+not patch anything under `node_modules/@blazetrails/`.
 
 The reason is not purity. A workaround here fixes it for exactly one
 application and leaves it broken for the next one, for the generator's own
@@ -138,7 +127,7 @@ The loop:
    makes the fix reviewable and what stops the bug coming back.
 2. **Fix it in trails and get that PR merged.** Deviations from Rails are cited
    at the call site there; trails' CLAUDE.md has the rules.
-3. **Re-vendor**, with `scripts/vendor-trails.sh`, in a PR of its own so the
+3. **Bump the version**, once the fix is published, in a PR of its own so the
    bump is revertible on its own.
 4. **Delete the workaround**, if a temporary one was ever agreed.
 
@@ -244,7 +233,7 @@ Two consequences worth keeping in mind:
 Every PR runs typecheck, the test suite, the recorded show-page snapshot
 (`pnpm gate:snapshot`, below), and a cold-start boot smoke test
 (`scripts/smoke-boot.sh`): a clean `git archive` checkout, installed from the
-vendored tarballs with no registry access, booted, and asked for a page.
+lockfile's pinned registry versions, booted, and asked for a page.
 
 It also runs **the gate** (`pnpm gate`, `scripts/equivalence.ts`): trailmap's
 ready queue is a rewrite of the CLI's ranking functions, so every PR proves the
@@ -286,7 +275,7 @@ ringo's server computes. `pnpm gate:pages --self-test=bar` builds trailmap's
 bar from the wrong RFC status and expects red; it needs no trailmap server.
 
 It fetches every page on both sides and takes about ten minutes over the live
-database. `RINGO_BASE` has to reach ringo *without* SSO — `ringo.deanoftech.com` answers
+database. `RINGO_BASE` has to reach ringo _without_ SSO — `ringo.deanoftech.com` answers
 a 302 to the login page, which the gate reports as such rather than diffing a
 redirect. Every difference lands in `tmp/page-equivalence-problems.txt`; the
 terminal shows the first twenty.
@@ -317,9 +306,9 @@ pnpm gate:snapshot --self-test  # proves it still goes red on a difference
 
 Two files are written by one pass and belong together:
 
-| file | what it holds |
-| --- | --- |
-| `test/fixtures/ringo-show-pages.ndjson` | ringo's facts, one page per line |
+| file                                         | what it holds                             |
+| -------------------------------------------- | ----------------------------------------- |
+| `test/fixtures/ringo-show-pages.ndjson`      | ringo's facts, one page per line          |
 | `test/fixtures/ringo-show-pages-rows.ndjson` | the database rows they were rendered from |
 
 The rows travel with the facts because this database never stands still. It is
@@ -475,4 +464,3 @@ TASKS_DIR=~/github/blazetrailsdev/tasks pnpm dev
 when the two are not arranged that way. When neither names a checkout the
 pages still render their metadata and say, in place of the document, why they
 could not read it.
-

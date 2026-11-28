@@ -26,9 +26,9 @@ import { PackageFileStat } from "../app/models/package-file-stat.ts";
 import { PackageTagSite } from "../app/models/package-tag-site.ts";
 import { PackageSkipTest } from "../app/models/package-skip-test.ts";
 import { ClaudeMdSection } from "../app/models/claude-md-section.ts";
-import { Attachment } from "@blazetrails/activestorage/attachment";
-import { Blob } from "@blazetrails/activestorage/blob";
-import { VariantRecord } from "@blazetrails/activestorage/variant-record";
+import { Attachment } from "@blazetrails/activestorage/app/models/active-storage/attachment";
+import { Blob } from "@blazetrails/activestorage/app/models/active-storage/blob";
+import { VariantRecord } from "@blazetrails/activestorage/app/models/active-storage/variant-record";
 
 /**
  * The models on each of trailmap's three connections, and the schema warm-up

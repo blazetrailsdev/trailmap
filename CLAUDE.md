@@ -1,15 +1,14 @@
 # trailmap — Claude guide
 
-The task domain as a trails application. Project overview, the vendoring
-mechanics, deployment and CI live in [README.md](README.md).
+The task domain as a trails application. Project overview, how the
+framework is installed, deployment and CI live in [README.md](README.md).
 
 ## A framework bug gets fixed in trails, never patched here
 
 trailmap is the first real application built on trails, so it finds framework
 bugs. **Every one of them gets fixed in trails**, in the package that owns the
 behaviour, with a test there. Do not work around it in `app/`, `config/`, or a
-`lib/` shim, and never edit anything under `vendor/` — those tarballs are build
-output.
+`lib/` shim, and never patch anything under `node_modules/@blazetrails/`.
 
 A workaround here fixes it for one application and leaves it broken for the
 next one, for `trails new`'s own output, and for the framework's test suite,
@@ -18,7 +17,7 @@ permanent by default: it keeps working after trails is fixed, so nothing
 prompts anyone to remove it.
 
 README's "A framework bug gets fixed in trails, never patched here" has the
-loop — reproduce in trails, fix and merge there, re-vendor in its own PR,
+loop — reproduce in trails, fix and merge there, bump the version in its own PR,
 delete the workaround. If that blocks the story you claimed, say so and stop.
 An agreed temporary workaround, commented, with a story tracking its removal,
 is a decision to take deliberately and never a default.
@@ -28,22 +27,19 @@ other trails app, or if it reaches into framework internals — a `private` fiel
 a monkey-patch, a re-implementation of something a `@blazetrails/*` package
 already exports — it is a framework bug wearing an application costume.
 
-## Framework packages are vendored
+## Framework packages are installed from npm
 
-`@blazetrails/*` resolves to committed tarballs, not a registry — see README.
-Two things follow:
+`@blazetrails/*` installs from the registry at one exact `alpha` version (see
+README). Two things follow:
 
-- **The vendored build is a snapshot of `vendor/TRAILS_PIN`, and it can be far
-  behind trails `main`.** `scripts/vendor-trails.sh` builds the tarballs from
-  the ref in a throwaway worktree, so the pin names what was built, for every
-  bump since that change. Tarballs vendored before it were packed from a
-  checkout's `dist/` and could differ (#9's `ActionView::Base.withHelpers`).
-  When behaviour surprises you, read the code in
-  `node_modules/@blazetrails/*`, which is what actually runs, and compare it
-  against the trails checkout before concluding anything about "the framework".
-- **Bumping is its own PR.** `scripts/vendor-trails.sh <trails-checkout> <ref>`
-  then `pnpm install`, and nothing else in the same change, so a regression can
-  be reverted without taking application work with it.
+- **The installed build can be behind trails `main`.** When behaviour surprises
+  you, read the code in `node_modules/@blazetrails/*`, which is what actually
+  runs, and compare it against the trails checkout before concluding anything
+  about "the framework".
+- **Bumping is its own PR.** Change every `@blazetrails/*` version in
+  `package.json` to the new alpha, `pnpm install`, and nothing else in the same
+  change, so a regression can be reverted without taking application work with
+  it. The `canary` workflow tries each new alpha first.
 
 ## Two databases, and which one a model is on
 
@@ -98,7 +94,7 @@ the owner/repository hierarchy is **Postgres**, under `Hub`
   the reviewable diff, and embed them with
   `<img src=".../blob/screenshots/pr-<N>/<file>.png?raw=1" width="100%">`.
 - **A phone-width shot needs a real 390px viewport.** `google-chrome
-  --headless=new --window-size=390,...` lays the page out wider and crops the
+--headless=new --window-size=390,...` lays the page out wider and crops the
   capture, so every page looks like it overflows (#36's 390px shot is that
   artefact). Use the playwright build:
   `~/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell --no-sandbox --window-size=390,1400 --screenshot=<file>.png <url>`.
@@ -150,8 +146,8 @@ and Rails:
   - Active Record encrypted columns: either side decrypts a value the other
     encrypted, given the same keys.
   - MessagePack payloads.
-  Add each of these to both apps together, with a test on each side that reads
-  the other side's output.
+    Add each of these to both apps together, with a test on each side that reads
+    the other side's output.
 - **Idiomatic on each side.** `rails/` is written the way Rails wants it
   written. Wherever the trails app has to differ, record it in
   `rails/DEVIATIONS.md`. Each entry there is a trails story waiting to be filed,

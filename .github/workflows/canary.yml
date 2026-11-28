@@ -1,0 +1,84 @@
+name: Canary
+
+# trailmap against the newest @blazetrails alpha, before anyone bumps it here.
+# trails' release process checks this workflow before promoting a prerelease
+# to `latest` (trails README, "Versioning and releases").
+on:
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "@blazetrails version to try (default: the alpha dist-tag)"
+        required: false
+  repository_dispatch:
+    types: [trails-published]
+
+jobs:
+  canary:
+    name: trails ${{ inputs.version || github.event.client_payload.version || 'alpha' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trailmap_hub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TASKS_DATABASE: ${{ github.workspace }}/tmp/canary.db
+      HUB_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+      HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Resolve the trails version
+        id: trails
+        env:
+          REQUESTED: ${{ inputs.version || github.event.client_payload.version }}
+        run: |
+          version="${REQUESTED:-$(npm view @blazetrails/trails@alpha version)}"
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+          echo "## trails $version" >>"$GITHUB_STEP_SUMMARY"
+      - name: Install trails ${{ steps.trails.outputs.version }}
+        env:
+          VERSION: ${{ steps.trails.outputs.version }}
+        run: |
+          node -e '
+          const fs = require("fs"), pkg = JSON.parse(fs.readFileSync("package.json"));
+          for (const deps of [pkg.dependencies, pkg.devDependencies])
+            for (const name of Object.keys(deps))
+              if (name.startsWith("@blazetrails/")) deps[name] = process.env.VERSION;
+          fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+          '
+          pnpm install --no-frozen-lockfile
+          mkdir -p tmp
+      - run: pnpm exec trails-tsc-views build --views app/views
+      - run: pnpm build --noEmit
+      - name: Prepare the hub schema
+        env:
+          HUB_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/trailmap_hub_test
+          NODE_ENV: test
+        run: pnpm db:migrate
+      - run: pnpm test
+      # smoke-boot installs from `git archive HEAD`, so the bump is committed
+      # locally first; nothing is pushed.
+      - name: pnpm smoke
+        run: |
+          git -c user.name=canary -c user.email=canary@localhost commit -qam "canary: trails ${{ steps.trails.outputs.version }}"
+          pnpm smoke
+      - name: Name the version that broke it
+        if: failure()
+        run: echo "::error title=trails canary::trailmap fails against @blazetrails ${{ steps.trails.outputs.version }}" | tee -a "$GITHUB_STEP_SUMMARY"

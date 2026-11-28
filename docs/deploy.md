@@ -3,10 +3,10 @@
 trailmap runs as a dokku app on the same box as ringo/btwhooks and the agent
 fleet. One container, one HTTP listener on `:8080`, two audiences:
 
-| Audience | Route | Auth |
-| --- | --- | --- |
-| The dashboard | `https://trailmap.deanoftech.com`, via dokku's nginx | SSO (authelia) |
-| The JSON API | `http://127.0.0.1:8080`, via nginx's loopback server block | none — unreachable off-box |
+| Audience      | Route                                                      | Auth                       |
+| ------------- | ---------------------------------------------------------- | -------------------------- |
+| The dashboard | `https://trailmap.deanoftech.com`, via dokku's nginx       | SSO (authelia)             |
+| The JSON API  | `http://127.0.0.1:8080`, via nginx's loopback server block | none — unreachable off-box |
 
 The API is refused on the public hostname twice over: nginx puts SSO in front
 of it, and `_requireLoopback`
@@ -108,12 +108,12 @@ connection answers `/up` green and 500s on the first page that reads a row.
 
 ## The hub database
 
-| | |
-| --- | --- |
+|         |                                                                |
+| ------- | -------------------------------------------------------------- |
 | Service | `dokku postgres:create trailmap-hub`, linked as `HUB_DATABASE` |
-| Schema | `db/hub-migrate/*`, dumped to `db/hub_schema.ts` |
-| Tables | `owners`, `repositories`, `repository_settings`, `settings` |
-| Backups | `dokku postgres:export trailmap-hub > hub.dump` |
+| Schema  | `db/hub-migrate/*`, dumped to `db/hub_schema.ts`               |
+| Tables  | `owners`, `repositories`, `repository_settings`, `settings`    |
+| Backups | `dokku postgres:export trailmap-hub > hub.dump`                |
 
 **Back it up.** Everything in the tasks database is reconstructible from the
 content tree in git (`tasks ingest`); nothing in the hub is. The repository
@@ -169,11 +169,11 @@ obvious recipe are wrong here, and each fails differently:
 - **`pnpm` is not in the runtime image.** The Dockerfile enables it with
   `corepack enable pnpm` in the BUILD stage only, and corepack's shims live
   outside `/app`, which is all the final stage copies. `dokku run trailmap
-  pnpm db:migrate` therefore hands `pnpm` to the image's `node` entrypoint as
+pnpm db:migrate` therefore hands `pnpm` to the image's `node` entrypoint as
   a script path and dies with `Cannot find module '/app/pnpm'`. Call the
   binary the way `CMD` does instead.
 - **The hub's hostname does not resolve on the host.** `dokku postgres:info
-  trailmap-hub --dsn` prints `@dokku-postgres-trailmap-hub:5432`, a name that
+trailmap-hub --dsn` prints `@dokku-postgres-trailmap-hub:5432`, a name that
   exists only on the docker network the service and the app share. A host
   checkout with that URL in its environment cannot connect at all. (For local
   work against the dev service, `dokku postgres:info <service> --internal-ip`
@@ -416,7 +416,7 @@ failure, so the script prints both and says when the image is unchanged.
 For eleven merged PRs the box served the first deploy's image while every later
 build was tagged `dokku/trailmap:latest` and thrown away. A before/after
 comparison cannot see that state — both reads return the same stale image and
-agree — so what the script asserts is that the running container's image *is*
+agree — so what the script asserts is that the running container's image _is_
 the one the tag points at:
 
 ```sh
@@ -554,11 +554,11 @@ the outline for the packing) and load records only for the rows they answer
 with. Measured on 2026-10-21 against a snapshot of the live database (13,698
 stories, 275 in the queue), warm, with the same rows answered:
 
-| path | stall |
-| --- | --- |
+| path                                          | stall      |
+| --------------------------------------------- | ---------- |
 | `rankingIndex` (every story a record), before | 0.73–0.94s |
-| `readyQueue`, after | 0.14–0.15s |
-| `bundle --max-loc 250`, after | 0.12–0.14s |
+| `readyQueue`, after                           | 0.14–0.15s |
+| `bundle --max-loc 250`, after                 | 0.12–0.14s |
 
 `pnpm gate` is byte-identical over the same snapshot.
 
@@ -716,7 +716,7 @@ relays to ringo shows up as one handle per connection.
   named capture groups (ES2025); on Node 20 and 22 it throws a `SyntaxError`
   at import. Node 26 no longer bundles corepack, so the Dockerfile installs
   it with `npm install -g corepack` first. `ARG
-  NODE_VERSION` in the `Dockerfile`, `.node-version` and CI all say the same
+NODE_VERSION` in the `Dockerfile`, `.node-version` and CI all say the same
   version.
 - **Run as uid 1000.** A commit written as root leaves root-owned objects in
   the bind-mounted tasks checkout that the host's agents cannot then rewrite.
@@ -853,15 +853,13 @@ difference had a cause:
 Not reproduced in those six runs: the `gh pr list` failure seen once in an
 overlapping E2E run.
 
-### trails tracking (tasks CLI)
+### trails tracking
 
-The host crontab runs the tasks repo's `scripts/track-trails-cron.sh` hourly at
-:17 (`scripts/track-trails-cron.sh --crontab` prints the entry). The wrapper runs
-`pnpm trails:track` through the login shell, and a failed run opens or comments on
-the "trails tracking is failing" issue in blazetrailsdev/tasks. After every run it
-writes `pnpm trails:status` to `trails-status.txt` beside `tasks.db`
-(`<tasks checkout>/.git/`, blazetrailsdev/tasks#328). trailmap does not read
-it.
+trailmap installs `@blazetrails/*` from npm, so it no longer tracks trails
+`main`: `pnpm trails:track` and the tarball vendoring it drove are gone, and the
+host crontab's `scripts/track-trails-cron.sh` entry is removed with them. The
+`canary` workflow (`.github/workflows/canary.yml`) tries each new `alpha`
+instead.
 
 ## Preview apps
 
@@ -891,13 +889,13 @@ Nothing in production can be written. Every database a preview opens is its
 own copy, so the PR's code is never trusted to behave, and the PR's code is
 the thing under review:
 
-| Data | In a preview |
-| --- | --- |
-| Hub (Postgres) | `trailmap-pr-<N>-hub`, a dokku postgres service cloned from `trailmap-hub` (`postgres:export \| postgres:import`) on the first deploy and whenever the PR's migrations change, and linked as `HUB_DATABASE` |
-| `tasks.db`, `stats.db`, `stats-sync.db` | `sqlite3 .backup` copies, taken when the hub is cloned, into `~/.trailmap-previews/pr-<N>/` |
-| Tasks checkout, audits | the production paths, mounted `:ro` |
-| `settings` | emptied in the clone after import. It is where an operator points trailmap at something outside itself (today `ringo_base`, production's fleet), and every outbound call the application makes resolves through it. It is emptied again after the release task, because a PR's migration may seed a row, and then checked; a preview still holding one is stopped. With no row and no `RINGO_BASE`, the fleet relay, deploys and sessions pages have nothing to call |
-| Mail, `GH_TOKEN` | not configured |
+| Data                                    | In a preview                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hub (Postgres)                          | `trailmap-pr-<N>-hub`, a dokku postgres service cloned from `trailmap-hub` (`postgres:export \| postgres:import`) on the first deploy and whenever the PR's migrations change, and linked as `HUB_DATABASE`                                                                                                                                                                                                                                                          |
+| `tasks.db`, `stats.db`, `stats-sync.db` | `sqlite3 .backup` copies, taken when the hub is cloned, into `~/.trailmap-previews/pr-<N>/`                                                                                                                                                                                                                                                                                                                                                                          |
+| Tasks checkout, audits                  | the production paths, mounted `:ro`                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `settings`                              | emptied in the clone after import. It is where an operator points trailmap at something outside itself (today `ringo_base`, production's fleet), and every outbound call the application makes resolves through it. It is emptied again after the release task, because a PR's migration may seed a row, and then checked; a preview still holding one is stopped. With no row and no `RINGO_BASE`, the fleet relay, deploys and sessions pages have nothing to call |
+| Mail, `GH_TOKEN`                        | not configured                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 **Migrations are tested, and data is kept otherwise.** Each copy is keyed on
 one migration directory's git tree id at the PR's head: the hub, with
