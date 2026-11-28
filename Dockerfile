@@ -86,8 +86,10 @@ ENV PORT=8080
 # SIGUSR2 makes any node process in the container print a diagnostic report
 # (JS stack, libuv handles, heap) to stdout, even while JS busy-loops (not
 # while it is stuck inside a single synchronous native call). docs/deploy.md,
-# "Detecting a hang", has the one-liner.
-ENV NODE_OPTIONS="--report-on-signal --report-filename=stdout"
+# "Detecting a hang", has the one-liner. --report-exclude-env keeps the
+# environment, and every secret dokku injects into it, out of the report:
+# the report lands in `dokku logs`.
+ENV NODE_OPTIONS="--report-on-signal --report-filename=stdout --report-exclude-env"
 EXPOSE 8080
 # Keep in step with `web` in the Procfile, which takes precedence over this on
 # a dokku deploy. This CMD is what `docker run` uses — CI's boot job, and
